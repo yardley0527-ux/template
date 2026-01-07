@@ -9,14 +9,8 @@ Bundler.require(*Rails.groups)
 
 module SmartadminRailsSeed
   class Application < Rails::Application
-    # Initialize configuration defaults for originally generated Rails version.
-    config.load_defaults 6.0
 
-    # Settings in config/environments/* take precedence over those specified here.
-    # Application configuration can go into files in config/initializers
-    # -- all .rb files in that directory are automatically loaded after loading
-    # the framework and any gems in your application.
-
+    config.load_defaults 7.1
     config.app = 'SmartAdmin'
     config.version = '4.0.3'
     config.app_sidebar = true
@@ -43,5 +37,14 @@ module SmartadminRailsSeed
     config.sa_assets_prefix = 'smartadmin/'
     config.sa_asset_filetypes =
       %w(*.png *.jpg *.jpeg *.gif *.svg *.json *.webm *.mp4 *.js *.css)
+
+    config.active_record.yaml_column_permitted_classes = [
+      Symbol,
+      Date,
+      Time,
+      ActiveSupport::TimeWithZone,
+      ActiveSupport::TimeZone,
+      ActiveSupport::HashWithIndifferentAccess
+    ]
   end
 end
