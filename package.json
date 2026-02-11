@@ -13,5 +13,8 @@
   },
   "resolutions": {
     "minimatch": "^9.0.5"
+  },
+  "engines": {
+    "node": "16.x"
   }
 }
