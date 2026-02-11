@@ -1,0 +1,133 @@
+# frozen_string_literal: true
+
+class ProductsController < ApplicationController
+  YEARS = [2026, 2025, 2024].freeze
+  
+  def index
+    @q = params[:q].to_s.strip
+    @sort = params[:sort].to_s.strip.presence || "orders"
+
+    @years = YEARS
+    # 這裡會依據 YEARS 的順序 (2026 -> 2025 -> 2024) 建立 Hash
+    @top_by_year = @years.index_with { |y| top_products_for_year(y, q: @q, sort: @sort, limit: 10) }
+  end
+
+  def show
+    raw = params[:id].to_s
+
+    # sidebar 用 CGI.escape，偶爾會 double-escape
+    decoded = CGI.unescape(raw)
+    decoded = CGI.unescape(decoded) if decoded.include?("%")
+    @product_name = decoded.strip
+
+    scope = ShoplineOrder.where(product_name: @product_name)
+    raise ActiveRecord::RecordNotFound, "product not found: #{@product_name}" if scope.none?
+
+    revenue_col = revenue_column
+
+    orders_count = scope.count
+    units_sold   = scope.sum(:quantity).to_i
+    revenue      = scope.sum(revenue_col).to_f
+
+    unique_customers =
+      scope.where.not(shopline_customer_id: nil).distinct.count(:shopline_customer_id)
+
+    yearly_orders  = scope.group(:source_year).count
+    yearly_revenue = scope.group(:source_year).sum(revenue_col) # {2024=>..., 2025=>...}
+
+    # 常被一起買（同一個 order_number 裡的其他品項）
+    copurchase_rows =
+      ShoplineOrder
+        .joins("INNER JOIN shopline_orders o2 ON o2.order_number = shopline_orders.order_number")
+        .where(shopline_orders: { product_name: @product_name })
+        .where.not(o2: { product_name: [nil, "", @product_name] })
+        .group("o2.product_name")
+        .order(Arel.sql("COUNT(*) DESC"))
+        .limit(20)
+        .count
+
+    # Top 客戶（營收）
+    top_customer_rows =
+      scope
+        .where.not(shopline_customer_id: nil)
+        .group(:shopline_customer_id, :customer_name, :email, :membership_level)
+        .select(
+          "shopline_customer_id",
+          "MAX(customer_name) AS full_name",
+          "MAX(email) AS email",
+          "MAX(membership_level) AS membership_level",
+          "COUNT(*) AS orders_count",
+          "COALESCE(SUM(quantity), 0) AS units_sold",
+          "COALESCE(SUM(#{revenue_col}), 0) AS revenue"
+        )
+        .order(Arel.sql("COALESCE(SUM(#{revenue_col}), 0) DESC"))
+        .limit(10)
+
+    top_customers = top_customer_rows.map do |r|
+      {
+        shopline_customer_id: r.shopline_customer_id,
+        full_name: r.try(:full_name),
+        email: r.try(:email),
+        membership_level: r.try(:membership_level),
+        orders_count: r.try(:orders_count).to_i,
+        units_sold: r.try(:units_sold).to_i,
+        revenue: r.try(:revenue).to_f
+      }
+    end
+
+    avg_order_amount =
+      orders_count > 0 ? (revenue / orders_count) : 0
+
+    avg_units_per_order =
+      orders_count > 0 ? (units_sold.to_f / orders_count) : 0
+
+    @analysis = OpenStruct.new(
+      product_name: @product_name,
+      orders_count: orders_count,
+      units_sold: units_sold,
+      revenue: revenue,
+      unique_customers: unique_customers,
+      avg_order_amount: avg_order_amount,
+      avg_units_per_order: avg_units_per_order,
+      first_order_at: scope.minimum(:order_date),
+      last_order_at: scope.maximum(:order_date),
+      yearly_orders: yearly_orders || {},
+      yearly_revenue: yearly_revenue || {},
+      copurchase_top: copurchase_rows || {},
+      top_customers: top_customers || []
+    )
+  end
+
+  private
+
+  # ✅ revenue 口徑：checkout_amount 優先，否則 total_amount
+  def revenue_column
+    ShoplineOrder.column_names.include?("checkout_amount") ? "checkout_amount" : "total_amount"
+  end
+
+  def top_products_for_year(year, q:, sort:, limit:)
+    revenue_col = revenue_column
+
+    scope = ShoplineOrder.where(source_year: year).where.not(product_name: [nil, ""])
+    scope = scope.where("product_name ILIKE ?", "%#{q}%") if q.present?
+
+    order_sql =
+      case sort
+      when "revenue" then "revenue DESC"
+      when "units"   then "total_quantity DESC"
+      else                "orders_count DESC"
+      end
+
+    scope
+      .select(
+        "product_name",
+        "COUNT(*) AS orders_count",
+        "COALESCE(SUM(quantity), 0) AS total_quantity",
+        "COALESCE(SUM(#{revenue_col}), 0) AS revenue",
+        "COUNT(DISTINCT shopline_customer_id) AS unique_customers"
+      )
+      .group("product_name")
+      .order(Arel.sql(order_sql))
+      .limit(limit)
+  end
+end

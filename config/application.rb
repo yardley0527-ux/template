@@ -15,7 +15,7 @@ module SmartadminRailsSeed
     config.version = '4.0.3'
     config.app_sidebar = true
     config.logo = 'logo.png'
-    config.app_flavor = 'SmartAdmin on Rails'
+    config.app_flavor = '苼莛國際生技'
     config.app_flavor_subscript = ''
     config.user = 'Dr. Codex Lantern'
     config.avatar = 'avatar-admin.png'
@@ -46,5 +46,7 @@ module SmartadminRailsSeed
       ActiveSupport::TimeZone,
       ActiveSupport::HashWithIndifferentAccess
     ]
+    config.autoload_paths << Rails.root.join("app/services")
+    config.eager_load_paths << Rails.root.join("app/services")
   end
 end

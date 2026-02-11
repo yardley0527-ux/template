@@ -26,6 +26,7 @@
       <!-- BEGIN Page Content -->
       <!-- the #js-page-content id is needed for some plugins to initialize -->
       <main id="js-page-content" role="main" class="page-content">
+      <%= render 'shared/flash' %>
         <% if content_for?(:preemptiveclass) %>
           <!-- Page heading removed for composed layout -->
         <% else %>
@@ -34,7 +35,6 @@
         <% end %>
         <%= yield %>
       </main>
-      1234567
       <%= render 'shared/page_content_overlay' %>
 
       <!-- END Page Content -->
@@ -59,7 +59,8 @@
 <%= render 'shared/page_settings' %>
 
 <%= render 'shared/scripts_base_plugins' %>
-<%# Custom scripts per page can be added. %>
+<%= javascript_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
 <%= yield :scripts_block %>
+
 </body>
 </html>

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<%= render 'shared/copyright_header' %>
+<html lang="en">
+<head>
+  <%= render 'shared/head' %>
+  <%= yield :head_block %>
+</head>
+
+<body class="mod-bg-1">
+  <div class="container py-5">
+    <%= render 'shared/flash' %>
+    <%= yield %>
+  </div>
+
+  <%= render 'shared/scripts_base_plugins' %>
+  <%= yield :scripts_block %>
+</body>
+</html>

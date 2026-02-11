@@ -1,0 +1,80 @@
+<!-- path: app/views/monthly_sales/show.html.erb -->
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-chart-bar"></i>
+    <%= @year %> / <%= @month %> 月
+    <small>Top 10 產品</small>
+  </h1>
+
+  <div class="subheader-block">
+    <%= link_to "← 回每月總覽", monthly_sales_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>本月 KPI</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="row">
+            <div class="col-md-3"><div class="fw-500">訂單數</div><div class="h4"><%= @kpi.orders_count.to_i %></div></div>
+            <div class="col-md-3"><div class="fw-500">瓶數</div><div class="h4"><%= @kpi.units_sold.to_i %></div></div>
+            <div class="col-md-3"><div class="fw-500">營收</div><div class="h4"><%= @kpi.revenue.to_f.round(0).to_i %></div></div>
+            <div class="col-md-3"><div class="fw-500">不重複客戶</div><div class="h4"><%= @kpi.unique_customers.to_i %></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-hdr"><h2>Top 10 產品</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <%= form_with url: monthly_sales_month_path(year: @year, month: @month), method: :get, local: true, class: "row g-2 align-items-end mb-3" do %>
+            <div class="col-sm-6 col-md-4">
+              <label class="form-label">排行依據</label>
+              <%= select_tag :sort,
+                options_for_select([["訂單數", "orders"], ["營收", "revenue"], ["瓶數", "units"]], @sort),
+                class: "form-control" %>
+            </div>
+            <div class="col-sm-6 col-md-4">
+              <%= button_tag "更新", type: "submit", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover table-striped w-100">
+              <thead class="bg-primary-600">
+                <tr>
+                  <th>商品名稱</th>
+                  <th class="text-end">訂單數</th>
+                  <th class="text-end">瓶數</th>
+                  <th class="text-end">營收</th>
+                  <th class="text-end">不重複客戶</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @top_products.each do |row| %>
+                  <tr>
+                    <td><%= link_to row.product_name, product_path(CGI.escape(row.product_name)), class: "fw-500" %></td>
+                    <td class="text-end"><%= row.orders_count.to_i %></td>
+                    <td class="text-end"><%= row.total_quantity.to_i %></td>
+                    <td class="text-end"><%= row.revenue.to_f.round(0).to_i %></td>
+                    <td class="text-end"><%= row.unique_customers.to_i %></td>
+                  </tr>
+                <% end %>
+
+                <% if @top_products.blank? %>
+                  <tr><td colspan="5" class="text-center text-muted py-4">沒有資料</td></tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="text-muted mt-2 mb-0">顯示 Top 10。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

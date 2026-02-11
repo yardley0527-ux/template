@@ -1,0 +1,112 @@
+<!-- path: app/views/product_heavy_buyers/index.html.erb -->
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-users"></i>
+    產品重度購買客戶
+    <small>依瓶數/營收排序，可匯出 CSV</small>
+  </h1>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr"><h2>條件</h2></div>
+  <div class="panel-container show">
+    <div class="panel-content">
+      <%= form_with url: product_heavy_buyers_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
+        <div class="col-md-4">
+          <label class="form-label">產品</label>
+          <%= text_field_tag :product, @product, class: "form-control" %>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">比對</label>
+          <%= select_tag :match,
+            options_for_select([["完全相同","exact"],["關鍵字包含","like"],["同系列（base）","base"]], @match),
+            class: "form-control" %>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">年份（可空）</label>
+          <%= number_field_tag :year, (@year || 0), class: "form-control" %>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">至少瓶數</label>
+          <%= number_field_tag :min_units, @min_units, class: "form-control" %>
+        </div>
+
+        <div class="col-md-2 d-flex gap-2">
+          <%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>
+          <%= link_to "清除", product_heavy_buyers_path, class: "btn btn-outline-secondary" %>
+        </div>
+      <% end %>
+
+      <div class="mt-3 text-muted">共有 <%= @buyers_count %> 位（min_units=<%= @min_units %>）</div>
+
+      <% if @buyers_count == 0 && @suggestions.present? %>
+        <div class="alert alert-warning mt-3 mb-0">
+          找不到符合條件的重度購買者。你是不是想查以下產品？
+          <div class="mt-2 d-flex flex-wrap gap-2">
+            <% @suggestions.each do |s| %>
+              <%= link_to s, product_heavy_buyers_path(product: s, match: "exact", year: (@year || 0), min_units: 1), class: "btn btn-sm btn-outline-danger" %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="mt-3">
+        <% if @product.present? %>
+          <%= link_to "匯出 CSV", export_product_heavy_buyers_path(product: @product, match: @match, year: (@year || 0), min_units: @min_units),
+            class: "btn btn-outline-primary btn-sm" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-container show">
+    <div class="panel-content">
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover table-striped w-100">
+          <thead class="bg-primary-600">
+            <tr>
+              <th>客戶</th>
+              <th>Email</th>
+              <th>卡別</th>
+              <th class="text-end">購物金</th>
+              <th>城市</th>
+              <th class="text-end">訂單數</th>
+              <th class="text-end">瓶數</th>
+              <th class="text-end">營收</th>
+              <th>首購</th>
+              <th>末購</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @rows.each do |r| %>
+              <tr>
+                <td class="fw-500"><%= r[:full_name].presence || "(無名)" %></td>
+                <td><%= r[:email] %></td>
+                <td><%= r[:membership_level].presence || "-" %></td>
+                <td class="text-end"><%= number_with_delimiter(r[:current_shopping_credits].to_i) %></td>
+                <td><%= r[:city].presence || "-" %></td>
+                <td class="text-end"><%= r[:orders_count].to_i %></td>
+                <td class="text-end"><%= r[:units_sold].to_i %></td>
+                <td class="text-end"><%= number_with_delimiter(r[:revenue].to_i) %></td>
+                <td><%= r[:first_order_at] %></td>
+                <td><%= r[:last_order_at] %></td>
+              </tr>
+            <% end %>
+
+            <% if @rows.blank? %>
+              <tr><td colspan="10" class="text-center text-muted py-4">沒有資料</td></tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="text-muted small mt-2">排序：瓶數 ↓ → 營收 ↓ → 訂單數 ↓</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,161 @@
+<!-- path: app/views/customers/index.html.erb -->
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-user"></i>
+    客人列表
+    <small>Shopline Customers</small>
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>篩選</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <%= form_with url: customers_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
+            <div class="col-sm-6 col-md-4">
+              <label class="form-label">搜尋</label>
+              <%= text_field_tag :q, @q, class: "form-control", placeholder: "姓名 / Email / 手機 / IG" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2">
+              <label class="form-label">城市</label>
+              <%= text_field_tag :city, @city, class: "form-control", placeholder: "台北 / 台中..." %>
+            </div>
+
+            <div class="col-sm-6 col-md-2">
+              <label class="form-label">購物金 ≥</label>
+              <%= number_field_tag :min_credits, (@min_credits&.to_i), class: "form-control", placeholder: "3000" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2">
+              <label class="form-label">點數 ≥</label>
+              <%= number_field_tag :min_points, (@min_points&.to_i), class: "form-control", placeholder: "3000" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2">
+              <label class="form-label">會員</label>
+              <%= select_tag :member,
+                options_for_select([["全部", ""], ["是會員", "1"], ["非會員", "0"]], @member),
+                class: "form-control" %>
+            </div>
+
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label">排序</label>
+              <%= select_tag :sort,
+                options_for_select(
+                  [
+                    ["購物金（高→低）", "credits_desc"],
+                    ["點數（高→低）", "points_desc"],
+                    ["訂單數（高→低）", "orders_desc"],
+                    ["新建立（新→舊）", "newest"]
+                  ],
+                  @sort
+                ),
+                class: "form-control" %>
+            </div>
+
+            <div class="col-sm-12 col-md-9">
+              <%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>
+              <%= link_to "清除", customers_path, class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="panel-content">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="text-muted">
+              總筆數：<%= number_with_delimiter(@total.to_i) %>　
+              每頁：<%= CustomersController::PER_PAGE %>　
+              頁數：<%= @page %> / <%= @total_pages %>
+            </div>
+
+            <div class="btn-group">
+              <% prev_page = [@page - 1, 1].max %>
+              <% next_page = [@page + 1, @total_pages].min %>
+
+              <%= link_to "← 上一頁",
+                customers_path(request.query_parameters.merge(page: prev_page)),
+                class: "btn btn-outline-secondary btn-sm #{'disabled' if @page <= 1}" %>
+
+              <%= link_to "下一頁 →",
+                customers_path(request.query_parameters.merge(page: next_page)),
+                class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover table-striped w-100">
+              <thead class="bg-primary-600">
+                <tr>
+                  <th>客人</th>
+                  <th>聯絡</th>
+                  <th>城市</th>
+                  <th class="text-end">購物金</th>
+                  <th class="text-end">點數</th>
+                  <th class="text-end">訂單數</th>
+                  <th>會員</th>
+                  <th class="text-end">建立時間</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <% @customers.each do |c| %>
+                  <tr>
+                    <td>
+                      <div class="fw-500"><%= c.full_name.presence || "(無名)" %></div>
+                      <div class="small text-muted"><%= c.instagram_account %></div>
+                    </td>
+
+                    <td>
+                      <div class="small"><%= c.email %></div>
+                      <div class="small text-muted"><%= c.mobile_phone.presence || c.phone %></div>
+                    </td>
+
+                    <td><%= c.city %></td>
+
+                    <td class="text-end">
+                      <%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %>
+                    </td>
+
+                    <td class="text-end">
+                      <%= number_with_delimiter(c.current_points.to_i) %>
+                    </td>
+
+                    <td class="text-end"><%= c.order_count.to_i %></td>
+
+                    <td>
+                      <div class="text-end"><%= c.membership_level %></div>
+                    </td>
+
+                    <td class="text-end small text-muted">
+                      <%= c.created_at&.in_time_zone&.strftime("%Y-%m-%d") %>
+                    </td>
+                  </tr>
+                <% end %>
+
+                <% if @customers.blank? %>
+                  <tr><td colspan="8" class="text-center text-muted py-4">沒有資料</td></tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex justify-content-end mt-2">
+            <% prev_page = [@page - 1, 1].max %>
+            <% next_page = [@page + 1, @total_pages].min %>
+
+            <%= link_to "← 上一頁",
+              customers_path(request.query_parameters.merge(page: prev_page)),
+              class: "btn btn-outline-secondary btn-sm me-2 #{'disabled' if @page <= 1}" %>
+
+            <%= link_to "下一頁 →",
+              customers_path(request.query_parameters.merge(page: next_page)),
+              class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

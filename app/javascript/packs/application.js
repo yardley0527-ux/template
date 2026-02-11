@@ -7,3 +7,7 @@ require("@rails/ujs").start()
 require("turbolinks").start()
 require("@rails/activestorage").start()
 require("channels")
+
+import Chart from "chart.js/auto";
+window.Chart = Chart;
+console.log("Webpack application.js loaded! Chart:", window.Chart);

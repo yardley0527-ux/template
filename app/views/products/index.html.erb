@@ -1,0 +1,89 @@
+<!-- path: app/views/products/index.html.erb -->
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-box"></i>
+    產品排行（2024–2026）
+    <small>分年份顯示 Top 產品</small>
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>篩選</h2></div>
+
+      <div class="panel-container show">
+        <div class="panel-content">
+          <%= form_with url: products_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
+            <div class="col-sm-6 col-md-5">
+              <label class="form-label">搜尋商品</label>
+              <%= text_field_tag :q, @q, class: "form-control", placeholder: "輸入商品名稱關鍵字..." %>
+            </div>
+
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label">排行依據</label>
+              <%= select_tag :sort,
+                options_for_select([["訂單數", "orders"], ["營收", "revenue"], ["瓶數", "units"]], @sort),
+                class: "form-control" %>
+            </div>
+
+            <div class="col-sm-12 col-md-4">
+              <%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>
+              <%= link_to "清除", products_path, class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <% @years.each do |year| %>
+    <% rows = @top_by_year[year] || [] %>
+    <div class="col-12 col-xl-4">
+      <div class="panel">
+        <div class="panel-hdr">
+          <h2><%= year %> Top 產品</h2>
+        </div>
+
+        <div class="panel-container show">
+          <div class="panel-content">
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover table-striped w-100">
+                <thead class="bg-primary-600">
+                  <tr>
+                    <th>商品名稱</th>
+                    <th class="text-end">訂單數</th>
+                    <th class="text-end">瓶數</th>
+                    <th class="text-end">總金額</th>
+                    <th class="text-end">不重複客戶</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% rows.each do |row| %>
+                    <tr>
+                      <td>
+                        <%= link_to row.product_name, product_path(CGI.escape(row.product_name)), class: "fw-500" %>
+                      </td>
+                      <td class="text-end"><%= row.orders_count.to_i %></td>
+                      <td class="text-end"><%= row.total_quantity.to_i %></td>
+                      <td class="text-end"><%= number_with_delimiter(row.revenue.to_f.round(0).to_i) %></td>
+                      <td class="text-end"><%= row.unique_customers.to_i %></td>
+                    </tr>
+                  <% end %>
+
+                  <% if rows.blank? %>
+                    <tr><td colspan="5" class="text-center text-muted py-4">沒有資料</td></tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+
+            <p class="text-muted mt-2 mb-0">顯示前 30 筆（依 <%= {"orders"=>"訂單數","revenue"=>"營收","units"=>"瓶數"}[@sort] %> 排序）。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -1,4 +1,22 @@
 #!/usr/bin/env ruby
+# --- 強制補丁開始 ---
+require 'yaml'
+require 'psych'
+if defined?(Psych::VERSION) && Psych::VERSION.start_with?('5')
+  module Psych
+    class << self
+      alias_method :orig_load_file, :load_file
+      def load_file(path, **kwargs)
+        orig_load_file(path, aliases: true, **kwargs)
+      end
+
+      alias_method :orig_load, :load
+      def load(yaml, **kwargs)
+        orig_load(yaml, aliases: true, **kwargs)
+      end
+    end
+  end
+end
 
 ENV["RAILS_ENV"] ||= ENV["RACK_ENV"] || "development"
 ENV["NODE_ENV"]  ||= "development"
