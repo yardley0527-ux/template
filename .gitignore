@@ -40,3 +40,5 @@ yarn-debug.log*
 # Ignore spurious log files
 /*.log
 vendor/bundle
+
+/config/credentials/production.key
