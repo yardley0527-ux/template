@@ -60,6 +60,4 @@ test:
 
 production:
   <<: *default
-  database: smartadmin_rails_full
-  username: smartadmin_rails_full
-  password: <%= ENV['MYAPP_DATABASE_PASSWORD'] %>
+  url: <%= ENV['DATABASE_URL'] %>
