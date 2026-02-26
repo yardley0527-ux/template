@@ -1,0 +1,452 @@
+<%# app/views/customers/show.html.erb %>
+
+<div class="customer-show">
+  <%# === 頂部：客人基本資料 === %>
+  <div class="customer-header">
+    <div class="back-link">
+      <%= link_to "← 返回客戶列表", customers_path, class: "btn-back" %>
+    </div>
+
+    <div class="customer-info-card">
+      <div class="customer-avatar">
+        <%= @customer.full_name&.first(1)&.upcase || "?" %>
+      </div>
+      <div class="customer-details">
+        <h1><%= @customer.full_name.presence || "（無姓名）" %></h1>
+        <div class="customer-meta">
+          <span>📧 <%= @customer.email.presence || "—" %></span>
+          <span>📱 <%= @customer.mobile_phone.presence || @customer.phone.presence || "—" %></span>
+          <% if @customer.instagram_account.present? %>
+            <span>📸 <%= @customer.instagram_account %></span>
+          <% end %>
+          <% if @customer.city.present? %>
+            <span>📍 <%= @customer.city %></span>
+          <% end %>
+        </div>
+        <div class="customer-stats">
+          <div class="stat">
+            <span class="stat-label">會員等級</span>
+            <span class="stat-value"><%= @customer.membership_level.presence || "—" %></span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">購物金</span>
+            <span class="stat-value credit"><%= number_with_delimiter(@customer.current_shopping_credits.to_i) %></span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">點數</span>
+            <span class="stat-value point"><%= number_with_delimiter(@customer.current_points.to_i) %></span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">訂單數</span>
+            <span class="stat-value"><%= @customer.order_count.to_i %></span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">總消費</span>
+            <span class="stat-value">NT$ <%= number_with_delimiter(@customer.total_amount.to_i) %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# === 產品分析 === %>
+  <section class="section">
+    <h2 class="section-title">🛍️ 產品購買分析</h2>
+
+    <% if @product_analysis.empty? %>
+      <p class="empty-state">尚無訂單紀錄</p>
+    <% else %>
+      <div class="product-analysis-grid">
+        <% @product_analysis.each_with_index do |p, i| %>
+          <div class="product-card <%= i == 0 ? 'top-product' : '' %>">
+            <% if i == 0 %>
+              <span class="badge-top">最常購買</span>
+            <% end %>
+            <div class="product-name"><%= p[:product_name] %></div>
+            <div class="product-metrics">
+              <div class="metric">
+                <span class="metric-label">購買次數</span>
+                <span class="metric-value"><%= p[:order_count] %> 次</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">累計購買</span>
+                <span class="metric-value"><%= p[:total_qty_bottles] %> 瓶</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">總金額</span>
+                <span class="metric-value">NT$ <%= number_with_delimiter(p[:total_amount].to_i) %></span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">平均消耗</span>
+                <span class="metric-value cycle">
+                  <% if p[:days_per_bottle] %>
+                    每 <strong><%= p[:days_per_bottle] %></strong> 天/瓶
+                  <% else %>
+                    資料不足
+                  <% end %>
+                </span>
+              </div>
+            </div>
+
+            <div class="product-dates">
+              <span>首次：<%= p[:first_date]&.strftime("%Y/%m/%d") || "—" %></span>
+              <span>最近：<%= p[:last_date]&.strftime("%Y/%m/%d") || "—" %></span>
+            </div>
+
+            <div class="stock-status">
+              <% if p[:estimated_stock] %>
+                <% stock = p[:estimated_stock] %>
+                <div class="stock-bar-wrap">
+                  <span class="stock-label">估計剩餘</span>
+                  <span class="stock-value <%= stock <= 0 ? 'empty' : stock <= 3 ? 'low' : 'ok' %>">
+                    <%= stock <= 0 ? "已用完" : "#{stock} 瓶" %>
+                  </span>
+                </div>
+              <% end %>
+
+              <% if p[:overdue_days] %>
+                <div class="overdue-alert">
+                  ⚠️ 預估已用完 <strong><%= p[:overdue_days] %></strong> 天，尚未回購
+                </div>
+              <% elsif p[:estimated_empty_date] %>
+                <div class="next-purchase">
+                  預估用完：<%= p[:estimated_empty_date].strftime("%Y/%m/%d") %>
+                </div>
+              <% end %>
+            </div>
+
+            <%# 購買時間軸 %>
+            <% if p[:dates].size > 1 %>
+              <div class="purchase-timeline">
+                <% total_span = (p[:last_date].to_date - p[:first_date].to_date).to_i %>
+                <% total_span = 1 if total_span == 0 %>
+                <% p[:dates].each do |d| %>
+                  <% pct = ((d.to_date - p[:first_date].to_date).to_i.to_f / total_span * 100).round %>
+                  <div class="timeline-dot" style="left: <%= pct %>%" title="<%= d.strftime('%Y/%m/%d') %>"></div>
+                <% end %>
+                <div class="timeline-bar"></div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+
+  <%# === 訂單歷史 === %>
+  <section class="section">
+    <h2 class="section-title">📋 歷史訂單（<%= @orders.count %> 筆）</h2>
+
+    <% if @orders.empty? %>
+      <p class="empty-state">尚無訂單紀錄</p>
+    <% else %>
+      <div class="orders-table-wrap">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>訂單號</th>
+              <th>產品名稱</th>
+              <th>數量</th>
+              <th>金額</th>
+              <th>付款狀態</th>
+              <th>訂單狀態</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @orders.each do |order| %>
+              <tr>
+                <td><%= order.order_date&.strftime("%Y/%m/%d") || "—" %></td>
+                <td class="order-number"><%= order.order_number %></td>
+                <td><%= order.product_name.presence || "—" %></td>
+                <td><%= order.quantity %></td>
+                <td>NT$ <%= number_with_delimiter(order.total_amount.to_i) %></td>
+                <td>
+                  <span class="status-badge payment-<%= order.payment_status.to_s.parameterize %>">
+                    <%= order.payment_status.presence || "—" %>
+                  </span>
+                </td>
+                <td>
+                  <span class="status-badge order-<%= order.order_status.to_s.parameterize %>">
+                    <%= order.order_status.presence || "—" %>
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </section>
+</div>
+
+<style>
+  .customer-show {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #1a1a2e;
+  }
+
+  .btn-back {
+    display: inline-block;
+    margin-bottom: 16px;
+    color: #6366f1;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .btn-back:hover { text-decoration: underline; }
+
+  .customer-info-card {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+
+  .customer-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .customer-details h1 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .customer-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 16px;
+  }
+
+  .customer-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+
+  .stat-label {
+    font-size: 11px;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .stat-value.credit { color: #10b981; }
+  .stat-value.point  { color: #f59e0b; }
+
+  .section { margin-bottom: 40px; }
+
+  .section-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #111827;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f3f4f6;
+  }
+
+  .empty-state { color: #9ca3af; font-size: 14px; padding: 20px 0; }
+
+  .product-analysis-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .product-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+
+  .product-card.top-product {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99,102,241,.15);
+  }
+
+  .badge-top {
+    display: inline-block;
+    background: #6366f1;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 99px;
+    margin-bottom: 8px;
+  }
+
+  .product-name {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 12px;
+    color: #111827;
+    line-height: 1.3;
+  }
+
+  .product-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .metric { display: flex; flex-direction: column; gap: 2px; }
+  .metric-label { font-size: 11px; color: #9ca3af; }
+  .metric-value { font-size: 14px; font-weight: 600; color: #374151; }
+  .metric-value.cycle strong { color: #6366f1; font-size: 16px; }
+
+  .product-dates {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-bottom: 10px;
+  }
+
+  .purchase-timeline {
+    position: relative;
+    height: 16px;
+    margin-top: 4px;
+  }
+
+  .timeline-bar {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #e5e7eb;
+    transform: translateY(-50%);
+    border-radius: 2px;
+  }
+
+  .timeline-dot {
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    background: #6366f1;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 1px #6366f1;
+    cursor: default;
+    z-index: 1;
+  }
+
+  .orders-table-wrap {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+  }
+
+  .orders-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: #fff;
+  }
+
+  .orders-table th {
+    background: #f9fafb;
+    text-align: left;
+    padding: 10px 14px;
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .orders-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #374151;
+  }
+
+  .orders-table tbody tr:last-child td { border-bottom: none; }
+  .orders-table tbody tr:hover td { background: #f9fafb; }
+
+  .order-number { font-family: monospace; font-size: 12px; color: #6b7280; }
+
+  .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #f3f4f6;
+    color: #374151;
+  }
+
+  .stock-status {
+  margin: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stock-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.stock-label { color: #9ca3af; }
+
+.stock-value { font-weight: 700; font-size: 14px; }
+.stock-value.ok    { color: #10b981; }
+.stock-value.low   { color: #f59e0b; }
+.stock-value.empty { color: #ef4444; }
+
+.overdue-alert {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ef4444;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+.next-purchase {
+  font-size: 12px;
+  color: #6b7280;
+}
+</style>

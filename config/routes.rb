@@ -4,7 +4,7 @@ Rails.application.routes.draw do
   root 'welcome#index'
 
   resources :products, only: [:index, :show], param: :id
-  resources :customers, only: [:index]
+  resources :customers, only: [:index, :show]
 
  
 

@@ -104,7 +104,9 @@
                 <% @customers.each do |c| %>
                   <tr>
                     <td>
-                      <div class="fw-500"><%= c.full_name.presence || "(無名)" %></div>
+                      <div class="fw-500">
+                        <%= link_to c.full_name.presence || "(無名)", customer_path(c) %>
+                      </div>
                       <div class="small text-muted"><%= c.instagram_account %></div>
                     </td>
 
