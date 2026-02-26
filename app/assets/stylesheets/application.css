@@ -14,3 +14,108 @@
  *= require 'smartadmin/app.bundle'
  *= require_self
  */
+
+
+ /* Sidebar 奶油色背景 */
+.page-logo,
+.page-sidebar,
+.nav-footer,
+.bg-brand-gradient {
+  background-image: none !important;
+  background-color: #f5f0e8 !important;
+}
+
+/* Nav 連結文字 */
+.nav-menu li a {
+  color: #6b4c3b !important;
+}
+
+.nav-menu li a > [class*='fa-'],
+.nav-menu li a > .ni {
+  color: #a07060 !important;
+}
+
+/* Active 狀態 */
+.nav-menu li.active > a {
+  color: #2c1a0e !important;
+  box-shadow: inset 3px 0 0 #c4956a !important;
+  background-color: rgba(196, 149, 106, 0.1) !important;
+}
+
+/* Hover */
+.nav-menu li a:hover {
+  background-color: rgba(196, 149, 106, 0.1) !important;
+  color: #2c1a0e !important;
+}
+
+/* Nav group title */
+.nav-title {
+  color: #a07060 !important;
+}
+
+/* Logo 區塊 */
+.page-logo {
+  box-shadow: none !important;
+  border-bottom: 1px solid #e8ddd0 !important;
+}
+
+/* Logo 文字 */
+.page-logo-text {
+  color: #2c1a0e !important;
+}
+
+/* Nav footer */
+.nav-footer {
+  border-top: 1px solid #e8ddd0 !important;
+}
+
+.nav-footer .nav-footer-buttons > li > a {
+  color: #a07060 !important;
+}
+
+/* Info card (頭像區) */
+.info-card {
+  background-color: #ede5d8 !important;
+  background-image: none !important;
+}
+
+/* 表格 header 背景 */
+table thead tr th,
+.table thead th,
+[class*="bg-primary"] {
+  background-color: #c4956a !important;
+}
+
+/* 表格內連結 */
+.table td a,
+.page-content table td a {
+  color: #8f6340 !important;
+}
+
+.table td a:hover {
+  color: #6e4a2e !important;
+}
+
+/* 查詢按鈕 */
+.btn-primary,
+.btn-danger {
+  background-color: #c4956a !important;
+  border-color: #b07d52 !important;
+  box-shadow: 0 2px 6px 0 rgba(196, 149, 106, 0.5) !important;
+}
+
+.btn-primary:hover,
+.btn-danger:hover {
+  background-color: #b07d52 !important;
+  border-color: #8f6340 !important;
+}
+
+/* :root 變數覆蓋（影響所有用到 theme-primary 的地方）*/
+:root {
+  --theme-primary: #c4956a !important;
+  --theme-primary-500: #c4956a !important;
+  --theme-primary-600: #b07d52 !important;
+  --theme-primary-700: #8f6340 !important;
+  --theme-primary-800: #6e4a2e !important;
+  --theme-primary-900: #4e3320 !important;
+}

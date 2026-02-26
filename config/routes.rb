@@ -4,22 +4,9 @@ Rails.application.routes.draw do
   root 'welcome#index'
 
   resources :products, only: [:index, :show], param: :id
-  get "/monthly_sales", to: "monthly_sales#index", as: :monthly_sales
-  get "/monthly_sales/:year/:month", to: "monthly_sales#show", as: :monthly_sales_month
-
   resources :customers, only: [:index]
 
-  get "/high_credit_customers", to: "high_credit_customers#index", as: :high_credit_customers
-  get "/high_credit_customers/export", to: "high_credit_customers#export", as: :export_high_credit_customers
-
-  get "/credit_tiers", to: "credit_tiers#index", as: :credit_tiers
-  get "/credit_tiers/export", to: "credit_tiers#export", as: :credit_tiers_export
-
-  get "/product_heavy_buyers", to: "product_heavy_buyers#index", as: :product_heavy_buyers
-  get "/product_heavy_buyers/export", to: "product_heavy_buyers#export", as: :export_product_heavy_buyers
-
-
-
+ 
 
 
 
