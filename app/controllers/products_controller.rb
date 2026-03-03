@@ -43,7 +43,7 @@ class ProductsController < ApplicationController
         .where.not(o2: { product_name: [nil, "", @product_name] })
         .group("o2.product_name")
         .order(Arel.sql("COUNT(*) DESC"))
-        .limit(20)
+        .limit(5)
         .count
 
     # Top 客戶（營收）
@@ -81,6 +81,13 @@ class ProductsController < ApplicationController
     avg_units_per_order =
       orders_count > 0 ? (units_sold.to_f / orders_count) : 0
 
+    top_cities = scope
+    .where.not(city: [nil, ""])
+    .group(:city)
+    .order(Arel.sql("COUNT(*) DESC"))
+    .limit(3)
+    .count
+
     @analysis = OpenStruct.new(
       product_name: @product_name,
       orders_count: orders_count,
@@ -94,13 +101,12 @@ class ProductsController < ApplicationController
       yearly_orders: yearly_orders || {},
       yearly_revenue: yearly_revenue || {},
       copurchase_top: copurchase_rows || {},
-      top_customers: top_customers || []
+      top_customers: top_customers || [],
+      top_cities: top_cities,
     )
   end
 
   private
-
-  # ✅ revenue 口徑：checkout_amount 優先，否則 total_amount
   def revenue_column
     ShoplineOrder.column_names.include?("checkout_amount") ? "checkout_amount" : "total_amount"
   end

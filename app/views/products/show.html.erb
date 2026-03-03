@@ -41,8 +41,29 @@
         </div>
       </div>
     </div>
+    <% if @analysis.top_cities.any? %>
+      <div class="panel">
+        <div class="panel-hdr"><h2>📍 熱銷縣市 Top 3</h2></div>
+        <div class="panel-container show">
+          <div class="panel-content">
+            <% max = @analysis.top_cities.values.first.to_f %>
+            <% @analysis.top_cities.each do |city, count| %>
+              <div class="mb-2">
+                <div class="d-flex justify-content-between mb-1">
+                  <span><%= city %></span>
+                  <span class="text-muted"><%= count %> 筆</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                  <div class="progress-bar" style="width: <%= (count / max * 100).round %>%"></div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
   </div>
-
+  
   <div class="col-12 col-md-5">
     <div class="panel">
       <div class="panel-hdr"><h2>年度趨勢</h2></div>
@@ -78,7 +99,7 @@
     </div>
 
     <div class="panel">
-      <div class="panel-hdr"><h2>常被一起買的商品（Top 20）</h2></div>
+      <div class="panel-hdr"><h2>常被一起買的商品（Top 5）</h2></div>
       <div class="panel-container show">
         <div class="panel-content">
           <table class="table table-sm table-bordered mb-0">
