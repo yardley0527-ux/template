@@ -1,4 +1,3 @@
-# path: app/controllers/customers_controller.rb
 # frozen_string_literal: true
 
 class CustomersController < ApplicationController
@@ -8,10 +7,11 @@ class CustomersController < ApplicationController
   def index
     @q = params[:q].to_s.strip
     @city = params[:city].to_s.strip
-    @member = params[:member].to_s.strip
+    @membership_level = params[:membership_level].to_s.strip
     @min_credits = to_number(params[:min_credits])
-    @min_points = to_number(params[:min_points])
-    @sort = params[:sort].to_s.strip.presence || "credits_desc"
+    @sort = params[:sort].to_s.strip.presence || "amount_desc"
+
+    @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level).compact.sort
 
     @page = params[:page].to_i
     @page = 1 if @page <= 0
@@ -28,18 +28,9 @@ class CustomersController < ApplicationController
     end
 
     scope = scope.where("city ILIKE ?", "%#{@city}%") if @city.present?
-
-    if @member == "1"
-      scope = scope.where(is_member: true)
-    elsif @member == "0"
-      scope = scope.where(is_member: [false, nil])
-    end
-
+    scope = scope.where(membership_level: @membership_level) if @membership_level.present?
     scope = scope.where("current_shopping_credits >= ?", @min_credits) if @min_credits
-    scope = scope.where("current_points >= ?", @min_points) if @min_points
-
     scope = scope.where.not(email: [nil, ""]).or(scope.where.not(mobile_phone: [nil, ""]))
-
     scope = scope.reorder(Arel.sql(order_sql(@sort)))
 
     @total = scope.count
@@ -48,15 +39,30 @@ class CustomersController < ApplicationController
 
     offset = (@page - 1) * PER_PAGE
     @customers = scope.offset(offset).limit(PER_PAGE)
+
+    emails = @customers.map(&:email).compact.uniq
+    orders_by_email = ShoplineOrder
+      .where(email: emails)
+      .where.not(product_name: [nil, ""])
+      .select(:email, :product_name, :quantity)
+      .group_by(&:email)
+
+    @top_products = {}
+    orders_by_email.each do |email, orders|
+      series_counts = Hash.new(0)
+      orders.each do |o|
+        series, _bottles = parse_product(o.product_name)
+        series_counts[series] += o.quantity.to_i
+      end
+      @top_products[email] = series_counts.max_by { |_, v| v }&.first
+    end
   end
 
   def show
     @customer = ShoplineCustomer.find(params[:id])
 
-    # 所有訂單，按時間排序
     @orders = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
 
-    # 購買週期分析
     @product_analysis = analyze_products(@orders)
   end
 
@@ -128,7 +134,7 @@ class CustomersController < ApplicationController
         overdue_days: overdue_days,
         dates: dates
       }
-    end.sort_by { |p| -p[:order_count] }
+    end.sort_by { |p| [-p[:order_count], p[:avg_cycle_days] || Float::INFINITY] }
   end
 
   def parse_product(name)
@@ -151,8 +157,8 @@ class CustomersController < ApplicationController
 
   def order_sql(sort)
     case sort
-    when "points_desc"
-      "current_points DESC NULLS LAST, id DESC"
+    when "amount_desc"
+      "total_amount DESC NULLS LAST, id DESC"
     when "newest"
       "created_at DESC, id DESC"
     when "orders_desc"

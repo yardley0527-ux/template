@@ -17,7 +17,7 @@
           <span>📧 <%= @customer.email.presence || "—" %></span>
           <span>📱 <%= @customer.mobile_phone.presence || @customer.phone.presence || "—" %></span>
           <% if @customer.instagram_account.present? %>
-            <span>📸 <%= @customer.instagram_account %></span>
+            <span>📸 <a href="https://instagram.com/<%= @customer.instagram_account %>" target="_blank" rel="noopener noreferrer"><%= @customer.instagram_account %></a></span>
           <% end %>
           <% if @customer.city.present? %>
             <span>📍 <%= @customer.city %></span>
@@ -31,10 +31,6 @@
           <div class="stat">
             <span class="stat-label">購物金</span>
             <span class="stat-value credit"><%= number_with_delimiter(@customer.current_shopping_credits.to_i) %></span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">點數</span>
-            <span class="stat-value point"><%= number_with_delimiter(@customer.current_points.to_i) %></span>
           </div>
           <div class="stat">
             <span class="stat-label">訂單數</span>
