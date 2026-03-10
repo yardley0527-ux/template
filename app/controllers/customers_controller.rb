@@ -48,7 +48,11 @@ class CustomersController < ApplicationController
 
     scope = scope.reorder(Arel.sql(order_sql(@sort)))
 
-    @total = scope.count
+    @total = if @sort.start_with?("inactive")
+      scope.except(:select, :joins).count
+    else
+      scope.count
+    end
     @total_pages = (@total.to_f / PER_PAGE).ceil
     @total_pages = 1 if @total_pages <= 0
 
