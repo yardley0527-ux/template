@@ -35,7 +35,7 @@
                 options_for_select([["全部", ""]] + @membership_levels.map { |l| [l, l] }, @membership_level),
                 class: "form-control" %>
             </div>
-            
+
             <div class="col-sm-12 col-md-9">
               <%= button_tag "查詢", type: "submit", class: "btn btn-primary me-2 mt-2" %>
               <%= link_to "清除", customers_path, class: "btn btn-outline-secondary mt-2" %>
@@ -54,11 +54,9 @@
             <div class="btn-group">
               <% prev_page = [@page - 1, 1].max %>
               <% next_page = [@page + 1, @total_pages].min %>
-
               <%= link_to "← 上一頁",
                 customers_path(request.query_parameters.merge(page: prev_page)),
                 class: "btn btn-outline-secondary btn-sm #{'disabled' if @page <= 1}" %>
-
               <%= link_to "下一頁 →",
                 customers_path(request.query_parameters.merge(page: next_page)),
                 class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
@@ -72,11 +70,12 @@
                   <th>姓名</th>
                   <th>生日</th>
                   <th>城市</th>
-                  <th class="text-end">訂單數</th>
-                  <th class="text-end">累積消費</th>
-                  <th class="text-end">購物金</th>
+                  <th class="text-end"><%= sort_link_tag("訂單數", "orders_asc", "orders_desc", @sort) %></th>
+                  <th class="text-end"><%= sort_link_tag("累積消費", "amount_asc", "amount_desc", @sort) %></th>
+                  <th class="text-end"><%= sort_link_tag("購物金", "credits_asc", "credits_desc", @sort) %></th>
                   <th>會員</th>
                   <th>常買</th>
+                  <th><%= sort_link_tag("未購警示", "inactive_asc", "inactive_desc", @sort) %></th>
                 </tr>
               </thead>
 
@@ -86,6 +85,9 @@
                     <td>
                       <div class="fw-500">
                         <%= link_to c.full_name.presence || "(無名)", customer_path(c) %>
+                        <% if c.membership_level == "黑卡" && @inactive_info[c.email] %>
+                          <span style="color:#c0392b; font-size:0.75em;">⚠</span>
+                        <% end %>
                       </div>
                       <div class="small text-muted">
                         <% if c.instagram_account.present? %>
@@ -95,24 +97,26 @@
                         <% end %>
                       </div>
                     </td>
-                    <td class="small">
-                      <%= c.birthdate&.strftime("%m/%d") || "—" %>
-                    </td>
+                    <td class="small"><%= c.birthdate&.strftime("%m/%d") || "—" %></td>
                     <td><%= c.city %></td>
                     <td class="text-end"><%= c.order_count.to_i %></td>
-                    <td class="text-end">
-                      NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %>
+                    <td class="text-end">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
+                    <td class="text-end"><%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %></td>
+                    <td><%= c.membership_level %></td>
+                    <td><%= @top_products[c.email].presence || "—" %></td>
+                    <td class="small">
+                      <% if c.membership_level == "黑卡" && (info = @inactive_info[c.email]) %>
+                        <span style="color:#c0392b;">⚠ <%= info[:days] %> 天未購</span><br>
+                        <span class="text-muted">上次買 <%= info[:last_product] %></span>
+                      <% else %>
+                        —
+                      <% end %>
                     </td>
-                    <td class="text-end">
-                      <%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %>
-                    </td>
-                    <td class="text-end"><%= c.membership_level %></td>
-                    <td class="text-end"><%= @top_products[c.email].presence || "—" %></td>
                   </tr>
                 <% end %>
 
                 <% if @customers.blank? %>
-                  <tr><td colspan="8" class="text-center text-muted py-4">沒有資料</td></tr>
+                  <tr><td colspan="9" class="text-center text-muted py-4">沒有資料</td></tr>
                 <% end %>
               </tbody>
             </table>
@@ -121,11 +125,9 @@
           <div class="d-flex justify-content-end mt-2">
             <% prev_page = [@page - 1, 1].max %>
             <% next_page = [@page + 1, @total_pages].min %>
-
             <%= link_to "← 上一頁",
               customers_path(request.query_parameters.merge(page: prev_page)),
               class: "btn btn-outline-secondary btn-sm me-2 #{'disabled' if @page <= 1}" %>
-
             <%= link_to "下一頁 →",
               customers_path(request.query_parameters.merge(page: next_page)),
               class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>

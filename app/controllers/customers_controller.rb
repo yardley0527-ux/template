@@ -31,6 +31,21 @@ class CustomersController < ApplicationController
     scope = scope.where(membership_level: @membership_level) if @membership_level.present?
     scope = scope.where("current_shopping_credits >= ?", @min_credits) if @min_credits
     scope = scope.where.not(email: [nil, ""]).or(scope.where.not(mobile_phone: [nil, ""]))
+
+    # 未購警示排序需要 join last_order_date
+    if @sort.start_with?("inactive")
+      scope = scope
+        .joins(
+          "LEFT JOIN (
+            SELECT email, MAX(order_date) AS last_order_date
+            FROM shopline_orders
+            WHERE product_name IS NOT NULL AND product_name != ''
+            GROUP BY email
+          ) lo ON lo.email = shopline_customers.email"
+        )
+        .select("shopline_customers.*, lo.last_order_date")
+    end
+
     scope = scope.reorder(Arel.sql(order_sql(@sort)))
 
     @total = scope.count
@@ -41,6 +56,7 @@ class CustomersController < ApplicationController
     @customers = scope.offset(offset).limit(PER_PAGE)
 
     emails = @customers.map(&:email).compact.uniq
+
     orders_by_email = ShoplineOrder
       .where(email: emails)
       .where.not(product_name: [nil, ""])
@@ -57,13 +73,28 @@ class CustomersController < ApplicationController
       end
       @top_products[email] = series_counts.max_by { |_, v| [v[:qty], v[:count]] }&.first
     end
+
+    last_order_by_email = ShoplineOrder
+      .where(email: emails)
+      .where.not(product_name: [nil, ""])
+      .select(:email, :product_name, :order_date)
+      .group_by(&:email)
+      .transform_values { |orders| orders.max_by(&:order_date) }
+
+    @inactive_info = {}
+    last_order_by_email.each do |email, last_order|
+      next unless last_order.order_date
+      days_ago = (Date.today - last_order.order_date.to_date).to_i
+      if days_ago >= 60
+        series, _ = parse_product(last_order.product_name)
+        @inactive_info[email] = { days: days_ago, last_product: series }
+      end
+    end
   end
 
   def show
     @customer = ShoplineCustomer.find(params[:id])
-
     @orders = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
-
     @product_analysis = analyze_products(@orders)
   end
 
@@ -71,7 +102,6 @@ class CustomersController < ApplicationController
 
   def analyze_products(orders)
     today = Date.today
-
     series_grouped = Hash.new { |h, k| h[k] = [] }
 
     orders.where.not(product_name: [nil, ""]).each do |order|
@@ -90,7 +120,6 @@ class CustomersController < ApplicationController
       total_qty_bottles = items.sum { |i| i[:bottles_total] }
       total_amount = items.sum { |i| i[:order].total_amount.to_f }
       order_count = items.map { |i| i[:order].order_number }.uniq.size
-
       last_purchase_bottles = items_sorted.last&.fetch(:bottles_total) || 0
 
       avg_cycle_days = if dates.size >= 2
@@ -149,7 +178,6 @@ class CustomersController < ApplicationController
   def to_number(v)
     s = v.to_s.strip
     return nil if s.blank?
-
     s = s.gsub(/[,\uFF0C]/, "")
     Float(s)
   rescue ArgumentError
@@ -158,14 +186,16 @@ class CustomersController < ApplicationController
 
   def order_sql(sort)
     case sort
-    when "amount_desc"
-      "total_amount DESC NULLS LAST, id DESC"
-    when "newest"
-      "created_at DESC, id DESC"
-    when "orders_desc"
-      "order_count DESC NULLS LAST, id DESC"
-    else
-      "current_shopping_credits DESC NULLS LAST, id DESC"
+    when "amount_desc"    then "total_amount DESC NULLS LAST, id DESC"
+    when "amount_asc"     then "total_amount ASC NULLS LAST, id DESC"
+    when "orders_desc"    then "order_count DESC NULLS LAST, id DESC"
+    when "orders_asc"     then "order_count ASC NULLS LAST, id DESC"
+    when "credits_desc"   then "current_shopping_credits DESC NULLS LAST, id DESC"
+    when "credits_asc"    then "current_shopping_credits ASC NULLS LAST, id DESC"
+    when "inactive_desc"  then "lo.last_order_date ASC NULLS LAST, id DESC"
+    when "inactive_asc"   then "lo.last_order_date DESC NULLS LAST, id DESC"
+    when "newest"         then "created_at DESC, id DESC"
+    else "total_amount DESC NULLS LAST, id DESC"
     end
   end
 end
