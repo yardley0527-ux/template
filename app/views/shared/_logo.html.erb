@@ -1,4 +1,6 @@
 <div class="page-logo">
-  <%= image_tag "smartadmin/#{Rails.configuration.logo}", alt: Rails.configuration.app_flavor, aria: {roledescription: 'logo'} %>
-  <span class="page-logo-text mr-1"><%= Rails.configuration.app_flavor %></span>
+  <%= link_to root_path, class: "d-flex align-items-center" do %>
+    <%= image_tag "smartadmin/#{Rails.configuration.logo}", alt: Rails.configuration.app_flavor, aria: {roledescription: 'logo'} %>
+    <span class="page-logo-text mr-1"><%= Rails.configuration.app_flavor %></span>
+  <% end %>
 </div>

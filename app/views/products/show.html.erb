@@ -142,7 +142,14 @@
               <% top_customers.each do |c| %>
                 <tr>
                   <td>
-                    <div class="fw-500"><%= c[:full_name].presence || "(無名)" %></div>
+                      <% customer_id = c[:shopline_customer_id] %>
+                      <div class="fw-500">
+                        <% if customer_id.present? %>
+                          <%= link_to (c[:full_name].presence || "(無名)"), customer_path(customer_id) %>
+                        <% else %>
+                          <%= c[:full_name].presence || "(無名)" %>
+                        <% end %>
+                      </div>
                     <div class="small text-muted"><%= c[:email] %></div>
                     <div class="small text-muted"><%= c[:membership_level] %></div>
                   </td>
@@ -158,7 +165,6 @@
             </tbody>
           </table>
 
-          <div class="text-muted small mt-2">下一步可加：點客戶 → 顯示客戶行為頁。</div>
         </div>
       </div>
     </div>

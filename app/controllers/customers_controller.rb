@@ -49,12 +49,13 @@ class CustomersController < ApplicationController
 
     @top_products = {}
     orders_by_email.each do |email, orders|
-      series_counts = Hash.new(0)
+      series_counts = Hash.new { |h, k| h[k] = { qty: 0, count: 0 } }
       orders.each do |o|
-        series, _bottles = parse_product(o.product_name)
-        series_counts[series] += o.quantity.to_i
+        series, bottles_per_unit = parse_product(o.product_name)
+        series_counts[series][:qty] += o.quantity.to_i * bottles_per_unit
+        series_counts[series][:count] += 1
       end
-      @top_products[email] = series_counts.max_by { |_, v| v }&.first
+      @top_products[email] = series_counts.max_by { |_, v| [v[:qty], v[:count]] }&.first
     end
   end
 
@@ -134,7 +135,7 @@ class CustomersController < ApplicationController
         overdue_days: overdue_days,
         dates: dates
       }
-    end.sort_by { |p| [-p[:order_count], p[:avg_cycle_days] || Float::INFINITY] }
+    end.sort_by { |p| [-p[:total_qty_bottles], -p[:order_count], p[:avg_cycle_days] || Float::INFINITY] }
   end
 
   def parse_product(name)

@@ -50,7 +50,7 @@ class ProductsController < ApplicationController
     top_customer_rows =
       scope
         .where.not(shopline_customer_id: nil)
-        .group(:shopline_customer_id, :customer_name, :email, :membership_level)
+        .group(:shopline_customer_id)
         .select(
           "shopline_customer_id",
           "MAX(customer_name) AS full_name",
@@ -60,7 +60,7 @@ class ProductsController < ApplicationController
           "COALESCE(SUM(quantity), 0) AS units_sold",
           "COALESCE(SUM(#{revenue_col}), 0) AS revenue"
         )
-        .order(Arel.sql("COALESCE(SUM(#{revenue_col}), 0) DESC"))
+        .order(Arel.sql("COALESCE(SUM(#{revenue_col}), 0) DESC, SUM(quantity) DESC"))
         .limit(10)
 
     top_customers = top_customer_rows.map do |r|
