@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_09_114928) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_10_080116) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -154,9 +154,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_09_114928) do
     t.text "personal_note"
     t.bigint "import_run_id"
     t.string "source_row_hash"
-    t.index ["email"], name: "index_shopline_customers_on_email"
+    t.index ["email"], name: "index_shopline_customers_on_email", unique: true, where: "(email IS NOT NULL)"
     t.index ["import_run_id"], name: "index_shopline_customers_on_import_run_id"
-    t.index ["shopline_id"], name: "index_shopline_customers_on_shopline_id"
+    t.index ["shopline_id"], name: "index_shopline_customers_on_shopline_id", unique: true
     t.index ["source_row_hash"], name: "index_shopline_customers_on_source_row_hash", unique: true
   end
 

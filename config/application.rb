@@ -18,7 +18,7 @@ module SmartadminRailsSeed
     config.app_flavor = '苼莛國際生技'
     config.app_flavor_subscript = ''
     config.user = 'Dr. Codex Lantern'
-    config.avatar = 'avatar-admin.png'
+    config.avatar = 'logo.jpg'
     config.app_header = true
     config.app_layout_shortcut = true
     config.layout_settings = true
