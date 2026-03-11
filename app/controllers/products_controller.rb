@@ -6,10 +6,10 @@ class ProductsController < ApplicationController
   def index
     @q = params[:q].to_s.strip
     @sort = params[:sort].to_s.strip.presence || "orders"
+    @combo = params[:combo] == "1" 
 
     @years = YEARS
-    # 這裡會依據 YEARS 的順序 (2026 -> 2025 -> 2024) 建立 Hash
-    @top_by_year = @years.index_with { |y| top_products_for_year(y, q: @q, sort: @sort, limit: 10) }
+    @top_by_year = @years.index_with { |y| top_products_for_year(y, q: @q, sort: @sort, limit: 10, combo: @combo) }
   end
 
   def show
@@ -111,11 +111,18 @@ class ProductsController < ApplicationController
     ShoplineOrder.column_names.include?("checkout_amount") ? "checkout_amount" : "total_amount"
   end
 
-  def top_products_for_year(year, q:, sort:, limit:)
+  def top_products_for_year(year, q:, sort:, limit:, combo: false)
     revenue_col = revenue_column
 
     scope = ShoplineOrder.where(source_year: year).where.not(product_name: [nil, ""])
-    scope = scope.where("product_name ILIKE ?", "%#{q}%") if q.present?
+
+    if combo
+      scope = scope.where(
+        "product_name ~ '\\D+[0-9]+\\D+[0-9]+' OR product_name ~ '[+＋/]' OR product_name LIKE '%套組%'"
+      )
+    elsif q.present?
+      scope = scope.where("product_name ILIKE ?", "%#{q}%")
+    end
 
     order_sql =
       case sort

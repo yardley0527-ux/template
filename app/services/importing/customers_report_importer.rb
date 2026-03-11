@@ -115,7 +115,7 @@ module Importing
           )
         )
 
-        record = payload.compact.merge(
+        record = payload.merge(
           import_run_id:   run.id,
           source_row_hash: row_hash,
           updated_at:      now,
@@ -193,7 +193,6 @@ module Importing
         city
         import_run_id
         source_row_hash
-        updated_at
       ]
     end
 

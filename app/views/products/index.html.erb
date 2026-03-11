@@ -2,8 +2,13 @@
 <div class="subheader">
   <h1 class="subheader-title">
     <i class="subheader-icon fal fa-box"></i>
-    產品排行（2024–2026）
-    <small>分年份顯示 Top 產品</small>
+    <% if @combo %>
+      組合商品排行
+      <small>顯示所有套組 / 組合品項</small>
+    <% else %>
+      產品排行（2024–2026）
+      <small>分年份顯示 Top 產品</small>
+    <% end %>
   </h1>
 </div>
 
@@ -26,6 +31,10 @@
                 options_for_select([["訂單數", "orders"], ["營收", "revenue"], ["瓶數", "units"]], @sort),
                 class: "form-control" %>
             </div>
+
+            <% if @combo %>
+              <%= hidden_field_tag :combo, "1" %>   ← 放這裡
+            <% end %>
 
             <div class="col-sm-12 col-md-4">
               <%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>

@@ -45,7 +45,7 @@ class SidebarEntry
 
       if combo_names.any?
         sorted_entries << {
-          href: products_path(q: "組合"),
+          href: products_path(combo: "1"),
       # names 已經是 distinct 查詢結果，不需要再 .uniq
           title: "組合系列 (#{combo_names.size})",
           icon: "fa-layer-group"
@@ -74,8 +74,7 @@ class SidebarEntry
     end
 
     def combo_product_name?(name)
-      # 上游 fetch_product_names 已做過 strip，這裡直接使用
-      name.match?(/[+＋\/]/) || name.include?("套組") || name.include?("組合") || name.scan(/\d+/).size >= 2
+      name.match?(/\D+\d+\D+\d+/) || name.match?(/[+＋\/]/) || name.include?("套組")
     end
 
     def group_products(names)
