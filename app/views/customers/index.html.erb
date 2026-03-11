@@ -85,7 +85,7 @@
                     <td>
                       <div class="fw-500">
                         <%= link_to c.full_name.presence || "(無名)", customer_path(c) %>
-                        <% if c.membership_level == "黑卡" && @inactive_info[c.email] %>
+                        <% if @inactive_info[c.email] %>
                           <span style="color:#c0392b; font-size:0.75em;">⚠</span>
                         <% end %>
                       </div>
@@ -105,7 +105,7 @@
                     <td><%= c.membership_level %></td>
                     <td><%= @top_products[c.email].presence || "—" %></td>
                     <td class="small">
-                      <% if c.membership_level == "黑卡" && (info = @inactive_info[c.email]) %>
+                      <% if (info = @inactive_info[c.email]) %>
                         <span style="color:#c0392b;">⚠ <%= info[:days] %> 天未購</span><br>
                         <span class="text-muted">上次買 <%= info[:last_product] %></span>
                       <% else %>
