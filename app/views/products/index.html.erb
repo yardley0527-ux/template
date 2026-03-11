@@ -55,7 +55,6 @@
         <div class="panel-hdr">
           <h2><%= year %> Top 產品</h2>
         </div>
-
         <div class="panel-container show">
           <div class="panel-content">
             <div class="table-responsive">
@@ -66,11 +65,16 @@
                     <th class="text-end">訂單數</th>
                     <th class="text-end">瓶數</th>
                     <th class="text-end">總金額</th>
-                    <th class="text-end">不重複客戶</th>
+                    <th class="text-end">購買人數</th>
+                    <th class="text-end">回購率</th>
                   </tr>
                 </thead>
                 <tbody>
+                  <% stats = @buyer_stats_by_year[year] || {} %>
                   <% rows.each do |row| %>
+                    <% s = stats[row.product_name] || {} %>
+                    <% buyers         = s[:buyers].to_i %>
+                    <% repurchase_pct = buyers > 0 ? (s[:repeat_buyers].to_i * 100.0 / buyers).round : 0 %>
                     <tr>
                       <td>
                         <%= link_to row.product_name, product_path(CGI.escape(row.product_name)), class: "fw-500" %>
@@ -78,12 +82,13 @@
                       <td class="text-end"><%= row.orders_count.to_i %></td>
                       <td class="text-end"><%= row.total_quantity.to_i %></td>
                       <td class="text-end"><%= number_with_delimiter(row.revenue.to_f.round(0).to_i) %></td>
-                      <td class="text-end"><%= row.unique_customers.to_i %></td>
+                      <td class="text-end"><%= buyers %></td>
+                      <td class="text-end"><%= repurchase_pct %>%</td>
                     </tr>
                   <% end %>
 
                   <% if rows.blank? %>
-                    <tr><td colspan="5" class="text-center text-muted py-4">沒有資料</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">沒有資料</td></tr>
                   <% end %>
                 </tbody>
               </table>

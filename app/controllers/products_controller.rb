@@ -5,11 +5,16 @@ class ProductsController < ApplicationController
   
   def index
     @q = params[:q].to_s.strip
-    @sort = params[:sort].to_s.strip.presence || "orders"
+    @sort = params[:sort].to_s.strip.presence || "revenue"
     @combo = params[:combo] == "1" 
 
     @years = YEARS
     @top_by_year = @years.index_with { |y| top_products_for_year(y, q: @q, sort: @sort, limit: 10, combo: @combo) }
+
+    @buyer_stats_by_year = @years.index_with do |y|
+      names = @top_by_year[y].map(&:product_name)
+      names.any? ? buyer_stats(names, y) : {}
+    end
   end
 
   def show
@@ -142,5 +147,40 @@ class ProductsController < ApplicationController
       .group("product_name")
       .order(Arel.sql(order_sql))
       .limit(limit)
+  end
+
+  def buyer_stats(product_names, year)
+    return {} if product_names.blank?
+
+    conn = ActiveRecord::Base.connection
+    quoted_names = product_names.map { |n| conn.quote(n) }.join(", ")
+    quoted_year  = conn.quote(year)
+
+    repurchase_sql = <<~SQL
+      WITH order_counts AS (
+        SELECT email, product_name, COUNT(*) AS cnt
+        FROM shopline_orders
+        WHERE source_year = #{quoted_year}
+          AND product_name IN (#{quoted_names})
+          AND email IS NOT NULL AND email <> ''
+        GROUP BY email, product_name
+      )
+      SELECT product_name,
+            COUNT(*) AS total_buyers,
+            COUNT(CASE WHEN cnt >= 2 THEN 1 END) AS repeat_buyers
+      FROM order_counts
+      GROUP BY product_name
+    SQL
+
+    stats = {}
+
+    conn.exec_query(repurchase_sql).each do |r|
+      stats[r["product_name"]] = {
+        buyers:        r["total_buyers"].to_i,
+        repeat_buyers: r["repeat_buyers"].to_i
+      }
+    end
+
+    stats
   end
 end
