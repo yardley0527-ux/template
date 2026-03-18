@@ -30,7 +30,7 @@
               </div>
 
               <script>
-                (function() {
+                window.addEventListener("load", function() {
                   var ctx = document.getElementById("chart_<%= level %>").getContext("2d");
                   new Chart(ctx, {
                     type: "pie",
@@ -39,13 +39,13 @@
                       datasets: [{
                         data: <%= values.to_json.html_safe %>,
                         backgroundColor: [
-                          "#c8a97e",  // 淺駝   → 台北
-                          "#7a3b1e",  // 深咖啡 → 新北
-                          "#e8d5b7",  // 米白   → 台中
-                          "#a0522d",  // 赭紅   → 高雄
-                          "#4a2c0a",  // 極深棕 → 桃園
-                          "#d4956a",  // 橘棕   → 彰化
-                          "#6b4c3b"   // 中棕灰 → 其他
+                          "#c8a97e",
+                          "#7a3b1e",
+                          "#e8d5b7",
+                          "#a0522d",
+                          "#4a2c0a",
+                          "#d4956a",
+                          "#6b4c3b"
                         ]
                       }]
                     },
@@ -55,7 +55,7 @@
                       }
                     }
                   });
-                })();
+                });
               </script>
             <% end %>
           </div>
