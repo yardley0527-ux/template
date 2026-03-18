@@ -17,6 +17,17 @@ class CustomersController < ApplicationController
     @page = 1 if @page <= 0
     @page = MAX_PAGE if @page > MAX_PAGE
 
+    @city_by_membership = ShoplineCustomer
+      .where.not(membership_level: [nil, ""])
+      .where.not(city: [nil, ""])
+      .group(:membership_level, :city)
+      .count
+      .each_with_object(Hash.new { |h, k| h[k] = {} }) do |((level, city), cnt), h|
+        h[level][city] = cnt
+      end
+
+    @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員]
+
     scope = ShoplineCustomer.all
 
     if @q.present?

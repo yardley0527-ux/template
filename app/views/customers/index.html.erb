@@ -7,6 +7,59 @@
   </h1>
 </div>
 
+<% if @city_by_membership.any? %>
+<div class="row mb-3">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>卡別城市分佈</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="row">
+            <% @membership_order.each do |level| %>
+              <% city_data = @city_by_membership[level] %>
+              <% next if city_data.blank? %>
+              <% top_cities = city_data.sort_by { |_, v| -v }.first(6) %>
+              <% other_count = city_data.sum { |_, v| v } - top_cities.sum { |_, v| v } %>
+              <% labels = top_cities.map(&:first) + (other_count > 0 ? ["其他"] : []) %>
+              <% values = top_cities.map(&:last) + (other_count > 0 ? [other_count] : []) %>
+
+              <div class="col-6 col-md-4 col-xl-2 text-center mb-3">
+                <div class="fw-500 mb-1"><%= level %></div>
+                <canvas id="chart_<%= level %>" height="180"></canvas>
+                <div class="small text-muted mt-1">共 <%= city_data.values.sum %> 人</div>
+              </div>
+
+              <script>
+                (function() {
+                  var ctx = document.getElementById("chart_<%= level %>").getContext("2d");
+                  new Chart(ctx, {
+                    type: "pie",
+                    data: {
+                      labels: <%= labels.to_json.html_safe %>,
+                      datasets: [{
+                        data: <%= values.to_json.html_safe %>,
+                        backgroundColor: [
+                          "#c8a97e","#a0785a","#7a5c42","#e8d5b7","#5a3e2b","#d4b896"
+                        ]
+                      }]
+                    },
+                    options: {
+                      plugins: {
+                        legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } }
+                      }
+                    }
+                  });
+                })();
+              </script>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+
 <div class="row">
   <div class="col-12">
     <div class="panel">
