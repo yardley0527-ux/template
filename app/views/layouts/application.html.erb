@@ -60,8 +60,9 @@
 
 <%= render 'shared/scripts_base_plugins' %>
 <%= javascript_pack_tag 'application', 'data-turbolinks-track': 'reload' %>
-<%= yield :scripts_block %>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<%= yield :scripts_block %>
 
 
 </body>
