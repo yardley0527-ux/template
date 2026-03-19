@@ -97,7 +97,7 @@
                         <% end %>
                       </div>
                     </td>
-                    <td class="small"><%= c.birthdate&.strftime("%m/%d") || "—" %></td>
+                    <td class="small"><%= c.birthdate&.strftime("%Y/%m/%d") || "—" %></td>
                     <td><%= c.city %></td>
                     <td class="text-end"><%= c.order_count.to_i %></td>
                     <td class="text-end">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>

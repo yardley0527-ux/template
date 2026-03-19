@@ -132,6 +132,7 @@ class CustomersController < ApplicationController
     @customer = ShoplineCustomer.find(params[:id])
     @orders   = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
     @product_analysis = analyze_products(@orders)
+    @life_path = @customer.birthdate.present? ? life_path_number(@customer.birthdate) : nil
   end
 
   def stats
@@ -165,16 +166,14 @@ class CustomersController < ApplicationController
   end
 
   private
-
-  # ── filters ──────────────────────────────────────────────────────────────
-
   def age_group_sql(group)
-    case group
+  case group
     when "未滿 25" then "EXTRACT(YEAR FROM AGE(birthdate)) < 25"
     when "25–29"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 25 AND 29"
     when "30–34"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 30 AND 34"
     when "35–39"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 35 AND 39"
-    when "40 以上"  then "EXTRACT(YEAR FROM AGE(birthdate)) >= 40"
+    when "40–44"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 40 AND 44"
+    when "45 以上"  then "EXTRACT(YEAR FROM AGE(birthdate)) >= 45"
     end
   end
 

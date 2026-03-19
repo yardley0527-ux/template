@@ -22,6 +22,9 @@
           <% if @customer.city.present? %>
             <span>📍 <%= @customer.city %></span>
           <% end %>
+          <% if @life_path %>
+            <span>🔢 靈數 <%= @life_path %></span>
+          <% end %>
         </div>
         <div class="customer-stats">
           <div class="stat">
