@@ -19,44 +19,22 @@
               <% city_data = @city_by_membership[level] %>
               <% next if city_data.blank? %>
               <% top_cities = city_data.sort_by { |_, v| -v }.first(6) %>
-              <% other_count = city_data.sum { |_, v| v } - top_cities.sum { |_, v| v } %>
-              <% labels = top_cities.map(&:first) + (other_count > 0 ? ["其他"] : []) %>
-              <% values = top_cities.map(&:last) + (other_count > 0 ? [other_count] : []) %>
+              <% max = top_cities.first&.last.to_f %>
 
-              <div class="col-6 col-md-4 col-xl-2 text-center mb-3">
-                <div class="fw-500 mb-1"><%= level %></div>
-                <canvas id="chart_<%= level %>" height="180"></canvas>
-                <div class="small text-muted mt-1">共 <%= city_data.values.sum %> 人</div>
+              <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="fw-500 mb-2"><%= level %> <span class="text-muted small">（共 <%= city_data.values.sum %> 人）</span></div>
+                <% top_cities.each do |city, count| %>
+                  <div class="mb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                      <span class="small"><%= city %></span>
+                      <span class="text-muted small"><%= count %> 人</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar" style="width: <%= max > 0 ? (count / max * 100).round : 0 %>%"></div>
+                    </div>
+                  </div>
+                <% end %>
               </div>
-
-              <script>
-                window.addEventListener("load", function() {
-                  var ctx = document.getElementById("chart_<%= level %>").getContext("2d");
-                  new Chart(ctx, {
-                    type: "pie",
-                    data: {
-                      labels: <%= labels.to_json.html_safe %>,
-                      datasets: [{
-                        data: <%= values.to_json.html_safe %>,
-                        backgroundColor: [
-                          "#c8a97e",
-                          "#7a3b1e",
-                          "#e8d5b7",
-                          "#a0522d",
-                          "#4a2c0a",
-                          "#d4956a",
-                          "#6b4c3b"
-                        ]
-                      }]
-                    },
-                    options: {
-                      plugins: {
-                        legend: { position: "bottom", labels: { font: { size: 10 }, boxWidth: 10 } }
-                      }
-                    }
-                  });
-                });
-              </script>
             <% end %>
           </div>
         </div>
