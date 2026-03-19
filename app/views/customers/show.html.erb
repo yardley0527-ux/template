@@ -22,6 +22,9 @@
           <% if @customer.city.present? %>
             <span>📍 <%= @customer.city %></span>
           <% end %>
+          <% if @zodiac_sign.present? %>
+            <span>⭐ <%= @zodiac_sign %>座</span>
+          <% end %>
           <% if @life_path %>
             <span>🔢 靈數 <%= @life_path %></span>
           <% end %>

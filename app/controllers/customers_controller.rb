@@ -145,6 +145,7 @@ class CustomersController < ApplicationController
     @product_analysis = analyze_products(@orders)
     @life_path = @customer.birthdate.present? ? life_path_number(@customer.birthdate) : nil
     @personal_year = @customer.birthdate.present? ? personal_year_number(@customer.birthdate) : nil
+    @zodiac_sign = @customer.birthdate.present? ? zodiac_sign(@customer.birthdate) : nil
   end
 
   def stats
