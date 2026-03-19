@@ -195,3 +195,39 @@
     </div>
   </div>
 </div>
+
+<%# ── 流年 ── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>🌀 流年（<%= Date.today.year %>）</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="row">
+            <% levels.each do |level| %>
+              <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="fw-500 mb-2">
+                  <%= link_to customers_path(membership_level: level), class: "text-dark" do %>
+                    <%= level %> <span class="text-muted small">（<%= @total_by_level[level] %> 人）</span>
+                  <% end %>
+                </div>
+                <% py_data = @personal_year_stats[level].sort_by { |_, v| -v } %>
+                <% max_py = py_data.map(&:last).max.to_f %>
+                <% py_data.each do |num, count| %>
+                  <div class="mb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                      <%= link_to "流年 #{num}", customers_path(membership_level: level, personal_year: num), class: "small text-dark" %>                      <span class="text-muted small"><%= count %> 人</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar" style="width: <%= max_py > 0 ? (count / max_py * 100).round : 0 %>%"></div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

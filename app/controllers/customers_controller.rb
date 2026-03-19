@@ -18,6 +18,7 @@ class CustomersController < ApplicationController
     @birth_month      = params[:birth_month].to_s.strip
     @age_group        = params[:age_group].to_s.strip
     @life_path        = params[:life_path].to_s.strip
+    @personal_year    = params[:personal_year].to_s.strip
 
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level).compact.sort
 
@@ -59,6 +60,16 @@ class CustomersController < ApplicationController
         .where.not(birthdate: nil)
         .pluck(:id, :birthdate)
         .select { |_, bd| life_path_number(bd) == lp_num }
+        .map(&:first)
+      scope = scope.where(id: matching_ids)
+    end
+
+    if @personal_year.present?
+      py_num = @personal_year.to_i
+      matching_ids = ShoplineCustomer
+        .where.not(birthdate: nil)
+        .pluck(:id, :birthdate)
+        .select { |_, bd| personal_year_number(bd) == py_num }
         .map(&:first)
       scope = scope.where(id: matching_ids)
     end
@@ -133,6 +144,7 @@ class CustomersController < ApplicationController
     @orders   = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
     @product_analysis = analyze_products(@orders)
     @life_path = @customer.birthdate.present? ? life_path_number(@customer.birthdate) : nil
+    @personal_year = @customer.birthdate.present? ? personal_year_number(@customer.birthdate) : nil
   end
 
   def stats
@@ -148,6 +160,7 @@ class CustomersController < ApplicationController
     @life_path_stats   = Hash.new { |h, k| h[k] = Hash.new(0) }
     @age_group_stats   = Hash.new { |h, k| h[k] = Hash.new(0) }
     @zodiac_stats      = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @personal_year_stats = Hash.new { |h, k| h[k] = Hash.new(0) }
 
     customers.each do |c|
       lvl = c.membership_level
@@ -162,10 +175,14 @@ class CustomersController < ApplicationController
 
       lp = life_path_number(c.birthdate)
       @life_path_stats[lvl][lp] += 1 if lp
+
+      py = personal_year_number(c.birthdate)
+      @personal_year_stats[lvl][py] += 1 if py
     end
   end
 
   private
+
   def age_group_sql(group)
   case group
     when "未滿 25" then "EXTRACT(YEAR FROM AGE(birthdate)) < 25"
@@ -228,6 +245,18 @@ class CustomersController < ApplicationController
 
   def life_path_number(date)
     sum = date.strftime("%Y%m%d").chars.map(&:to_i).sum
+    loop do
+      break if sum <= 9
+      sum = sum.to_s.chars.map(&:to_i).sum
+    end
+    sum
+  end
+
+  def personal_year_number(birthdate)
+    year_sum = Date.today.year.digits.sum
+    month_sum = birthdate.month.digits.sum
+    day_sum = birthdate.day.digits.sum
+    sum = year_sum + month_sum + day_sum
     loop do
       break if sum <= 9
       sum = sum.to_s.chars.map(&:to_i).sum
