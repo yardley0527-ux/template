@@ -1,0 +1,197 @@
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-chart-bar"></i>
+    會員卡別統計
+    <small>Membership Stats</small>
+  </h1>
+  <div class="subheader-block">
+    <%= link_to "← 回客人列表", customers_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<% levels = @membership_order.select { |l| @total_by_level[l].to_i > 0 } %>
+
+<%# ── 城市 ── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>📍 城市分佈</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="row">
+            <% levels.each do |level| %>
+              <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="fw-500 mb-2">
+                  <%= link_to customers_path(membership_level: level), class: "text-dark" do %>
+                    <%= level %> <span class="text-muted small">（<%= @total_by_level[level] %> 人）</span>
+                  <% end %>
+                </div>
+                <% top = @city_stats[level].sort_by { |_, v| -v }.first(8) %>
+                <% max = top.first&.last.to_f %>
+                <% top.each do |city, count| %>
+                  <div class="mb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                      <%= link_to city, customers_path(membership_level: level, city: city), class: "small text-dark" %>
+                      <span class="text-muted small"><%= count %> 人</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar" style="width: <%= max > 0 ? (count / max * 100).round : 0 %>%"></div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 生日月份 ── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>🎂 生日月份</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="row">
+            <% levels.each do |level| %>
+              <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="fw-500 mb-2">
+                  <%= link_to customers_path(membership_level: level), class: "text-dark" do %>
+                    <%= level %> <span class="text-muted small">（<%= @total_by_level[level] %> 人）</span>
+                  <% end %>
+                </div>
+                <% month_data = (1..12).map { |m| [m, @birth_month_stats[level][m].to_i] }.sort_by { |_, v| -v } %>
+                <% max_m = month_data.map(&:last).max.to_f %>
+                <% month_data.each do |month, count| %>
+                  <div class="mb-1">
+                    <div class="d-flex justify-content-between mb-1">
+                      <%= link_to "#{month} 月", customers_path(membership_level: level, birth_month: month), class: "small text-dark" %>
+                      <span class="text-muted small"><%= count %> 人</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                      <div class="progress-bar" style="width: <%= max_m > 0 ? (count / max_m * 100).round : 0 %>%"></div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 生命靈數 ── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>🔢 生命靈數</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="row">
+            <% levels.each do |level| %>
+              <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="fw-500 mb-2">
+                  <%= link_to customers_path(membership_level: level), class: "text-dark" do %>
+                    <%= level %> <span class="text-muted small">（<%= @total_by_level[level] %> 人）</span>
+                  <% end %>
+                </div>
+                <% lp_data = @life_path_stats[level].sort_by { |_, v| -v } %>
+                <% max_lp = lp_data.map(&:last).max.to_f %>
+                <% lp_data.each do |num, count| %>
+                  <div class="mb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                      <%= link_to "靈數 #{num}", customers_path(membership_level: level, life_path: num), class: "small text-dark" %>
+                      <span class="text-muted small"><%= count %> 人</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar" style="width: <%= max_lp > 0 ? (count / max_lp * 100).round : 0 %>%"></div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 年齡層 ── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>👤 年齡層</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="row">
+            <% levels.each do |level| %>
+              <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="fw-500 mb-2">
+                  <%= link_to customers_path(membership_level: level), class: "text-dark" do %>
+                    <%= level %> <span class="text-muted small">（<%= @total_by_level[level] %> 人）</span>
+                  <% end %>
+                </div>
+                <% age_data = CustomersController::AGE_GROUP_ORDER.map { |g| [g, @age_group_stats[level][g].to_i] }.sort_by { |_, v| -v } %>
+                <% max_a = age_data.map(&:last).max.to_f %>
+                <% age_data.each do |group, count| %>
+                  <div class="mb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                      <%= link_to group, customers_path(membership_level: level, age_group: group), class: "small text-dark" %>
+                      <span class="text-muted small"><%= count %> 人</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar" style="width: <%= max_a > 0 ? (count / max_a * 100).round : 0 %>%"></div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 星座 ── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>⭐ 星座</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="row">
+            <% levels.each do |level| %>
+              <div class="col-6 col-md-4 col-xl-2 mb-3">
+                <div class="fw-500 mb-2">
+                  <%= link_to customers_path(membership_level: level), class: "text-dark" do %>
+                    <%= level %> <span class="text-muted small">（<%= @total_by_level[level] %> 人）</span>
+                  <% end %>
+                </div>
+                <% zodiac_data = @zodiac_stats[level].sort_by { |_, v| -v } %>
+                <% max_z = zodiac_data.map(&:last).max.to_f %>
+                <% zodiac_data.each do |sign, count| %>
+                  <div class="mb-2">
+                    <div class="d-flex justify-content-between mb-1">
+                      <%= link_to sign, customers_path(membership_level: level, zodiac: sign), class: "small text-dark" %>
+                      <span class="text-muted small"><%= count %> 人</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                      <div class="progress-bar" style="width: <%= max_z > 0 ? (count / max_z * 100).round : 0 %>%"></div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

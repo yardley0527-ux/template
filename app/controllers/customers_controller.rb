@@ -4,12 +4,20 @@ class CustomersController < ApplicationController
   PER_PAGE = 50
   MAX_PAGE = 200
 
+  AGE_GROUP_ORDER = ["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
+
+  ZODIAC_ORDER    = %w[牡羊 金牛 雙子 巨蟹 獅子 處女 天秤 天蠍 射手 摩羯 水瓶 雙魚].freeze
+
   def index
-    @q = params[:q].to_s.strip
-    @city = params[:city].to_s.strip
+    @q                = params[:q].to_s.strip
+    @city             = params[:city].to_s.strip
     @membership_level = params[:membership_level].to_s.strip
-    @min_credits = to_number(params[:min_credits])
-    @sort = params[:sort].to_s.strip.presence || "amount_desc"
+    @min_credits      = to_number(params[:min_credits])
+    @sort             = params[:sort].to_s.strip.presence || "amount_desc"
+    @zodiac           = params[:zodiac].to_s.strip
+    @birth_month      = params[:birth_month].to_s.strip
+    @age_group        = params[:age_group].to_s.strip
+    @life_path        = params[:life_path].to_s.strip
 
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level).compact.sort
 
@@ -38,12 +46,25 @@ class CustomersController < ApplicationController
       )
     end
 
-    scope = scope.where("city ILIKE ?", "%#{@city}%") if @city.present?
-    scope = scope.where(membership_level: @membership_level) if @membership_level.present?
-    scope = scope.where("current_shopping_credits >= ?", @min_credits) if @min_credits
+    scope = scope.where("city ILIKE ?", "%#{@city}%")                          if @city.present?
+    scope = scope.where(membership_level: @membership_level)                   if @membership_level.present?
+    scope = scope.where("current_shopping_credits >= ?", @min_credits)         if @min_credits
+    scope = scope.where("EXTRACT(MONTH FROM birthdate) = ?", @birth_month.to_i) if @birth_month.present?
+    scope = scope.where(age_group_sql(@age_group))                             if @age_group.present?
+    scope = scope.where(zodiac_sql(@zodiac))                                   if @zodiac.present?
+
+    if @life_path.present?
+      lp_num = @life_path.to_i
+      matching_ids = ShoplineCustomer
+        .where.not(birthdate: nil)
+        .pluck(:id, :birthdate)
+        .select { |_, bd| life_path_number(bd) == lp_num }
+        .map(&:first)
+      scope = scope.where(id: matching_ids)
+    end
+
     scope = scope.where.not(email: [nil, ""]).or(scope.where.not(mobile_phone: [nil, ""]))
 
-    # 未購警示排序需要 join last_order_date
     if @sort.start_with?("inactive")
       scope = scope
         .joins(
@@ -83,7 +104,7 @@ class CustomersController < ApplicationController
       series_counts = Hash.new { |h, k| h[k] = { qty: 0, count: 0 } }
       orders.each do |o|
         series, bottles_per_unit = parse_product(o.product_name)
-        series_counts[series][:qty] += o.quantity.to_i * bottles_per_unit
+        series_counts[series][:qty]   += o.quantity.to_i * bottles_per_unit
         series_counts[series][:count] += 1
       end
       @top_products[email] = series_counts.max_by { |_, v| [v[:qty], v[:count]] }&.first
@@ -109,11 +130,111 @@ class CustomersController < ApplicationController
 
   def show
     @customer = ShoplineCustomer.find(params[:id])
-    @orders = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
+    @orders   = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
     @product_analysis = analyze_products(@orders)
   end
 
+  def stats
+    @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員]
+
+    customers = ShoplineCustomer
+      .where.not(membership_level: [nil, ""])
+      .select(:membership_level, :city, :birthdate)
+
+    @total_by_level    = Hash.new(0)
+    @city_stats        = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @birth_month_stats = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @life_path_stats   = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @age_group_stats   = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @zodiac_stats      = Hash.new { |h, k| h[k] = Hash.new(0) }
+
+    customers.each do |c|
+      lvl = c.membership_level
+      @total_by_level[lvl] += 1
+      @city_stats[lvl][c.city] += 1 if c.city.present?
+
+      next unless c.birthdate.present?
+
+      @birth_month_stats[lvl][c.birthdate.month] += 1
+      @age_group_stats[lvl][age_group(c.birthdate)] += 1
+      @zodiac_stats[lvl][zodiac_sign(c.birthdate)] += 1
+
+      lp = life_path_number(c.birthdate)
+      @life_path_stats[lvl][lp] += 1 if lp
+    end
+  end
+
   private
+
+  # ── filters ──────────────────────────────────────────────────────────────
+
+  def age_group_sql(group)
+    case group
+    when "未滿 25" then "EXTRACT(YEAR FROM AGE(birthdate)) < 25"
+    when "25–29"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 25 AND 29"
+    when "30–34"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 30 AND 34"
+    when "35–39"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 35 AND 39"
+    when "40 以上"  then "EXTRACT(YEAR FROM AGE(birthdate)) >= 40"
+    end
+  end
+
+  def zodiac_sql(sign)
+    {
+      "牡羊" => "(EXTRACT(MONTH FROM birthdate)=3  AND EXTRACT(DAY FROM birthdate)>=21) OR (EXTRACT(MONTH FROM birthdate)=4  AND EXTRACT(DAY FROM birthdate)<=19)",
+      "金牛" => "(EXTRACT(MONTH FROM birthdate)=4  AND EXTRACT(DAY FROM birthdate)>=20) OR (EXTRACT(MONTH FROM birthdate)=5  AND EXTRACT(DAY FROM birthdate)<=20)",
+      "雙子" => "(EXTRACT(MONTH FROM birthdate)=5  AND EXTRACT(DAY FROM birthdate)>=21) OR (EXTRACT(MONTH FROM birthdate)=6  AND EXTRACT(DAY FROM birthdate)<=20)",
+      "巨蟹" => "(EXTRACT(MONTH FROM birthdate)=6  AND EXTRACT(DAY FROM birthdate)>=21) OR (EXTRACT(MONTH FROM birthdate)=7  AND EXTRACT(DAY FROM birthdate)<=22)",
+      "獅子" => "(EXTRACT(MONTH FROM birthdate)=7  AND EXTRACT(DAY FROM birthdate)>=23) OR (EXTRACT(MONTH FROM birthdate)=8  AND EXTRACT(DAY FROM birthdate)<=22)",
+      "處女" => "(EXTRACT(MONTH FROM birthdate)=8  AND EXTRACT(DAY FROM birthdate)>=23) OR (EXTRACT(MONTH FROM birthdate)=9  AND EXTRACT(DAY FROM birthdate)<=22)",
+      "天秤" => "(EXTRACT(MONTH FROM birthdate)=9  AND EXTRACT(DAY FROM birthdate)>=23) OR (EXTRACT(MONTH FROM birthdate)=10 AND EXTRACT(DAY FROM birthdate)<=22)",
+      "天蠍" => "(EXTRACT(MONTH FROM birthdate)=10 AND EXTRACT(DAY FROM birthdate)>=23) OR (EXTRACT(MONTH FROM birthdate)=11 AND EXTRACT(DAY FROM birthdate)<=21)",
+      "射手" => "(EXTRACT(MONTH FROM birthdate)=11 AND EXTRACT(DAY FROM birthdate)>=22) OR (EXTRACT(MONTH FROM birthdate)=12 AND EXTRACT(DAY FROM birthdate)<=21)",
+      "摩羯" => "(EXTRACT(MONTH FROM birthdate)=12 AND EXTRACT(DAY FROM birthdate)>=22) OR (EXTRACT(MONTH FROM birthdate)=1  AND EXTRACT(DAY FROM birthdate)<=19)",
+      "水瓶" => "(EXTRACT(MONTH FROM birthdate)=1  AND EXTRACT(DAY FROM birthdate)>=20) OR (EXTRACT(MONTH FROM birthdate)=2  AND EXTRACT(DAY FROM birthdate)<=18)",
+      "雙魚" => "(EXTRACT(MONTH FROM birthdate)=2  AND EXTRACT(DAY FROM birthdate)>=19) OR (EXTRACT(MONTH FROM birthdate)=3  AND EXTRACT(DAY FROM birthdate)<=20)",
+    }[sign]
+  end
+
+  AGE_GROUP_ORDER = ["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
+
+  def age_group(birthdate)
+    age = ((Date.today - birthdate.to_date) / 365.25).floor
+    case age
+    when 0..24  then "未滿 25"
+    when 25..29 then "25–29"
+    when 30..34 then "30–34"
+    when 35..39 then "35–39"
+    when 40..44 then "40–44"
+    else             "45 以上"
+    end
+  end
+
+  def zodiac_sign(date)
+    m, d = date.month, date.day
+    case
+    when (m == 3  && d >= 21) || (m == 4  && d <= 19) then "牡羊"
+    when (m == 4  && d >= 20) || (m == 5  && d <= 20) then "金牛"
+    when (m == 5  && d >= 21) || (m == 6  && d <= 20) then "雙子"
+    when (m == 6  && d >= 21) || (m == 7  && d <= 22) then "巨蟹"
+    when (m == 7  && d >= 23) || (m == 8  && d <= 22) then "獅子"
+    when (m == 8  && d >= 23) || (m == 9  && d <= 22) then "處女"
+    when (m == 9  && d >= 23) || (m == 10 && d <= 22) then "天秤"
+    when (m == 10 && d >= 23) || (m == 11 && d <= 21) then "天蠍"
+    when (m == 11 && d >= 22) || (m == 12 && d <= 21) then "射手"
+    when (m == 12 && d >= 22) || (m == 1  && d <= 19) then "摩羯"
+    when (m == 1  && d >= 20) || (m == 2  && d <= 18) then "水瓶"
+    else "雙魚"
+    end
+  end
+
+  def life_path_number(date)
+    sum = date.strftime("%Y%m%d").chars.map(&:to_i).sum
+    loop do
+      break if sum <= 9
+      sum = sum.to_s.chars.map(&:to_i).sum
+    end
+    sum
+  end
 
   def analyze_products(orders)
     today = Date.today
@@ -132,9 +253,9 @@ class CustomersController < ApplicationController
       items_sorted = items.sort_by { |i| i[:order].order_date || Date.new(0) }
       dates = items_sorted.map { |i| i[:order].order_date&.to_date }.compact.uniq.sort
 
-      total_qty_bottles = items.sum { |i| i[:bottles_total] }
-      total_amount = items.sum { |i| i[:order].total_amount.to_f }
-      order_count = items.map { |i| i[:order].order_number }.uniq.size
+      total_qty_bottles     = items.sum { |i| i[:bottles_total] }
+      total_amount          = items.sum { |i| i[:order].total_amount.to_f }
+      order_count           = items.map { |i| i[:order].order_number }.uniq.size
       last_purchase_bottles = items_sorted.last&.fetch(:bottles_total) || 0
 
       avg_cycle_days = if dates.size >= 2
@@ -163,21 +284,21 @@ class CustomersController < ApplicationController
       end
 
       {
-        product_name: series_name,
-        order_count: order_count,
-        total_qty_bottles: total_qty_bottles,
-        total_amount: total_amount,
-        first_date: dates.first,
-        last_date: dates.last,
-        last_purchase_bottles: last_purchase_bottles,
+        product_name:             series_name,
+        order_count:              order_count,
+        total_qty_bottles:        total_qty_bottles,
+        total_amount:             total_amount,
+        first_date:               dates.first,
+        last_date:                dates.last,
+        last_purchase_bottles:    last_purchase_bottles,
         avg_bottles_per_purchase: avg_bottles_per_purchase,
-        avg_cycle_days: avg_cycle_days,
-        days_per_bottle: days_per_bottle,
-        days_since_last: days_since_last,
-        estimated_stock: estimated_stock,
-        estimated_empty_date: estimated_empty_date,
-        overdue_days: overdue_days,
-        dates: dates
+        avg_cycle_days:           avg_cycle_days,
+        days_per_bottle:          days_per_bottle,
+        days_since_last:          days_since_last,
+        estimated_stock:          estimated_stock,
+        estimated_empty_date:     estimated_empty_date,
+        overdue_days:             overdue_days,
+        dates:                    dates
       }
     end.sort_by { |p| [-p[:total_qty_bottles], -p[:order_count], p[:avg_cycle_days] || Float::INFINITY] }
   end
@@ -201,15 +322,15 @@ class CustomersController < ApplicationController
 
   def order_sql(sort)
     case sort
-    when "amount_desc"    then "total_amount DESC NULLS LAST, id DESC"
-    when "amount_asc"     then "total_amount ASC NULLS LAST, id DESC"
-    when "orders_desc"    then "order_count DESC NULLS LAST, id DESC"
-    when "orders_asc"     then "order_count ASC NULLS LAST, id DESC"
-    when "credits_desc"   then "current_shopping_credits DESC NULLS LAST, id DESC"
-    when "credits_asc"    then "current_shopping_credits ASC NULLS LAST, id DESC"
-    when "inactive_desc"  then "lo.last_order_date ASC NULLS LAST, id DESC"
-    when "inactive_asc"   then "lo.last_order_date DESC NULLS LAST, id DESC"
-    when "newest"         then "created_at DESC, id DESC"
+    when "amount_desc"   then "total_amount DESC NULLS LAST, id DESC"
+    when "amount_asc"    then "total_amount ASC NULLS LAST, id DESC"
+    when "orders_desc"   then "order_count DESC NULLS LAST, id DESC"
+    when "orders_asc"    then "order_count ASC NULLS LAST, id DESC"
+    when "credits_desc"  then "current_shopping_credits DESC NULLS LAST, id DESC"
+    when "credits_asc"   then "current_shopping_credits ASC NULLS LAST, id DESC"
+    when "inactive_desc" then "lo.last_order_date ASC NULLS LAST, id DESC"
+    when "inactive_asc"  then "lo.last_order_date DESC NULLS LAST, id DESC"
+    when "newest"        then "created_at DESC, id DESC"
     else "total_amount DESC NULLS LAST, id DESC"
     end
   end

@@ -4,7 +4,11 @@ Rails.application.routes.draw do
   root 'welcome#index'
 
   resources :products, only: [:index, :show], param: :id
-  resources :customers, only: [:index, :show]
+  resources :customers, only: [:index, :show] do
+    collection do
+      get :stats
+    end
+  end
 
  
 

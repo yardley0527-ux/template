@@ -21,7 +21,9 @@ class SidebarEntry
         {
           group_title: "系統管理",
           children: [
-            { href: customers_path, title: "客人資料庫總覽", icon: "fa-address-book" }
+            { href: customers_path, title: "客人資料庫總覽", icon: "fa-address-book" },
+            { href: stats_customers_path, title: "會員卡別統計",   icon: "fa-chart-bar"    }
+
           ]
         }
       ]

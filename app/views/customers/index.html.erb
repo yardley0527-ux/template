@@ -7,43 +7,6 @@
   </h1>
 </div>
 
-<% if @city_by_membership.any? %>
-<div class="row mb-3">
-  <div class="col-12">
-    <div class="panel">
-      <div class="panel-hdr"><h2>卡別城市分佈</h2></div>
-      <div class="panel-container show">
-        <div class="panel-content">
-          <div class="row">
-            <% @membership_order.each do |level| %>
-              <% city_data = @city_by_membership[level] %>
-              <% next if city_data.blank? %>
-              <% top_cities = city_data.sort_by { |_, v| -v }.first(6) %>
-              <% max = top_cities.first&.last.to_f %>
-
-              <div class="col-6 col-md-4 col-xl-2 mb-3">
-                <div class="fw-500 mb-2"><%= level %> <span class="text-muted small">（共 <%= city_data.values.sum %> 人）</span></div>
-                <% top_cities.each do |city, count| %>
-                  <div class="mb-2">
-                    <div class="d-flex justify-content-between mb-1">
-                      <span class="small"><%= city %></span>
-                      <span class="text-muted small"><%= count %> 人</span>
-                    </div>
-                    <div class="progress" style="height: 8px;">
-                      <div class="progress-bar" style="width: <%= max > 0 ? (count / max * 100).round : 0 %>%"></div>
-                    </div>
-                  </div>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<% end %>
-
 <div class="row">
   <div class="col-12">
     <div class="panel">
