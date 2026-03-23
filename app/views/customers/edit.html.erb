@@ -1,0 +1,247 @@
+<div class="customer-show">
+  <div class="customer-header">
+    <div class="back-link">
+      <%= link_to "← 返回客戶頁面", customer_path(@customer), class: "btn-back" %>
+    </div>
+
+    <div class="customer-info-card">
+      <div class="customer-avatar">
+        <%= @customer.full_name&.first(1)&.upcase || "?" %>
+      </div>
+      <div class="customer-details">
+        <h1><%= @customer.full_name.presence || "（無姓名）" %></h1>
+        <div class="customer-meta">
+          <span>✏️ 編輯資料</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="section">
+    <h2 class="section-title">📝 備註與培訓</h2>
+
+    <%= form_with model: @profile, url: customer_path(@customer), method: :patch do |f| %>
+      <div class="edit-card">
+
+        <div class="edit-field">
+          <label class="edit-label">品牌大使培訓</label>
+          <label class="toggle-wrap">
+            <%= f.check_box :brand_ambassador_training, class: "toggle-input" %>
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-text">加入觀察名單</span>
+          </label>
+        </div>
+
+        <div class="edit-field">
+          <label class="edit-label">備註</label>
+          <%= f.text_area :notes, rows: 6, class: "edit-textarea", placeholder: "輸入備註內容…" %>
+        </div>
+
+        <div class="edit-actions">
+          <%= button_tag "儲存", type: "submit", class: "btn-save" %>
+          <%= link_to "取消", customer_path(@customer), class: "btn-cancel" %>
+        </div>
+
+      </div>
+    <% end %>
+  </section>
+</div>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .customer-show {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #1a1a2e;
+    width: 100%;
+  }
+
+  .btn-back {
+    display: inline-block;
+    margin-bottom: 16px;
+    color: #6366f1;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .btn-back:hover { text-decoration: underline; }
+
+  .customer-info-card {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+
+  .customer-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    font-size: 28px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .customer-details h1 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .customer-meta {
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  .section { margin-bottom: 40px; }
+
+  .section-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #111827;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f3f4f6;
+  }
+
+  .edit-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 600px;
+  }
+
+  .edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .edit-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #9ca3af;
+  }
+
+  /* Toggle */
+  .toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle-input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-track {
+    width: 44px;
+    height: 24px;
+    background: #e5e7eb;
+    border-radius: 99px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    transition: transform 0.2s;
+  }
+
+  .toggle-input:checked + .toggle-track { background: #6366f1; }
+  .toggle-input:checked + .toggle-track .toggle-thumb { transform: translateX(20px); }
+
+  .toggle-text {
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+  }
+
+  .edit-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #374151;
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.6;
+    background: #fafafa;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .edit-textarea:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+    background: #fff;
+  }
+
+  .edit-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 4px;
+  }
+
+  .btn-save {
+    padding: 9px 24px;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-save:hover { background: #4f52d3; }
+
+  .btn-cancel {
+    padding: 9px 18px;
+    background: transparent;
+    color: #6b7280;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    transition: background 0.15s;
+  }
+  .btn-cancel:hover { background: #f9fafb; color: #374151; }
+</style>

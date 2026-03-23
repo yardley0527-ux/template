@@ -19,6 +19,7 @@ class CustomersController < ApplicationController
     @age_group        = params[:age_group].to_s.strip
     @life_path        = params[:life_path].to_s.strip
     @personal_year    = params[:personal_year].to_s.strip
+    @brand_ambassador = params[:brand_ambassador].to_s.strip
 
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level).compact.sort
 
@@ -47,12 +48,12 @@ class CustomersController < ApplicationController
       )
     end
 
-    scope = scope.where("city ILIKE ?", "%#{@city}%")                          if @city.present?
-    scope = scope.where(membership_level: @membership_level)                   if @membership_level.present?
-    scope = scope.where("current_shopping_credits >= ?", @min_credits)         if @min_credits
+    scope = scope.where("city ILIKE ?", "%#{@city}%")                           if @city.present?
+    scope = scope.where(membership_level: @membership_level)                    if @membership_level.present?
+    scope = scope.where("current_shopping_credits >= ?", @min_credits)          if @min_credits
     scope = scope.where("EXTRACT(MONTH FROM birthdate) = ?", @birth_month.to_i) if @birth_month.present?
-    scope = scope.where(age_group_sql(@age_group))                             if @age_group.present?
-    scope = scope.where(zodiac_sql(@zodiac))                                   if @zodiac.present?
+    scope = scope.where(age_group_sql(@age_group))                              if @age_group.present?
+    scope = scope.where(zodiac_sql(@zodiac))                                    if @zodiac.present?
 
     if @life_path.present?
       lp_num = @life_path.to_i
@@ -75,6 +76,10 @@ class CustomersController < ApplicationController
     end
 
     scope = scope.where.not(email: [nil, ""]).or(scope.where.not(mobile_phone: [nil, ""]))
+
+    if @brand_ambassador == "1"
+      scope = scope.joins(:customer_profile).where(customer_profiles: { brand_ambassador_training: true })
+    end
 
     if @sort.start_with?("inactive")
       scope = scope
@@ -137,10 +142,26 @@ class CustomersController < ApplicationController
         @inactive_info[email] = { days: days_ago, last_product: series }
       end
     end
+
+    first_orders_by_email = ShoplineOrder
+      .where(email: emails)
+      .where.not(product_name: [nil, ""])
+      .select(:email, :order_date, :total_amount)
+      .order(:email, :order_date)
+      .group_by(&:email)
+      .transform_values(&:first)
+
+    @big_first_orders = {}
+    first_orders_by_email.each do |email, order|
+      if order.total_amount.to_f >= 10_000
+        @big_first_orders[email] = order.order_date
+      end
+    end
   end
 
   def show
     @customer = ShoplineCustomer.find(params[:id])
+    @profile  = @customer.customer_profile || @customer.build_customer_profile
     @orders   = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
     @product_analysis = analyze_products(@orders)
     @life_path = @customer.birthdate.present? ? life_path_number(@customer.birthdate) : nil
@@ -182,7 +203,26 @@ class CustomersController < ApplicationController
     end
   end
 
+  def edit
+    @customer = ShoplineCustomer.find(params[:id])
+    @profile  = @customer.customer_profile || @customer.build_customer_profile
+  end
+
+  def update
+    @customer = ShoplineCustomer.find(params[:id])
+    @profile  = @customer.customer_profile || @customer.build_customer_profile
+    if @profile.update(profile_params)
+      redirect_to customer_path(@customer), notice: "已儲存"
+    else
+      render :edit, status: :unprocessable_entity
+    end
+  end
+
   private
+
+  def profile_params
+    params.require(:customer_profile).permit(:brand_ambassador_training, :notes)
+  end
 
   def age_group_sql(group)
   case group

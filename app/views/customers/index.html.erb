@@ -36,6 +36,13 @@
                 class: "form-control" %>
             </div>
 
+            <div class="col-sm-6 col-md-2">
+              <label class="form-label">品牌大使培訓</label>
+              <%= select_tag :brand_ambassador,
+                options_for_select([["全部", ""], ["已加入觀察名單", "1"]], @brand_ambassador),
+                class: "form-control" %>
+            </div>
+
             <div class="col-sm-12 col-md-9">
               <%= button_tag "查詢", type: "submit", class: "btn btn-primary me-2 mt-2" %>
               <%= link_to "清除", customers_path, class: "btn btn-outline-secondary mt-2" %>
@@ -67,6 +74,7 @@
             <table class="table table-bordered table-hover table-striped w-100">
               <thead class="bg-primary-600">
                 <tr>
+                  <th>品牌大使培訓</th>
                   <th>姓名</th>
                   <th>生日</th>
                   <th>城市</th>
@@ -75,18 +83,24 @@
                   <th class="text-end"><%= sort_link_tag("購物金", "credits_asc", "credits_desc", @sort) %></th>
                   <th>會員</th>
                   <th>常買</th>
+                  <th>破萬新客</th>
                   <th><%= sort_link_tag("未購警示", "inactive_asc", "inactive_desc", @sort) %></th>
+                  <th>編輯</th>
                 </tr>
               </thead>
 
               <tbody>
                 <% @customers.each do |c| %>
                   <tr>
+                    <td class="text-center">
+                      <%= c.customer_profile&.brand_ambassador_training? ? "✅" : "—" %>
+                    </td>
                     <td>
                       <div class="fw-500">
                         <%= link_to c.full_name.presence || "(無名)", customer_path(c) %>
                         <% if @inactive_info[c.email] %>
-                          <span style="color:#c0392b; font-size:0.75em;">⚠</span>
+                          <% warn_color = @inactive_info[c.email][:days] >= 180 ? "#c0392b" : "#2980b9" %>
+                          <span style="color:<%= warn_color %>; font-size:0.75em;">⚠</span>
                         <% end %>
                       </div>
                       <div class="small text-muted">
@@ -104,13 +118,25 @@
                     <td class="text-end"><%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %></td>
                     <td><%= c.membership_level %></td>
                     <td><%= @top_products[c.email].presence || "—" %></td>
+                    <td class="text-center small">
+                      <% if (date = @big_first_orders[c.email]) %>
+                        ✅<br>
+                        <span class="text-muted"><%= date.strftime("%Y/%m/%d") %></span>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
                     <td class="small">
                       <% if (info = @inactive_info[c.email]) %>
-                        <span style="color:#c0392b;">⚠ <%= info[:days] %> 天未購</span><br>
+                        <% color = info[:days] >= 180 ? "#c0392b" : "#2980b9" %>
+                        <span style="color:<%= color %>;">⚠ <%= info[:days] %> 天未購</span><br>
                         <span class="text-muted">上次買 <%= info[:last_product] %></span>
                       <% else %>
                         —
                       <% end %>
+                    </td>
+                    <td>
+                      <%= link_to "✏️", edit_customer_path(c), class: "btn btn-sm btn-outline-secondary" %>
                     </td>
                   </tr>
                 <% end %>

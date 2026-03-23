@@ -9,6 +9,8 @@ Rails.application.routes.draw do
       get :stats
     end
   end
+  resources :customers, only: [:index, :show, :edit, :update]
+
 
  
 

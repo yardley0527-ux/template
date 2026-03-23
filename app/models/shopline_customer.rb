@@ -3,6 +3,7 @@ class ShoplineCustomer < ApplicationRecord
   self.table_name = "shopline_customers"
 
   has_many :shopline_orders, foreign_key: :shopline_customer_id, dependent: :nullify
+  has_one :customer_profile
 
   def self.normalize_email(v) = v.to_s.strip.downcase.presence
   def self.normalize_phone(v) = v.to_s.gsub(/\D+/, "").presence

@@ -54,6 +54,34 @@
     </div>
   </div>
 
+  <%# === 備註與培訓 === %>
+  <section class="section">
+    <h2 class="section-title">📝 備註與培訓</h2>
+    <div class="customer-info-card" style="flex-direction:column; gap:12px;">
+
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-weight:600; font-size:14px;">品牌大使培訓</span>
+        <% if @profile.brand_ambassador_training? %>
+          <span style="color:#10b981; font-weight:700;">✅ </span>
+        <% else %>
+          <span style="color:#9ca3af;">—</span>
+        <% end %>
+      </div>
+
+      <div>
+        <span style="font-weight:600; font-size:14px;">備註</span>
+        <p style="margin:6px 0 0; color:#374151; font-size:14px; white-space:pre-wrap;">
+          <%= @profile.notes.presence || "（尚無備註）" %>
+        </p>
+      </div>
+
+      <div>
+        <%= link_to "✏️ 編輯備註", edit_customer_path(@customer), class: "btn btn-outline-secondary btn-sm" %>
+      </div>
+
+    </div>
+  </section>
+
   <%# === 產品分析 === %>
   <section class="section">
     <h2 class="section-title">🛍️ 產品購買分析</h2>
