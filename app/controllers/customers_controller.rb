@@ -20,6 +20,7 @@ class CustomersController < ApplicationController
     @life_path        = params[:life_path].to_s.strip
     @personal_year    = params[:personal_year].to_s.strip
     @brand_ambassador = params[:brand_ambassador].to_s.strip
+    @big_first_filter = params[:big_first].to_s.strip
 
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level).compact.sort
 
@@ -38,7 +39,7 @@ class CustomersController < ApplicationController
 
     @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員]
 
-    scope = ShoplineCustomer.all
+    scope = ShoplineCustomer.includes(:customer_profile).all
 
     if @q.present?
       like = "%#{@q}%"
@@ -81,29 +82,40 @@ class CustomersController < ApplicationController
       scope = scope.joins(:customer_profile).where(customer_profiles: { brand_ambassador_training: true })
     end
 
+    if @big_first_filter == "1"
+      scope = scope.joins(
+        "INNER JOIN (
+          SELECT DISTINCT ON (email) email, total_amount AS first_amount
+          FROM shopline_orders
+          ORDER BY email, order_date ASC
+        ) fo ON fo.email = shopline_customers.email"
+      ).where("fo.first_amount >= 10000")
+    end
+
     if @sort.start_with?("inactive")
       scope = scope
-        .joins(
-          "LEFT JOIN (
-            SELECT email, MAX(order_date) AS last_order_date
-            FROM shopline_orders
-            WHERE product_name IS NOT NULL AND product_name != ''
-            GROUP BY email
-          ) lo ON lo.email = shopline_customers.email"
-        )
-        .select("shopline_customers.*, lo.last_order_date")
+        .joins("LEFT JOIN (
+          SELECT email, MAX(order_date) AS last_order_date
+          FROM shopline_orders
+          WHERE product_name IS NOT NULL AND product_name != ''
+          GROUP BY email
+        ) lo ON lo.email = shopline_customers.email")
+        .select("shopline_customers.*")
+        .select("lo.last_order_date")
+    else
+      scope = scope.select("shopline_customers.*")
     end
 
     scope = scope.reorder(Arel.sql(order_sql(@sort)))
 
     @total = if @sort.start_with?("inactive")
-      scope.except(:select, :joins).count
+      ShoplineCustomer.from(scope.except(:select, :order), :shopline_customers).count
     else
       scope.count
     end
+
     @total_pages = (@total.to_f / PER_PAGE).ceil
     @total_pages = 1 if @total_pages <= 0
-
     offset = (@page - 1) * PER_PAGE
     @customers = scope.offset(offset).limit(PER_PAGE)
 
@@ -145,11 +157,9 @@ class CustomersController < ApplicationController
 
     first_orders_by_email = ShoplineOrder
       .where(email: emails)
-      .where.not(product_name: [nil, ""])
-      .select(:email, :order_date, :total_amount)
-      .order(:email, :order_date)
-      .group_by(&:email)
-      .transform_values(&:first)
+      .select("DISTINCT ON (email) email, order_date, total_amount")
+      .order("email, order_date ASC")
+      .index_by(&:email)
 
     @big_first_orders = {}
     first_orders_by_email.each do |email, order|
