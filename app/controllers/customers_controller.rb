@@ -216,11 +216,14 @@ class CustomersController < ApplicationController
   def edit
     @customer = ShoplineCustomer.find(params[:id])
     @profile  = @customer.customer_profile || @customer.build_customer_profile
+    @edit_section = params[:section].to_s.presence || "notes"
   end
 
   def update
     @customer = ShoplineCustomer.find(params[:id])
     @profile  = @customer.customer_profile || @customer.build_customer_profile
+    @edit_section = params[:section].to_s.presence || "notes"
+
     if @profile.update(profile_params)
       redirect_to customer_path(@customer), notice: "已儲存"
     else
@@ -231,7 +234,7 @@ class CustomersController < ApplicationController
   private
 
   def profile_params
-    params.require(:customer_profile).permit(:brand_ambassador_training, :notes)
+    params.require(:customer_profile).permit(:brand_ambassador_training, :notes, :health_profile)
   end
 
   def age_group_sql(group)

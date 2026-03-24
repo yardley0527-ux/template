@@ -11,31 +11,42 @@
       <div class="customer-details">
         <h1><%= @customer.full_name.presence || "（無姓名）" %></h1>
         <div class="customer-meta">
-          <span>✏️ 編輯資料</span>
+          <span>
+            <%= @edit_section == "health" ? "🩺 編輯健康資料" : "✏️ 編輯備註與培訓" %>
+          </span>
         </div>
       </div>
     </div>
   </div>
 
   <section class="section">
-    <h2 class="section-title">📝 備註與培訓</h2>
+    <h2 class="section-title">
+      <%= @edit_section == "health" ? "🩺 健康資料" : "📝 備註與培訓" %>
+    </h2>
 
-    <%= form_with model: @profile, url: customer_path(@customer), method: :patch do |f| %>
-      <div class="edit-card">
+    <%= form_with model: @profile, url: customer_path(@customer, section: @edit_section), method: :patch do |f| %>
+      <div class="edit-card <%= @edit_section == 'health' ? 'edit-card-health' : '' %>">
 
-        <div class="edit-field">
-          <label class="edit-label">品牌大使培訓</label>
-          <label class="toggle-wrap">
-            <%= f.check_box :brand_ambassador_training, class: "toggle-input" %>
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            <span class="toggle-text">加入觀察名單</span>
-          </label>
-        </div>
+        <% if @edit_section == "health" %>
+          <div class="edit-field">
+            <label class="edit-label">健康資料</label>
+            <%= f.text_area :health_profile, rows: 12, class: "edit-textarea edit-textarea-health", placeholder: "輸入健康資料…" %>
+          </div>
+        <% else %>
+          <div class="edit-field">
+            <label class="edit-label">品牌大使培訓</label>
+            <label class="toggle-wrap">
+              <%= f.check_box :brand_ambassador_training, class: "toggle-input" %>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-text">加入觀察名單</span>
+            </label>
+          </div>
 
-        <div class="edit-field">
-          <label class="edit-label">備註</label>
-          <%= f.text_area :notes, rows: 6, class: "edit-textarea", placeholder: "輸入備註內容…" %>
-        </div>
+          <div class="edit-field">
+            <label class="edit-label">備註</label>
+            <%= f.text_area :notes, rows: 6, class: "edit-textarea", placeholder: "輸入備註內容…" %>
+          </div>
+        <% end %>
 
         <div class="edit-actions">
           <%= button_tag "儲存", type: "submit", class: "btn-save" %>
@@ -126,7 +137,17 @@
     display: flex;
     flex-direction: column;
     gap: 24px;
-    max-width: 600px;
+    width: 100%;
+    max-width: 1100px;
+
+  }
+
+  .edit-card-health {
+    max-width: 1100px;
+  }
+
+  .edit-textarea-health {
+    min-height: 600px;
   }
 
   .edit-field {
