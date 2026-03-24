@@ -69,6 +69,24 @@
                 class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
             </div>
           </div>
+          <div class="mobile-sort d-md-none mb-3">
+            <label class="form-label mb-1" style="font-size:12px; font-weight:600; color:#9ca3af;">排序方式</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <% [
+                ["💰 累積消費", "amount_desc",   "amount_asc",   "amount"],
+                ["📦 訂單數",   "orders_desc",   "orders_asc",   "orders"],
+                ["🪙 購物金",   "credits_desc",  "credits_asc",  "credits"],
+                ["⚠️ 未購警示", "inactive_desc", "inactive_asc", "inactive"]
+              ].each do |label, desc_val, asc_val, prefix| %>
+                <% active = @sort.start_with?(prefix) %>
+                <% next_sort = @sort == desc_val ? asc_val : desc_val %>
+                <% arrow = @sort == desc_val ? "↓" : @sort == asc_val ? "↑" : "↓" %>
+                <%= link_to "#{label} #{arrow}",
+                  customers_path(request.query_parameters.merge(sort: next_sort, page: 1)),
+                  class: "btn btn-sm #{active ? 'btn-primary' : 'btn-outline-secondary'}" %>
+              <% end %>
+            </div>
+          </div>
 
           <div class="table-responsive">
             <table class="table table-bordered table-hover table-striped w-100">
@@ -88,14 +106,13 @@
                   <th>編輯</th>
                 </tr>
               </thead>
-
               <tbody>
                 <% @customers.each do |c| %>
                   <tr>
-                    <td class="text-center">
+                    <td data-label="品牌大使" class="text-center">
                       <%= c.customer_profile&.brand_ambassador_training? ? "✅" : "—" %>
                     </td>
-                    <td>
+                    <td data-label="姓名">
                       <div class="fw-500">
                         <%= link_to c.full_name.presence || "(無名)", customer_path(c) %>
                         <% if @inactive_info[c.email] %>
@@ -111,38 +128,37 @@
                         <% end %>
                       </div>
                     </td>
-                    <td class="small"><%= c.birthdate&.strftime("%Y/%m/%d") || "—" %></td>
-                    <td><%= c.city %></td>
-                    <td class="text-end"><%= c.order_count.to_i %></td>
-                    <td class="text-end">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
-                    <td class="text-end"><%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %></td>
-                    <td><%= c.membership_level %></td>
-                    <td><%= @top_products[c.email].presence || "—" %></td>
-                    <td class="text-center small">
+                    <td data-label="生日" class="small"><%= c.birthdate&.strftime("%Y/%m/%d") || "—" %></td>
+                    <td data-label="城市"><%= c.city %></td>
+                    <td data-label="訂單數" class="text-end"><%= c.order_count.to_i %></td>
+                    <td data-label="累積消費" class="text-end">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
+                    <td data-label="購物金" class="text-end"><%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %></td>
+                    <td data-label="會員"><%= c.membership_level %></td>
+                    <td data-label="常買"><%= @top_products[c.email].presence || "—" %></td>
+                    <td data-label="破萬新客" class="text-center small">
                       <% if (date = @big_first_orders[c.email]) %>
-                        ✅<br>
-                        <span class="text-muted"><%= date.strftime("%Y/%m/%d") %></span>
+                        ✅ <%= date.strftime("%Y/%m/%d") %>
                       <% else %>
                         —
                       <% end %>
                     </td>
-                    <td class="small">
+                    <td data-label="未購警示" class="small">
                       <% if (info = @inactive_info[c.email]) %>
                         <% color = info[:days] >= 180 ? "#c0392b" : "#2980b9" %>
-                        <span style="color:<%= color %>;">⚠ <%= info[:days] %> 天未購</span><br>
-                        <span class="text-muted">上次買 <%= info[:last_product] %></span>
+                        <span style="color:<%= color %>;">⚠ <%= info[:days] %> 天</span>
+                        <span class="text-muted"><%= info[:last_product] %></span>
                       <% else %>
                         —
                       <% end %>
                     </td>
-                    <td>
+                    <td data-label="編輯">
                       <%= link_to "✏️", edit_customer_path(c), class: "btn btn-sm btn-outline-secondary" %>
                     </td>
                   </tr>
                 <% end %>
 
                 <% if @customers.blank? %>
-                  <tr><td colspan="9" class="text-center text-muted py-4">沒有資料</td></tr>
+                  <tr><td colspan="12" class="text-center text-muted py-4">沒有資料</td></tr>
                 <% end %>
               </tbody>
             </table>
@@ -163,3 +179,59 @@
     </div>
   </div>
 </div>
+
+
+
+<style>
+@media (max-width: 768px) {
+  .table-responsive table thead {
+    display: none;
+  }
+
+  .table-responsive table,
+  .table-responsive tbody,
+  .table-responsive tr,
+  .table-responsive td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-responsive tr {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+
+  .table-responsive td {
+    border: none;
+    padding: 4px 0;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .table-responsive td:last-child {
+    border-bottom: none;
+  }
+
+  .table-responsive td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #9ca3af;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
+    margin-right: 12px;
+  }
+
+  .table-responsive td.text-end {
+    text-align: right;
+  }
+}
+</style>
