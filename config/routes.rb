@@ -9,7 +9,12 @@ Rails.application.routes.draw do
       get :stats
     end
   end
-  resources :customers, only: [:index, :show, :edit, :update]
+  resources :customers, only: [:index, :show, :edit, :update]do
+    collection { get :stats }
+    resources :albums, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
+      resources :photos, only: [:create, :destroy]
+    end
+  end
 
 
  

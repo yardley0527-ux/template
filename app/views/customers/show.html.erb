@@ -54,6 +54,13 @@
     </div>
   </div>
 
+  <section class="section">
+    <h2 class="section-title">📁 相簿</h2>
+    <div>
+      <%= link_to "查看相簿（#{@customer.albums.count} 個）", customer_albums_path(@customer), class: "btn btn-outline-secondary btn-sm" %>
+    </div>
+  </section>
+
   <%# === 備註與培訓 === %>
   <section class="section">
     <h2 class="section-title">📝 備註與培訓</h2>

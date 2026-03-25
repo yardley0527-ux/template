@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_24_082625) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_25_091205) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -19,6 +19,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_24_082625) do
     t.string "password_digest"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "albums", force: :cascade do |t|
+    t.bigint "shopline_customer_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["shopline_customer_id"], name: "index_albums_on_shopline_customer_id"
   end
 
   create_table "customer_profiles", force: :cascade do |t|
@@ -55,6 +64,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_24_082625) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["kind", "file_checksum"], name: "index_import_runs_on_kind_and_file_checksum"
+  end
+
+  create_table "photos", force: :cascade do |t|
+    t.bigint "album_id", null: false
+    t.string "cloudinary_public_id", null: false
+    t.string "url", null: false
+    t.string "caption"
+    t.integer "position", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["album_id", "position"], name: "index_photos_on_album_id_and_position"
+    t.index ["album_id"], name: "index_photos_on_album_id"
   end
 
   create_table "products", force: :cascade do |t|
@@ -222,8 +243,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_24_082625) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  add_foreign_key "albums", "shopline_customers"
   add_foreign_key "health_assessment_products", "products"
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"
+  add_foreign_key "photos", "albums"
   add_foreign_key "shopline_customer_health_assessments", "shopline_customers"
   add_foreign_key "shopline_customer_health_questionnaires", "shopline_customers"
   add_foreign_key "shopline_orders", "shopline_customers"

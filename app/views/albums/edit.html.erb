@@ -1,0 +1,23 @@
+<div class="customer-show">
+  <div class="back-link" style="margin-top: 24px;">
+    <%= link_to "← 返回相簿", customer_album_path(@customer, @album), class: "btn-back" %>
+  </div>
+  <h2 style="font-size:20px; font-weight:700; margin-bottom:24px; margin-top:24px;">✏️ 編輯相簿</h2>
+
+  <%= form_with model: @album, url: customer_album_path(@customer, @album), method: :patch, local: true do |f| %>
+    <div style="display:flex; flex-direction:column; gap:20px;">
+      <div>
+        <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">相簿名稱</label>
+        <%= f.text_field :name, class: "form-control" %>
+      </div>
+      <div>
+        <label style="display:block; font-size:13px; font-weight:600; margin-bottom:6px;">描述（選填）</label>
+        <%= f.text_area :description, rows: 3, class: "form-control" %>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <%= button_tag "儲存", type: "submit", class: "btn btn-primary", style: "padding: 6px 16px;" %>
+        <%= link_to "取消", customer_album_path(@customer, @album), class: "btn btn-outline-secondary", style: "padding: 6px 16px;" %>
+      </div>
+    </div>
+  <% end %>
+</div>

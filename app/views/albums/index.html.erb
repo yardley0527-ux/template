@@ -1,0 +1,105 @@
+<div class="customer-show">
+  <div class="back-link">
+    <%= link_to "← 返回客戶頁面", customer_path(@customer), class: "btn-back" %>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 style="font-size:22px; font-weight:700; margin:0;">
+      📁 <%= @customer.full_name %> 的相簿
+    </h1>
+    <%= link_to "+ 新增相簿", new_customer_album_path(@customer), class: "btn btn-primary" %>
+  </div>
+
+  <% if @albums.empty? %>
+    <p class="text-muted">尚無相簿，請新增第一個相簿。</p>
+  <% else %>
+    <div class="album-grid">
+      <% @albums.each do |album| %>
+        <div class="album-card">
+          <% cover = album.photos.first %>
+          <div class="album-cover">
+            <% if cover %>
+              <img src="<%= cover.url %>" alt="封面">
+            <% else %>
+              <div class="album-cover-empty">📷</div>
+            <% end %>
+          </div>
+          <div class="album-info">
+            <div class="album-name"><%= album.name %></div>
+            <div class="album-meta"><%= album.photos.count %> 張照片</div>
+            <div class="album-actions">
+              <%= link_to "開啟", customer_album_path(@customer, album), class: "btn btn-sm btn-primary" %>
+              <%= link_to "編輯", edit_customer_album_path(@customer, album), class: "btn btn-sm btn-outline-secondary" %>
+              <%= button_to "刪除", customer_album_path(@customer, album),
+                    method: :delete,
+                    data: { confirm: "確定刪除這個相簿？" },
+                    class: "btn btn-sm btn-outline-danger",
+                    form: { style: "display:inline;" } %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<style>
+.album-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+.album-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.album-cover {
+  width: 100%;
+  height: 160px;
+  background: #f3f4f6;
+  overflow: hidden;
+}
+.album-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.album-cover-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  color: #d1d5db;
+}
+.album-info {
+  padding: 14px;
+}
+.album-name {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+.album-meta {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 12px;
+}
+.album-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.btn-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  color: #6366f1;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+</style>
