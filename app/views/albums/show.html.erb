@@ -32,10 +32,12 @@
             <div class="photo-actions">
               <button class="photo-preview-btn" onclick="openLightbox('<%= photo.url %>', '<%= photo.caption %>')">🔍</button>
               <%= button_to "🗑",
-                    customer_album_photo_path(@customer, @album, photo),
-                    method: :delete,
-                    class: "photo-delete-btn",
-                    form: { style: "display:contents;", "data-confirm-delete": "true" } %>
+                  customer_album_photo_path(@customer, @album, photo),
+                  method: :delete,
+                  class: "photo-delete-btn",
+                  # 這裡直接寫 onclick 是最穩定的做法
+                  onclick: "return confirm('確定刪除這張照片？');",
+                  form: { style: "display:contents;" } %>
             </div>
           </div>
         </div>
@@ -52,65 +54,73 @@
 <%# Cloudinary Upload Widget %>
 <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
 <script>
-  document.addEventListener("submit", function(e) {
-    var form = e.target;
-    if (form.dataset.confirmDelete === "true") {
-      if (!confirm("確定刪除這張照片？")) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-      }
-    }
-  }, true);
-  var uploadWidget = cloudinary.createUploadWidget({
-    cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
-    uploadPreset: "ml_default",
-    multiple: true,
-    maxFiles: 20,
-    sources: ["local", "camera"],
-    language: "zh_TW",
-    inlineContainer: null,   // ← 加這行，確保是 modal 模式
-    styles: {
-      palette: {
-        window: "#FFFFFF",
-      }
-    }
-  }, function(error, result) {
-    if (!error && result && result.event === "success") {
-      var info = result.info;
-
-      fetch("<%= customer_album_photos_path(@customer, @album) %>", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({
-          photo: {
-            cloudinary_public_id: info.public_id,
-            url: info.secure_url,
-            caption: info.original_filename
+  // 使用 turbolinks:load 確保每次換頁（或手機回上一頁）都會重新綁定事件
+  document.addEventListener("turbolinks:load", function() {
+    
+    // 1. 初始化 Cloudinary Widget
+    var uploadBtn = document.getElementById("upload_btn");
+    if (uploadBtn) {
+      var uploadWidget = cloudinary.createUploadWidget({
+        cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
+        uploadPreset: "ml_default",
+        multiple: true,
+        maxFiles: 20,
+        sources: ["local", "camera"],
+        language: "zh_TW",
+        inlineContainer: null,
+        styles: {
+          palette: {
+            window: "#FFFFFF",
           }
-        })
+        }
+      }, function(error, result) {
+        if (!error && result && result.event === "success") {
+          var info = result.info;
+          fetch("<%= customer_album_photos_path(@customer, @album) %>", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+              photo: {
+                cloudinary_public_id: info.public_id,
+                url: info.secure_url,
+                caption: info.original_filename
+              }
+            })
+          });
+        }
+
+        // 當視窗關閉時重整頁面以顯示新照片
+        if (result && result.event === "display-changed" && result.info === "hidden") {
+          location.reload();
+        }
       });
-    }
 
-    if (result && result.event === "display-changed" && result.info === "hidden") {
-      location.reload();
+      // 綁定上傳按鈕點擊事件
+      uploadBtn.onclick = function() {
+        uploadWidget.open();
+      };
     }
   });
 
-  document.getElementById("upload_btn").addEventListener("click", function() {
-    uploadWidget.open();
-  });
-
+  // 2. Lightbox 功能 (獨立於 Turbolinks 之外)
   function openLightbox(url, caption) {
     var lb = document.getElementById('lightbox');
-    document.getElementById('lightbox-img').src = url;
-    lb.style.display = 'flex';
+    var lbImg = document.getElementById('lightbox-img');
+    if (lb && lbImg) {
+      lbImg.src = url;
+      lb.style.display = 'flex';
+    }
   }
+
   function closeLightbox() {
-    document.getElementById('lightbox').style.display = 'none';
+    var lb = document.getElementById('lightbox');
+    if (lb) lb.style.display = 'none';
   }
+
+  // 鍵盤支援
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeLightbox();
   });
