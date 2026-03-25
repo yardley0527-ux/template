@@ -28,10 +28,3 @@
 # For further information see the following documentation:
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
 # Rails.application.config.content_security_policy_report_only = true
-
-
-policy.script_src :self, :https, "https://upload-widget.cloudinary.com"
-policy.frame_src  :self, :https, "https://widget.cloudinary.com"
-policy.connect_src :self, :https, "https://api.cloudinary.com", "https://res.cloudinary.com"
-policy.img_src :self, :https, :data, :blob
-policy.style_src :self, :https, :unsafe_inline
