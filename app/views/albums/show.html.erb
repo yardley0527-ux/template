@@ -57,9 +57,10 @@
     if (form.dataset.confirmDelete === "true") {
       if (!confirm("確定刪除這張照片？")) {
         e.preventDefault();
+        e.stopImmediatePropagation();
       }
     }
-  });
+  }, true);
   var uploadWidget = cloudinary.createUploadWidget({
     cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
     uploadPreset: "ml_default",
