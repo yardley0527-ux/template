@@ -191,7 +191,8 @@
     <% if @orders.empty? %>
       <p class="empty-state">尚無訂單紀錄</p>
     <% else %>
-      <div class="orders-table-wrap">
+      <%# 桌機版表格 %>
+      <div class="orders-table-wrap d-none d-md-block">
         <table class="orders-table">
           <thead>
             <tr>
@@ -201,7 +202,6 @@
               <th>數量</th>
               <th>金額</th>
               <th>付款狀態</th>
-              <th>訂單狀態</th>
             </tr>
           </thead>
           <tbody>
@@ -217,18 +217,35 @@
                     <%= order.payment_status.presence || "—" %>
                   </span>
                 </td>
-                <td>
-                  <span class="status-badge order-<%= order.order_status.to_s.parameterize %>">
-                    <%= order.order_status.presence || "—" %>
-                  </span>
-                </td>
               </tr>
             <% end %>
           </tbody>
         </table>
       </div>
+
+      <%# 手機版卡片 %>
+      <div class="order-cards d-md-none">
+        <% @orders.each do |order| %>
+          <div class="order-card">
+            <div class="order-card-header">
+              <span class="order-card-date"><%= order.order_date&.strftime("%Y/%m/%d") || "—" %></span>
+              <span class="order-card-number"><%= order.order_number %></span>
+            </div>
+            <div class="order-card-product"><%= order.product_name.presence || "—" %></div>
+            <div class="order-card-footer">
+              <span class="order-card-amount">NT$ <%= number_with_delimiter(order.total_amount.to_i) %></span>
+              <div class="order-card-badges">
+                <span class="status-badge payment-<%= order.payment_status.to_s.parameterize %>">
+                  <%= order.payment_status.presence || "—" %>
+                </span>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
     <% end %>
   </section>
+
 </div>
 
 <style>
@@ -566,6 +583,62 @@
       padding: 8px 10px;
       font-size: 12px;
     }
+  }
+
+  .order-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .order-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+
+  .order-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .order-card-date {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+
+  .order-card-number {
+    font-family: monospace;
+    font-size: 11px;
+    color: #9ca3af;
+  }
+
+  .order-card-product {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 10px;
+  }
+
+  .order-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .order-card-amount {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .order-card-badges {
+    display: flex;
+    gap: 6px;
   }
 
 </style>
