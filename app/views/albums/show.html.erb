@@ -35,7 +35,7 @@
                     customer_album_photo_path(@customer, @album, photo),
                     method: :delete,
                     class: "photo-delete-btn",
-                    form: { style: "display:contents;", onsubmit: "return confirm('確定刪除這張照片？')" } %>
+                    form: { style: "display:contents;", "data-confirm-delete": "true" } %>
             </div>
           </div>
         </div>
@@ -52,6 +52,14 @@
 <%# Cloudinary Upload Widget %>
 <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
 <script>
+  document.addEventListener("submit", function(e) {
+    var form = e.target;
+    if (form.dataset.confirmDelete === "true") {
+      if (!confirm("確定刪除這張照片？")) {
+        e.preventDefault();
+      }
+    }
+  });
   var uploadWidget = cloudinary.createUploadWidget({
     cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
     uploadPreset: "ml_default",
@@ -186,24 +194,18 @@
   font-size: 13px;
   cursor: pointer;
 }
-#cloudinary-overlay,
-.cloudinary-overlay {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 99999 !important;
-}
-
-#cloudinary-widget,
-.cloudinary-widget {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 100000 !important;
-  transform: none !important;
-}
+  @media (max-width: 768px) {
+    /* 讓手機版直接看到按鈕和標題，不需要「懸停」 */
+    .photo-actions, .photo-caption {
+      opacity: 1 !important;
+    }
+    .photo-overlay {
+      background: rgba(0,0,0,0.25);
+    }
+    /* 加大按鈕點擊區域，方便手指點選 */
+    .photo-delete-btn, .photo-preview-btn {
+      padding: 8px 12px;
+      font-size: 16px;
+    }
+  }
 </style>
