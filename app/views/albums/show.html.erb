@@ -58,7 +58,13 @@
     multiple: true,
     maxFiles: 20,
     sources: ["local", "camera"],
-    language: "zh_TW"
+    language: "zh_TW",
+    inlineContainer: null,   // ← 加這行，確保是 modal 模式
+    styles: {
+      palette: {
+        window: "#FFFFFF",
+      }
+    }
   }, function(error, result) {
     if (!error && result && result.event === "success") {
       var info = result.info;
@@ -179,5 +185,25 @@
   padding: 4px 8px;
   font-size: 13px;
   cursor: pointer;
+}
+#cloudinary-overlay,
+.cloudinary-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+}
+
+#cloudinary-widget,
+.cloudinary-widget {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 100000 !important;
+  transform: none !important;
 }
 </style>
