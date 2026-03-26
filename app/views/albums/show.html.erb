@@ -50,6 +50,7 @@
   <% end %>
 </div>
 
+<%# Lightbox %>
 <div id="lightbox"
      onclick="closeLightbox()"
      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center;">
@@ -59,98 +60,83 @@
        style="max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 4px 32px rgba(0,0,0,0.5);">
 </div>
 
+<%# 自訂刪除確認 Modal（取代 window.confirm） %>
+<div id="delete-modal"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:#fff; border-radius:12px; padding:24px; max-width:320px; width:100%; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <p style="font-size:16px; font-weight:600; margin:0 0 8px;">確定刪除？</p>
+    <p style="font-size:14px; color:#6b7280; margin:0 0 20px;">這張照片刪除後無法復原。</p>
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button id="delete-cancel-btn"
+              style="padding:8px 18px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:14px; cursor:pointer;">
+        取消
+      </button>
+      <button id="delete-confirm-btn"
+              style="padding:8px 18px; border-radius:8px; border:none; background:#ef4444; color:#fff; font-size:14px; cursor:pointer;">
+        刪除
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
   (function() {
     let uploadWidget = null;
     let cloudinaryScriptPromise = null;
-    let uploadInProgress = false;
+    let pendingDeleteForm = null;
 
+    // ─── Cloudinary Script Loader ────────────────────────────────
     function loadCloudinaryScript() {
       if (window.cloudinary) return Promise.resolve(window.cloudinary);
       if (cloudinaryScriptPromise) return cloudinaryScriptPromise;
 
       cloudinaryScriptPromise = new Promise(function(resolve, reject) {
-        const existing = document.querySelector('script[data-cloudinary-widget="true"]');
-
-        if (existing) {
-          if (window.cloudinary) {
-            resolve(window.cloudinary);
-            return;
-          }
-
-          existing.addEventListener("load", function() {
-            if (window.cloudinary) {
-              resolve(window.cloudinary);
-            } else {
-              reject(new Error("Cloudinary script loaded but window.cloudinary not found"));
-            }
-          });
-
-          existing.addEventListener("error", function() {
-            reject(new Error("Cloudinary script failed to load"));
-          });
-
-          return;
-        }
-
-        const script = document.createElement("script");
+        var script = document.createElement("script");
         script.src = "https://upload-widget.cloudinary.com/global/all.js";
-        script.type = "text/javascript";
         script.async = true;
-        script.dataset.cloudinaryWidget = "true";
-
         script.onload = function() {
-          if (window.cloudinary) {
-            resolve(window.cloudinary);
-          } else {
-            reject(new Error("Cloudinary script loaded but window.cloudinary not found"));
-          }
+          window.cloudinary ? resolve(window.cloudinary) : reject(new Error("cloudinary not found"));
         };
-
         script.onerror = function() {
           reject(new Error("Cloudinary script failed to load"));
         };
-
         document.head.appendChild(script);
       });
 
       return cloudinaryScriptPromise;
     }
 
-    function createUploadWidget() {
-      if (uploadWidget) return Promise.resolve(uploadWidget);
-
-      return loadCloudinaryScript().then(function(cloudinary) {
-        uploadWidget = cloudinary.createUploadWidget({
+    // ─── Widget Builder ──────────────────────────────────────────
+    function buildWidget(cloudinary) {
+      return cloudinary.createUploadWidget(
+        {
           cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
           uploadPreset: "ml_default",
           multiple: true,
           maxFiles: 20,
-          sources: ["local", "camera", "photo_library"],
+          sources: ["local", "camera"],
           language: "zh_TW",
           clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "heic"],
           maxImageFileSize: 10000000,
           resourceType: "image",
           singleUploadAutoClose: false,
           showCompletedButton: true
-        }, function(error, result) {
+        },
+        function(error, result) {
           if (error) {
-            uploadInProgress = false;
             console.error("Cloudinary widget error:", error);
             alert("上傳元件載入失敗，請稍後再試。");
             return;
           }
-
           if (!result) return;
 
           if (result.event === "success") {
-            const info = result.info;
-
+            var info = result.info;
             fetch("<%= customer_album_photos_path(@customer, @album) %>", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                "X-CSRF-Token": document.querySelector('meta[name=\"csrf-token\"]')?.content || "",
+                "X-CSRF-Token": (document.querySelector('meta[name="csrf-token"]') || {}).content || "",
                 "Accept": "application/json"
               },
               body: JSON.stringify({
@@ -161,11 +147,8 @@
                 }
               })
             })
-            .then(function(response) {
-              if (!response.ok) {
-                throw new Error("Photo save failed");
-              }
-              return response.text();
+            .then(function(res) {
+              if (!res.ok) throw new Error("Photo save failed");
             })
             .catch(function(err) {
               console.error(err);
@@ -173,98 +156,126 @@
             });
           }
 
-          if (result.event === "queues-end") {
-            uploadInProgress = false;
-          }
-
           if (result.event === "close") {
-            uploadInProgress = false;
             window.location.reload();
           }
-        });
-
-        return uploadWidget;
-      });
+        }
+      );
     }
 
+    // ─── 關鍵：頁面載入就提前建好 widget ────────────────────────
+    // 讓點擊時可以同步呼叫 widget.open()，避免 iOS Safari 封鎖 popup
+    function preloadWidget() {
+      loadCloudinaryScript()
+        .then(function(cloudinary) {
+          uploadWidget = buildWidget(cloudinary);
+        })
+        .catch(function(err) {
+          console.warn("Cloudinary preload failed:", err);
+        });
+    }
+
+    // ─── 上傳按鈕 ────────────────────────────────────────────────
     function bindUploadButton() {
-      const uploadBtn = document.getElementById("upload_btn");
-      if (!uploadBtn) return;
-      if (uploadBtn.dataset.bound === "true") return;
+      var btn = document.getElementById("upload_btn");
+      if (!btn || btn.dataset.bound === "true") return;
+      btn.dataset.bound = "true";
 
-      uploadBtn.dataset.bound = "true";
-
-      uploadBtn.addEventListener("click", async function() {
-        if (uploadInProgress) return;
-
-        uploadInProgress = true;
-
-        try {
-          const widget = await createUploadWidget();
-          widget.open();
-        } catch (err) {
-          uploadInProgress = false;
-          console.error(err);
-          alert("上傳功能初始化失敗，請重新整理後再試。");
+      btn.addEventListener("click", function() {
+        if (uploadWidget) {
+          // widget 已就緒 → 同步開啟，手機不會被封鎖
+          uploadWidget.open();
+        } else {
+          // 備援：preload 還沒完成時才走這條
+          loadCloudinaryScript()
+            .then(function(cloudinary) {
+              if (!uploadWidget) uploadWidget = buildWidget(cloudinary);
+              uploadWidget.open();
+            })
+            .catch(function() {
+              alert("上傳功能初始化失敗，請重新整理後再試。");
+            });
         }
       });
     }
 
-    function bindDeleteConfirm() {
-      if (document.body.dataset.deleteConfirmBound === "true") return;
-      document.body.dataset.deleteConfirmBound = "true";
+    // ─── 自訂刪除 Modal ──────────────────────────────────────────
+    function bindDeleteModal() {
+      if (document.body.dataset.deleteModalBound === "true") return;
+      document.body.dataset.deleteModalBound = "true";
 
-      ["click", "touchstart"].forEach(function(evt) {
-        document.addEventListener(evt, function(e) {
-          const deleteBtn = e.target.closest(".photo-delete-btn");
-          if (!deleteBtn) return;
+      var modal = document.getElementById("delete-modal");
+      var confirmBtn = document.getElementById("delete-confirm-btn");
+      var cancelBtn = document.getElementById("delete-cancel-btn");
 
-          const form = deleteBtn.closest("form");
-          if (!form) return;
+      // 攔截刪除按鈕
+      document.addEventListener("click", function(e) {
+        var deleteBtn = e.target.closest(".photo-delete-btn");
+        if (!deleteBtn) return;
 
-          e.preventDefault();
-          e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
 
-          const ok = window.confirm("確定刪除這張照片？");
-          if (!ok) return;
+        pendingDeleteForm = deleteBtn.closest("form");
+        modal.style.display = "flex";
+      }, true);
 
-          if (form.requestSubmit) {
-            form.requestSubmit();
-          } else {
-            form.submit();
-          }
-        }, true);
+      // 確認刪除
+      confirmBtn.addEventListener("click", function() {
+        modal.style.display = "none";
+        if (!pendingDeleteForm) return;
+
+        if (typeof pendingDeleteForm.requestSubmit === "function") {
+          pendingDeleteForm.requestSubmit();
+        } else {
+          pendingDeleteForm.submit();
+        }
+        pendingDeleteForm = null;
+      });
+
+      // 取消
+      cancelBtn.addEventListener("click", function() {
+        modal.style.display = "none";
+        pendingDeleteForm = null;
+      });
+
+      // 點背景關閉
+      modal.addEventListener("click", function(e) {
+        if (e.target === modal) {
+          modal.style.display = "none";
+          pendingDeleteForm = null;
+        }
       });
     }
 
-    function initAlbumPage() {
-      bindUploadButton();
-      bindDeleteConfirm();
-    }
-
-    document.addEventListener("DOMContentLoaded", initAlbumPage);
-    document.addEventListener("turbo:load", initAlbumPage);
-
+    // ─── Lightbox ────────────────────────────────────────────────
     window.openLightbox = function(url, caption) {
-      const lb = document.getElementById("lightbox");
-      const img = document.getElementById("lightbox-img");
+      var lb = document.getElementById("lightbox");
+      var img = document.getElementById("lightbox-img");
       if (!lb || !img) return;
-
       img.src = url;
       img.alt = caption || "";
       lb.style.display = "flex";
     };
 
     window.closeLightbox = function() {
-      const lb = document.getElementById("lightbox");
+      var lb = document.getElementById("lightbox");
       if (lb) lb.style.display = "none";
     };
 
     document.addEventListener("keydown", function(e) {
-      if (e.key === "Escape") {
-        window.closeLightbox();
-      }
+      if (e.key === "Escape") window.closeLightbox();
     });
+
+    // ─── Init ────────────────────────────────────────────────────
+    function init() {
+      preloadWidget();
+      bindUploadButton();
+      bindDeleteModal();
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("turbo:load", init);
   })();
 </script>
 
@@ -293,35 +304,44 @@
   .photo-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0.35);
+    background: rgba(0,0,0,0);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: flex-end;
     padding: 8px;
     transition: background 0.2s;
   }
 
+  .photo-item:hover .photo-overlay {
+    background: rgba(0,0,0,0.35);
+  }
+
   .photo-caption {
     position: absolute;
-    bottom: 50px;
+    bottom: 36px;
     left: 8px;
     right: 8px;
     color: #fff;
     font-size: 11px;
-    opacity: 1;
+    opacity: 0;
     transition: opacity 0.2s;
     word-break: break-word;
-    line-height: 1.4;
+  }
+
+  .photo-item:hover .photo-caption {
+    opacity: 1;
   }
 
   .photo-actions {
     display: flex;
     gap: 6px;
-    opacity: 1;
-    width: 100%;
-    justify-content: space-between;
+    opacity: 0;
     transition: opacity 0.2s;
+  }
+
+  .photo-item:hover .photo-actions {
+    opacity: 1;
   }
 
   .photo-delete-btn,
@@ -329,9 +349,8 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    text-decoration: none;
-    padding: 6px 10px;
-    font-size: 14px;
+    padding: 4px 8px;
+    font-size: 13px;
     line-height: 1;
   }
 
@@ -354,30 +373,20 @@
     font-weight: 500;
   }
 
-  @media (min-width: 769px) {
-    .photo-item:hover .photo-overlay {
-      background: rgba(0,0,0,0.45);
-    }
-
-    .photo-delete-btn:hover {
-      background: rgba(239,68,68,1);
-    }
-
-    .photo-preview-btn:hover {
-      background: rgba(99,102,241,1);
-    }
-  }
 
   @media (max-width: 768px) {
-    .photo-delete-btn,
-    .photo-preview-btn {
-      padding: 10px 14px;
-      font-size: 18px;
+    .photo-actions {
+      opacity: 1 !important;
     }
 
-    .photo-caption {
-      bottom: 56px;
-      font-size: 12px;
+    .photo-overlay {
+      background: rgba(0,0,0,0.25) !important;
+    }
+
+    .photo-delete-btn,
+    .photo-preview-btn {
+      padding: 8px 12px;
+      font-size: 16px;
     }
   }
 </style>
