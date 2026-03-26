@@ -73,6 +73,11 @@
         const existing = document.querySelector('script[data-cloudinary-widget="true"]');
 
         if (existing) {
+          if (window.cloudinary) {
+            resolve(window.cloudinary);
+            return;
+          }
+
           existing.addEventListener("load", function() {
             if (window.cloudinary) {
               resolve(window.cloudinary);
@@ -121,7 +126,7 @@
           uploadPreset: "ml_default",
           multiple: true,
           maxFiles: 20,
-          sources: ["local", "camera"],
+          sources: ["local", "camera", "photo_library"],
           language: "zh_TW",
           clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "heic"],
           maxImageFileSize: 10000000,
@@ -130,6 +135,7 @@
           showCompletedButton: true
         }, function(error, result) {
           if (error) {
+            uploadInProgress = false;
             console.error("Cloudinary widget error:", error);
             alert("上傳元件載入失敗，請稍後再試。");
             return;
@@ -188,20 +194,19 @@
 
       uploadBtn.dataset.bound = "true";
 
-      uploadBtn.addEventListener("click", function() {
+      uploadBtn.addEventListener("click", async function() {
         if (uploadInProgress) return;
 
         uploadInProgress = true;
 
-        createUploadWidget()
-          .then(function(widget) {
-            widget.open();
-          })
-          .catch(function(err) {
-            uploadInProgress = false;
-            console.error(err);
-            alert("上傳功能初始化失敗，請重新整理後再試。");
-          });
+        try {
+          const widget = await createUploadWidget();
+          widget.open();
+        } catch (err) {
+          uploadInProgress = false;
+          console.error(err);
+          alert("上傳功能初始化失敗，請重新整理後再試。");
+        }
       });
     }
 
@@ -209,25 +214,27 @@
       if (document.body.dataset.deleteConfirmBound === "true") return;
       document.body.dataset.deleteConfirmBound = "true";
 
-      document.addEventListener("click", function(e) {
-        const deleteBtn = e.target.closest(".photo-delete-btn");
-        if (!deleteBtn) return;
+      ["click", "touchstart"].forEach(function(evt) {
+        document.addEventListener(evt, function(e) {
+          const deleteBtn = e.target.closest(".photo-delete-btn");
+          if (!deleteBtn) return;
 
-        const form = deleteBtn.closest("form");
-        if (!form) return;
+          const form = deleteBtn.closest("form");
+          if (!form) return;
 
-        e.preventDefault();
-        e.stopPropagation();
+          e.preventDefault();
+          e.stopPropagation();
 
-        const ok = window.confirm("確定刪除這張照片？");
-        if (!ok) return;
+          const ok = window.confirm("確定刪除這張照片？");
+          if (!ok) return;
 
-        if (form.requestSubmit) {
-          form.requestSubmit();
-        } else {
-          form.submit();
-        }
-      }, true);
+          if (form.requestSubmit) {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        }, true);
+      });
     }
 
     function initAlbumPage() {
@@ -286,43 +293,56 @@
   .photo-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0);
+    background: rgba(0,0,0,0.35);
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: flex-end;
     padding: 8px;
     transition: background 0.2s;
   }
 
-  .photo-item:hover .photo-overlay {
-    background: rgba(0,0,0,0.35);
-  }
-
   .photo-caption {
     position: absolute;
-    bottom: 30px;
+    bottom: 50px;
     left: 8px;
     right: 8px;
     color: #fff;
     font-size: 11px;
-    opacity: 0;
+    opacity: 1;
+    transition: opacity 0.2s;
+    word-break: break-word;
+    line-height: 1.4;
+  }
+
+  .photo-actions {
+    display: flex;
+    gap: 6px;
+    opacity: 1;
+    width: 100%;
+    justify-content: space-between;
     transition: opacity 0.2s;
   }
 
-  .photo-item:hover .photo-caption {
-    opacity: 1;
+  .photo-delete-btn,
+  .photo-preview-btn {
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    padding: 6px 10px;
+    font-size: 14px;
+    line-height: 1;
   }
 
   .photo-delete-btn {
     background: rgba(239,68,68,0.85);
     color: #fff;
-    border: none;
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 13px;
-    cursor: pointer;
-    text-decoration: none;
+  }
+
+  .photo-preview-btn {
+    background: rgba(99,102,241,0.85);
+    color: #fff;
   }
 
   .btn-back {
@@ -334,44 +354,30 @@
     font-weight: 500;
   }
 
-  .photo-actions {
-    display: flex;
-    gap: 6px;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
+  @media (min-width: 769px) {
+    .photo-item:hover .photo-overlay {
+      background: rgba(0,0,0,0.45);
+    }
 
-  .photo-item:hover .photo-actions {
-    opacity: 1;
-  }
+    .photo-delete-btn:hover {
+      background: rgba(239,68,68,1);
+    }
 
-  .photo-preview-btn {
-    background: rgba(99,102,241,0.85);
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 13px;
-    cursor: pointer;
+    .photo-preview-btn:hover {
+      background: rgba(99,102,241,1);
+    }
   }
 
   @media (max-width: 768px) {
-    .photo-actions {
-      opacity: 1 !important;
+    .photo-delete-btn,
+    .photo-preview-btn {
+      padding: 10px 14px;
+      font-size: 18px;
     }
 
     .photo-caption {
-      opacity: 0 !important;
-    }
-
-    .photo-overlay {
-      background: rgba(0,0,0,0.25);
-    }
-
-    .photo-delete-btn,
-    .photo-preview-btn {
-      padding: 8px 12px;
-      font-size: 16px;
+      bottom: 56px;
+      font-size: 12px;
     }
   }
 </style>
