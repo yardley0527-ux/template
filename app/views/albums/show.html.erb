@@ -50,7 +50,6 @@
   <% end %>
 </div>
 
-<%# Lightbox %>
 <div id="lightbox"
      onclick="closeLightbox()"
      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:9999; align-items:center; justify-content:center;">
@@ -60,7 +59,6 @@
        style="max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 4px 32px rgba(0,0,0,0.5);">
 </div>
 
-<%# 自訂刪除確認 Modal（取代 window.confirm） %>
 <div id="delete-modal"
      style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10000; align-items:center; justify-content:center; padding:16px;">
   <div style="background:#fff; border-radius:12px; padding:24px; max-width:320px; width:100%; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
@@ -68,10 +66,12 @@
     <p style="font-size:14px; color:#6b7280; margin:0 0 20px;">這張照片刪除後無法復原。</p>
     <div style="display:flex; gap:10px; justify-content:flex-end;">
       <button id="delete-cancel-btn"
+              type="button"
               style="padding:8px 18px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:14px; cursor:pointer;">
         取消
       </button>
       <button id="delete-confirm-btn"
+              type="button"
               style="padding:8px 18px; border-radius:8px; border:none; background:#ef4444; color:#fff; font-size:14px; cursor:pointer;">
         刪除
       </button>
@@ -81,59 +81,110 @@
 
 <script>
   (function() {
-    // 使用 window 級別的變數，確保在 Turbo 切換時狀態能被追蹤
+    console.log("[album] script boot start");
+
     window.cloudinaryWidget = window.cloudinaryWidget || null;
+    window.albumDebugBound = window.albumDebugBound || false;
+
     let pendingDeleteForm = null;
     let activeUploads = 0;
+    let cloudinaryPromise = null;
 
-    // 1. 載入 Cloudinary SDK
+    function log() {
+      console.log.apply(console, ["[album]"].concat(Array.from(arguments)));
+    }
+
+    function warn() {
+      console.warn.apply(console, ["[album]"].concat(Array.from(arguments)));
+    }
+
+    function errorLog() {
+      console.error.apply(console, ["[album]"].concat(Array.from(arguments)));
+    }
+
     function loadCloudinary() {
-      if (window.cloudinary) return Promise.resolve(window.cloudinary);
-      return new Promise((resolve, reject) => {
+      log("loadCloudinary() called");
+      log("typeof window.cloudinary =", typeof window.cloudinary);
+
+      if (window.cloudinary) {
+        log("cloudinary already exists on window");
+        return Promise.resolve(window.cloudinary);
+      }
+
+      if (cloudinaryPromise) {
+        log("reusing existing cloudinaryPromise");
+        return cloudinaryPromise;
+      }
+
+      cloudinaryPromise = new Promise(function(resolve, reject) {
+        const existing = document.querySelector('script[data-cloudinary-widget="true"]');
+        log("existing script tag =", existing);
+
+        if (existing) {
+          log("found existing cloudinary script tag");
+
+          if (window.cloudinary) {
+            log("existing script + window.cloudinary already ready");
+            resolve(window.cloudinary);
+            return;
+          }
+
+          existing.addEventListener("load", function() {
+            log("existing cloudinary script load event fired");
+            log("typeof window.cloudinary after existing load =", typeof window.cloudinary);
+
+            if (window.cloudinary) {
+              resolve(window.cloudinary);
+            } else {
+              reject(new Error("Cloudinary script loaded but window.cloudinary is still undefined"));
+            }
+          });
+
+          existing.addEventListener("error", function(e) {
+            errorLog("existing cloudinary script error", e);
+            reject(new Error("Existing Cloudinary script failed to load"));
+          });
+
+          return;
+        }
+
         const script = document.createElement("script");
         script.src = "https://upload-widget.cloudinary.com/global/all.js";
         script.async = true;
-        script.onload = () => resolve(window.cloudinary);
-        script.onerror = reject;
+        script.dataset.cloudinaryWidget = "true";
+
+        log("appending new cloudinary script", script.src);
+
+        script.onload = function() {
+          log("new cloudinary script loaded");
+          log("typeof window.cloudinary after load =", typeof window.cloudinary);
+
+          if (window.cloudinary) {
+            resolve(window.cloudinary);
+          } else {
+            reject(new Error("Cloudinary script loaded but window.cloudinary not found"));
+          }
+        };
+
+        script.onerror = function(e) {
+          errorLog("new cloudinary script failed to load", e);
+          reject(new Error("Cloudinary script failed to load"));
+        };
+
         document.head.appendChild(script);
       });
-    }
 
-    // 2. 初始化 Widget (只在不存在時建立)
-    function getWidget(cloudinary) {
-      if (window.cloudinaryWidget) return window.cloudinaryWidget;
-
-      window.cloudinaryWidget = cloudinary.createUploadWidget({
-        cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
-        uploadPreset: "ml_default",
-        multiple: true,
-        maxFiles: 20,
-        language: "zh_TW",
-        sources: ["local", "camera"],
-        clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "heic"],
-        resourceType: "image"
-      }, (error, result) => {
-        if (result.event === "success") {
-          activeUploads++;
-          savePhotoToRails(result.info);
-        }
-        if (result.event === "close") {
-          const checkAndReload = () => {
-            if (activeUploads <= 0) window.location.reload();
-            else setTimeout(checkAndReload, 100);
-          };
-          checkAndReload();
-        }
-      });
-      return window.cloudinaryWidget;
+      return cloudinaryPromise;
     }
 
     function savePhotoToRails(info) {
-      fetch("<%= customer_album_photos_path(@customer, @album) %>", {
+      log("savePhotoToRails() start", info);
+
+      return fetch("<%= customer_album_photos_path(@customer, @album) %>", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
+          "X-CSRF-Token": document.querySelector('meta[name=\"csrf-token\"]')?.content || "",
           "Accept": "application/json"
         },
         body: JSON.stringify({
@@ -143,65 +194,250 @@
             caption: info.original_filename
           }
         })
-      }).finally(() => activeUploads--);
-    }
+      })
+      .then(function(response) {
+        log("savePhotoToRails response status =", response.status);
 
-    // 3. 核心：全域事件監聽 (解決視窗跳不出來的問題)
-    function bindGlobalEvents() {
-      // 避免重複綁定
-      if (window.isEventsBound) return;
-      window.isEventsBound = true;
-
-      document.addEventListener("click", function(e) {
-        // --- 處理上傳按鈕 ---
-        if (e.target.closest("#upload_btn")) {
-          e.preventDefault();
-          loadCloudinary().then(cloudinary => {
-            getWidget(cloudinary).open();
-          });
+        if (!response.ok) {
+          throw new Error("Photo save failed with status " + response.status);
         }
 
-        // --- 處理刪除按鈕 (相簿照片刪除) ---
-        const deleteBtn = e.target.closest(".photo-delete-btn");
-        if (deleteBtn) {
-          e.preventDefault();
-          pendingDeleteForm = deleteBtn.closest("form");
-          const modal = document.getElementById("delete-modal");
-          if (modal) modal.style.display = "flex";
-        }
-
-        // --- 處理 Modal 內的取消按鈕 ---
-        if (e.target.closest("#delete-cancel-btn")) {
-          document.getElementById("delete-modal").style.display = "none";
-          pendingDeleteForm = null;
-        }
-
-        // --- 處理 Modal 內的確認按鈕 ---
-        if (e.target.closest("#delete-confirm-btn")) {
-          if (pendingDeleteForm) {
-            // 這裡直接呼叫 submit，繞過傳統 confirm
-            pendingDeleteForm.submit(); 
-          }
-          document.getElementById("delete-modal").style.display = "none";
-        }
+        return response.text();
+      })
+      .then(function(text) {
+        log("savePhotoToRails success", text);
+        return text;
+      })
+      .catch(function(err) {
+        errorLog("savePhotoToRails failed", err);
+        throw err;
+      })
+      .finally(function() {
+        activeUploads--;
+        log("activeUploads after save finally =", activeUploads);
       });
     }
 
-    // 4. 啟動
-    function init() {
-      bindGlobalEvents();
-      // 預載 SDK 以提升反應速度
-      loadCloudinary().then(cloudinary => getWidget(cloudinary));
+    function getWidget(cloudinary) {
+      log("getWidget() called");
+      log("window.cloudinaryWidget exists =", !!window.cloudinaryWidget);
+
+      if (window.cloudinaryWidget) {
+        log("reusing existing widget");
+        return window.cloudinaryWidget;
+      }
+
+      log("creating new cloudinary widget");
+
+      window.cloudinaryWidget = cloudinary.createUploadWidget({
+        cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
+        uploadPreset: "ml_default",
+        multiple: true,
+        maxFiles: 20,
+        language: "zh_TW",
+        sources: ["local", "camera", "photo_library"],
+        clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "heic"],
+        resourceType: "image",
+        singleUploadAutoClose: false,
+        showCompletedButton: true
+      }, function(error, result) {
+        log("widget callback fired", { error: error, result: result });
+
+        if (error) {
+          errorLog("cloudinary widget error", error);
+          return;
+        }
+
+        if (!result) {
+          warn("widget callback result empty");
+          return;
+        }
+
+        if (result.event === "success") {
+          log("widget success event", result.info);
+          activeUploads++;
+          log("activeUploads incremented =", activeUploads);
+          savePhotoToRails(result.info);
+        }
+
+        if (result.event === "queues-end") {
+          log("widget queues-end");
+        }
+
+        if (result.event === "close") {
+          log("widget close event");
+          const checkAndReload = function() {
+            log("checkAndReload activeUploads =", activeUploads);
+            if (activeUploads <= 0) {
+              log("reloading page");
+              window.location.reload();
+            } else {
+              setTimeout(checkAndReload, 150);
+            }
+          };
+          checkAndReload();
+        }
+      });
+
+      log("widget created =", window.cloudinaryWidget);
+      return window.cloudinaryWidget;
     }
 
-    // 同時支援傳統載入與 Turbo 載入
+    function bindGlobalEvents() {
+      log("bindGlobalEvents() called");
+      log("window.albumDebugBound =", window.albumDebugBound);
+
+      if (window.albumDebugBound) {
+        log("events already bound, skip");
+        return;
+      }
+
+      window.albumDebugBound = true;
+
+      document.addEventListener("click", function(e) {
+        const uploadBtn = e.target.closest("#upload_btn");
+        const deleteBtn = e.target.closest(".photo-delete-btn");
+        const cancelBtn = e.target.closest("#delete-cancel-btn");
+        const confirmBtn = e.target.closest("#delete-confirm-btn");
+
+        if (uploadBtn) {
+          log("upload button clicked", uploadBtn);
+
+          e.preventDefault();
+
+          loadCloudinary()
+            .then(function(cloudinary) {
+              log("loadCloudinary resolved", cloudinary);
+              const widget = getWidget(cloudinary);
+              log("widget before open =", widget);
+
+              if (!widget) {
+                throw new Error("Widget is null");
+              }
+
+              if (typeof widget.open !== "function") {
+                throw new Error("widget.open is not a function");
+              }
+
+              widget.open();
+              log("widget.open() called successfully");
+            })
+            .catch(function(err) {
+              errorLog("upload flow failed", err);
+              alert("上傳功能初始化失敗，請打開 Console 查看 [album] 訊息。");
+            });
+
+          return;
+        }
+
+        if (deleteBtn) {
+          log("delete button clicked", deleteBtn);
+          e.preventDefault();
+
+          pendingDeleteForm = deleteBtn.closest("form");
+          log("pendingDeleteForm =", pendingDeleteForm);
+
+          const modal = document.getElementById("delete-modal");
+          log("delete modal =", modal);
+
+          if (modal) {
+            modal.style.display = "flex";
+          } else {
+            warn("delete modal not found");
+          }
+
+          return;
+        }
+
+        if (cancelBtn) {
+          log("delete cancel clicked");
+          const modal = document.getElementById("delete-modal");
+          if (modal) modal.style.display = "none";
+          pendingDeleteForm = null;
+          return;
+        }
+
+        if (confirmBtn) {
+          log("delete confirm clicked");
+          if (pendingDeleteForm) {
+            log("submitting delete form", pendingDeleteForm);
+            pendingDeleteForm.submit();
+          } else {
+            warn("pendingDeleteForm is null");
+          }
+
+          const modal = document.getElementById("delete-modal");
+          if (modal) modal.style.display = "none";
+        }
+      }, true);
+
+      log("document click listener bound");
+    }
+
+    function init() {
+      log("init() start");
+      log("document.readyState =", document.readyState);
+      log("upload_btn =", document.getElementById("upload_btn"));
+      log("typeof window.cloudinary before preload =", typeof window.cloudinary);
+
+      bindGlobalEvents();
+
+      loadCloudinary()
+        .then(function(cloudinary) {
+          log("preload cloudinary success", cloudinary);
+          getWidget(cloudinary);
+        })
+        .catch(function(err) {
+          errorLog("preload cloudinary failed", err);
+        });
+
+      log("init() end");
+    }
+
+    window.openLightbox = function(url, caption) {
+      log("openLightbox()", url, caption);
+
+      const lb = document.getElementById("lightbox");
+      const img = document.getElementById("lightbox-img");
+
+      if (!lb || !img) {
+        warn("lightbox elements missing", { lb: lb, img: img });
+        return;
+      }
+
+      img.src = url;
+      img.alt = caption || "";
+      lb.style.display = "flex";
+    };
+
+    window.closeLightbox = function() {
+      log("closeLightbox()");
+
+      const lb = document.getElementById("lightbox");
+      if (lb) lb.style.display = "none";
+    };
+
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") {
+        log("Escape pressed, close lightbox");
+        window.closeLightbox();
+      }
+    });
+
     if (document.readyState === "loading") {
+      log("document still loading, wait DOMContentLoaded");
       document.addEventListener("DOMContentLoaded", init);
     } else {
+      log("document already ready, init immediately");
       init();
     }
-    document.addEventListener("turbo:load", init);
 
+    document.addEventListener("turbo:load", function() {
+      log("turbo:load fired");
+      init();
+    });
+
+    log("script boot end");
   })();
 </script>
 
@@ -230,44 +466,35 @@
   .photo-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0,0,0,0);
+    background: rgba(0,0,0,0.35);
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: space-between;
     align-items: flex-end;
     padding: 8px;
     transition: background 0.2s;
   }
 
-  .photo-item:hover .photo-overlay {
-    background: rgba(0,0,0,0.35);
-  }
-
   .photo-caption {
     position: absolute;
-    bottom: 36px;
+    bottom: 50px;
     left: 8px;
     right: 8px;
     color: #fff;
     font-size: 11px;
-    opacity: 0;
+    opacity: 1;
     transition: opacity 0.2s;
     word-break: break-word;
-  }
-
-  .photo-item:hover .photo-caption {
-    opacity: 1;
+    line-height: 1.4;
   }
 
   .photo-actions {
     display: flex;
     gap: 6px;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  .photo-item:hover .photo-actions {
     opacity: 1;
+    width: 100%;
+    justify-content: space-between;
+    transition: opacity 0.2s;
   }
 
   .photo-delete-btn,
@@ -275,8 +502,9 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    padding: 4px 8px;
-    font-size: 13px;
+    text-decoration: none;
+    padding: 6px 10px;
+    font-size: 14px;
     line-height: 1;
   }
 
@@ -299,20 +527,30 @@
     font-weight: 500;
   }
 
+  @media (min-width: 769px) {
+    .photo-item:hover .photo-overlay {
+      background: rgba(0,0,0,0.45);
+    }
+
+    .photo-delete-btn:hover {
+      background: rgba(239,68,68,1);
+    }
+
+    .photo-preview-btn:hover {
+      background: rgba(99,102,241,1);
+    }
+  }
 
   @media (max-width: 768px) {
-    .photo-actions {
-      opacity: 1 !important;
-    }
-
-    .photo-overlay {
-      background: rgba(0,0,0,0.25) !important;
-    }
-
     .photo-delete-btn,
     .photo-preview-btn {
-      padding: 8px 12px;
-      font-size: 16px;
+      padding: 10px 14px;
+      font-size: 18px;
+    }
+
+    .photo-caption {
+      bottom: 56px;
+      font-size: 12px;
     }
   }
 </style>
