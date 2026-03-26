@@ -169,11 +169,11 @@
 
           if (result.event === "queues-end") {
             uploadInProgress = false;
-            window.location.reload();
           }
 
           if (result.event === "close") {
             uploadInProgress = false;
+            window.location.reload();
           }
         });
 
@@ -356,9 +356,12 @@
   }
 
   @media (max-width: 768px) {
-    .photo-actions,
-    .photo-caption {
+    .photo-actions {
       opacity: 1 !important;
+    }
+
+    .photo-caption {
+      opacity: 0 !important;
     }
 
     .photo-overlay {

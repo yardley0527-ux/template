@@ -5,9 +5,9 @@ class PhotosController < ApplicationController
   def create
     @photo = @album.photos.build(photo_params)
     if @photo.save
-      redirect_to customer_album_path(@customer, @album), notice: "照片已上傳"
+      render json: { message: "照片已上傳" }, status: :created
     else
-      redirect_to customer_album_path(@customer, @album), alert: "上傳失敗"
+      render json: { message: "上傳失敗", errors: @photo.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
