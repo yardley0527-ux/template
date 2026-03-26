@@ -81,201 +81,127 @@
 
 <script>
   (function() {
-    let uploadWidget = null;
-    let cloudinaryScriptPromise = null;
+    // 使用 window 級別的變數，確保在 Turbo 切換時狀態能被追蹤
+    window.cloudinaryWidget = window.cloudinaryWidget || null;
     let pendingDeleteForm = null;
+    let activeUploads = 0;
 
-    // ─── Cloudinary Script Loader ────────────────────────────────
-    function loadCloudinaryScript() {
+    // 1. 載入 Cloudinary SDK
+    function loadCloudinary() {
       if (window.cloudinary) return Promise.resolve(window.cloudinary);
-      if (cloudinaryScriptPromise) return cloudinaryScriptPromise;
-
-      cloudinaryScriptPromise = new Promise(function(resolve, reject) {
-        var script = document.createElement("script");
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
         script.src = "https://upload-widget.cloudinary.com/global/all.js";
         script.async = true;
-        script.onload = function() {
-          window.cloudinary ? resolve(window.cloudinary) : reject(new Error("cloudinary not found"));
-        };
-        script.onerror = function() {
-          reject(new Error("Cloudinary script failed to load"));
-        };
+        script.onload = () => resolve(window.cloudinary);
+        script.onerror = reject;
         document.head.appendChild(script);
       });
-
-      return cloudinaryScriptPromise;
     }
 
-    // ─── Widget Builder ──────────────────────────────────────────
-    function buildWidget(cloudinary) {
-      return cloudinary.createUploadWidget(
-        {
-          cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
-          uploadPreset: "ml_default",
-          multiple: true,
-          maxFiles: 20,
-          sources: ["local", "camera"],
-          language: "zh_TW",
-          clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "heic"],
-          maxImageFileSize: 10000000,
-          resourceType: "image",
-          singleUploadAutoClose: false,
-          showCompletedButton: true
+    // 2. 初始化 Widget (只在不存在時建立)
+    function getWidget(cloudinary) {
+      if (window.cloudinaryWidget) return window.cloudinaryWidget;
+
+      window.cloudinaryWidget = cloudinary.createUploadWidget({
+        cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
+        uploadPreset: "ml_default",
+        multiple: true,
+        maxFiles: 20,
+        language: "zh_TW",
+        sources: ["local", "camera"],
+        clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "heic"],
+        resourceType: "image"
+      }, (error, result) => {
+        if (result.event === "success") {
+          activeUploads++;
+          savePhotoToRails(result.info);
+        }
+        if (result.event === "close") {
+          const checkAndReload = () => {
+            if (activeUploads <= 0) window.location.reload();
+            else setTimeout(checkAndReload, 100);
+          };
+          checkAndReload();
+        }
+      });
+      return window.cloudinaryWidget;
+    }
+
+    function savePhotoToRails(info) {
+      fetch("<%= customer_album_photos_path(@customer, @album) %>", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content,
+          "Accept": "application/json"
         },
-        function(error, result) {
-          if (error) {
-            console.error("Cloudinary widget error:", error);
-            alert("上傳元件載入失敗，請稍後再試。");
-            return;
+        body: JSON.stringify({
+          photo: {
+            cloudinary_public_id: info.public_id,
+            url: info.secure_url,
+            caption: info.original_filename
           }
-          if (!result) return;
-
-          if (result.event === "success") {
-            var info = result.info;
-            fetch("<%= customer_album_photos_path(@customer, @album) %>", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "X-CSRF-Token": (document.querySelector('meta[name="csrf-token"]') || {}).content || "",
-                "Accept": "application/json"
-              },
-              body: JSON.stringify({
-                photo: {
-                  cloudinary_public_id: info.public_id,
-                  url: info.secure_url,
-                  caption: info.original_filename
-                }
-              })
-            })
-            .then(function(res) {
-              if (!res.ok) throw new Error("Photo save failed");
-            })
-            .catch(function(err) {
-              console.error(err);
-              alert("照片已上傳到雲端，但寫入相簿失敗，請重新整理後確認。");
-            });
-          }
-
-          if (result.event === "close") {
-            window.location.reload();
-          }
-        }
-      );
-    }
-
-    // ─── 關鍵：頁面載入就提前建好 widget ────────────────────────
-    // 讓點擊時可以同步呼叫 widget.open()，避免 iOS Safari 封鎖 popup
-    function preloadWidget() {
-      loadCloudinaryScript()
-        .then(function(cloudinary) {
-          uploadWidget = buildWidget(cloudinary);
         })
-        .catch(function(err) {
-          console.warn("Cloudinary preload failed:", err);
-        });
+      }).finally(() => activeUploads--);
     }
 
-    // ─── 上傳按鈕 ────────────────────────────────────────────────
-    function bindUploadButton() {
-      var btn = document.getElementById("upload_btn");
-      if (!btn || btn.dataset.bound === "true") return;
-      btn.dataset.bound = "true";
+    // 3. 核心：全域事件監聽 (解決視窗跳不出來的問題)
+    function bindGlobalEvents() {
+      // 避免重複綁定
+      if (window.isEventsBound) return;
+      window.isEventsBound = true;
 
-      btn.addEventListener("click", function() {
-        if (uploadWidget) {
-          // widget 已就緒 → 同步開啟，手機不會被封鎖
-          uploadWidget.open();
-        } else {
-          // 備援：preload 還沒完成時才走這條
-          loadCloudinaryScript()
-            .then(function(cloudinary) {
-              if (!uploadWidget) uploadWidget = buildWidget(cloudinary);
-              uploadWidget.open();
-            })
-            .catch(function() {
-              alert("上傳功能初始化失敗，請重新整理後再試。");
-            });
-        }
-      });
-    }
-
-    // ─── 自訂刪除 Modal ──────────────────────────────────────────
-    function bindDeleteModal() {
-      if (document.body.dataset.deleteModalBound === "true") return;
-      document.body.dataset.deleteModalBound = "true";
-
-      var modal = document.getElementById("delete-modal");
-      var confirmBtn = document.getElementById("delete-confirm-btn");
-      var cancelBtn = document.getElementById("delete-cancel-btn");
-
-      // 攔截刪除按鈕
       document.addEventListener("click", function(e) {
-        var deleteBtn = e.target.closest(".photo-delete-btn");
-        if (!deleteBtn) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        pendingDeleteForm = deleteBtn.closest("form");
-        modal.style.display = "flex";
-      }, true);
-
-      // 確認刪除
-      confirmBtn.addEventListener("click", function() {
-        modal.style.display = "none";
-        if (!pendingDeleteForm) return;
-
-        if (typeof pendingDeleteForm.requestSubmit === "function") {
-          pendingDeleteForm.requestSubmit();
-        } else {
-          pendingDeleteForm.submit();
+        // --- 處理上傳按鈕 ---
+        if (e.target.closest("#upload_btn")) {
+          e.preventDefault();
+          loadCloudinary().then(cloudinary => {
+            getWidget(cloudinary).open();
+          });
         }
-        pendingDeleteForm = null;
-      });
 
-      // 取消
-      cancelBtn.addEventListener("click", function() {
-        modal.style.display = "none";
-        pendingDeleteForm = null;
-      });
+        // --- 處理刪除按鈕 (相簿照片刪除) ---
+        const deleteBtn = e.target.closest(".photo-delete-btn");
+        if (deleteBtn) {
+          e.preventDefault();
+          pendingDeleteForm = deleteBtn.closest("form");
+          const modal = document.getElementById("delete-modal");
+          if (modal) modal.style.display = "flex";
+        }
 
-      // 點背景關閉
-      modal.addEventListener("click", function(e) {
-        if (e.target === modal) {
-          modal.style.display = "none";
+        // --- 處理 Modal 內的取消按鈕 ---
+        if (e.target.closest("#delete-cancel-btn")) {
+          document.getElementById("delete-modal").style.display = "none";
           pendingDeleteForm = null;
         }
+
+        // --- 處理 Modal 內的確認按鈕 ---
+        if (e.target.closest("#delete-confirm-btn")) {
+          if (pendingDeleteForm) {
+            // 這裡直接呼叫 submit，繞過傳統 confirm
+            pendingDeleteForm.submit(); 
+          }
+          document.getElementById("delete-modal").style.display = "none";
+        }
       });
     }
 
-    // ─── Lightbox ────────────────────────────────────────────────
-    window.openLightbox = function(url, caption) {
-      var lb = document.getElementById("lightbox");
-      var img = document.getElementById("lightbox-img");
-      if (!lb || !img) return;
-      img.src = url;
-      img.alt = caption || "";
-      lb.style.display = "flex";
-    };
-
-    window.closeLightbox = function() {
-      var lb = document.getElementById("lightbox");
-      if (lb) lb.style.display = "none";
-    };
-
-    document.addEventListener("keydown", function(e) {
-      if (e.key === "Escape") window.closeLightbox();
-    });
-
-    // ─── Init ────────────────────────────────────────────────────
+    // 4. 啟動
     function init() {
-      preloadWidget();
-      bindUploadButton();
-      bindDeleteModal();
+      bindGlobalEvents();
+      // 預載 SDK 以提升反應速度
+      loadCloudinary().then(cloudinary => getWidget(cloudinary));
     }
 
-    document.addEventListener("DOMContentLoaded", init);
+    // 同時支援傳統載入與 Turbo 載入
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
     document.addEventListener("turbo:load", init);
+
   })();
 </script>
 
