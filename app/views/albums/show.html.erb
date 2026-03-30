@@ -230,7 +230,7 @@
       log("creating new cloudinary widget");
 
       window.cloudinaryWidget = cloudinary.createUploadWidget({
-        cloudName: "<%= Rails.application.credentials.dig(:cloudinary, :cloud_name) %>",
+        cloudName: "<%= ENV['CLOUDINARY_CLOUD_NAME'] %>",
         uploadPreset: "ml_default",
         multiple: true,
         maxFiles: 20,
