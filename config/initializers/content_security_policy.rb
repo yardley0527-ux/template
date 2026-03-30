@@ -8,13 +8,13 @@ Rails.application.config.content_security_policy do |policy|
   policy.style_src   :self, :https, :unsafe_inline
 
   policy.script_src  :self, :https,
-                     "https://upload-widget.cloudinary.com"
+                     "https://upload-widget.cloudinary.com",
+                     :unsafe_inline
 
   policy.connect_src :self, :https,
                      "https://api.cloudinary.com",
                      "https://res.cloudinary.com",
                      "https://upload-widget.cloudinary.com"
 
-  # ⬇️ 這行最關鍵，Widget 是用 iframe 渲染的
   policy.frame_src   "https://upload-widget.cloudinary.com"
 end
