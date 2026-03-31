@@ -99,7 +99,7 @@
             <table class="table table-bordered table-hover table-striped w-100">
               <thead class="bg-primary-600">
                 <tr>
-                  <th class="text-center">培訓</th>
+                  <th class="text-center">品牌</th>
                   <th>姓名</th>
                   <th>生日</th>
                   <th>城市</th>
@@ -117,8 +117,13 @@
                 <% @customers.each do |c| %>
                   <tr>
                     <td data-label="品牌大使" class="text-center">
-                      <%# 修正：確保即使 profile 不存在也不會影響 layout %>
-                      <%= (c.customer_profile&.brand_ambassador_training? ? "✅" : "—") %>
+                      <% if c.customer_profile&.brand_ambassador_blacklisted? %>
+                        ❌
+                      <% elsif c.customer_profile&.brand_ambassador_training? %>
+                        ✅
+                      <% else %>
+                        —
+                      <% end %>
                     </td>
                     <td data-label="姓名">
                       <div class="fw-500">
