@@ -2,7 +2,10 @@
   <h1 class="subheader-title">
     <i class="subheader-icon fal fa-chart-bar"></i>
     會員卡別統計
-    <small>Membership Stats</small>
+    <% total_members = @total_by_level.values.sum %>
+    <small>
+      Membership Stats ｜總會員數：<%= total_members %> 人
+    </small>
   </h1>
   <div class="subheader-block">
     <%= link_to "← 回客人列表", customers_path, class: "btn btn-outline-secondary btn-sm" %>
