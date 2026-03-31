@@ -22,8 +22,9 @@ class CustomersController < ApplicationController
     @brand_ambassador = params[:brand_ambassador].to_s.strip
     @big_first_filter = params[:big_first].to_s.strip
 
-    @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level).compact.sort
-
+    @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level)
+                       .map { |l| l.presence || "非會員" }
+                       .uniq.sort
     @page = params[:page].to_i
     @page = 1 if @page <= 0
     @page = MAX_PAGE if @page > MAX_PAGE
@@ -50,7 +51,14 @@ class CustomersController < ApplicationController
     end
 
     scope = scope.where("city ILIKE ?", "%#{@city}%")                           if @city.present?
-    scope = scope.where(membership_level: @membership_level)                    if @membership_level.present?
+    scope = scope.where(membership_level: @membership_level)                    
+    if @membership_level.present?
+      if @membership_level == "非會員"
+        scope = scope.where(membership_level: [nil, ""])
+      else
+        scope = scope.where(membership_level: @membership_level)
+      end
+    end
     scope = scope.where("current_shopping_credits >= ?", @min_credits)          if @min_credits
     scope = scope.where("EXTRACT(MONTH FROM birthdate) = ?", @birth_month.to_i) if @birth_month.present?
     scope = scope.where(age_group_sql(@age_group))                              if @age_group.present?
@@ -180,10 +188,9 @@ class CustomersController < ApplicationController
   end
 
   def stats
-    @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員]
+    @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員 非會員]
 
     customers = ShoplineCustomer
-      .where.not(membership_level: [nil, ""])
       .select(:membership_level, :city, :birthdate)
 
     @total_by_level    = Hash.new(0)
@@ -195,7 +202,7 @@ class CustomersController < ApplicationController
     @personal_year_stats = Hash.new { |h, k| h[k] = Hash.new(0) }
 
     customers.each do |c|
-      lvl = c.membership_level
+      lvl = c.membership_level.presence || "非會員"
       @total_by_level[lvl] += 1
       @city_stats[lvl][c.city] += 1 if c.city.present?
 
