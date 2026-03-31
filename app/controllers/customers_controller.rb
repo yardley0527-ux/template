@@ -234,7 +234,7 @@ class CustomersController < ApplicationController
   private
 
   def profile_params
-    params.require(:customer_profile).permit(:brand_ambassador_training, :notes, :health_profile)
+    params.require(:customer_profile).permit(:brand_ambassador_training, :brand_ambassador_blacklisted, :notes, :health_profile)
   end
 
   def age_group_sql(group)

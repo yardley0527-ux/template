@@ -66,13 +66,27 @@
     <h2 class="section-title">📝 備註與培訓</h2>
     <div class="customer-info-card" style="flex-direction:column; gap:12px;">
 
-      <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-weight:600; font-size:14px;">品牌大使培訓</span>
-        <% if @profile.brand_ambassador_training? %>
-          <span style="color:#10b981; font-weight:700;">✅ </span>
-        <% else %>
-          <span style="color:#9ca3af;">—</span>
-        <% end %>
+      <div style="display:flex; gap:24px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-weight:600; font-size:14px;">品牌大使培訓</span>
+          <% if @profile.brand_ambassador_training? %>
+            <span style="color:#10b981; font-weight:700;">✅</span>
+          <% else %>
+            <span style="color:#9ca3af;">—</span>
+          <% end %>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-weight:600; font-size:14px;">品牌大使黑名單</span>
+          <% if @profile.brand_ambassador_blacklisted? %>
+            <span style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca;
+                        font-size:12px; font-weight:600; padding:2px 10px; border-radius:99px;">
+              🚫 已列入黑名單
+            </span>
+          <% else %>
+            <span style="color:#9ca3af;">—</span>
+          <% end %>
+        </div>
       </div>
 
       <div>
@@ -85,9 +99,9 @@
       <div>
         <%= link_to "✏️ 編輯備註", edit_customer_path(@customer, section: "notes"), class: "btn btn-outline-secondary btn-sm" %>
       </div>
-
     </div>
   </section>
+
 
   <section class="section">
     <h2 class="section-title">🩺 健康資料</h2>
@@ -199,7 +213,7 @@
       <p class="empty-state">尚無訂單紀錄</p>
     <% else %>
       <%# 桌機版表格 %>
-      <div class="orders-table-wrap d-none d-md-block">
+      <div class="orders-table-wrap">
         <table class="orders-table">
           <thead>
             <tr>
@@ -208,7 +222,6 @@
               <th>產品名稱</th>
               <th>數量</th>
               <th>金額</th>
-              <th>付款狀態</th>
             </tr>
           </thead>
           <tbody>
@@ -219,37 +232,11 @@
                 <td><%= order.product_name.presence || "—" %></td>
                 <td><%= order.quantity %></td>
                 <td>NT$ <%= number_with_delimiter(order.total_amount.to_i) %></td>
-                <td>
-                  <span class="status-badge payment-<%= order.payment_status.to_s.parameterize %>">
-                    <%= order.payment_status.presence || "—" %>
-                  </span>
-                </td>
               </tr>
             <% end %>
           </tbody>
         </table>
-      </div>
-
-      <%# 手機版卡片 %>
-      <div class="order-cards d-md-none">
-        <% @orders.each do |order| %>
-          <div class="order-card">
-            <div class="order-card-header">
-              <span class="order-card-date"><%= order.order_date&.strftime("%Y/%m/%d") || "—" %></span>
-              <span class="order-card-number"><%= order.order_number %></span>
-            </div>
-            <div class="order-card-product"><%= order.product_name.presence || "—" %></div>
-            <div class="order-card-footer">
-              <span class="order-card-amount">NT$ <%= number_with_delimiter(order.total_amount.to_i) %></span>
-              <div class="order-card-badges">
-                <span class="status-badge payment-<%= order.payment_status.to_s.parameterize %>">
-                  <%= order.payment_status.presence || "—" %>
-                </span>
-              </div>
-            </div>
-          </div>
-        <% end %>
-      </div>
+      </div>      
     <% end %>
   </section>
 
@@ -347,8 +334,6 @@
   }
 
   .stat-value.credit { color: #10b981; }
-  .stat-value.point  { color: #f59e0b; }
-
   .section { margin-bottom: 40px; }
 
   .section-title {
@@ -490,16 +475,6 @@
 
   .order-number { font-family: monospace; font-size: 12px; color: #6b7280; }
 
-  .status-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-size: 11px;
-    font-weight: 600;
-    background: #f3f4f6;
-    color: #374151;
-  }
-
   .stock-status {
     margin: 8px 0;
     display: flex;
@@ -592,59 +567,4 @@
     }
   }
 
-  .order-cards {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .order-card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.05);
-  }
-
-  .order-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 6px;
-  }
-
-  .order-card-date {
-    font-size: 12px;
-    color: #9ca3af;
-  }
-
-  .order-card-number {
-    font-family: monospace;
-    font-size: 11px;
-    color: #9ca3af;
-  }
-
-  .order-card-product {
-    font-size: 15px;
-    font-weight: 600;
-    color: #111827;
-    margin-bottom: 10px;
-  }
-
-  .order-card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .order-card-amount {
-    font-size: 15px;
-    font-weight: 700;
-    color: #111827;
-  }
-
-  .order-card-badges {
-    display: flex;
-    gap: 6px;
-  }
 </style>
