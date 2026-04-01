@@ -51,7 +51,6 @@ class CustomersController < ApplicationController
     end
 
     scope = scope.where("city ILIKE ?", "%#{@city}%")                           if @city.present?
-    scope = scope.where(membership_level: @membership_level)                    
     if @membership_level.present?
       if @membership_level == "非會員"
         scope = scope.where(membership_level: [nil, ""])
