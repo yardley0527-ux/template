@@ -10,6 +10,7 @@ class ProductsController < ApplicationController
 
     @years = YEARS
     @top_by_year = @years.index_with { |y| top_products_for_year(y, q: @q, sort: @sort, limit: 10, combo: @combo) }
+    @order_counts_by_year = ShoplineOrder.group(:source_year).count.sort.reverse.to_h
 
     @buyer_stats_by_year = @years.index_with do |y|
       names = @top_by_year[y].map(&:product_name)

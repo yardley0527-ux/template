@@ -92,8 +92,7 @@ module Importing
               year: @source_year,
               month: month,
               sheet: sheet_name,
-              row: row_i,
-              payload: payload
+              row: row_i
             )
           )
 

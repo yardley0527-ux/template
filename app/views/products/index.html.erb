@@ -47,6 +47,12 @@
   </div>
 </div>
 
+<div class="order-counts">
+  <% @order_counts_by_year.each do |year, count| %>
+    <span><%= year %> 年：<%= number_with_delimiter(count) %> 筆</span>
+  <% end %>
+</div>
+
 <div class="row">
   <% @years.each do |year| %>
     <% rows = @top_by_year[year] || [] %>
