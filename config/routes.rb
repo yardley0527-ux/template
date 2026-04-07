@@ -2,6 +2,8 @@ Rails.application.routes.draw do
   devise_for :users, skip: [:registrations], controllers: { sessions: 'users/sessions' }
 
   root 'welcome#index'
+  get "/api/birthday_customers", to: "welcome#birthday_customers"
+
 
   resources :products, only: [:index, :show], param: :id
   resources :customers, only: [:index, :show] do

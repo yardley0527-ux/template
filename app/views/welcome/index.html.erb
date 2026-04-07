@@ -1,3 +1,99 @@
 <%= image_tag "smartadmin/demo/avatars/封面照.jpg", 
     alt: "封面照", 
     style: "width: 100%; height: auto; display: block;" %>
+
+
+<div id="birthday-overlay" style="display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.5); z-index:9999;
+  align-items:center; justify-content:center;">
+  <div id="birthday-modal" style="background:#fff; border-radius:12px;
+    width:440px; max-width:95vw; overflow:hidden; font-family:sans-serif;">
+    <div style="background:#3C3489; padding:20px 24px;">
+      <div style="color:#CECBF6; font-size:18px; font-weight:500;">
+        🎂 本週壽星
+      </div>
+      <div id="bd-today-date" style="color:#AFA9EC; font-size:13px; margin-top:4px;"></div>
+    </div>
+    <div style="padding:16px 24px 20px;">
+      <div id="bd-list" style="max-height:400px; overflow-y:auto; padding-right:4px;"></div>
+      <button onclick="closeBirthdayModal()"
+        style="margin-top:16px; width:100%; padding:10px;
+          border:none; border-radius:8px; background:#3C3489;
+          color:#fff; font-size:14px; cursor:pointer;">
+        關閉
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var overlay = document.getElementById('birthday-overlay');
+  var listEl  = document.getElementById('bd-list');
+  var dateEl  = document.getElementById('bd-today-date');
+
+  var today = new Date();
+  dateEl.textContent = today.toLocaleDateString('zh-TW',
+    { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+
+  overlay.style.display = 'flex';
+
+  var days = ['日','一','二','三','四','五','六'];
+  function dayLabel(bd) {
+    var parts = bd.split('/');
+    var m = parseInt(parts[0]), d = parseInt(parts[1]);
+    return '週' + days[new Date(today.getFullYear(), m-1, d).getDay()];
+  }
+
+  fetch('/api/birthday_customers')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var order = { '黑卡': 1, '金卡': 2, '銀卡': 3, '白卡': 4, '一般會員': 5 };
+      data.sort(function(a, b) {
+        var ao = order[a.membership_level] || 99;
+        var bo = order[b.membership_level] || 99;
+        return ao - bo;
+      });
+
+      if (!data.length) {
+        listEl.innerHTML = '<p style="color:#888;font-size:14px;">本週沒有壽星 🎉</p>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < data.length; i++) {
+        var c   = data[i];
+        var bg  = c.is_today ? '#EEEDFE' : '#F5F5F3';
+        var avBg = c.is_today ? '#7F77DD' : '#B4B2A9';
+        var initial = (c.full_name || '?')[0];
+        var todayBadge = c.is_today
+          ? '<span style="font-size:11px;background:#7F77DD;color:#fff;border-radius:4px;padding:1px 6px;margin-left:4px;">今天</span>'
+          : '';
+        var phone = c.mobile_phone ? ' · ' + c.mobile_phone : '';
+        var levelColors = {
+          '黑卡': 'background:#2C2C2A;color:#D3D1C7',
+          '金卡': 'background:#FAC775;color:#412402',
+          '銀卡': 'background:#D3D1C7;color:#2C2C2A',
+          '白卡': 'background:#F1EFE8;color:#5F5E5A',
+          '一般會員': 'background:#EEEDFE;color:#534AB7'
+        };
+        var levelStyle = c.membership_level
+          ? (levelColors[c.membership_level] || 'background:#EEEDFE;color:#534AB7')
+          : '';
+        var levelBadge = c.membership_level
+          ? '<div style="font-size:11px;border-radius:4px;padding:2px 8px;' + levelStyle + '">' + c.membership_level + '</div>'
+          : '';
+
+        html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;margin-bottom:6px;background:' + bg + ';">'
+          + '<div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#fff;">' + initial + '</div>'
+          + '<div style="flex:1;">'
+          +   '<div style="font-size:14px;font-weight:500;color:#26215C;">' + c.full_name + todayBadge + '</div>'
+          +   '<div style="font-size:12px;color:#888;margin-top:2px;">' + c.birthday + ' ' + dayLabel(c.birthday) + phone + '</div>'
+          + '</div>'
+          + levelBadge
+          + '</div>';
+      }
+      listEl.innerHTML = html;
+    })
+    .catch(function() { listEl.textContent = '載入失敗，請重整頁面'; });
+})();
+</script>
