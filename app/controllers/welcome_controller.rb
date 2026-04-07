@@ -16,7 +16,7 @@ class WelcomeController < ApplicationController
       .where.not(birthdate: nil)
       .where(conditions)
       .select(:id, :full_name, :mobile_phone, :phone,
-              :birthdate, :membership_level)
+              :birthdate, :membership_level,:instagram_account)
       .order(Arel.sql(
         "EXTRACT(month FROM birthdate), EXTRACT(day FROM birthdate)"
       ))
