@@ -102,7 +102,6 @@
     </div>
   </section>
 
-
   <section class="section">
     <h2 class="section-title">🩺 健康資料</h2>
     <div class="customer-info-card" style="flex-direction:column; gap:12px;">
@@ -119,6 +118,59 @@
       </div>
 
     </div>
+  </section>
+
+  <%# === 訂單歷史 === %>
+  <section class="section" id="orders-section">
+    <h2 class="section-title">📋 歷史訂單（<%= @orders_total %> 筆）</h2>
+
+    <% if @orders_total == 0 %>
+      <p class="empty-state">尚無訂單紀錄</p>
+    <% else %>
+      <div class="orders-table-wrap">
+        <table class="orders-table">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>訂單號</th>
+              <th>產品名稱</th>
+              <th>數量</th>
+              <th>金額</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @orders.each do |order| %>
+              <tr>
+                <td><%= order.order_date&.strftime("%Y/%m/%d") || "—" %></td>
+                <td class="order-number"><%= order.order_number %></td>
+                <td><%= order.product_name.presence || "—" %></td>
+                <td><%= order.quantity %></td>
+                <td>NT$ <%= number_with_delimiter(order.total_amount.to_i) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <% if @orders_pages > 1 %>
+        <div style="display:flex; align-items:center; justify-content:space-between;
+          margin-top:12px; font-size:13px; color:#6b7280;">
+          <span>第 <%= @orders_page %> 頁，共 <%= @orders_pages %> 頁</span>
+          <div style="display:flex; gap:8px;">
+            <% if @orders_page > 1 %>
+              <%= link_to "← 上一頁", customer_path(@customer, orders_page: @orders_page - 1, anchor: "orders-section"),
+                style: "padding:5px 14px; border:1px solid #e5e7eb; border-radius:6px;
+                  background:#fff; font-size:13px; text-decoration:none; color:#374151;" %>
+            <% end %>
+            <% if @orders_page < @orders_pages %>
+              <%= link_to "下一頁 →", customer_path(@customer, orders_page: @orders_page + 1, anchor: "orders-section"),
+                style: "padding:5px 14px; border:1px solid #e5e7eb; border-radius:6px;
+                  background:#fff; font-size:13px; text-decoration:none; color:#374151;" %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
   </section>
 
   <%# === 產品分析 === %>
@@ -205,40 +257,6 @@
     <% end %>
   </section>
 
-  <%# === 訂單歷史 === %>
-  <section class="section">
-    <h2 class="section-title">📋 歷史訂單（<%= @orders.count %> 筆）</h2>
-
-    <% if @orders.empty? %>
-      <p class="empty-state">尚無訂單紀錄</p>
-    <% else %>
-      <%# 桌機版表格 %>
-      <div class="orders-table-wrap">
-        <table class="orders-table">
-          <thead>
-            <tr>
-              <th>日期</th>
-              <th>訂單號</th>
-              <th>產品名稱</th>
-              <th>數量</th>
-              <th>金額</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @orders.each do |order| %>
-              <tr>
-                <td><%= order.order_date&.strftime("%Y/%m/%d") || "—" %></td>
-                <td class="order-number"><%= order.order_number %></td>
-                <td><%= order.product_name.presence || "—" %></td>
-                <td><%= order.quantity %></td>
-                <td>NT$ <%= number_with_delimiter(order.total_amount.to_i) %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>      
-    <% end %>
-  </section>
 
 </div>
 

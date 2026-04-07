@@ -5,7 +5,6 @@ class CustomersController < ApplicationController
   MAX_PAGE = 200
 
   AGE_GROUP_ORDER = ["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
-
   ZODIAC_ORDER    = %w[牡羊 金牛 雙子 巨蟹 獅子 處女 天秤 天蠍 射手 摩羯 水瓶 雙魚].freeze
 
   def index
@@ -179,11 +178,22 @@ class CustomersController < ApplicationController
   def show
     @customer = ShoplineCustomer.find(params[:id])
     @profile  = @customer.customer_profile || @customer.build_customer_profile
-    @orders   = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
-    @product_analysis = analyze_products(@orders)
-    @life_path = @customer.birthdate.present? ? life_path_number(@customer.birthdate) : nil
+
+    @orders_page  = [params[:orders_page].to_i, 1].max
+    @orders_total = ShoplineOrder.where(email: @customer.email).count
+    @orders_pages = (@orders_total.to_f / 30).ceil
+    @orders       = ShoplineOrder.where(email: @customer.email)
+                      .order(order_date: :desc)
+                      .offset((@orders_page - 1) * 30)
+                      .limit(30)
+
+    # analyze_products 需要全部訂單，另外撈
+    all_orders = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
+    @product_analysis = analyze_products(all_orders)
+
+    @life_path     = @customer.birthdate.present? ? life_path_number(@customer.birthdate) : nil
     @personal_year = @customer.birthdate.present? ? personal_year_number(@customer.birthdate) : nil
-    @zodiac_sign = @customer.birthdate.present? ? zodiac_sign(@customer.birthdate) : nil
+    @zodiac_sign   = @customer.birthdate.present? ? zodiac_sign(@customer.birthdate) : nil
   end
 
   def stats
