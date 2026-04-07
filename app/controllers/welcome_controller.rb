@@ -15,7 +15,7 @@ class WelcomeController < ApplicationController
     customers = ShoplineCustomer
       .where.not(birthdate: nil)
       .where(conditions)
-      .select(:id, :full_name, :mobile_phone, :phone,
+      .select(:id, :full_name,
               :birthdate, :membership_level,:instagram_account)
       .order(Arel.sql(
         "EXTRACT(month FROM birthdate), EXTRACT(day FROM birthdate)"
@@ -25,11 +25,11 @@ class WelcomeController < ApplicationController
       {
         id:               c.id,
         full_name:        c.full_name,
-        mobile_phone:     c.mobile_phone.presence || c.phone,
         membership_level: c.membership_level,
         birthday:         c.birthdate&.strftime("%m/%d"),
         is_today:         c.birthdate&.month == today.month &&
-                          c.birthdate&.day   == today.day
+                          c.birthdate&.day   == today.day,
+        instagram_account: c.instagram_account.presence
       }
     }
   end

@@ -74,11 +74,16 @@
         var todayBadge = c.is_today
           ? '<span style="font-size:11px;background:#7F77DD;color:#fff;border-radius:4px;padding:1px 6px;margin-left:4px;">今天</span>'
           : '';
-        var phone = c.mobile_phone ? ' · ' + c.mobile_phone : '';
+        var phone = '';
 
-        var nameHtml = c.instagram_account
-          ? '<a href="https://instagram.com/' + c.instagram_account + '" target="_blank" rel="noopener" style="color:#26215C;text-decoration:none;border-bottom:1px solid #AFA9EC;">' + c.full_name + '</a>'
-          : c.full_name;
+        var nameHtml = '<a href="/customers/' + c.id + '" style="color:#26215C;text-decoration:none;border-bottom:1px solid #AFA9EC;">' + c.full_name + '</a>';
+
+        var igBtn = c.instagram_account
+        ? '<a href="https://instagram.com/' + c.instagram_account + '" target="_blank" rel="noopener" '
+            + 'style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;'
+            + 'font-size:11px;padding:1px 7px;border-radius:4px;text-decoration:none;'
+            + 'background:#F5F5F3;color:#888;border:1px solid #e5e7eb;">@' + c.instagram_account + '</a>'
+        : '';
 
         var levelColors = {
           '黑卡':   'background:#2C2C2A;color:#D3D1C7',
@@ -95,7 +100,7 @@
         html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;margin-bottom:6px;background:' + bg + ';">'
           + '<div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#fff;">' + initial + '</div>'
           + '<div style="flex:1;min-width:0;">'
-          +   '<div style="font-size:14px;font-weight:500;color:#26215C;">' + nameHtml + todayBadge + '</div>'
+          +   '<div style="font-size:14px;font-weight:500;color:#26215C;">' + nameHtml + igBtn + todayBadge + '</div>'
           +   '<div style="font-size:12px;color:#888;margin-top:2px;">' + c.birthday + ' ' + dayLabel(c.birthday) + phone + '</div>'
           + '</div>'
           + levelBadge
