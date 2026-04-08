@@ -35,6 +35,13 @@
                 class: "form-control" %>
             </div>
 
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label">產品標籤</label>
+              <%= select_tag :product_tag,
+                  options_for_select([["全部", ""]] + @product_tag_options.map { |tag| [tag, tag] }, @product_tag),
+                  class: "form-control" %>
+            </div>
+
             <div class="col-sm-6 col-md-2">
               <label class="form-label">品牌大使培訓</label>
               <%= select_tag :brand_ambassador,
@@ -108,6 +115,7 @@
                   <th class="text-end"><%= sort_link_tag("購物金", "credits_asc", "credits_desc", @sort) %></th>
                   <th>會員</th>
                   <th>常買</th>
+                  <th>產品標籤</th>
                   <th>破萬新客</th>
                   <th><%= sort_link_tag("未購警示", "inactive_asc", "inactive_desc", @sort) %></th>
                   <th>編輯</th>
@@ -150,6 +158,11 @@
                     <td data-label="購物金" class="text-end"><%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %></td>
                     <td data-label="會員"><%= c.membership_level.presence || "一般" %></td>
                     <td data-label="常買"><%= @top_products[c.email].presence || "—" %></td>
+                    <td>
+                      <% c.customer_profile&.product_tags.to_a.each do |tag| %>
+                        <span class="badge badge-pill bg-info-500 me-1 mb-1"><%= tag %></span>
+                      <% end %>
+                    </td>
                     <td data-label="破萬新客" class="text-center small">
                       <% if (date = @big_first_orders[c.email]) %>
                         ✅ <%= date.strftime("%m/%d") %>

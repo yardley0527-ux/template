@@ -64,36 +64,33 @@
   <%# === 備註與培訓 === %>
   <section class="section">
     <h2 class="section-title">📝 備註與培訓</h2>
-    <div class="customer-info-card" style="flex-direction:column; gap:12px;">
+    <div class="customer-info-card profile-card">
 
-      <div style="display:flex; gap:24px; flex-wrap:wrap;">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-weight:600; font-size:14px;">品牌大使培訓</span>
+      <div class="profile-status-row">
+        <div class="profile-status-item">
+          <span class="profile-status-label">品牌大使培訓</span>
           <% if @profile.brand_ambassador_training? %>
-            <span style="color:#10b981; font-weight:700;">✅</span>
+            <span class="status-check">✅</span>
           <% else %>
-            <span style="color:#9ca3af;">—</span>
+            <span class="status-empty">—</span>
           <% end %>
         </div>
 
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-weight:600; font-size:14px;">品牌大使黑名單</span>
+        <div class="profile-status-item">
+          <span class="profile-status-label">品牌大使黑名單</span>
           <% if @profile.brand_ambassador_blacklisted? %>
-            <span style="background:#fef2f2; color:#ef4444; border:1px solid #fecaca;
-                        font-size:12px; font-weight:600; padding:2px 10px; border-radius:99px;">
+            <span class="blacklist-badge">
               🚫 已列入黑名單
             </span>
           <% else %>
-            <span style="color:#9ca3af;">—</span>
+            <span class="status-empty">—</span>
           <% end %>
         </div>
       </div>
 
-      <div>
-        <span style="font-weight:600; font-size:14px;">備註</span>
-        <p style="margin:6px 0 0; color:#374151; font-size:14px; white-space:pre-wrap;">
-          <%= @profile.notes.presence || "（尚無備註）" %>
-        </p>
+      <div class="profile-block">
+        <span class="profile-block-title">備註</span>
+        <p class="profile-block-text"><%= @profile.notes.presence || "（尚無備註）" %></p>
       </div>
 
       <div>
@@ -102,15 +99,47 @@
     </div>
   </section>
 
+  <%# === 客戶補充資訊 === %>
   <section class="section">
-    <h2 class="section-title">🩺 健康資料</h2>
-    <div class="customer-info-card" style="flex-direction:column; gap:12px;">
+    <h2 class="section-title">📌 客戶補充資訊</h2>
+    <div class="customer-info-card profile-card">
+
+      <div class="profile-block">
+        <span class="profile-block-title">回饋</span>
+        <p class="profile-block-text"><%= @profile.feedback.presence || "（尚無回饋）" %></p>
+      </div>
+
+      <div class="profile-block">
+        <span class="profile-block-title">特別注意</span>
+        <p class="profile-block-text"><%= @profile.special_attention.presence || "（尚無特別注意事項）" %></p>
+      </div>
+
+      <div class="profile-block">
+        <span class="profile-block-title">產品標籤</span>
+        <% if @profile.product_tags.present? %>
+          <div class="product-tag-display-list">
+            <% @profile.product_tags.each do |tag| %>
+              <span class="product-tag-display-chip"><%= tag %></span>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="profile-block-text">（尚未選擇）</p>
+        <% end %>
+      </div>
 
       <div>
-        <span style="font-weight:600; font-size:14px;">健康狀況</span>
-        <p style="margin:6px 0 0; color:#374151; font-size:14px; white-space:pre-wrap;">
-          <%= @profile&.health_profile.presence || "（尚無健康資料）" %>
-        </p>
+        <%= link_to "✏️ 編輯客戶補充資訊", edit_customer_path(@customer, section: "notes"), class: "btn btn-outline-secondary btn-sm" %>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">🩺 健康資料</h2>
+    <div class="customer-info-card profile-card">
+
+      <div class="profile-block">
+        <span class="profile-block-title">健康狀況</span>
+        <p class="profile-block-text"><%= @profile&.health_profile.presence || "（尚無健康資料）" %></p>
       </div>
 
       <div>
@@ -239,7 +268,6 @@
               <% end %>
             </div>
 
-            <%# 購買時間軸 %>
             <% if p[:dates].size > 1 %>
               <div class="purchase-timeline">
                 <% total_span = (p[:last_date].to_date - p[:first_date].to_date).to_i %>
@@ -270,7 +298,7 @@
     padding: 24px 16px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     color: #1a1a2e;
-    width: 100%; 
+    width: 100%;
   }
 
   .btn-back {
@@ -363,6 +391,88 @@
   }
 
   .empty-state { color: #9ca3af; font-size: 14px; padding: 20px 0; }
+
+  .profile-card {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .profile-status-row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .profile-status-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .profile-status-label {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .status-check {
+    color: #10b981;
+    font-weight: 700;
+  }
+
+  .status-empty {
+    color: #9ca3af;
+  }
+
+  .blacklist-badge {
+    background: #fef2f2;
+    color: #ef4444;
+    border: 1px solid #fecaca;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 10px;
+    border-radius: 99px;
+  }
+
+  .profile-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .profile-block-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: #111827;
+  }
+
+  .profile-block-text {
+    margin: 0;
+    color: #374151;
+    font-size: 14px;
+    white-space: pre-wrap;
+    line-height: 1.7;
+  }
+
+  .product-tag-display-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 12px;
+    margin-top: 4px;
+  }
+
+  .product-tag-display-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    border: 2px solid #b9b9b9;
+    border-radius: 999px;
+    background: #fff;
+    color: #333;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+  }
 
   .product-analysis-grid {
     display: grid;
@@ -582,6 +692,20 @@
       padding: 8px 10px;
       font-size: 12px;
     }
-  }
 
+    .profile-status-row {
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-start;
+    }
+
+    .product-tag-display-list {
+      justify-content: center;
+    }
+
+    .product-tag-display-chip {
+      font-size: 13px;
+      padding: 8px 14px;
+    }
+  }
 </style>

@@ -1,0 +1,51 @@
+.product-tag-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 14px;
+  display: inline-block;
+}
+
+.product-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 18px;
+}
+
+.product-tag-chip {
+  appearance: none;
+  border: 3px solid #b9b9b9;
+  background: #fff;
+  color: #333;
+  border-radius: 999px;
+  padding: 16px 30px;
+  min-width: 110px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  box-shadow: none;
+}
+
+.product-tag-chip:hover {
+  border-color: #8f8f8f;
+}
+
+.product-tag-chip.is-selected {
+  background: #f6efe5;
+  border-color: #9f7c4f;
+  color: #6f532f;
+}
+
+.product-tag-selected {
+  margin-top: 28px;
+  font-size: 20px;
+  color: #333;
+}
+
+.product-tag-selected-label {
+  font-weight: 700;
+  margin-right: 6px;
+}

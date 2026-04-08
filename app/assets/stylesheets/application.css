@@ -12,6 +12,7 @@
  *
  *= require 'smartadmin/vendors.bundle'
  *= require 'smartadmin/app.bundle'
+ *= require customers
  *= require_self
  */
 

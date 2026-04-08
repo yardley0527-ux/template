@@ -20,10 +20,14 @@ class CustomersController < ApplicationController
     @personal_year    = params[:personal_year].to_s.strip
     @brand_ambassador = params[:brand_ambassador].to_s.strip
     @big_first_filter = params[:big_first].to_s.strip
+    @product_tag      = params[:product_tag].to_s.strip
 
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level)
-                       .map { |l| l.presence || "非會員" }
-                       .uniq.sort
+      .map { |l| l.presence || "非會員" }
+      .uniq.sort
+
+    @product_tag_options = CustomerProfile::PRODUCT_TAG_OPTIONS
+
     @page = params[:page].to_i
     @page = 1 if @page <= 0
     @page = MAX_PAGE if @page > MAX_PAGE
@@ -49,7 +53,8 @@ class CustomersController < ApplicationController
       )
     end
 
-    scope = scope.where("city ILIKE ?", "%#{@city}%")                           if @city.present?
+    scope = scope.where("city ILIKE ?", "%#{@city}%") if @city.present?
+
     if @membership_level.present?
       if @membership_level == "非會員"
         scope = scope.where(membership_level: [nil, ""])
@@ -57,10 +62,16 @@ class CustomersController < ApplicationController
         scope = scope.where(membership_level: @membership_level)
       end
     end
-    scope = scope.where("current_shopping_credits >= ?", @min_credits)          if @min_credits
+
+    scope = scope.where("current_shopping_credits >= ?", @min_credits) if @min_credits
     scope = scope.where("EXTRACT(MONTH FROM birthdate) = ?", @birth_month.to_i) if @birth_month.present?
-    scope = scope.where(age_group_sql(@age_group))                              if @age_group.present?
-    scope = scope.where(zodiac_sql(@zodiac))                                    if @zodiac.present?
+    scope = scope.where(age_group_sql(@age_group)) if @age_group.present?
+    scope = scope.where(zodiac_sql(@zodiac)) if @zodiac.present?
+
+    if @product_tag.present?
+      scope = scope.joins(:customer_profile)
+                   .where("? = ANY(customer_profiles.product_tags)", @product_tag)
+    end
 
     if @life_path.present?
       lp_num = @life_path.to_i
@@ -187,7 +198,6 @@ class CustomersController < ApplicationController
                       .offset((@orders_page - 1) * 30)
                       .limit(30)
 
-    # analyze_products 需要全部訂單，另外撈
     all_orders = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
     @product_analysis = analyze_products(all_orders)
 
@@ -199,15 +209,14 @@ class CustomersController < ApplicationController
   def stats
     @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員 非會員]
 
-    customers = ShoplineCustomer
-      .select(:membership_level, :city, :birthdate)
+    customers = ShoplineCustomer.select(:membership_level, :city, :birthdate)
 
-    @total_by_level    = Hash.new(0)
-    @city_stats        = Hash.new { |h, k| h[k] = Hash.new(0) }
-    @birth_month_stats = Hash.new { |h, k| h[k] = Hash.new(0) }
-    @life_path_stats   = Hash.new { |h, k| h[k] = Hash.new(0) }
-    @age_group_stats   = Hash.new { |h, k| h[k] = Hash.new(0) }
-    @zodiac_stats      = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @total_by_level      = Hash.new(0)
+    @city_stats          = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @birth_month_stats   = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @life_path_stats     = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @age_group_stats     = Hash.new { |h, k| h[k] = Hash.new(0) }
+    @zodiac_stats        = Hash.new { |h, k| h[k] = Hash.new(0) }
     @personal_year_stats = Hash.new { |h, k| h[k] = Hash.new(0) }
 
     customers.each do |c|
@@ -233,12 +242,14 @@ class CustomersController < ApplicationController
     @customer = ShoplineCustomer.find(params[:id])
     @profile  = @customer.customer_profile || @customer.build_customer_profile
     @edit_section = params[:section].to_s.presence || "notes"
+    @product_tag_options = CustomerProfile::PRODUCT_TAG_OPTIONS
   end
 
   def update
     @customer = ShoplineCustomer.find(params[:id])
     @profile  = @customer.customer_profile || @customer.build_customer_profile
     @edit_section = params[:section].to_s.presence || "notes"
+    @product_tag_options = CustomerProfile::PRODUCT_TAG_OPTIONS
 
     if @profile.update(profile_params)
       redirect_to customer_path(@customer), notice: "已儲存"
@@ -250,17 +261,25 @@ class CustomersController < ApplicationController
   private
 
   def profile_params
-    params.require(:customer_profile).permit(:brand_ambassador_training, :brand_ambassador_blacklisted, :notes, :health_profile)
+    params.require(:customer_profile).permit(
+      :brand_ambassador_training,
+      :brand_ambassador_blacklisted,
+      :notes,
+      :health_profile,
+      :feedback,
+      :special_attention,
+      product_tags: []
+    )
   end
 
   def age_group_sql(group)
-  case group
+    case group
     when "未滿 25" then "EXTRACT(YEAR FROM AGE(birthdate)) < 25"
     when "25–29"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 25 AND 29"
     when "30–34"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 30 AND 34"
     when "35–39"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 35 AND 39"
     when "40–44"   then "EXTRACT(YEAR FROM AGE(birthdate)) BETWEEN 40 AND 44"
-    when "45 以上"  then "EXTRACT(YEAR FROM AGE(birthdate)) >= 45"
+    when "45 以上" then "EXTRACT(YEAR FROM AGE(birthdate)) >= 45"
     end
   end
 
@@ -277,11 +296,9 @@ class CustomersController < ApplicationController
       "射手" => "(EXTRACT(MONTH FROM birthdate)=11 AND EXTRACT(DAY FROM birthdate)>=22) OR (EXTRACT(MONTH FROM birthdate)=12 AND EXTRACT(DAY FROM birthdate)<=21)",
       "摩羯" => "(EXTRACT(MONTH FROM birthdate)=12 AND EXTRACT(DAY FROM birthdate)>=22) OR (EXTRACT(MONTH FROM birthdate)=1  AND EXTRACT(DAY FROM birthdate)<=19)",
       "水瓶" => "(EXTRACT(MONTH FROM birthdate)=1  AND EXTRACT(DAY FROM birthdate)>=20) OR (EXTRACT(MONTH FROM birthdate)=2  AND EXTRACT(DAY FROM birthdate)<=18)",
-      "雙魚" => "(EXTRACT(MONTH FROM birthdate)=2  AND EXTRACT(DAY FROM birthdate)>=19) OR (EXTRACT(MONTH FROM birthdate)=3  AND EXTRACT(DAY FROM birthdate)<=20)",
+      "雙魚" => "(EXTRACT(MONTH FROM birthdate)=2  AND EXTRACT(DAY FROM birthdate)>=19) OR (EXTRACT(MONTH FROM birthdate)=3  AND EXTRACT(DAY FROM birthdate)<=20)"
     }[sign]
   end
-
-  AGE_GROUP_ORDER = ["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
 
   def age_group(birthdate)
     age = ((Date.today - birthdate.to_date) / 365.25).floor

@@ -55,6 +55,51 @@
             <label class="edit-label">備註</label>
             <%= f.text_area :notes, rows: 6, class: "edit-textarea", placeholder: "輸入備註內容…" %>
           </div>
+
+          <div class="edit-field">
+            <label class="edit-label">回饋</label>
+            <%= f.text_area :feedback, rows: 6, class: "edit-textarea", placeholder: "輸入客戶回饋…" %>
+          </div>
+
+          <div class="edit-field">
+            <label class="edit-label">特別注意</label>
+            <%= f.text_area :special_attention, rows: 6, class: "edit-textarea", placeholder: "輸入需要特別注意的事項…" %>
+          </div>
+
+          <div class="edit-field">
+            <label class="edit-label product-pref-label">🏷 產品偏好 — 點擊切換</label>
+
+            <div class="product-tag-selector" id="product-tag-selector">
+              <%= hidden_field_tag "customer_profile[product_tags][]", "" %>
+
+              <div class="product-tag-list">
+                <% @product_tag_options.each do |tag| %>
+                  <% checked = @profile.product_tags.include?(tag) %>
+
+                  <button
+                    type="button"
+                    class="product-tag-chip <%= 'is-selected' if checked %>"
+                    data-tag-value="<%= tag %>">
+                    <%= tag %>
+                  </button>
+
+                  <%= check_box_tag "customer_profile[product_tags][]",
+                                    tag,
+                                    checked,
+                                    id: "customer_profile_product_tags_#{tag.parameterize}",
+                                    class: "product-tag-checkbox d-none",
+                                    data: { tag_value: tag } %>
+                <% end %>
+              </div>
+
+              <div class="product-tag-selected">
+                <span class="product-tag-selected-label">已選：</span>
+                <span id="product-tag-summary">
+                  <%= @profile.product_tags.present? ? @profile.product_tags.join("、") : "（尚未選擇）" %>
+                </span>
+              </div>
+            </div>
+          </div>
         <% end %>
 
         <div class="edit-actions">
@@ -66,6 +111,49 @@
     <% end %>
   </section>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    var selector = document.getElementById("product-tag-selector");
+    if (!selector) return;
+
+    var chips = selector.querySelectorAll(".product-tag-chip");
+    var checkboxes = selector.querySelectorAll(".product-tag-checkbox");
+    var summary = document.getElementById("product-tag-summary");
+
+    function syncProductTags() {
+      var selected = [];
+
+      checkboxes.forEach(function (checkbox) {
+        var tag = checkbox.dataset.tagValue;
+        var chip = selector.querySelector('.product-tag-chip[data-tag-value="' + tag + '"]');
+        if (!chip) return;
+
+        if (checkbox.checked) {
+          chip.classList.add("is-selected");
+          selected.push(tag);
+        } else {
+          chip.classList.remove("is-selected");
+        }
+      });
+
+      summary.textContent = selected.length > 0 ? selected.join("、") : "（尚未選擇）";
+    }
+
+    chips.forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        var tag = chip.dataset.tagValue;
+        var checkbox = selector.querySelector('.product-tag-checkbox[data-tag-value="' + tag + '"]');
+        if (!checkbox) return;
+
+        checkbox.checked = !checkbox.checked;
+        syncProductTags();
+      });
+    });
+
+    syncProductTags();
+  });
+</script>
 
 <style>
   *, *::before, *::after { box-sizing: border-box; }
@@ -148,7 +236,6 @@
     gap: 24px;
     width: 100%;
     max-width: 1100px;
-
   }
 
   .edit-card-health {
@@ -173,7 +260,14 @@
     color: #9ca3af;
   }
 
-  /* Toggle */
+  .product-pref-label {
+    font-size: 13px;
+    color: #7c6f5b;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 700;
+  }
+
   .toggle-wrap {
     display: flex;
     align-items: center;
@@ -277,4 +371,49 @@
 
   .toggle-input.blacklist-toggle:checked + .toggle-track { background: #ef4444; }
 
+  .product-tag-selector {
+    width: 100%;
+  }
+
+  .product-tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 12px;
+  }
+
+  .product-tag-chip {
+    appearance: none;
+    border: 2px solid #b9b9b9;
+    background: #fff;
+    color: #333;
+    border-radius: 999px;
+    padding: 8px 16px;
+    min-width: 0;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+
+  .product-tag-chip.is-selected {
+    background: #f6efe5;
+    border-color: #9f7c4f;
+    color: #6f532f;
+  }
+
+  .product-tag-selected {
+    margin-top: 16px;
+    font-size: 14px;
+  }
+
+  .product-tag-selected-label {
+    font-weight: 700;
+    margin-right: 6px;
+  }
+
+  .d-none {
+    display: none !important;
+  }
 </style>
