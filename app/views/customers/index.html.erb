@@ -12,7 +12,7 @@
       <div class="panel-hdr"><h2>篩選</h2></div>
       <div class="panel-container show">
         <div class="panel-content">
-          <%= form_with url: customers_path, method: :get, local: true, class: "row g-2 align-items-end" do %>
+          <%= form_with url: customers_path, method: :get, local: true, class: "row gx-3 gy-3 align-items-end" do %>
             <div class="col-sm-6 col-md-4">
               <label class="form-label">搜尋</label>
               <%= text_field_tag :q, @q, class: "form-control", placeholder: "姓名 / Email / 手機 / IG" %>
@@ -35,28 +35,30 @@
                 class: "form-control" %>
             </div>
 
-            <div class="col-sm-6 col-md-3">
+            <div class="w-100"></div>
+
+            <div class="col-sm-6 col-md-3 mt-md-2">
               <label class="form-label">產品標籤</label>
               <%= select_tag :product_tag,
                   options_for_select([["全部", ""]] + @product_tag_options.map { |tag| [tag, tag] }, @product_tag),
                   class: "form-control" %>
             </div>
 
-            <div class="col-sm-6 col-md-2">
+            <div class="col-sm-6 col-md-2 mt-md-2">
               <label class="form-label">品牌大使培訓</label>
               <%= select_tag :brand_ambassador,
                 options_for_select([["全部", ""], ["已加入觀察名單", "1"]], @brand_ambassador),
                 class: "form-control" %>
             </div>
 
-            <div class="col-sm-6 col-md-2">
+            <div class="col-sm-6 col-md-2 mt-md-2">
               <label class="form-label">破萬新客</label>
               <%= select_tag :big_first,
                 options_for_select([["全部", ""], ["破萬新客", "1"]], @big_first_filter),
                 class: "form-control" %>
             </div>
 
-            <div class="col-sm-12 col-md-9">
+            <div class="col-sm-12 col-md-9 mt-md-3">
               <%= button_tag "查詢", type: "submit", class: "btn btn-primary me-2 mt-2" %>
               <%= link_to "清除", customers_path, class: "btn btn-outline-secondary mt-2" %>
             </div>
