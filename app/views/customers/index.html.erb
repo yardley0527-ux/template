@@ -159,7 +159,15 @@
                     <td data-label="累積消費" class="text-end">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
                     <td data-label="購物金" class="text-end"><%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %></td>
                     <td data-label="會員"><%= c.membership_level.presence || "一般" %></td>
-                    <td data-label="常買"><%= @top_products[c.email].presence || "—" %></td>
+                    <td data-label="常買">
+                      <% if @top_products[c.email].present? %>
+                        <% @top_products[c.email].split(",").each do |product| %>
+                          <span class="badge badge-top-product me-1 mb-1"><%= product.strip %></span>
+                        <% end %>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
                     <td>
                       <% c.customer_profile&.product_tags.to_a.each do |tag| %>
                         <span class="badge badge-pill bg-info-500 me-1 mb-1"><%= tag %></span>
@@ -268,5 +276,14 @@
   }
   
   .fw-500 { font-weight: 600; font-size: 1.1em; }
-}
+  }
+
+  .badge-top-product {
+    display: inline-block;
+    background-color: #c62828;
+    color: #ffffff;
+    padding: 5px 10px;
+    font-size: 13px;
+    border-radius: 999px;
+  }
 </style>
