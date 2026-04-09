@@ -136,16 +136,27 @@
   <section class="section">
     <h2 class="section-title">🩺 健康資料</h2>
     <div class="customer-info-card profile-card">
-
       <div class="profile-block">
         <span class="profile-block-title">健康狀況</span>
         <p class="profile-block-text"><%= @profile&.health_profile.presence || "（尚無健康資料）" %></p>
       </div>
 
+      <div class="profile-block">
+        <span class="profile-block-title">健康標籤</span>
+        <% if @profile.health_tags.present? %>
+          <div class="product-tag-display-list">
+            <% @profile.health_tags.each do |tag| %>
+              <span class="product-tag-display-chip"><%= tag %></span>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="profile-block-text">（尚未選擇）</p>
+        <% end %>
+      </div>
+
       <div>
         <%= link_to "✏️ 編輯健康資料", edit_customer_path(@customer, section: "health"), class: "btn btn-outline-secondary btn-sm" %>
       </div>
-
     </div>
   </section>
 

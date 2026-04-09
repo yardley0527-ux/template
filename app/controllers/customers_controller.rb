@@ -243,6 +243,7 @@ class CustomersController < ApplicationController
     @profile  = @customer.customer_profile || @customer.build_customer_profile
     @edit_section = params[:section].to_s.presence || "notes"
     @product_tag_options = CustomerProfile::PRODUCT_TAG_OPTIONS
+    @health_tag_options  = CustomerProfile::HEALTH_TAG_OPTIONS
   end
 
   def update
@@ -250,6 +251,12 @@ class CustomersController < ApplicationController
     @profile  = @customer.customer_profile || @customer.build_customer_profile
     @edit_section = params[:section].to_s.presence || "notes"
     @product_tag_options = CustomerProfile::PRODUCT_TAG_OPTIONS
+    @health_tag_options  = CustomerProfile::HEALTH_TAG_OPTIONS
+
+    if params[:customer_profile]
+      params[:customer_profile][:health_tags]&.reject!(&:blank?)
+      params[:customer_profile][:product_tags]&.reject!(&:blank?)
+    end
 
     if @profile.update(profile_params)
       redirect_to customer_path(@customer), notice: "已儲存"
@@ -268,7 +275,8 @@ class CustomersController < ApplicationController
       :health_profile,
       :feedback,
       :special_attention,
-      product_tags: []
+      product_tags: [],
+      health_tags: []
     )
   end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_08_073810) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_09_065023) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -41,6 +41,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_08_073810) do
     t.text "feedback"
     t.text "special_attention"
     t.string "product_tags", default: [], null: false, array: true
+    t.string "health_tags", default: [], null: false, array: true
+    t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin
     t.index ["product_tags"], name: "index_customer_profiles_on_product_tags", using: :gin
     t.index ["shopline_customer_id"], name: "index_customer_profiles_on_shopline_customer_id"
   end

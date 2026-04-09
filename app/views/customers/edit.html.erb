@@ -32,6 +32,41 @@
             <label class="edit-label">健康資料</label>
             <%= f.text_area :health_profile, rows: 12, class: "edit-textarea edit-textarea-health", placeholder: "輸入健康資料…" %>
           </div>
+
+          <div class="edit-field">
+            <label class="edit-label product-pref-label">🩺 健康標籤 — 點擊切換</label>
+
+            <div class="product-tag-selector" id="health-tag-selector">
+              <%= hidden_field_tag "customer_profile[health_tags][]", "" %>
+
+              <div class="product-tag-list">
+                <% @health_tag_options.each do |tag| %>
+                  <% checked = @profile.health_tags.include?(tag) %>
+
+                  <button
+                    type="button"
+                    class="product-tag-chip <%= 'is-selected' if checked %>"
+                    data-tag-value="<%= tag %>">
+                    <%= tag %>
+                  </button>
+
+                  <%= check_box_tag "customer_profile[health_tags][]",
+                                    tag,
+                                    checked,
+                                    id: "customer_profile_health_tags_#{tag.parameterize}",
+                                    class: "health-tag-checkbox d-none",
+                                    data: { tag_value: tag } %>
+                <% end %>
+              </div>
+
+              <div class="product-tag-selected">
+                <span class="product-tag-selected-label">已選：</span>
+                <span id="health-tag-summary">
+                  <%= @profile.health_tags.present? ? @profile.health_tags.join("、") : "（尚未選擇）" %>
+                </span>
+              </div>
+            </div>
+          </div>
         <% else %>
           <div class="edit-field">
             <label class="edit-label">品牌大使培訓</label>
@@ -114,44 +149,51 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    var selector = document.getElementById("product-tag-selector");
-    if (!selector) return;
+    function bindTagSelector(selectorId, checkboxClass, summaryId) {
+      var selector = document.getElementById(selectorId);
+      if (!selector) return;
 
-    var chips = selector.querySelectorAll(".product-tag-chip");
-    var checkboxes = selector.querySelectorAll(".product-tag-checkbox");
-    var summary = document.getElementById("product-tag-summary");
+      var chips = selector.querySelectorAll(".product-tag-chip");
+      var checkboxes = selector.querySelectorAll("." + checkboxClass);
+      var summary = document.getElementById(summaryId);
 
-    function syncProductTags() {
-      var selected = [];
+      function syncTags() {
+        var selected = [];
 
-      checkboxes.forEach(function (checkbox) {
-        var tag = checkbox.dataset.tagValue;
-        var chip = selector.querySelector('.product-tag-chip[data-tag-value="' + tag + '"]');
-        if (!chip) return;
+        checkboxes.forEach(function (checkbox) {
+          var tag = checkbox.dataset.tagValue;
+          var chip = selector.querySelector('.product-tag-chip[data-tag-value="' + tag + '"]');
+          if (!chip) return;
 
-        if (checkbox.checked) {
-          chip.classList.add("is-selected");
-          selected.push(tag);
-        } else {
-          chip.classList.remove("is-selected");
+          if (checkbox.checked) {
+            chip.classList.add("is-selected");
+            selected.push(tag);
+          } else {
+            chip.classList.remove("is-selected");
+          }
+        });
+
+        if (summary) {
+          summary.textContent = selected.length > 0 ? selected.join("、") : "（尚未選擇）";
         }
+      }
+
+      chips.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          var tag = chip.dataset.tagValue;
+          var checkbox = selector.querySelector('.' + checkboxClass + '[data-tag-value="' + tag + '"]');
+          if (!checkbox) return;
+
+          checkbox.checked = !checkbox.checked;
+          syncTags();
+        });
       });
 
-      summary.textContent = selected.length > 0 ? selected.join("、") : "（尚未選擇）";
+      syncTags();
     }
 
-    chips.forEach(function (chip) {
-      chip.addEventListener("click", function () {
-        var tag = chip.dataset.tagValue;
-        var checkbox = selector.querySelector('.product-tag-checkbox[data-tag-value="' + tag + '"]');
-        if (!checkbox) return;
-
-        checkbox.checked = !checkbox.checked;
-        syncProductTags();
-      });
-    });
-
-    syncProductTags();
+    bindTagSelector("product-tag-selector", "product-tag-checkbox", "product-tag-summary");
+    bindTagSelector("health-tag-selector", "health-tag-checkbox", "health-tag-summary");
   });
 </script>
 
@@ -397,6 +439,10 @@
     transition: all 0.16s ease;
   }
 
+  .product-tag-chip:hover {
+    border-color: #8f8f8f;
+  }
+
   .product-tag-chip.is-selected {
     background: #f6efe5;
     border-color: #9f7c4f;
@@ -406,6 +452,7 @@
   .product-tag-selected {
     margin-top: 16px;
     font-size: 14px;
+    color: #333;
   }
 
   .product-tag-selected-label {
@@ -415,5 +462,36 @@
 
   .d-none {
     display: none !important;
+  }
+
+  @media (max-width: 640px) {
+    .customer-info-card {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 16px;
+    }
+
+    .customer-details h1 {
+      font-size: 18px;
+    }
+
+    .edit-card {
+      padding: 16px;
+      gap: 18px;
+    }
+
+    .product-tag-list {
+      gap: 10px 10px;
+    }
+
+    .product-tag-chip {
+      font-size: 13px;
+      padding: 8px 14px;
+    }
+
+    .edit-actions {
+      flex-wrap: wrap;
+    }
   }
 </style>
