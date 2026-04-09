@@ -23,7 +23,7 @@
             <span>📍 <%= @customer.city %></span>
           <% end %>
           <% if @zodiac_sign.present? %>
-            <span>⭐ <%= @zodiac_sign %>座</span>
+            <span>⭐ <%= @zodiac_sign %>座(<%= @customer.birthdate.strftime("%Y/%m/%d") %>)</span>
           <% end %>
           <% if @life_path %>
             <span>🔢 靈數 <%= @life_path %></span>

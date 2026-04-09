@@ -12,18 +12,18 @@ class SidebarEntry
     def all
       [
         {
-          group_title: "產品分類快速檢視",
-          children: [
-            { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },
-            *flat_product_entries
-          ]
-        },
-        {
           group_title: "系統管理",
           children: [
             { href: customers_path, title: "客人資料庫總覽", icon: "fa-address-book" },
             { href: stats_customers_path, title: "會員卡別統計",   icon: "fa-chart-bar"    }
 
+          ]
+        },
+        {
+          group_title: "產品分類快速檢視",
+          children: [
+            { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },
+            *flat_product_entries
           ]
         }
       ]
