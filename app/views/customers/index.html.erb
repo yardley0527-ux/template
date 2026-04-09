@@ -44,6 +44,13 @@
                   class: "form-control" %>
             </div>
 
+            <div class="col-sm-6 col-md-3 mt-md-2">
+              <label class="form-label">健康標籤</label>
+              <%= select_tag :health_tag,
+                  options_for_select([["全部", ""]] + @health_tag_options.map { |tag| [tag, tag] }, @health_tag),
+                  class: "form-control" %>
+            </div>
+
             <div class="col-sm-6 col-md-2 mt-md-2">
               <label class="form-label">品牌大使培訓</label>
               <%= select_tag :brand_ambassador,

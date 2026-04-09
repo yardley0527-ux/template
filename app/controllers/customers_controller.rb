@@ -21,12 +21,14 @@ class CustomersController < ApplicationController
     @brand_ambassador = params[:brand_ambassador].to_s.strip
     @big_first_filter = params[:big_first].to_s.strip
     @product_tag      = params[:product_tag].to_s.strip
+    @health_tag      = params[:health_tag].to_s.strip
 
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level)
       .map { |l| l.presence || "非會員" }
       .uniq.sort
 
     @product_tag_options = CustomerProfile::PRODUCT_TAG_OPTIONS
+    @health_tag_options = CustomerProfile::HEALTH_TAG_OPTIONS
 
     @page = params[:page].to_i
     @page = 1 if @page <= 0
@@ -71,6 +73,11 @@ class CustomersController < ApplicationController
     if @product_tag.present?
       scope = scope.joins(:customer_profile)
                    .where("? = ANY(customer_profiles.product_tags)", @product_tag)
+    end
+
+    if @health_tag.present?
+      scope = scope.joins(:customer_profile)
+                  .where("? = ANY(customer_profiles.health_tags)", @health_tag)
     end
 
     if @life_path.present?
