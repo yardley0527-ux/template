@@ -15,6 +15,7 @@ module Importing
       @sheet = sheet
       @header_row = header_row
       @verbose = verbose
+      @logger = Rails.logger
     end
 
     def call
@@ -30,6 +31,7 @@ module Importing
 
       log "[import] created ImportRun id=#{run.id}"
       log "[import] opening xls/xlsx..."
+
       book = Roo::Spreadsheet.open(@file_path)
       sheet_name = @sheet.is_a?(Integer) ? book.sheets.fetch(@sheet) : @sheet.to_s
       book.default_sheet = sheet_name
@@ -37,7 +39,7 @@ module Importing
 
       headers = book.row(@header_row).map { |h| normalize_header(h) }
       last = book.last_row || @header_row
-      log "[import] rows=#{[last - @header_row, 0].max} headers=#{headers.inspect}"
+      log "[import] total_rows=#{[last - @header_row, 0].max} headers=#{headers.inspect}"
 
       processed = 0
       upserted = 0
@@ -48,37 +50,41 @@ module Importing
       email_batch    = []
 
       flush = lambda do
-        begin
-          if shopline_batch.any?
-            ShoplineCustomer.upsert_all(
-              shopline_batch,
-              unique_by: :shopline_id,
-              update_only: upsertable_columns
-            )
-            upserted += shopline_batch.size
-          end
-        rescue => e
-          error_rows += shopline_batch.size
-          run.add_error("upsert shopline_batch failed: #{e.class} - #{e.message}")
-        ensure
-          shopline_batch.clear
+        if shopline_batch.any?
+          ShoplineCustomer.upsert_all(
+            shopline_batch,
+            unique_by: :shopline_id,
+            update_only: upsertable_columns
+          )
+          log "[import] flushed shopline_batch size=#{shopline_batch.size}"
+          upserted += shopline_batch.size
         end
+      rescue => e
+        log "[import] ERROR upsert shopline_batch failed: #{e.class} - #{e.message}", :error
+        log e.backtrace.first(5).join("\n"), :error
+        error_rows += shopline_batch.size
+        run.add_error("upsert shopline_batch failed: #{e.class} - #{e.message}")
+      ensure
+        shopline_batch.clear
+      end
 
-        begin
-          if email_batch.any?
-            ShoplineCustomer.upsert_all(
-              email_batch,
-              unique_by: :email,
-              update_only: upsertable_columns
-            )
-            upserted += email_batch.size
-          end
-        rescue => e
-          error_rows += email_batch.size
-          run.add_error("upsert email_batch failed: #{e.class} - #{e.message}")
-        ensure
-          email_batch.clear
+      flush_email = lambda do
+        if email_batch.any?
+          ShoplineCustomer.upsert_all(
+            email_batch,
+            unique_by: :email,
+            update_only: upsertable_columns
+          )
+          log "[import] flushed email_batch size=#{email_batch.size}"
+          upserted += email_batch.size
         end
+      rescue => e
+        log "[import] ERROR upsert email_batch failed: #{e.class} - #{e.message}", :error
+        log e.backtrace.first(5).join("\n"), :error
+        error_rows += email_batch.size
+        run.add_error("upsert email_batch failed: #{e.class} - #{e.message}")
+      ensure
+        email_batch.clear
       end
 
       now = Time.zone.now
@@ -94,12 +100,13 @@ module Importing
 
         if shopline_id.nil? && email.nil?
           skipped += 1
+          log "[import] row=#{row_i} skipped (no shopline_id and no email)"
           progress(run, processed, upserted, skipped, error_rows, sheet_name) if (processed % PROGRESS_EVERY).zero?
           next
         end
 
-        payload[:email]       = email
-        payload[:shopline_id] = shopline_id
+        payload[:email]        = email
+        payload[:shopline_id]  = shopline_id
         payload[:mobile_phone] = ShoplineCustomer.normalize_phone(normalize_phone_cell(payload[:mobile_phone]))
         payload[:phone]        = ShoplineCustomer.normalize_phone(normalize_phone_cell(payload[:phone])) if payload.key?(:phone)
         payload[:instagram_account] = ShoplineCustomer.normalize_ig(payload[:instagram_account]) if payload.key?(:instagram_account)
@@ -130,15 +137,20 @@ module Importing
 
         if (shopline_batch.size + email_batch.size) >= BATCH_SIZE
           flush.call
+          flush_email.call
           progress(run, processed, upserted, skipped, error_rows, sheet_name)
         end
 
       rescue => e
         error_rows += 1
-        run.add_error("customers sheet=#{sheet_name} row=#{row_i}: #{e.class} - #{e.message}")
+        msg = "customers sheet=#{sheet_name} row=#{row_i}: #{e.class} - #{e.message}"
+        log "[import] ERROR #{msg}", :error
+        log e.backtrace.first(5).join("\n"), :error
+        run.add_error(msg)
       end
 
       flush.call
+      flush_email.call
 
       run.update!(
         processed_rows: processed,
@@ -151,16 +163,22 @@ module Importing
 
       log "[import] done run_id=#{run.id} processed=#{processed} upserted=#{upserted} skipped=#{skipped} errors=#{error_rows}"
       run
+
+    rescue => e
+      log "[import] FATAL #{e.class} - #{e.message}", :error
+      log e.backtrace.first(10).join("\n"), :error
+      raise
     end
 
     private
 
-    def log(msg)
+    def log(msg, level = :info)
+      @logger.public_send(level, msg)
       puts msg if @verbose
     end
 
     def progress(run, processed, upserted, skipped, error_rows, sheet_name)
-      log "[import] processed=#{processed} upserted=#{upserted} skipped=#{skipped} errors=#{error_rows} (sheet=#{sheet_name})"
+      log "[import] progress processed=#{processed} upserted=#{upserted} skipped=#{skipped} errors=#{error_rows} (sheet=#{sheet_name})"
       run.update!(
         processed_rows: processed,
         upserted_rows: upserted,
@@ -169,10 +187,9 @@ module Importing
         error_messages: run.error_messages
       )
     rescue => e
-      log "[import] progress_update_failed: #{e.class} - #{e.message}"
+      log "[import] progress_update_failed: #{e.class} - #{e.message}", :warn
     end
 
-    # 對應 schema 實際有的欄位，排除 unique key (shopline_id / email) 與 created_at
     def upsertable_columns
       %i[
         full_name
@@ -196,7 +213,6 @@ module Importing
       ]
     end
 
-    # Unicode-aware: keeps Chinese headers (電郵/全名/顧客 ID...)
     def normalize_header(h)
       h.to_s.strip.downcase
         .gsub(/[[:space:]]+/, "_")
@@ -233,8 +249,6 @@ module Importing
       }
     end
 
-    # Roo 會把純數字欄位讀成 Float（例如 12345.0），
-    # 統一轉成整數字串避免 upsert 時用 "12345.0" 去比對
     def normalize_id_cell(v)
       return nil if v.nil?
 
