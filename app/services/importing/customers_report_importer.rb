@@ -51,8 +51,10 @@ module Importing
 
       flush = lambda do
         if shopline_batch.any?
+          # email 欄位不放進 shopline_batch 的 upsert，避免觸發 email unique constraint
+          batch_without_email = shopline_batch.map { |r| r.except(:email) }
           ShoplineCustomer.upsert_all(
-            shopline_batch,
+            batch_without_email,
             unique_by: :shopline_id,
             update_only: upsertable_columns
           )
