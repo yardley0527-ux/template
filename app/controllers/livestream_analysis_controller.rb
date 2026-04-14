@@ -174,6 +174,54 @@ def index
 
   @loyal_3_customers = build_loyal.call(loyal_3_emails)
   @loyal_2_customers = build_loyal.call(loyal_2_emails)
+
+  # 動態分析結論
+  @insights = []
+
+  # 出席率分析
+  if @black_jan9_rate > @gold_jan9_rate
+    @insights << { type: :info, text: "黑卡客人對薑黃直播的黏著度（#{@black_jan9_rate}%）高於金卡（#{@gold_jan9_rate}%），維護黑卡關係是提升業績的關鍵。" }
+  end
+
+  if @feb25_emails.size < @jan9_emails.size * 0.7
+    @insights << { type: :warning, text: "2/25 薑黃購買人數（#{@feb25_emails.size} 人）較 1/9（#{@jan9_emails.size} 人）明顯下滑，需確認是否因多產品場次分散了薑黃買氣。" }
+  end
+
+  if @apr10_emails.size >= @jan9_emails.size * 0.8
+    @insights << { type: :success, text: "4/10 薑黃品牌之夜出席人數（#{@apr10_emails.size} 人）接近 1/9 水準，純薑黃主題直播吸引力較強。" }
+  end
+
+  # 回流率分析
+  if @prev_return_rate < 20
+    @insights << { type: :warning, text: "曾買過薑黃的客人整體回流率為 #{@prev_return_rate}%，低於 20%，建議加強直播前主動提醒機制。" }
+  elsif @prev_return_rate >= 20
+    @insights << { type: :success, text: "曾買過薑黃的客人整體回流率為 #{@prev_return_rate}%，表現良好。" }
+  end
+
+  # 未回流風險
+  overdue_count = @missing_customers.count { |r| r[:overdue_days] && r[:overdue_days] > 14 }
+  if overdue_count > 0
+    @insights << { type: :danger, text: "有 #{overdue_count} 位金卡以上客人逾期超過 14 天未回購，建議立即聯繫，優先從黑卡開始。" }
+  end
+
+  black_missing = @missing_customers.count { |r| r[:customer].membership_level == "黑卡" }
+  if black_missing > 0
+    @insights << { type: :danger, text: "#{black_missing} 位黑卡客人在 1/9 或 2/25 有買薑黃，但 4/10 未出現，流失風險最高，需優先追蹤。" }
+  end
+
+  # 忠實客
+  if @loyal_3_customers.size > 0
+    @insights << { type: :success, text: "#{@loyal_3_customers.size} 位客人三場都有購買薑黃，是最核心的忠實客，適合邀請成為品牌大使或提供 VIP 優惠。" }
+  end
+
+  if @loyal_2_customers.size > 0
+    @insights << { type: :info, text: "#{@loyal_2_customers.size} 位客人任意兩場有購買，具穩定回購習慣，下次直播前 3 天建議主動提醒。" }
+  end
+
+  # 黑卡出席率持續偏低
+  if @black_apr10_rate < 20 && @black_jan9_rate < 20
+    @insights << { type: :warning, text: "黑卡客人連續兩場出席率均低於 20%，建議檢視通知方式或提供黑卡專屬誘因。" }
+  end
 end
 
   private
