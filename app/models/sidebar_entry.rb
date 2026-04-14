@@ -25,6 +25,12 @@ class SidebarEntry
             { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },
             *flat_product_entries
           ]
+        },
+        {
+          group_title: "直播管理",
+          children: [
+            { href: livestream_analysis_path, title: "直播分析 - 薑黃品牌之夜", icon: "fa-video"  }
+          ]
         }
       ]
     end

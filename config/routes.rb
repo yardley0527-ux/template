@@ -3,6 +3,7 @@ Rails.application.routes.draw do
 
   root 'welcome#index'
   get "/api/birthday_customers", to: "welcome#birthday_customers"
+  get '/livestream_analysis', to: 'livestream_analysis#index'
 
 
   resources :products, only: [:index, :show], param: :id
