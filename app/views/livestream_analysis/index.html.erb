@@ -263,6 +263,90 @@
   <% end %>
 </div>
 
+<%# 分析結論 %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-secondary text-white">
+    📊 分析結論
+  </div>
+  <div class="card-body">
+    <div class="row g-4">
+
+      <div class="col-12">
+        <h6 class="fw-bold mb-3">直播出席概況</h6>
+        <p class="text-muted mb-2">
+          1/9 直播共 <strong><%= @jan9_emails.size %> 人</strong>購買薑黃，
+          其中黑卡 <strong><%= @black_jan9 %> 人（<%= @black_jan9_rate %>%）</strong>、
+          金卡 <strong><%= @gold_jan9 %> 人（<%= @gold_jan9_rate %>%）</strong>。
+        </p>
+        <p class="text-muted mb-2">
+          2/25 直播共 <strong><%= @feb25_emails.size %> 人</strong>購買薑黃，
+          其中黑卡 <strong><%= @black_feb25 %> 人（<%= @black_feb25_rate %>%）</strong>、
+          金卡 <strong><%= @gold_feb25 %> 人（<%= @gold_feb25_rate %>%）</strong>。
+        </p>
+        <p class="text-muted mb-3">
+          4/10 直播共 <strong><%= @apr10_emails.size %> 人</strong>購買薑黃，
+          其中黑卡 <strong><%= @black_apr10 %> 人（<%= @black_apr10_rate %>%）</strong>、
+          金卡 <strong><%= @gold_apr10 %> 人（<%= @gold_apr10_rate %>%）</strong>。
+        </p>
+      </div>
+
+      <div class="col-12">
+        <h6 class="fw-bold mb-3">回流率分析</h6>
+        <p class="text-muted mb-2">
+          1/9 → 2/25 回流率為 <strong><%= @jan9_return_rate %>%</strong>（<%= @jan9_to_feb25_count %> / <%= @jan9_emails.size %> 人），
+          顯示大部分客人<strong>不會在下一場直播立即回購</strong>。
+        </p>
+        <p class="text-muted mb-2">
+          2/25 → 4/10 回流率為 <strong><%= @feb25_return_rate %>%</strong>（<%= @feb25_to_apr10_count %> / <%= @feb25_emails.size %> 人）。
+        </p>
+        <p class="text-muted mb-3">
+          曾買過薑黃的客人在 4/10 的總回流率為 <strong><%= @prev_return_rate %>%</strong>（<%= @prev_to_apr10_count %> / <%= @all_prev_emails.size %> 人），
+          代表每 6 人中約有 1 人會再次回購。
+        </p>
+      </div>
+
+      <div class="col-12"><hr class="my-3"></div>
+
+      <div class="col-12">
+        <h6 class="fw-bold mb-3">未回流風險</h6>
+        <p class="text-muted mb-2">
+          金卡以上曾買薑黃但 4/10 未出現的共 <strong><%= @missing_customers.size %> 人</strong>，
+          其中逾期未回購的需優先追蹤。
+        </p>
+        <p class="text-muted mb-3">
+          根據購買瓶數推算，部分客人的薑黃已超過預期服用完畢時間，
+          建議盡快主動聯繫。
+        </p>
+      </div>
+
+      <div class="col-md-6">
+        <h6 class="fw-bold mb-3">忠實客分析</h6>
+        <p class="text-muted mb-2">
+          三場直播都有購買的忠實客共 <strong><%= @loyal_3_customers.size %> 人</strong>，
+          是品牌黏著度最高的核心客群，適合優先維護。
+        </p>
+        <p class="text-muted mb-3">
+          任意兩場有購買的客人共 <strong><%= @loyal_2_customers.size %> 人</strong>，
+          具有穩定回購習慣，下次直播前建議主動提醒。
+        </p>
+      </div>
+
+      <div class="col-12"><hr class="my-3"></div>
+
+      <div class="col-12">
+        <h6 class="fw-bold mb-3">建議行動</h6>
+        <ol class="text-muted mb-0">
+          <li class="mb-2">立即聯繫未出現名單中<strong>逾期超過 14 天</strong>的客人，優先從黑卡開始。</li>
+          <li class="mb-2">對任意兩場有買的 <strong><%= @loyal_2_customers.size %> 人</strong>，在下次直播前 3 天主動通知。</li>
+          <li class="mb-2">三場都買的 <strong><%= @loyal_3_customers.size %> 人</strong>，考慮邀請成為品牌大使或提供 VIP 優惠。</li>
+          <li class="mb-0">觀察每場直播出席率趨勢，若黑金卡出席率持續低於 20%，建議調整活動方式。</li>
+        </ol>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const panes = document.querySelectorAll('.tab-pane');
