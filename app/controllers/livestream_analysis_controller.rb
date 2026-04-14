@@ -156,6 +156,7 @@ def index
 
     ShoplineCustomer
       .where(email: emails)
+      .where(membership_level: TARGET_MEMBERSHIPS)  # 加這行
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
       .map do |c|
         apr10_order = apr10_by_email[c.email]
