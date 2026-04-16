@@ -100,8 +100,6 @@ class CustomersController < ApplicationController
       scope = scope.where(id: matching_ids)
     end
 
-    scope = scope.where.not(email: [nil, ""]).or(scope.where.not(mobile_phone: [nil, ""]))
-
     if @brand_ambassador == "1"
       scope = scope.joins(:customer_profile).where(customer_profiles: { brand_ambassador_training: true })
     end
