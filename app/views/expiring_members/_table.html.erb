@@ -1,0 +1,58 @@
+<div class="table-responsive">
+  <table class="table table-bordered table-hover table-striped w-100">
+    <thead class="bg-primary-600">
+      <tr>
+        <th>姓名</th>
+        <th>SL 連結</th>
+        <th>會員等級</th>
+        <th>到期日</th>
+        <th class="text-center">剩餘天數</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% customers.each do |c| %>
+        <% days_left = (c.membership_expiry_date - Date.today).to_i %>
+        <tr>
+          <td>
+            <div class="fw-500">
+              <%= link_to (c.full_name.presence || "(無名)"), customer_path(c) %>
+            </div>
+            <div class="small text-muted">
+              <% if c.instagram_account.present? %>
+                <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer">
+                  <%= c.instagram_account %>
+                </a>
+              <% end %>
+            </div>
+          </td>
+          <td>
+            <% if c.shopline_id.present? %>
+              <a href="https://admin.shoplineapp.com/admin/yardley/users/<%= c.shopline_id %>" 
+                target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-secondary">
+                開啟 ↗
+              </a>
+            <% else %>
+              —
+            <% end %>
+          </td>
+          <td><%= c.membership_level.presence || "—" %></td>
+          <td><%= c.membership_expiry_date&.strftime("%Y/%m/%d") %></td>
+          <td class="text-center">
+            <span style="color:<%= days_left <= 15 ? '#c0392b' : '#2980b9' %>; font-weight:600;">
+              <%= days_left %> 天
+            </span>
+          </td>
+        </tr>
+      <% end %>
+
+      <% if customers.blank? %>
+        <tr><td colspan="7" class="text-center text-muted py-4">目前無即將到期會員</td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<style>
+.bg-primary-600 { background-color: #886ab5 !important; color: white; }
+.fw-500 { font-weight: 600; }
+</style>

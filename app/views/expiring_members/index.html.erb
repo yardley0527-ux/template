@@ -1,0 +1,54 @@
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-bell"></i>
+    即將降級會員
+    <small>Expiring Memberships</small>
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-container show">
+        <div class="panel-content">
+          <ul class="nav nav-tabs" id="memberTabs">
+            <li class="nav-item">
+              <a class="nav-link active" href="#" onclick="switchTab('black-tab', this); return false;">
+                黑卡 <span><%= @black_15.count + @black_30.count %></span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchTab('gold-tab', this); return false;">
+                金卡 <span><%= @gold_15.count + @gold_30.count %></span>
+              </a>
+            </li>
+          </ul>
+
+          <div class="tab-content mt-3">
+            <div id="black-tab" class="tab-pane" style="display:block;">
+              <h5 style="color:#c0392b;">⚠️ 15 天內到期（<%= @black_15.count %> 人）</h5>
+              <%= render partial: "table", locals: { customers: @black_15 } %>
+              <h5 class="mt-4">📅 16–30 天內到期（<%= @black_30.count %> 人）</h5>
+              <%= render partial: "table", locals: { customers: @black_30 } %>
+            </div>
+            <div id="gold-tab" class="tab-pane" style="display:none;">
+              <h5 style="color:#c0392b;">⚠️ 15 天內到期（<%= @gold_15.count %> 人）</h5>
+              <%= render partial: "table", locals: { customers: @gold_15 } %>
+              <h5 class="mt-4">📅 16–30 天內到期（<%= @gold_30.count %> 人）</h5>
+              <%= render partial: "table", locals: { customers: @gold_30 } %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchTab(tabId, el) {
+    document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+    document.querySelectorAll('#memberTabs .nav-link').forEach(l => l.classList.remove('active'));
+    el.classList.add('active');
+  }
+</script>
