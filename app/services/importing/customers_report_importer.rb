@@ -58,6 +58,14 @@ module Importing
             unique_by: :shopline_id,
             update_only: upsertable_columns
           )
+
+          # 補回填 email：只更新目前 email 為 nil 的筆，不覆蓋已有值
+          shopline_batch.each do |r|
+            next if r[:email].blank? || r[:shopline_id].blank?
+            ShoplineCustomer.where(shopline_id: r[:shopline_id], email: nil)
+                            .update_all(email: r[:email])
+          end
+
           log "[import] flushed shopline_batch size=#{shopline_batch.size}"
           upserted += shopline_batch.size
         end
@@ -210,9 +218,9 @@ module Importing
         address_1
         address_2
         city
+        membership_expiry_date
         import_run_id
         source_row_hash
-        membership_expiry_date
       ]
     end
 
@@ -249,7 +257,7 @@ module Importing
         address_1:                 get.call("地址_1", "address_1"),
         address_2:                 get.call("地址_2", "address_2"),
         city:                      get.call("城市", "city"),
-        membership_expiry_date: to_date(get.call("會員有效期", "membership_expiry_date")),
+        membership_expiry_date:    to_date(get.call("會員有效期", "membership_expiry_date"))
       }
     end
 
