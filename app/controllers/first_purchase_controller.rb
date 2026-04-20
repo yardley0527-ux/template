@@ -34,20 +34,20 @@ class FirstPurchaseController < ApplicationController
     @silent_only = params[:silent_only] == "1"
     @sort = params[:sort].to_s.presence || "amount_desc"
 
-    # 每個 email 的首購資訊（subquery）
+    # 每個 email 的首購資訊
     first_purchase_subquery = <<~SQL
       SELECT DISTINCT ON (email)
         email,
-        product_name  AS first_product,
-        order_date    AS first_date,
-        total_amount  AS first_amount
+        product_name AS first_product,
+        order_date   AS first_date,
+        total_amount AS first_amount
       FROM shopline_orders
       WHERE email IS NOT NULL AND email != ''
         AND product_name IS NOT NULL AND product_name != ''
       ORDER BY email, order_date ASC
     SQL
 
-    # 每個 email 的訂單數
+    # 每個 email 的總訂單數
     order_count_subquery = <<~SQL
       SELECT email, COUNT(DISTINCT order_number) AS purchase_count
       FROM shopline_orders
@@ -55,27 +55,36 @@ class FirstPurchaseController < ApplicationController
       GROUP BY email
     SQL
 
-    scope = ShoplineCustomer
+    # 先建立不含 select 的 base_scope，供 count 使用
+    base_scope = ShoplineCustomer
       .joins("INNER JOIN (#{first_purchase_subquery}) fp ON fp.email = shopline_customers.email")
       .joins("LEFT JOIN (#{order_count_subquery}) oc ON oc.email = shopline_customers.email")
-      .select("shopline_customers.*, fp.first_product, fp.first_date, fp.first_amount, COALESCE(oc.purchase_count, 1) AS purchase_count")
 
     if @selected_series.present?
-      scope = scope.where("fp.first_product LIKE ?", "%#{@selected_series}%")
+      base_scope = base_scope.where("fp.first_product LIKE ?", "%#{@selected_series}%")
     end
 
     if @silent_only
-      scope = scope.where("COALESCE(oc.purchase_count, 1) = 1")
+      base_scope = base_scope.where("COALESCE(oc.purchase_count, 1) = 1")
     end
 
-    scope = scope.reorder(Arel.sql(sort_sql(@sort)))
+    # 避免 select(...) 影響 count SQL
+    @total = base_scope.distinct.count(:id)
 
-    @total = scope.count
+    scope = base_scope
+      .select(<<~SQL.squish)
+        shopline_customers.*,
+        fp.first_product,
+        fp.first_date,
+        fp.first_amount,
+        COALESCE(oc.purchase_count, 1) AS purchase_count
+      SQL
+      .reorder(Arel.sql(sort_sql(@sort)))
+
     @page = [params[:page].to_i, 1].max
     @total_pages = [(@total.to_f / 50).ceil, 1].max
     @customers = scope.offset((@page - 1) * 50).limit(50)
 
-    # 各系列統計摘要
     @series_stats = series_stats_summary
   end
 
@@ -111,6 +120,7 @@ class FirstPurchaseController < ApplicationController
 
       total = matched.size
       silent = matched.count { |r| r[:count] == 1 }
+
       {
         series: series,
         total: total,
@@ -123,12 +133,18 @@ class FirstPurchaseController < ApplicationController
 
   def sort_sql(sort)
     case sort
-    when "amount_desc"  then "shopline_customers.total_amount DESC NULLS LAST"
-    when "amount_asc"   then "shopline_customers.total_amount ASC NULLS LAST"
-    when "first_desc"   then "fp.first_date DESC NULLS LAST"
-    when "first_asc"    then "fp.first_date ASC NULLS LAST"
-    when "silent"       then "purchase_count ASC, shopline_customers.total_amount DESC NULLS LAST"
-    else "shopline_customers.total_amount DESC NULLS LAST"
+    when "amount_desc"
+      "shopline_customers.total_amount DESC NULLS LAST"
+    when "amount_asc"
+      "shopline_customers.total_amount ASC NULLS LAST"
+    when "first_desc"
+      "fp.first_date DESC NULLS LAST"
+    when "first_asc"
+      "fp.first_date ASC NULLS LAST"
+    when "silent"
+      "purchase_count ASC, shopline_customers.total_amount DESC NULLS LAST"
+    else
+      "shopline_customers.total_amount DESC NULLS LAST"
     end
   end
 end
