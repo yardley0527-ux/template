@@ -1,0 +1,345 @@
+<% content_for :page_title, "代謝錠回購分析" %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <h4 class="fw-bold mb-0">代謝錠回購分析</h4>
+    <p class="text-muted small mb-0">追蹤曾買過代謝錠的金卡以上客人，準備 4/24 品牌之夜邀請名單</p>
+  </div>
+</div>
+
+<%# 人數卡片 %>
+<div class="row g-3 mb-3">
+  <% [
+    ["7/4 直播買代謝錠人數",   @jul4_emails.size],
+    ["7/22 直播買代謝錠人數",  @jul22_emails.size],
+    ["10/9 直播買代謝錠人數",  @oct9_emails.size],
+    ["2/25 直播買代謝錠人數",  @feb25_emails.size]
+  ].each do |label, count| %>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm text-center py-4">
+        <div class="text-muted mb-2"><%= label %></div>
+        <div class="fw-bold text-primary" style="font-size: 2rem; line-height: 1;"><%= count %></div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<%# 黑卡金卡出席表 %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-secondary text-white">
+    黑卡 / 金卡 各場出席狀況
+  </div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table table-hover align-middle mb-0 text-center">
+      <thead class="table-light">
+        <tr>
+          <th></th>
+          <th>總人數</th>
+          <th>7/4 出席</th>
+          <th>7/4 出席率</th>
+          <th>7/22 出席</th>
+          <th>7/22 出席率</th>
+          <th>10/9 出席</th>
+          <th>10/9 出席率</th>
+          <th>2/25 出席</th>
+          <th>2/25 出席率</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fw-bold text-start ps-3">黑卡</td>
+          <td><%= @black_card_total %></td>
+          <td><%= @black_jul4 %></td>  <td><%= @black_jul4_rate %>%</td>
+          <td><%= @black_jul22 %></td> <td><%= @black_jul22_rate %>%</td>
+          <td><%= @black_oct9 %></td>  <td><%= @black_oct9_rate %>%</td>
+          <td><%= @black_feb25 %></td> <td><%= @black_feb25_rate %>%</td>
+        </tr>
+        <tr>
+          <td class="fw-bold text-start ps-3">金卡</td>
+          <td><%= @gold_card_total %></td>
+          <td><%= @gold_jul4 %></td>  <td><%= @gold_jul4_rate %>%</td>
+          <td><%= @gold_jul22 %></td> <td><%= @gold_jul22_rate %>%</td>
+          <td><%= @gold_oct9 %></td>  <td><%= @gold_oct9_rate %>%</td>
+          <td><%= @gold_feb25 %></td> <td><%= @gold_feb25_rate %>%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%# 回流率卡片 %>
+<div class="row g-3 mb-4">
+  <% [
+    ["7/4 → 7/22 回流率",      @jul4_return_rate,  @jul4_to_jul22_count,  @jul4_emails.size],
+    ["7/22 → 10/9 回流率",     @jul22_return_rate, @jul22_to_oct9_count,  @jul22_emails.size],
+    ["10/9 → 2/25 回流率",     @oct9_return_rate,  @oct9_to_feb25_count,  @oct9_emails.size],
+    ["曾買過 → 2/25 整體回流率", @prev_return_rate,  (@all_prev_emails & @feb25_emails).size, (@jul4_emails | @jul22_emails | @oct9_emails).uniq.size]
+  ].each do |label, rate, num, den| %>
+    <div class="col-md-3">
+      <div class="card border-0 shadow-sm text-center py-4">
+        <div class="text-muted mb-2"><%= label %></div>
+        <div class="fw-bold text-success" style="font-size: 2rem; line-height: 1;"><%= rate %>%</div>
+        <div class="text-muted mt-1"><%= num %> / <%= den %> 人</div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<%# 邀請名單 %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+    <span>📋 4/24 代謝錠品牌之夜邀請名單（金卡以上）</span>
+    <span class="badge bg-primary"><%= @invite_customers.size %> 人</span>
+  </div>
+  <div class="px-3 pt-2 border-bottom">
+    <ul class="nav nav-tabs" id="membershipTabs">
+      <% { "黑卡" => "black", "金卡" => "gold" }.each_with_index do |(level, key), idx| %>
+        <% count = @invite_customers.count { |r| r[:customer].membership_level == level } %>
+        <% next if count.zero? %>
+        <li class="nav-item">
+          <button class="nav-link <%= idx == 0 ? 'active' : '' %>" onclick="switchTab('<%= key %>', this)" type="button">
+            <%= level %> <span class="badge bg-secondary"><%= count %></span>
+          </button>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+  <div class="card-body p-0">
+    <% [["黑卡", "black"], ["金卡", "gold"]].each do |level, tab_id| %>
+      <% rows = @invite_customers.select { |r| r[:customer].membership_level == level } %>
+      <% next if rows.empty? %>
+      <div class="tab-pane" id="tab-<%= tab_id %>">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+            <thead class="table-light">
+              <tr>
+                <th>優先</th>
+                <th>姓名</th>
+                <th>卡別</th>
+                <th>出席場次</th>
+                <th>上次買代謝錠</th>
+                <th>瓶數</th>
+                <th>預期回購</th>
+                <th>逾期</th>
+                <th>歷史次數</th>
+                <th>歷史消費</th>
+                <th>IG</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% rows.each_with_index do |r, i| %>
+                <% c = r[:customer] %>
+                <tr>
+                  <td>
+                    <span class="badge <%= i < 3 ? 'bg-danger' : i < 8 ? 'bg-warning text-dark' : 'bg-light text-dark' %>">
+                      #<%= i + 1 %>
+                    </span>
+                  </td>
+                  <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                  <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                  <td>
+                    <span class="badge <%= r[:attended_jul4]  ? 'bg-success' : 'bg-light text-muted' %> me-1">7/4</span>
+                    <span class="badge <%= r[:attended_jul22] ? 'bg-success' : 'bg-light text-muted' %> me-1">7/22</span>
+                    <span class="badge <%= r[:attended_oct9]  ? 'bg-success' : 'bg-light text-muted' %> me-1">10/9</span>
+                    <span class="badge <%= r[:attended_feb25] ? 'bg-success' : 'bg-light text-muted' %>">2/25</span>
+                  </td>
+                  <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
+                  <td class="text-center"><%= r[:bottles] %> 瓶</td>
+                  <td><%= r[:last_date] ? (r[:last_date] + r[:expected_days]).strftime("%m/%d") : "-" %></td>
+                  <td>
+                    <% od = r[:overdue_days] %>
+                    <% if od.nil? %>
+                      <span class="text-muted">-</span>
+                    <% elsif od <= 0 %>
+                      <span class="badge bg-success">未到期</span>
+                    <% elsif od <= 14 %>
+                      <span class="badge bg-warning text-dark">+<%= od %>天</span>
+                    <% else %>
+                      <span class="badge bg-danger">+<%= od %>天</span>
+                    <% end %>
+                  </td>
+                  <td class="text-center"><%= r[:history_count] %> 次</td>
+                  <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
+                  <td>
+                    <% if c.instagram_account.present? %>
+                      <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
+                        📷 <%= c.instagram_account %>
+                      </a>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+              <% if rows.empty? %>
+                <tr><td colspan="11" class="text-center text-muted py-4">無資料</td></tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# 忠實客 helper %>
+<% loyal_card = lambda do |customers, card_id| %>
+  <% black = customers.select { |r| r[:customer].membership_level == "黑卡" } %>
+  <% gold  = customers.select { |r| r[:customer].membership_level == "金卡" } %>
+  <div class="px-3 pt-2 border-bottom">
+    <ul class="nav nav-tabs" id="tabs-<%= card_id %>">
+      <% [["黑卡", "black", black], ["金卡", "gold", gold]].each_with_index do |(level, key, group), idx| %>
+        <% next if group.empty? %>
+        <li class="nav-item">
+          <button class="nav-link <%= idx == 0 && !black.empty? || (idx == 1 && black.empty?) ? 'active' : '' %>"
+                  onclick="switchLoyalTab('<%= card_id %>-<%= key %>', '<%= card_id %>', this)"
+                  type="button">
+            <%= level %> <span class="badge bg-secondary"><%= group.size %></span>
+          </button>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+  <div class="card-body p-0">
+    <% [["黑卡", "black", black], ["金卡", "gold", gold]].each do |level, key, group| %>
+      <% next if group.empty? %>
+      <div class="loyal-pane" id="pane-<%= card_id %>-<%= key %>">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+            <thead class="table-light">
+              <tr>
+                <th>姓名</th>
+                <th>卡別</th>
+                <th>最近購買</th>
+                <th>上次購買日期</th>
+                <th>歷史買代謝次數</th>
+                <th>歷史代謝消費</th>
+                <th>IG</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% group.each do |r| %>
+                <% c = r[:customer] %>
+                <tr>
+                  <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                  <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                  <td><%= r[:last_product] %></td>
+                  <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
+                  <td class="text-center"><%= r[:history_count] %> 次</td>
+                  <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
+                  <td>
+                    <% if c.instagram_account.present? %>
+                      <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">📷 <%= c.instagram_account %></a>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<%# 四場都買 %>
+<% if @loyal_4_customers.any? %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+      <span>⭐⭐⭐⭐ 四場都有買代謝錠</span>
+      <span class="badge bg-white text-danger"><%= @loyal_4_customers.size %> 人</span>
+    </div>
+    <%= loyal_card.call(@loyal_4_customers, "loyal4") %>
+  </div>
+<% end %>
+
+<%# 任三場都買 %>
+<% if @loyal_3_customers.any? %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+      <span>⭐⭐⭐ 任意三場有買代謝錠</span>
+      <span class="badge bg-white text-success"><%= @loyal_3_customers.size %> 人</span>
+    </div>
+    <%= loyal_card.call(@loyal_3_customers, "loyal3") %>
+  </div>
+<% end %>
+
+<%# 任兩場都買 %>
+<% if @loyal_2_customers.any? %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+      <span>⭐⭐ 任意兩場有買代謝錠</span>
+      <span class="badge bg-white text-primary"><%= @loyal_2_customers.size %> 人</span>
+    </div>
+    <%= loyal_card.call(@loyal_2_customers, "loyal2") %>
+  </div>
+<% end %>
+
+<%# 分析結論 %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-secondary text-white">📊 分析結論</div>
+  <div class="card-body">
+    <div class="row g-4">
+      <div class="col-12">
+        <h6 class="fw-bold mb-3">直播出席概況</h6>
+        <p class="text-muted mb-2">
+          7/4 直播共 <strong><%= @jul4_emails.size %> 人</strong>購買代謝錠，
+          黑卡 <strong><%= @black_jul4 %> 人（<%= @black_jul4_rate %>%）</strong>、
+          金卡 <strong><%= @gold_jul4 %> 人（<%= @gold_jul4_rate %>%）</strong>。
+        </p>
+        <p class="text-muted mb-2">
+          7/22 直播共 <strong><%= @jul22_emails.size %> 人</strong>購買代謝錠，
+          黑卡 <strong><%= @black_jul22 %> 人（<%= @black_jul22_rate %>%）</strong>、
+          金卡 <strong><%= @gold_jul22 %> 人（<%= @gold_jul22_rate %>%）</strong>。
+        </p>
+        <p class="text-muted mb-2">
+          10/9 直播共 <strong><%= @oct9_emails.size %> 人</strong>購買代謝錠，
+          黑卡 <strong><%= @black_oct9 %> 人（<%= @black_oct9_rate %>%）</strong>、
+          金卡 <strong><%= @gold_oct9 %> 人（<%= @gold_oct9_rate %>%）</strong>。
+        </p>
+        <p class="text-muted mb-3">
+          2/25 直播共 <strong><%= @feb25_emails.size %> 人</strong>購買代謝錠，
+          黑卡 <strong><%= @black_feb25 %> 人（<%= @black_feb25_rate %>%）</strong>、
+          金卡 <strong><%= @gold_feb25 %> 人（<%= @gold_feb25_rate %>%）</strong>。
+        </p>
+      </div>
+      <div class="col-12">
+        <h6 class="fw-bold mb-3">回流率分析</h6>
+        <p class="text-muted mb-2">7/4 → 7/22：<strong><%= @jul4_return_rate %>%</strong>（<%= @jul4_to_jul22_count %> / <%= @jul4_emails.size %> 人）</p>
+        <p class="text-muted mb-2">7/22 → 10/9：<strong><%= @jul22_return_rate %>%</strong>（<%= @jul22_to_oct9_count %> / <%= @jul22_emails.size %> 人）</p>
+        <p class="text-muted mb-2">10/9 → 2/25：<strong><%= @oct9_return_rate %>%</strong>（<%= @oct9_to_feb25_count %> / <%= @oct9_emails.size %> 人）</p>
+        <p class="text-muted mb-3">曾買過代謝錠 → 2/25 整體回流率：<strong><%= @prev_return_rate %>%</strong></p>
+      </div>
+      <div class="col-12">
+        <h6 class="fw-bold mb-3">重點觀察與建議行動</h6>
+        <% @insights.each do |insight| %>
+          <% bg = { info: "alert-info", warning: "alert-warning", danger: "alert-danger", success: "alert-success" }[insight[:type]] %>
+          <div class="alert <%= bg %> py-2 px-3 mb-2" style="font-size: 0.9rem;">
+            <%= insight[:text] %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.tab-pane').forEach((p, i) => p.style.display = i === 0 ? 'block' : 'none');
+  ['loyal4', 'loyal3', 'loyal2'].forEach(cardId => {
+    document.querySelectorAll(`[id^="pane-${cardId}-"]`).forEach((p, i) => p.style.display = i === 0 ? 'block' : 'none');
+  });
+});
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('#membershipTabs .nav-link').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).style.display = 'block';
+  btn.classList.add('active');
+}
+
+function switchLoyalTab(paneId, cardId, btn) {
+  document.querySelectorAll(`[id^="pane-${cardId}-"]`).forEach(p => p.style.display = 'none');
+  document.querySelectorAll(`#tabs-${cardId} .nav-link`).forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + paneId).style.display = 'block';
+  btn.classList.add('active');
+}
+</script>

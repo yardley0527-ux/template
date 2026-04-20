@@ -30,7 +30,8 @@ class SidebarEntry
         {
           group_title: "直播管理",
           children: [
-            { href: livestream_analysis_path, title: "直播分析 - 薑黃品牌之夜", icon: "fa-video"  }
+            { href: livestream_analysis_path, title: "直播分析 - 薑黃品牌之夜", icon: "fa-video"  },
+            { href: metabolism_analysis_path,  title: "直播分析 - 代謝錠品牌之夜", icon: "fa-video" }
           ]
         }
       ]
