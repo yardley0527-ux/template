@@ -62,6 +62,22 @@ class MetabolismAnalysisController < ApplicationController
     @gold_oct9_rate   = pct(@gold_oct9,   @gold_card_total)
     @gold_feb25_rate  = pct(@gold_feb25,  @gold_card_total)
 
+    # 各場數據
+    @jul4_top_products  = top_products(jul4)
+    @jul22_top_products = top_products(jul22)
+    @oct9_top_products  = top_products(oct9)
+    @feb25_top_products = top_products(feb25)
+
+    @jul4_revenue  = event_revenue(jul4)
+    @jul22_revenue = event_revenue(jul22)
+    @oct9_revenue  = event_revenue(oct9)
+    @feb25_revenue = event_revenue(feb25)
+
+    @jul4_aov  = event_aov(jul4)
+    @jul22_aov = event_aov(jul22)
+    @oct9_aov  = event_aov(oct9)
+    @feb25_aov = event_aov(feb25)
+
     last_orders_raw = ShoplineOrder
       .where(METABOLISM)
       .where(email: @all_prev_emails)
@@ -92,9 +108,6 @@ class MetabolismAnalysisController < ApplicationController
       overdue_days    = last_date ? (today - last_date).to_i - expected_days : nil
       history_count   = history_counts[c.email]  || 0
       history_amount  = history_amounts[c.email] || 0
-      membership_rank = MEMBERSHIP_RANK[c.membership_level] || 0
-      overdue_score   = overdue_days ? [overdue_days, 0].max / 10.0 : 0
-      priority_score  = (membership_rank * 3) + overdue_score + (history_count * 0.5)
 
       {
         customer:       c,
@@ -105,17 +118,15 @@ class MetabolismAnalysisController < ApplicationController
         overdue_days:   overdue_days,
         history_count:  history_count,
         history_amount: history_amount,
-        priority_score: priority_score.round(1),
         attended_jul4:  @jul4_emails.include?(c.email),
         attended_jul22: @jul22_emails.include?(c.email),
         attended_oct9:  @oct9_emails.include?(c.email),
         attended_feb25: @feb25_emails.include?(c.email)
       }
-    end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:priority_score], -r[:history_amount].to_f] }
+    end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
 
-    # 分成兩組：已逾期（需補貨提醒）vs 未到期（純邀請）
-    @overdue_customers  = all_customers.select { |r| r[:overdue_days].nil? || r[:overdue_days] > 0 }
-    @not_due_customers  = all_customers.select { |r| r[:overdue_days] && r[:overdue_days] <= 0 }
+    @overdue_customers = all_customers.select { |r| r[:overdue_days].nil? || r[:overdue_days] > 0 }
+    @not_due_customers = all_customers.select { |r| r[:overdue_days] && r[:overdue_days] <= 0 }
 
     loyal_4_emails = @jul4_emails & @jul22_emails & @oct9_emails & @feb25_emails
 
@@ -178,7 +189,7 @@ class MetabolismAnalysisController < ApplicationController
     overdue_count = @overdue_customers.count { |r| r[:overdue_days] && r[:overdue_days] > 14 }
     @insights << { type: :danger, text: "有 #{overdue_count} 位金卡以上客人逾期超過 14 天未回購代謝錠，建議 4/24 前主動聯繫邀請。" } if overdue_count > 0
 
-    black_count = (@overdue_customers + @not_due_customers).count { |r| r[:customer].membership_level == "黑卡" }
+    black_count = (all_customers).count { |r| r[:customer].membership_level == "黑卡" }
     @insights << { type: :danger, text: "#{black_count} 位黑卡客人曾購買代謝錠，4/24 前務必一對一提醒。" } if black_count > 0
 
     rates = [@jul4_return_rate, @jul22_return_rate, @oct9_return_rate]
@@ -208,16 +219,28 @@ class MetabolismAnalysisController < ApplicationController
       metabolism_emails(feb25)
     ).uniq
 
+    history_counts  = ShoplineOrder.where(METABOLISM).where(email: all_prev_emails).group(:email).count
+    history_amounts = ShoplineOrder.where(METABOLISM).where(email: all_prev_emails).group(:email).sum(:total_amount)
+
     customers = ShoplineCustomer
       .where(membership_level: TARGET_MEMBERSHIPS)
       .where(email: all_prev_emails)
       .select(:id, :full_name, :email, :membership_level, :instagram_account, :shopline_id)
+      .sort_by { |c| [-MEMBERSHIP_RANK.fetch(c.membership_level, 0), -(history_counts[c.email] || 0), -(history_amounts[c.email] || 0).to_f] }
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["姓名", "卡別", "Email", "IG帳號", "Shopline 客人連結"]
+      csv << ["姓名", "卡別", "Email", "IG帳號", "歷史購買次數", "歷史消費金額", "Shopline 客人連結"]
       customers.each do |c|
         sl_url = "https://admin.shoplineapp.com/admin/yardley/users/#{c.shopline_id}"
-        csv << [c.full_name, c.membership_level, c.email, c.instagram_account, sl_url]
+        csv << [
+          c.full_name,
+          c.membership_level,
+          c.email,
+          c.instagram_account,
+          history_counts[c.email] || 0,
+          history_amounts[c.email]&.to_i || 0,
+          sl_url
+        ]
       end
     end
 
@@ -235,6 +258,37 @@ class MetabolismAnalysisController < ApplicationController
       .where.not(email: [nil, ""])
       .distinct
       .pluck(:email)
+  end
+
+  def top_products(range)
+    ShoplineOrder
+      .where(METABOLISM)
+      .where(order_date: range)
+      .group(:product_name)
+      .order("count_all DESC")
+      .limit(3)
+      .count
+  end
+
+  def event_revenue(range)
+    ShoplineOrder
+      .where(METABOLISM)
+      .where(order_date: range)
+      .where.not(total_amount: nil)
+      .sum(:total_amount)
+      .to_i
+  end
+
+  def event_aov(range)
+    orders = ShoplineOrder
+      .where(METABOLISM)
+      .where(order_date: range)
+      .where.not(total_amount: nil)
+    return 0 if orders.empty?
+    total   = orders.sum(:total_amount)
+    uniq_orders = orders.select(:order_number).distinct.count
+    return 0 if uniq_orders.zero?
+    (total / uniq_orders).round(0).to_i
   end
 
   def extract_bottles(product_name)

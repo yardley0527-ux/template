@@ -1,37 +1,70 @@
 <% content_for :page_title, "代謝錠回購分析" %>
 
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-4">
   <div class="col-12 d-flex justify-content-between align-items-center">
     <div>
-      <h4 class="fw-bold mb-0">代謝錠回購分析</h4>
-      <p class="text-muted small mb-0">追蹤曾買過代謝錠的金卡以上客人，準備 4/24 品牌之夜邀請名單</p>
+      <h4 class="fw-bold mb-0">代謝錠品牌之夜 4/24 分析</h4>
+      <p class="text-muted small mb-0">策略參考 ＋ 業務優先聯絡名單</p>
     </div>
-    <%= link_to "⬇ 匯出邀請名單 CSV", metabolism_analysis_export_path, class: "btn btn-outline-secondary btn-sm" %>
+    <%= link_to "⬇ 匯出聯絡名單 CSV", metabolism_analysis_export_path, class: "btn btn-outline-secondary btn-sm" %>
   </div>
 </div>
 
-<%# 人數卡片 %>
-<div class="row g-3 mb-3">
-  <% [
-    ["7/4 直播買代謝錠人數",  @jul4_emails.size],
-    ["7/22 直播買代謝錠人數", @jul22_emails.size],
-    ["10/9 直播買代謝錠人數", @oct9_emails.size],
-    ["2/25 直播買代謝錠人數", @feb25_emails.size]
-  ].each do |label, count| %>
-    <div class="col-md-3">
-      <div class="card border-0 shadow-sm text-center py-4">
-        <div class="text-muted mb-2"><%= label %></div>
-        <div class="fw-bold text-primary" style="font-size: 2rem; line-height: 1;"><%= count %></div>
-      </div>
-    </div>
-  <% end %>
+<%# ══════════════════════════════ %>
+<%# 區塊一：老闆策略參考            %>
+<%# ══════════════════════════════ %>
+
+<div class="d-flex align-items-center mb-3">
+  <div class="border-start border-3 border-secondary ps-3">
+    <h5 class="fw-bold mb-0 text-secondary">📊 策略參考</h5>
+    <p class="text-muted small mb-0">歷史場次數據，供 4/24 定價與套組規劃參考</p>
+  </div>
 </div>
 
-<%# 黑卡金卡出席表 %>
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-secondary text-white">黑卡 / 金卡 各場出席狀況</div>
+<%# 四場數據總覽 %>
+<div class="card border-0 shadow-sm mb-3">
   <div class="card-body p-0 table-responsive">
-    <table class="table table-hover align-middle mb-0 text-center">
+    <table class="table align-middle mb-0 text-center" style="font-size: 0.9rem;">
+      <thead style="background-color: #4a4a4a; color: white;">
+        <tr>
+          <th class="text-start ps-3">場次</th>
+          <th>買家人數</th>
+          <th>總營業額</th>
+          <th>平均客單價</th>
+          <th class="text-start ps-3">熱銷組合 Top 3</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% [
+          ["7/4",  @jul4_emails.size,  @jul4_revenue,  @jul4_aov,  @jul4_top_products],
+          ["7/22", @jul22_emails.size, @jul22_revenue, @jul22_aov, @jul22_top_products],
+          ["10/9", @oct9_emails.size,  @oct9_revenue,  @oct9_aov,  @oct9_top_products],
+          ["2/25", @feb25_emails.size, @feb25_revenue, @feb25_aov, @feb25_top_products]
+        ].each do |date, count, rev, aov, products| %>
+          <tr>
+            <td class="fw-bold text-start ps-3"><%= date %></td>
+            <td><%= count %> 人</td>
+            <td>NT$<%= number_with_delimiter(rev) %></td>
+            <td>NT$<%= number_with_delimiter(aov) %></td>
+            <td class="text-start ps-3">
+              <% products.each do |name, cnt| %>
+                <span class="badge me-1 mb-1" style="background-color: #6c757d; font-weight: normal;">
+                  <%= name %> × <%= cnt %>
+                </span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%# 黑卡金卡出席率 %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header text-white" style="background-color: #4a4a4a;">黑卡 / 金卡 各場出席率</div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0 text-center" style="font-size: 0.9rem;">
       <thead class="table-light">
         <tr>
           <th></th>
@@ -64,8 +97,8 @@
   </div>
 </div>
 
-<%# 回流率卡片 %>
-<div class="row g-3 mb-4">
+<%# 回流率 %>
+<div class="row g-3 mb-3">
   <% [
     ["7/4 → 7/22 回流率",       @jul4_return_rate,  @jul4_to_jul22_count,  @jul4_emails.size],
     ["7/22 → 10/9 回流率",      @jul22_return_rate, @jul22_to_oct9_count,  @jul22_emails.size],
@@ -73,13 +106,35 @@
     ["曾買過 → 2/25 整體回流率", @prev_return_rate,  (@all_prev_emails & @feb25_emails).size, (@jul4_emails | @jul22_emails | @oct9_emails).uniq.size]
   ].each do |label, rate, num, den| %>
     <div class="col-md-3">
-      <div class="card border-0 shadow-sm text-center py-4">
-        <div class="text-muted mb-2"><%= label %></div>
-        <div class="fw-bold text-success" style="font-size: 2rem; line-height: 1;"><%= rate %>%</div>
-        <div class="text-muted mt-1"><%= num %> / <%= den %> 人</div>
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="text-muted small mb-1"><%= label %></div>
+        <div class="fw-bold" style="font-size: 1.8rem; color: #495057;"><%= rate %>%</div>
+        <div class="text-muted small"><%= num %> / <%= den %> 人</div>
       </div>
     </div>
   <% end %>
+</div>
+
+<%# 建議行動 %>
+<div class="card border-0 shadow-sm mb-5">
+  <div class="card-header text-white" style="background-color: #4a4a4a;">4/24 建議行動</div>
+  <div class="card-body">
+    <% @insights.each do |insight| %>
+      <% bg = { info: "alert-info", warning: "alert-warning", danger: "alert-danger", success: "alert-success" }[insight[:type]] %>
+      <div class="alert <%= bg %> py-2 px-3 mb-2" style="font-size: 0.9rem;"><%= insight[:text] %></div>
+    <% end %>
+  </div>
+</div>
+
+<%# ══════════════════════════════ %>
+<%# 區塊二：業務優先聯絡名單        %>
+<%# ══════════════════════════════ %>
+
+<div class="d-flex align-items-center mb-3">
+  <div class="border-start border-3 border-secondary ps-3">
+    <h5 class="fw-bold mb-0 text-secondary">📋 業務優先聯絡名單</h5>
+    <p class="text-muted small mb-0">金卡以上，按歷史購買次數排序，先聯絡最熟的人</p>
+  </div>
 </div>
 
 <%# helper：邀請名單卡片內容 %>
@@ -111,20 +166,22 @@
   </div>
 <% end %>
 
-<%# 第一張：需要補貨提醒（已逾期）%>
+<%# 補貨提醒優先 %>
 <div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-    <span>🔴 需要補貨提醒（代謝錠已吃完，優先聯繫）</span>
-    <span class="badge bg-white text-danger"><%= @overdue_customers.size %> 人</span>
+  <div class="card-header text-white d-flex justify-content-between align-items-center"
+       style="background-color: #7a3030;">
+    <span>補貨提醒優先（代謝錠已吃完）</span>
+    <span class="badge bg-white text-dark"><%= @overdue_customers.size %> 人</span>
   </div>
   <% render_invite_card.call(@overdue_customers, "od") %>
 </div>
 
-<%# 第二張：純邀請（藥還沒吃完）%>
+<%# 純邀請 %>
 <div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-    <span>🟢 純邀請（代謝錠還沒吃完，邀來看直播即可）</span>
-    <span class="badge bg-white text-success"><%= @not_due_customers.size %> 人</span>
+  <div class="card-header text-white d-flex justify-content-between align-items-center"
+       style="background-color: #2d5a3d;">
+    <span>純邀請（代謝錠還沒吃完，邀來看直播即可）</span>
+    <span class="badge bg-white text-dark"><%= @not_due_customers.size %> 人</span>
   </div>
   <% render_invite_card.call(@not_due_customers, "nd") %>
 </div>
@@ -194,9 +251,10 @@
 
 <% if @loyal_4_customers.any? %>
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #5a3060;">
       <span>⭐⭐⭐⭐ 四場都有買代謝錠</span>
-      <span class="badge bg-white text-danger"><%= @loyal_4_customers.size %> 人</span>
+      <span class="badge bg-white text-dark"><%= @loyal_4_customers.size %> 人</span>
     </div>
     <% loyal_card.call(@loyal_4_customers, "loyal4") %>
   </div>
@@ -204,9 +262,10 @@
 
 <% if @loyal_3_customers.any? %>
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #2d5a3d;">
       <span>⭐⭐⭐ 任意三場有買代謝錠</span>
-      <span class="badge bg-white text-success"><%= @loyal_3_customers.size %> 人</span>
+      <span class="badge bg-white text-dark"><%= @loyal_3_customers.size %> 人</span>
     </div>
     <% loyal_card.call(@loyal_3_customers, "loyal3") %>
   </div>
@@ -214,59 +273,14 @@
 
 <% if @loyal_2_customers.any? %>
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #2d4a6a;">
       <span>⭐⭐ 任意兩場有買代謝錠</span>
-      <span class="badge bg-white text-primary"><%= @loyal_2_customers.size %> 人</span>
+      <span class="badge bg-white text-dark"><%= @loyal_2_customers.size %> 人</span>
     </div>
     <% loyal_card.call(@loyal_2_customers, "loyal2") %>
   </div>
 <% end %>
-
-<%# 分析結論 %>
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-secondary text-white">📊 分析結論</div>
-  <div class="card-body">
-    <div class="row g-4">
-      <div class="col-12">
-        <h6 class="fw-bold mb-3">直播出席概況</h6>
-        <p class="text-muted mb-2">
-          7/4 直播共 <strong><%= @jul4_emails.size %> 人</strong>購買代謝錠，
-          黑卡 <strong><%= @black_jul4 %> 人（<%= @black_jul4_rate %>%）</strong>、
-          金卡 <strong><%= @gold_jul4 %> 人（<%= @gold_jul4_rate %>%）</strong>。
-        </p>
-        <p class="text-muted mb-2">
-          7/22 直播共 <strong><%= @jul22_emails.size %> 人</strong>購買代謝錠，
-          黑卡 <strong><%= @black_jul22 %> 人（<%= @black_jul22_rate %>%）</strong>、
-          金卡 <strong><%= @gold_jul22 %> 人（<%= @gold_jul22_rate %>%）</strong>。
-        </p>
-        <p class="text-muted mb-2">
-          10/9 直播共 <strong><%= @oct9_emails.size %> 人</strong>購買代謝錠，
-          黑卡 <strong><%= @black_oct9 %> 人（<%= @black_oct9_rate %>%）</strong>、
-          金卡 <strong><%= @gold_oct9 %> 人（<%= @gold_oct9_rate %>%）</strong>。
-        </p>
-        <p class="text-muted mb-3">
-          2/25 直播共 <strong><%= @feb25_emails.size %> 人</strong>購買代謝錠，
-          黑卡 <strong><%= @black_feb25 %> 人（<%= @black_feb25_rate %>%）</strong>、
-          金卡 <strong><%= @gold_feb25 %> 人（<%= @gold_feb25_rate %>%）</strong>。
-        </p>
-      </div>
-      <div class="col-12">
-        <h6 class="fw-bold mb-3">回流率分析</h6>
-        <p class="text-muted mb-2">7/4 → 7/22：<strong><%= @jul4_return_rate %>%</strong>（<%= @jul4_to_jul22_count %> / <%= @jul4_emails.size %> 人）</p>
-        <p class="text-muted mb-2">7/22 → 10/9：<strong><%= @jul22_return_rate %>%</strong>（<%= @jul22_to_oct9_count %> / <%= @jul22_emails.size %> 人）</p>
-        <p class="text-muted mb-2">10/9 → 2/25：<strong><%= @oct9_return_rate %>%</strong>（<%= @oct9_to_feb25_count %> / <%= @oct9_emails.size %> 人）</p>
-        <p class="text-muted mb-3">曾買過代謝錠 → 2/25 整體回流率：<strong><%= @prev_return_rate %>%</strong></p>
-      </div>
-      <div class="col-12">
-        <h6 class="fw-bold mb-3">重點觀察與建議行動</h6>
-        <% @insights.each do |insight| %>
-          <% bg = { info: "alert-info", warning: "alert-warning", danger: "alert-danger", success: "alert-success" }[insight[:type]] %>
-          <div class="alert <%= bg %> py-2 px-3 mb-2" style="font-size: 0.9rem;"><%= insight[:text] %></div>
-        <% end %>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

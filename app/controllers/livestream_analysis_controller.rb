@@ -113,7 +113,7 @@ def index
       history_amount: history_amount,
       priority_score: priority_score.round(1)
     }
-  end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:priority_score], -r[:history_amount].to_f] }
+  end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
   .reject { |r| r[:overdue_days] && r[:overdue_days] <= 0 }
 
   loyal_3_emails = @jan9_emails & @feb25_emails & @apr10_emails
