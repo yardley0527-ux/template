@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_09_065023) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_20_100223) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -45,6 +45,23 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_065023) do
     t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin
     t.index ["product_tags"], name: "index_customer_profiles_on_product_tags", using: :gin
     t.index ["shopline_customer_id"], name: "index_customer_profiles_on_shopline_customer_id"
+  end
+
+  create_table "customer_purchase_summaries", force: :cascade do |t|
+    t.string "email", null: false
+    t.string "first_product"
+    t.string "first_series"
+    t.datetime "first_date"
+    t.decimal "first_amount", precision: 12, scale: 2
+    t.integer "purchase_count", default: 1, null: false
+    t.boolean "silent_only", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_customer_purchase_summaries_on_email", unique: true
+    t.index ["first_date"], name: "index_customer_purchase_summaries_on_first_date"
+    t.index ["first_series"], name: "index_customer_purchase_summaries_on_first_series"
+    t.index ["purchase_count"], name: "index_customer_purchase_summaries_on_purchase_count"
+    t.index ["silent_only"], name: "index_customer_purchase_summaries_on_silent_only"
   end
 
   create_table "health_assessment_products", force: :cascade do |t|
@@ -229,6 +246,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_065023) do
     t.string "city"
     t.index ["checkout_amount"], name: "index_shopline_orders_on_checkout_amount"
     t.index ["city"], name: "index_shopline_orders_on_city"
+    t.index ["email", "order_date"], name: "index_shopline_orders_on_email_and_order_date"
+    t.index ["email", "order_number"], name: "index_shopline_orders_on_email_and_order_number"
     t.index ["email"], name: "index_shopline_orders_on_email"
     t.index ["import_run_id"], name: "index_shopline_orders_on_import_run_id"
     t.index ["shopline_customer_id"], name: "index_shopline_orders_on_shopline_customer_id"

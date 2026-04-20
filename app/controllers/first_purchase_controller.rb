@@ -1,9 +1,9 @@
+# app/controllers/first_purchase_controller.rb
 # frozen_string_literal: true
 
 class FirstPurchaseController < ApplicationController
   SERIES_OPTIONS = %w[代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣].freeze
 
-  # 首購→第二購 已知路徑（來自資料分析）
   SECOND_PURCHASE_MAP = {
     "代謝錠" => [["代謝錠", 35.4], ["薑黃", 14.5], ["全能", 11.6], ["膠原蛋白", 7.3], ["美白", 5.4]],
     "全能"   => [["全能", 34.6], ["代謝錠", 16.0], ["美白", 9.9], ["薑黃", 6.9]],
@@ -26,6 +26,8 @@ class FirstPurchaseController < ApplicationController
     "私密粉"  => 53.1,
   }.freeze
 
+  PER_PAGE = 50
+
   def index
     @series_options = SERIES_OPTIONS
     @second_purchase_map = SECOND_PURCHASE_MAP
@@ -33,102 +35,69 @@ class FirstPurchaseController < ApplicationController
     @selected_series = params[:series].to_s.strip
     @silent_only = params[:silent_only] == "1"
     @sort = params[:sort].to_s.presence || "amount_desc"
+    @page = [params[:page].to_i, 1].max
 
-    # 每個 email 的首購資訊
-    first_purchase_subquery = <<~SQL
-      SELECT DISTINCT ON (email)
-        email,
-        product_name AS first_product,
-        order_date   AS first_date,
-        total_amount AS first_amount
-      FROM shopline_orders
-      WHERE email IS NOT NULL AND email != ''
-        AND product_name IS NOT NULL AND product_name != ''
-      ORDER BY email, order_date ASC
-    SQL
-
-    # 每個 email 的總訂單數
-    order_count_subquery = <<~SQL
-      SELECT email, COUNT(DISTINCT order_number) AS purchase_count
-      FROM shopline_orders
-      WHERE email IS NOT NULL AND email != ''
-      GROUP BY email
-    SQL
-
-    # 先建立不含 select 的 base_scope，供 count 使用
     base_scope = ShoplineCustomer
-      .joins("INNER JOIN (#{first_purchase_subquery}) fp ON fp.email = shopline_customers.email")
-      .joins("LEFT JOIN (#{order_count_subquery}) oc ON oc.email = shopline_customers.email")
+      .joins("INNER JOIN customer_purchase_summaries cps ON cps.email = shopline_customers.email")
 
-    if @selected_series.present?
-      base_scope = base_scope.where("fp.first_product LIKE ?", "%#{@selected_series}%")
+    base_scope = base_scope.where("cps.first_series = ?", @selected_series) if @selected_series.present?
+    base_scope = base_scope.where("cps.silent_only = TRUE") if @silent_only
+
+    @total = Rails.cache.fetch(total_cache_key, expires_in: 10.minutes) do
+      base_scope.distinct.count(:id)
     end
-
-    if @silent_only
-      base_scope = base_scope.where("COALESCE(oc.purchase_count, 1) = 1")
-    end
-
-    # 避免 select(...) 影響 count SQL
-    @total = base_scope.distinct.count(:id)
 
     scope = base_scope
       .select(<<~SQL.squish)
         shopline_customers.*,
-        fp.first_product,
-        fp.first_date,
-        fp.first_amount,
-        COALESCE(oc.purchase_count, 1) AS purchase_count
+        cps.first_product,
+        cps.first_series,
+        cps.first_date,
+        cps.first_amount,
+        cps.purchase_count
       SQL
       .reorder(Arel.sql(sort_sql(@sort)))
 
-    @page = [params[:page].to_i, 1].max
-    @total_pages = [(@total.to_f / 50).ceil, 1].max
-    @customers = scope.offset((@page - 1) * 50).limit(50)
+    @total_pages = [(@total.to_f / PER_PAGE).ceil, 1].max
+    @customers = scope.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
 
-    @series_stats = series_stats_summary
+    @series_stats = Rails.cache.fetch("first_purchase:series_stats:v1", expires_in: 30.minutes) do
+      series_stats_summary
+    end
   end
 
   private
 
+  def total_cache_key
+    [
+      "first_purchase:total:v1",
+      @selected_series.presence || "all",
+      @silent_only ? "silent" : "all_status"
+    ].join(":")
+  end
+
   def series_stats_summary
-    first_purchase_subquery = <<~SQL
-      SELECT DISTINCT ON (email)
-        email,
-        product_name AS first_product
-      FROM shopline_orders
-      WHERE email IS NOT NULL AND email != ''
-        AND product_name IS NOT NULL AND product_name != ''
-      ORDER BY email, order_date ASC
-    SQL
+    rows = CustomerPurchaseSummary
+      .where.not(first_series: nil)
+      .group(:first_series)
+      .pluck(
+        :first_series,
+        Arel.sql("COUNT(*)"),
+        Arel.sql("SUM(CASE WHEN silent_only = TRUE THEN 1 ELSE 0 END)")
+      )
 
-    order_count_subquery = <<~SQL
-      SELECT email, COUNT(DISTINCT order_number) AS purchase_count
-      FROM shopline_orders
-      WHERE email IS NOT NULL AND email != ''
-      GROUP BY email
-    SQL
-
-    rows = ShoplineCustomer
-      .joins("INNER JOIN (#{first_purchase_subquery}) fp ON fp.email = shopline_customers.email")
-      .joins("LEFT JOIN (#{order_count_subquery}) oc ON oc.email = shopline_customers.email")
-      .select("fp.first_product, COALESCE(oc.purchase_count, 1) AS purchase_count")
-      .map { |r| { product: r.first_product.to_s, count: r.purchase_count.to_i } }
-
-    SERIES_OPTIONS.filter_map do |series|
-      matched = rows.select { |r| r[:product].include?(series) }
-      next if matched.empty?
-
-      total = matched.size
-      silent = matched.count { |r| r[:count] == 1 }
+    rows.map do |series, total, silent|
+      total = total.to_i
+      silent = silent.to_i
 
       {
         series: series,
         total: total,
         silent: silent,
         returned: total - silent,
-        return_rate: RETURN_RATES[series] || ((total - silent).to_f / total * 100).round(1)
+        return_rate: RETURN_RATES[series] || (total.zero? ? 0 : ((total - silent).to_f / total * 100).round(1))
       }
-    end
+    end.sort_by { |h| -h[:total] }
   end
 
   def sort_sql(sort)
@@ -138,11 +107,11 @@ class FirstPurchaseController < ApplicationController
     when "amount_asc"
       "shopline_customers.total_amount ASC NULLS LAST"
     when "first_desc"
-      "fp.first_date DESC NULLS LAST"
+      "cps.first_date DESC NULLS LAST"
     when "first_asc"
-      "fp.first_date ASC NULLS LAST"
+      "cps.first_date ASC NULLS LAST"
     when "silent"
-      "purchase_count ASC, shopline_customers.total_amount DESC NULLS LAST"
+      "cps.purchase_count ASC, shopline_customers.total_amount DESC NULLS LAST"
     else
       "shopline_customers.total_amount DESC NULLS LAST"
     end
