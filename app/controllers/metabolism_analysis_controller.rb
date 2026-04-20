@@ -216,7 +216,7 @@ class MetabolismAnalysisController < ApplicationController
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
       csv << ["姓名", "卡別", "Email", "IG帳號", "Shopline 客人連結"]
       customers.each do |c|
-        sl_url = "https://admin.shopline.tw/customers/#{c.shopline_id}"
+        sl_url = "https://admin.shoplineapp.com/admin/yardley/users/#{c.shopline_id}"
         csv << [c.full_name, c.membership_level, c.email, c.instagram_account, sl_url]
       end
     end
