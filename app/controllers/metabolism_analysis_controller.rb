@@ -82,7 +82,7 @@ class MetabolismAnalysisController < ApplicationController
 
     today = Date.today
 
-    @invite_customers = customers.map do |c|
+    all_customers = customers.map do |c|
       last            = last_order_by_email[c.email]
       bottles         = extract_bottles(last&.dig(:product_name))
       last_date       = last&.dig(:order_date)&.to_date
@@ -110,6 +110,10 @@ class MetabolismAnalysisController < ApplicationController
         attended_feb25: @feb25_emails.include?(c.email)
       }
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:priority_score], -r[:history_amount].to_f] }
+
+    # 分成兩組：已逾期（需補貨提醒）vs 未到期（純邀請）
+    @overdue_customers  = all_customers.select { |r| r[:overdue_days].nil? || r[:overdue_days] > 0 }
+    @not_due_customers  = all_customers.select { |r| r[:overdue_days] && r[:overdue_days] <= 0 }
 
     loyal_4_emails = @jul4_emails & @jul22_emails & @oct9_emails & @feb25_emails
 
@@ -169,10 +173,10 @@ class MetabolismAnalysisController < ApplicationController
 
     @insights = []
 
-    overdue_count = @invite_customers.count { |r| r[:overdue_days] && r[:overdue_days] > 14 }
+    overdue_count = @overdue_customers.count { |r| r[:overdue_days] && r[:overdue_days] > 14 }
     @insights << { type: :danger, text: "有 #{overdue_count} 位金卡以上客人逾期超過 14 天未回購代謝錠，建議 4/24 前主動聯繫邀請。" } if overdue_count > 0
 
-    black_count = @invite_customers.count { |r| r[:customer].membership_level == "黑卡" }
+    black_count = (@overdue_customers + @not_due_customers).count { |r| r[:customer].membership_level == "黑卡" }
     @insights << { type: :danger, text: "#{black_count} 位黑卡客人曾購買代謝錠，4/24 前務必一對一提醒。" } if black_count > 0
 
     rates = [@jul4_return_rate, @jul22_return_rate, @oct9_return_rate]
