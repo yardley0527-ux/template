@@ -28,6 +28,17 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "首購管理",
+          children: [
+            { href: first_purchase_index_path,                                    title: "首購總覽",           icon: "fa-shopping-bag" },
+            { href: first_purchase_index_path(silent_only: 1),                    title: "沉默客名單",         icon: "fa-user-slash" },
+            { href: first_purchase_index_path(series: "代謝錠", silent_only: 1),  title: "代謝錠沉默客",       icon: "fa-capsules" },
+            { href: first_purchase_index_path(series: "全能",   silent_only: 1),  title: "全能沉默客",         icon: "fa-capsules" },
+            { href: first_purchase_index_path(series: "薑黃",   silent_only: 1),  title: "薑黃沉默客",         icon: "fa-capsules" },
+            { href: first_purchase_index_path(series: "膠原蛋白", silent_only: 1), title: "膠原蛋白沉默客",     icon: "fa-capsules" },
+          ]
+        },
+        {
           group_title: "產品分類快速檢視",
           children: [
             { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },

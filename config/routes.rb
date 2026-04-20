@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   get '/metabolism_analysis',        to: 'metabolism_analysis#index',  as: :metabolism_analysis
   get '/metabolism_analysis/export', to: 'metabolism_analysis#export', as: :metabolism_analysis_export
   get 'expiring_members', to: 'expiring_members#index', as: :expiring_members
+  get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
 
   resources :products, only: [:index, :show], param: :id
   resources :customers, only: [:index, :show] do
