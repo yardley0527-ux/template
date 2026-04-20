@@ -1,9 +1,12 @@
 <% content_for :page_title, "代謝錠回購分析" %>
 
 <div class="row g-3 mb-3">
-  <div class="col-12">
-    <h4 class="fw-bold mb-0">代謝錠回購分析</h4>
-    <p class="text-muted small mb-0">追蹤曾買過代謝錠的金卡以上客人，準備 4/24 品牌之夜邀請名單</p>
+  <div class="col-12 d-flex justify-content-between align-items-center">
+    <div>
+      <h4 class="fw-bold mb-0">代謝錠回購分析</h4>
+      <p class="text-muted small mb-0">追蹤曾買過代謝錠的金卡以上客人，準備 4/24 品牌之夜邀請名單</p>
+    </div>
+    <%= link_to "⬇ 匯出邀請名單 CSV", metabolism_analysis_export_path, class: "btn btn-outline-secondary btn-sm" %>
   </div>
 </div>
 
@@ -79,7 +82,7 @@
   <% end %>
 </div>
 
-<%# helper：產生單一卡片的 tab 內容 %>
+<%# helper：邀請名單卡片內容 %>
 <% render_invite_card = lambda do |customers, tab_prefix| %>
   <div class="px-3 pt-2 border-bottom">
     <ul class="nav nav-tabs" id="tabs-<%= tab_prefix %>">
@@ -87,7 +90,10 @@
         <% group = customers.select { |r| r[:customer].membership_level == level } %>
         <% next if group.empty? %>
         <li class="nav-item">
-          <button class="nav-link" data-tab-prefix="<%= tab_prefix %>" data-tab-target="<%= tab_prefix %>-<%= key %>" type="button">
+          <button class="nav-link"
+                  data-tab-prefix="<%= tab_prefix %>"
+                  data-tab-target="<%= tab_prefix %>-<%= key %>"
+                  type="button">
             <%= level %> <span class="badge bg-secondary"><%= group.size %></span>
           </button>
         </li>
@@ -111,7 +117,7 @@
     <span>🔴 需要補貨提醒（代謝錠已吃完，優先聯繫）</span>
     <span class="badge bg-white text-danger"><%= @overdue_customers.size %> 人</span>
   </div>
-  <%= render_invite_card.call(@overdue_customers, "od") %>
+  <% render_invite_card.call(@overdue_customers, "od") %>
 </div>
 
 <%# 第二張：純邀請（藥還沒吃完）%>
@@ -120,7 +126,7 @@
     <span>🟢 純邀請（代謝錠還沒吃完，邀來看直播即可）</span>
     <span class="badge bg-white text-success"><%= @not_due_customers.size %> 人</span>
   </div>
-  <%= render_invite_card.call(@not_due_customers, "nd") %>
+  <% render_invite_card.call(@not_due_customers, "nd") %>
 </div>
 
 <%# 忠實客 helper %>
@@ -132,7 +138,10 @@
       <% [["黑卡", "black", black], ["金卡", "gold", gold]].each do |level, key, group| %>
         <% next if group.empty? %>
         <li class="nav-item">
-          <button class="nav-link" data-tab-prefix="<%= card_id %>" data-tab-target="<%= card_id %>-<%= key %>" type="button">
+          <button class="nav-link"
+                  data-tab-prefix="<%= card_id %>"
+                  data-tab-target="<%= card_id %>-<%= key %>"
+                  type="button">
             <%= level %> <span class="badge bg-secondary"><%= group.size %></span>
           </button>
         </li>
@@ -147,8 +156,13 @@
           <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
             <thead class="table-light">
               <tr>
-                <th>姓名</th><th>卡別</th><th>最近購買</th>
-                <th>上次購買日期</th><th>歷史買代謝次數</th><th>歷史代謝消費</th><th>IG</th>
+                <th>姓名</th>
+                <th>卡別</th>
+                <th>最近購買</th>
+                <th>上次購買日期</th>
+                <th>歷史買代謝次數</th>
+                <th>歷史代謝消費</th>
+                <th>IG</th>
               </tr>
             </thead>
             <tbody>
@@ -163,7 +177,9 @@
                   <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
                   <td>
                     <% if c.instagram_account.present? %>
-                      <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">📷 <%= c.instagram_account %></a>
+                      <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
+                        📷 <%= c.instagram_account %>
+                      </a>
                     <% end %>
                   </td>
                 </tr>
@@ -182,7 +198,7 @@
       <span>⭐⭐⭐⭐ 四場都有買代謝錠</span>
       <span class="badge bg-white text-danger"><%= @loyal_4_customers.size %> 人</span>
     </div>
-    <%= loyal_card.call(@loyal_4_customers, "loyal4") %>
+    <% loyal_card.call(@loyal_4_customers, "loyal4") %>
   </div>
 <% end %>
 
@@ -192,7 +208,7 @@
       <span>⭐⭐⭐ 任意三場有買代謝錠</span>
       <span class="badge bg-white text-success"><%= @loyal_3_customers.size %> 人</span>
     </div>
-    <%= loyal_card.call(@loyal_3_customers, "loyal3") %>
+    <% loyal_card.call(@loyal_3_customers, "loyal3") %>
   </div>
 <% end %>
 
@@ -202,7 +218,7 @@
       <span>⭐⭐ 任意兩場有買代謝錠</span>
       <span class="badge bg-white text-primary"><%= @loyal_2_customers.size %> 人</span>
     </div>
-    <%= loyal_card.call(@loyal_2_customers, "loyal2") %>
+    <% loyal_card.call(@loyal_2_customers, "loyal2") %>
   </div>
 <% end %>
 
@@ -254,7 +270,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  // 每個 tab group 各自顯示第一個 tab
   document.querySelectorAll('[id^="tabs-"]').forEach(function (tabGroup) {
     const firstBtn = tabGroup.querySelector('.nav-link');
     if (firstBtn) activateTab(firstBtn);
@@ -265,23 +280,19 @@ function activateTab(btn) {
   const prefix = btn.dataset.tabPrefix;
   const targetId = btn.dataset.tabTarget;
 
-  // 隱藏同 group 所有 pane
   document.querySelectorAll(`#pane-${prefix}-black, #pane-${prefix}-gold`).forEach(function (p) {
     p.style.display = 'none';
   });
 
-  // 移除同 group 所有 active
   document.querySelectorAll(`#tabs-${prefix} .nav-link`).forEach(function (b) {
     b.classList.remove('active');
   });
 
-  // 顯示目標
   const target = document.getElementById('pane-' + targetId);
   if (target) target.style.display = 'block';
   btn.classList.add('active');
 }
 
-// 綁定所有 tab 按鈕
 document.addEventListener('click', function (e) {
   const btn = e.target.closest('[data-tab-target]');
   if (btn) activateTab(btn);

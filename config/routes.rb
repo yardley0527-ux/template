@@ -4,7 +4,8 @@ Rails.application.routes.draw do
   root 'welcome#index'
   get "/api/birthday_customers", to: "welcome#birthday_customers"
   get '/livestream_analysis', to: 'livestream_analysis#index'
-  get '/metabolism_analysis',  to: 'metabolism_analysis#index', as: :metabolism_analysis
+  get '/metabolism_analysis',        to: 'metabolism_analysis#index',  as: :metabolism_analysis
+  get '/metabolism_analysis/export', to: 'metabolism_analysis#export', as: :metabolism_analysis_export
   get 'expiring_members', to: 'expiring_members#index', as: :expiring_members
 
   resources :products, only: [:index, :show], param: :id

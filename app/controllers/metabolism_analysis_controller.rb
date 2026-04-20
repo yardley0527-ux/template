@@ -1,3 +1,5 @@
+require 'csv'
+
 class MetabolismAnalysisController < ApplicationController
   METABOLISM = "product_name LIKE '%代謝%'"
   DAYS_PER_BOTTLE = 30
@@ -191,6 +193,37 @@ class MetabolismAnalysisController < ApplicationController
     @insights << { type: :success, text: "#{@loyal_3_customers.size} 位客人任意三場有購買，高忠誠度客群，4/24 前優先提醒。" } if @loyal_3_customers.size > 0
     @insights << { type: :info,    text: "#{@loyal_2_customers.size} 位客人任意兩場有購買，具穩定回購習慣，4/24 前 3 天建議主動通知。" } if @loyal_2_customers.size > 0
     @insights << { type: :info,    text: "累計 #{@all_prev_emails.size} 位不重複客人曾在四場購買代謝錠，可作為 4/24 邀請名單基礎。" }
+  end
+
+  def export
+    jul4  = Date.new(2025,  7,  3).beginning_of_day..Date.new(2025,  7,  5).end_of_day
+    jul22 = Date.new(2025,  7, 21).beginning_of_day..Date.new(2025,  7, 23).end_of_day
+    oct9  = Date.new(2025, 10,  8).beginning_of_day..Date.new(2025, 10, 11).end_of_day
+    feb25 = Date.new(2026,  2, 24).beginning_of_day..Date.new(2026,  2, 26).end_of_day
+
+    all_prev_emails = (
+      metabolism_emails(jul4) |
+      metabolism_emails(jul22) |
+      metabolism_emails(oct9) |
+      metabolism_emails(feb25)
+    ).uniq
+
+    customers = ShoplineCustomer
+      .where(membership_level: TARGET_MEMBERSHIPS)
+      .where(email: all_prev_emails)
+      .select(:id, :full_name, :email, :membership_level, :instagram_account, :shopline_id)
+
+    csv_data = CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["姓名", "卡別", "Email", "IG帳號", "Shopline 客人連結"]
+      customers.each do |c|
+        sl_url = "https://admin.shopline.tw/customers/#{c.shopline_id}"
+        csv << [c.full_name, c.membership_level, c.email, c.instagram_account, sl_url]
+      end
+    end
+
+    send_data "\xEF\xBB\xBF#{csv_data}",
+              filename: "代謝錠品牌之夜邀請名單_#{Date.today.strftime('%Y%m%d')}.csv",
+              type: "text/csv; charset=utf-8"
   end
 
   private
