@@ -77,6 +77,7 @@ class MetabolismAnalysisController < ApplicationController
     @jul22_aov = event_aov(jul22)
     @oct9_aov  = event_aov(oct9)
     @feb25_aov = event_aov(feb25)
+    @copurchase_products = copurchase_products
 
     last_orders_raw = ShoplineOrder
       .where(METABOLISM)
@@ -250,6 +251,23 @@ class MetabolismAnalysisController < ApplicationController
   end
 
   private
+
+  def copurchase_products
+    metabolism_order_numbers = ShoplineOrder
+      .where(METABOLISM)
+      .where.not(order_number: [nil, ""])
+      .distinct
+      .pluck(:order_number)
+
+    ShoplineOrder
+      .where(order_number: metabolism_order_numbers)
+      .where.not("product_name LIKE '%代謝%'")
+      .where.not(product_name: [nil, ""])
+      .group(:product_name)
+      .order("count_all DESC")
+      .limit(10)
+      .count
+  end
 
   def metabolism_emails(range)
     ShoplineOrder

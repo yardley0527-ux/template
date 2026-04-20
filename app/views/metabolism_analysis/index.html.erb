@@ -60,6 +60,27 @@
   </div>
 </div>
 
+<%# 常見共同購買 %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header text-white" style="background-color: #4a4a4a;">
+    🛒 買代謝錠的人，通常也會買什麼？
+  </div>
+  <div class="card-body">
+    <p class="text-muted small mb-3">以下為所有代謝錠訂單中，同筆訂單出現的其他產品排名，可作為套組搭配或加購推薦參考。</p>
+    <div class="d-flex flex-wrap gap-2">
+      <% @copurchase_products.each_with_index do |(name, cnt), i| %>
+        <% opacity = [1.0 - i * 0.07, 0.4].max %>
+        <div class="d-flex align-items-center px-3 py-2 rounded"
+             style="background-color: rgba(74,74,74,<%= opacity %>); color: white; font-size: 0.9rem;">
+          <span class="me-2 fw-bold">#<%= i + 1 %></span>
+          <span><%= name %></span>
+          <span class="ms-2 badge bg-white text-dark"><%= number_with_delimiter(cnt) %> 次</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
 <%# 黑卡金卡出席率 %>
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-header text-white" style="background-color: #4a4a4a;">黑卡 / 金卡 各場出席率</div>
