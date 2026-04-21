@@ -21,10 +21,11 @@ class SidebarEntry
           ]
         },
         {
-          group_title: "直播管理",
+          group_title: "首購管理",
           children: [
-            { href: livestream_analysis_path, title: "直播分析 - 薑黃品牌之夜", icon: "fa-video"  },
-            { href: metabolism_analysis_path,  title: "直播分析 - 代謝錠品牌之夜", icon: "fa-video" }
+            { href: first_purchase_index_path,                 title: "首購總覽",   icon: "fa-shopping-bag" },
+            { href: first_purchase_index_path(silent_only: 1), title: "沉默客名單", icon: "fa-user-slash" },
+            *first_purchase_series_entries
           ]
         },
         {
@@ -116,6 +117,22 @@ class SidebarEntry
       return [name, nil] unless m
 
       [m[1].strip, m[2].to_i]
+    end
+
+    def first_purchase_series_entries
+      first_purchase_series_options.map do |series|
+        {
+          href: first_purchase_index_path(series: series, silent_only: 1),
+          title: "#{series}沉默客",
+          icon: "fa-capsules"
+        }
+      end
+    end
+
+    def first_purchase_series_options
+      %w[
+        代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣
+      ]
     end
   end
 end
