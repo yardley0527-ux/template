@@ -1,0 +1,2 @@
+class ProductStrategy < ApplicationRecord
+end
