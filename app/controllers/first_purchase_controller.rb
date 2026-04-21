@@ -39,18 +39,23 @@ class FirstPurchaseController < ApplicationController
         cps.purchase_count,
         cps.silent_only,
         cps.last_order_date,
-        cps.silent_days_threshold
+        cps.silent_days_threshold,
+        CASE
+          WHEN cps.silent_only = TRUE
+          THEN EXTRACT(DAY FROM NOW() - cps.first_date)::int
+          ELSE NULL
+        END AS silent_days
       SQL
       .reorder(Arel.sql(sort_sql(@sort)))
 
     @total_pages = [(@total.to_f / PER_PAGE).ceil, 1].max
     @customers = scope.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
 
-    @series_stats = Rails.cache.fetch("first_purchase:series_stats:v2", expires_in: 30.minutes) do
+    @series_stats = Rails.cache.fetch("first_purchase:series_stats:v3", expires_in: 30.minutes) do
       series_stats_summary
     end
 
-    @second_purchase_map = Rails.cache.fetch("first_purchase:second_purchase_map:v2", expires_in: 30.minutes) do
+    @second_purchase_map = Rails.cache.fetch("first_purchase:second_purchase_map:v3", expires_in: 30.minutes) do
       dynamic_second_purchase_map
     end
   end
@@ -59,7 +64,7 @@ class FirstPurchaseController < ApplicationController
 
   def total_cache_key
     [
-      "first_purchase:total:v2",
+      "first_purchase:total:v3",
       @selected_series.presence || "all",
       @silent_only ? "silent" : "all_status"
     ].join(":")
@@ -73,20 +78,22 @@ class FirstPurchaseController < ApplicationController
         :first_series,
         Arel.sql("COUNT(*)"),
         Arel.sql("SUM(CASE WHEN purchase_count > 1 THEN 1 ELSE 0 END)"),
-        Arel.sql("SUM(CASE WHEN silent_only = TRUE THEN 1 ELSE 0 END)")
+        Arel.sql("SUM(CASE WHEN silent_only = TRUE THEN 1 ELSE 0 END)"),
+        Arel.sql("SUM(CASE WHEN silent_only = TRUE OR purchase_count > 1 THEN 1 ELSE 0 END)")
       )
 
-    rows.map do |series, total, returned, silent|
-      total = total.to_i
+    rows.map do |series, total, returned, silent, eligible|
+      total    = total.to_i
       returned = returned.to_i
-      silent = silent.to_i
+      silent   = silent.to_i
+      eligible = eligible.to_i
 
       {
-        series: series,
-        total: total,
-        silent: silent,
-        returned: returned,
-        return_rate: total.zero? ? 0 : ((returned.to_f / total) * 100).round(1)
+        series:      series,
+        total:       total,
+        silent:      silent,
+        returned:    returned,
+        return_rate: eligible.zero? ? 0 : ((returned.to_f / eligible) * 100).round(1)
       }
     end.sort_by { |h| -h[:total] }
   end

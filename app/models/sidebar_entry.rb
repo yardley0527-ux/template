@@ -14,29 +14,16 @@ class SidebarEntry
         {
           group_title: "系統管理",
           children: [
-            { href: customers_path, title: "客人資料庫總覽", icon: "fa-address-book" },
-            { href: expiring_members_path,  title: "即將降級會員",   icon: "fa-bell"},
-            { href: stats_customers_path, title: "會員卡別統計",   icon: "fa-chart-bar"}
-
+            { href: customers_path,       title: "客人資料庫總覽", icon: "fa-address-book" },
+            { href: expiring_members_path, title: "即將降級會員",   icon: "fa-bell" },
+            { href: stats_customers_path,  title: "會員卡別統計",   icon: "fa-chart-bar" }
           ]
         },
         {
           group_title: "首購管理",
           children: [
             { href: first_purchase_index_path,                 title: "首購總覽",   icon: "fa-shopping-bag" },
-            { href: first_purchase_index_path(silent_only: 1), title: "沉默客名單", icon: "fa-user-slash" },
-            *first_purchase_series_entries
-          ]
-        },
-        {
-          group_title: "首購管理",
-          children: [
-            { href: first_purchase_index_path,                                    title: "首購總覽",           icon: "fa-shopping-bag" },
-            { href: first_purchase_index_path(silent_only: 1),                    title: "沉默客名單",         icon: "fa-user-slash" },
-            { href: first_purchase_index_path(series: "代謝錠", silent_only: 1),  title: "代謝錠沉默客",       icon: "fa-capsules" },
-            { href: first_purchase_index_path(series: "全能",   silent_only: 1),  title: "全能沉默客",         icon: "fa-capsules" },
-            { href: first_purchase_index_path(series: "薑黃",   silent_only: 1),  title: "薑黃沉默客",         icon: "fa-capsules" },
-            { href: first_purchase_index_path(series: "膠原蛋白", silent_only: 1), title: "膠原蛋白沉默客",     icon: "fa-capsules" },
+            { href: first_purchase_index_path(silent_only: 1), title: "沉默客名單", icon: "fa-user-slash" }
           ]
         },
         {
@@ -44,6 +31,13 @@ class SidebarEntry
           children: [
             { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },
             *flat_product_entries
+          ]
+        },
+        {
+          group_title: "直播管理",
+          children: [
+            { href: livestream_analysis_path, title: "直播分析 - 薑黃品牌之夜",   icon: "fa-video" },
+            { href: metabolism_analysis_path, title: "直播分析 - 代謝錠品牌之夜", icon: "fa-video" }
           ]
         }
       ]
@@ -68,7 +62,6 @@ class SidebarEntry
       if combo_names.any?
         sorted_entries << {
           href: products_path(combo: "1"),
-      # names 已經是 distinct 查詢結果，不需要再 .uniq
           title: "組合系列 (#{combo_names.size})",
           icon: "fa-layer-group"
         }
@@ -107,32 +100,14 @@ class SidebarEntry
         map[base] << { full_name: name, variant_number: variant }
       end
 
-      # 上游 names 已是 distinct，full_name 不會重複，移除多餘的 .uniq
       map.map { |base, items| { base_name: base, items: items } }
     end
 
     def split_base_and_variant(name)
-      # 上游已 strip，直接 match
       m = name.match(/\A(.+?)\s*(\d+)\z/)
       return [name, nil] unless m
 
       [m[1].strip, m[2].to_i]
-    end
-
-    def first_purchase_series_entries
-      first_purchase_series_options.map do |series|
-        {
-          href: first_purchase_index_path(series: series, silent_only: 1),
-          title: "#{series}沉默客",
-          icon: "fa-capsules"
-        }
-      end
-    end
-
-    def first_purchase_series_options
-      %w[
-        代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣
-      ]
     end
   end
 end
