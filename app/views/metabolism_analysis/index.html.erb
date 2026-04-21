@@ -147,6 +147,63 @@
   </div>
 </div>
 
+<%# 即將吃完通知名單 %>
+<% if @expiring_soon.any? %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #7a5c00;">
+      <span>⏰ 14 天內即將吃完（主動通知補貨）</span>
+      <span class="badge bg-white text-dark"><%= @expiring_soon.size %> 人</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+          <thead class="table-light">
+            <tr>
+              <th>姓名</th>
+              <th>卡別</th>
+              <th>上次買</th>
+              <th>瓶數</th>
+              <th>預計吃完</th>
+              <th>剩餘天數</th>
+              <th>歷史次數</th>
+              <th>IG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @expiring_soon.each do |r| %>
+              <% c = r[:customer] %>
+              <tr>
+                <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
+                <td class="text-center"><%= r[:bottles] %> 瓶</td>
+                <td><%= r[:last_date] ? (r[:last_date] + r[:expected_days]).strftime("%m/%d") : "-" %></td>
+                <td>
+                  <% remaining = r[:days_remaining] %>
+                  <% if remaining && remaining >= 0 %>
+                    <span class="badge <%= remaining <= 7 ? 'bg-danger' : 'bg-warning text-dark' %>">
+                      剩 <%= remaining %> 天
+                    </span>
+                  <% end %>
+                </td>
+                <td class="text-center"><%= r[:history_count] %> 次</td>
+                <td>
+                  <% if c.instagram_account.present? %>
+                    <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
+                      📷 <%= c.instagram_account %>
+                    </a>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>
+
 <%# ══════════════════════════════ %>
 <%# 區塊二：業務優先聯絡名單        %>
 <%# ══════════════════════════════ %>
