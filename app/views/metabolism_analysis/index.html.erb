@@ -147,75 +147,18 @@
   </div>
 </div>
 
-<%# 即將吃完通知名單 %>
-<% if @expiring_soon.any? %>
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header text-white d-flex justify-content-between align-items-center"
-         style="background-color: #7a5c00;">
-      <span>⏰ 14 天內即將吃完（主動通知補貨）</span>
-      <span class="badge bg-white text-dark"><%= @expiring_soon.size %> 人</span>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
-          <thead class="table-light">
-            <tr>
-              <th>姓名</th>
-              <th>卡別</th>
-              <th>上次買</th>
-              <th>瓶數</th>
-              <th>預計吃完</th>
-              <th>剩餘天數</th>
-              <th>歷史次數</th>
-              <th>IG</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @expiring_soon.each do |r| %>
-              <% c = r[:customer] %>
-              <tr>
-                <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
-                <td><span class="text-muted small"><%= c.membership_level %></span></td>
-                <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
-                <td class="text-center"><%= r[:bottles] %> 瓶</td>
-                <td><%= r[:last_date] ? (r[:last_date] + r[:expected_days]).strftime("%m/%d") : "-" %></td>
-                <td>
-                  <% remaining = r[:days_remaining] %>
-                  <% if remaining && remaining >= 0 %>
-                    <span class="badge <%= remaining <= 7 ? 'bg-danger' : 'bg-warning text-dark' %>">
-                      剩 <%= remaining %> 天
-                    </span>
-                  <% end %>
-                </td>
-                <td class="text-center"><%= r[:history_count] %> 次</td>
-                <td>
-                  <% if c.instagram_account.present? %>
-                    <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
-                      📷 <%= c.instagram_account %>
-                    </a>
-                  <% end %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-<% end %>
-
-<%# ══════════════════════════════ %>
-<%# 區塊二：業務優先聯絡名單        %>
-<%# ══════════════════════════════ %>
+<%# ════════════════════════════════════════ %>
+<%# 區塊二：業務聯絡名單（三層，互不重疊）  %>
+<%# ════════════════════════════════════════ %>
 
 <div class="d-flex align-items-center mb-3">
   <div class="border-start border-3 border-secondary ps-3">
-    <h5 class="fw-bold mb-0 text-secondary">📋 業務優先聯絡名單</h5>
-    <p class="text-muted small mb-0">金卡以上，按歷史購買次數排序，先聯絡最熟的人</p>
+    <h5 class="fw-bold mb-0 text-secondary">📋 業務聯絡名單</h5>
+    <p class="text-muted small mb-0">由緊急到一般，由上往下聯絡</p>
   </div>
 </div>
 
-<%# helper：邀請名單卡片內容 %>
+<%# helper：金卡以上名單卡片 %>
 <% render_invite_card = lambda do |customers, tab_prefix| %>
   <div class="px-3 pt-2 border-bottom">
     <ul class="nav nav-tabs" id="tabs-<%= tab_prefix %>">
@@ -244,21 +187,106 @@
   </div>
 <% end %>
 
-<%# 補貨提醒優先 %>
-<div class="card border-0 shadow-sm mb-4">
+<%# ① 已吃完 — 金卡以上，最緊急 %>
+<div class="card border-0 shadow-sm mb-3">
   <div class="card-header text-white d-flex justify-content-between align-items-center"
        style="background-color: #7a3030;">
-    <span>補貨提醒優先（代謝錠已吃完）</span>
+    <div>
+      <span class="fw-bold">① 已吃完，需補貨</span>
+      <span class="ms-2 small opacity-75">金卡以上｜優先聯繫</span>
+    </div>
     <span class="badge bg-white text-dark"><%= @overdue_customers.size %> 人</span>
   </div>
   <% render_invite_card.call(@overdue_customers, "od") %>
 </div>
 
-<%# 純邀請 %>
+<%# ② 14天內即將吃完 — 全會員 %>
+<% if @expiring_soon.any? %>
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #7a5c00;">
+      <div>
+        <span class="fw-bold">② 14 天內即將吃完</span>
+        <span class="ms-2 small opacity-75">全會員｜趁還沒吃完主動通知</span>
+      </div>
+      <span class="badge bg-white text-dark"><%= @expiring_soon.size %> 人</span>
+    </div>
+    <div class="px-3 pt-2 border-bottom">
+      <ul class="nav nav-tabs" id="tabs-expiring">
+        <% [["黑卡","black"],["金卡","gold"],["銀卡","silver"],["白卡","white"],["一般會員","normal"]].each do |level, key| %>
+          <% next if @expiring_soon.none? { |r| r[:customer].membership_level == level } %>
+          <li class="nav-item">
+            <button class="nav-link"
+                    data-tab-prefix="expiring"
+                    data-tab-target="expiring-<%= key %>"
+                    type="button">
+              <%= level %>
+              <span class="badge bg-secondary">
+                <%= @expiring_soon.count { |r| r[:customer].membership_level == level } %>
+              </span>
+            </button>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+    <div class="card-body p-0">
+      <% [["黑卡","black"],["金卡","gold"],["銀卡","silver"],["白卡","white"],["一般會員","normal"]].each do |level, key| %>
+        <% rows = @expiring_soon.select { |r| r[:customer].membership_level == level } %>
+        <% next if rows.empty? %>
+        <div class="invite-pane" id="pane-expiring-<%= key %>" style="display: none;">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>姓名</th><th>卡別</th><th>上次買</th>
+                  <th>瓶數</th><th>預計吃完</th><th>剩餘天數</th>
+                  <th>歷史次數</th><th>IG</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.each do |r| %>
+                  <% c = r[:customer] %>
+                  <tr>
+                    <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                    <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                    <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
+                    <td class="text-center"><%= r[:bottles] %> 瓶</td>
+                    <td><%= r[:last_date] ? (r[:last_date] + r[:expected_days]).strftime("%m/%d") : "-" %></td>
+                    <td>
+                      <% remaining = r[:days_remaining] %>
+                      <% if remaining && remaining >= 0 %>
+                        <span class="badge <%= remaining <= 7 ? 'bg-danger' : 'bg-warning text-dark' %>">
+                          剩 <%= remaining %> 天
+                        </span>
+                      <% end %>
+                    </td>
+                    <td class="text-center"><%= r[:history_count] %> 次</td>
+                    <td>
+                      <% if c.instagram_account.present? %>
+                        <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
+                          📷 <%= c.instagram_account %>
+                        </a>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<%# ③ 純邀請 — 金卡以上 %>
 <div class="card border-0 shadow-sm mb-4">
   <div class="card-header text-white d-flex justify-content-between align-items-center"
        style="background-color: #2d5a3d;">
-    <span>純邀請（代謝錠還沒吃完，邀來看直播即可）</span>
+    <div>
+      <span class="fw-bold">③ 純邀請</span>
+      <span class="ms-2 small opacity-75">金卡以上｜藥還夠吃，邀來看直播即可</span>
+    </div>
     <span class="badge bg-white text-dark"><%= @not_due_customers.size %> 人</span>
   </div>
   <% render_invite_card.call(@not_due_customers, "nd") %>
@@ -291,13 +319,8 @@
           <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
             <thead class="table-light">
               <tr>
-                <th>姓名</th>
-                <th>卡別</th>
-                <th>最近購買</th>
-                <th>上次購買日期</th>
-                <th>歷史買代謝次數</th>
-                <th>歷史代謝消費</th>
-                <th>IG</th>
+                <th>姓名</th><th>卡別</th><th>最近購買</th>
+                <th>上次購買日期</th><th>歷史買代謝次數</th><th>歷史代謝消費</th><th>IG</th>
               </tr>
             </thead>
             <tbody>
@@ -372,7 +395,8 @@ function activateTab(btn) {
   const prefix = btn.dataset.tabPrefix;
   const targetId = btn.dataset.tabTarget;
 
-  document.querySelectorAll(`#pane-${prefix}-black, #pane-${prefix}-gold`).forEach(function (p) {
+  // 動態找這個 prefix 下所有 pane，不寫死卡別名稱
+  document.querySelectorAll(`[id^="pane-${prefix}-"]`).forEach(function (p) {
     p.style.display = 'none';
   });
 
