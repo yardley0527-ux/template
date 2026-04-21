@@ -406,7 +406,6 @@ function activateTab(btn) {
   const target = document.getElementById('pane-' + targetId);
   if (target) {
     target.style.display = 'block';
-    // 顯示後初始化分頁（pane 剛顯示時才能抓到 tbody rows）
     target.querySelectorAll('[data-paginate="true"]').forEach(function (wrapper) {
       if (!wrapper.dataset.paginated) initPaginate(wrapper);
     });
@@ -425,22 +424,22 @@ function initPaginate(wrapper) {
   const tbody = wrapper.querySelector('tbody');
   if (!tbody) return;
 
-  const rows = Array.from(tbody.querySelectorAll('tr'));
-  if (rows.length <= pageSize) return; // 不足 20 筆不分頁
+  const allRows = Array.from(tbody.querySelectorAll('tr'));
+  if (allRows.length <= pageSize) return;
 
-  let currentPage = 1;
-  const totalPages = Math.ceil(rows.length / pageSize);
+  const totalPages = Math.ceil(allRows.length / pageSize);
+
+  // 把分頁控制列放在 wrapper 的父層（invite-pane）裡，跟著 pane 一起顯示隱藏
+  const pane = wrapper.closest('.invite-pane') || wrapper.parentNode;
 
   function renderPage(page) {
-    rows.forEach(function (row, i) {
+    allRows.forEach(function (row, i) {
       row.style.display = (i >= (page - 1) * pageSize && i < page * pageSize) ? '' : 'none';
     });
-    renderControls(page);
-  }
 
-  function renderControls(page) {
-    const existing = wrapper.parentNode.querySelector('.paginate-controls');
-    if (existing) existing.remove();
+    // 移除舊的控制列
+    const old = pane.querySelector('.paginate-controls');
+    if (old) old.remove();
 
     const ctrl = document.createElement('div');
     ctrl.className = 'paginate-controls d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light';
@@ -449,44 +448,41 @@ function initPaginate(wrapper) {
     const info = document.createElement('span');
     info.className = 'text-muted';
     const start = (page - 1) * pageSize + 1;
-    const end = Math.min(page * pageSize, rows.length);
-    info.textContent = `第 ${start}–${end} 筆，共 ${rows.length} 筆`;
+    const end = Math.min(page * pageSize, allRows.length);
+    info.textContent = `第 ${start}–${end} 筆，共 ${allRows.length} 筆`;
 
     const btns = document.createElement('div');
-    btns.className = 'd-flex gap-1';
+    btns.className = 'd-flex gap-1 flex-wrap';
 
-    // 上一頁
     const prev = document.createElement('button');
     prev.className = 'btn btn-sm btn-outline-secondary py-0';
-    prev.textContent = '‹ 上一頁';
+    prev.textContent = '‹';
     prev.disabled = page === 1;
     prev.addEventListener('click', function () { renderPage(page - 1); });
+    btns.appendChild(prev);
 
-    // 頁碼（最多顯示 5 個）
     const startPage = Math.max(1, page - 2);
     const endPage   = Math.min(totalPages, startPage + 4);
 
-    [prev].concat(
-      Array.from({ length: endPage - startPage + 1 }, function (_, i) {
-        const p = startPage + i;
-        const pb = document.createElement('button');
-        pb.className = 'btn btn-sm py-0 ' + (p === page ? 'btn-secondary' : 'btn-outline-secondary');
-        pb.textContent = p;
-        pb.addEventListener('click', function () { renderPage(p); });
-        return pb;
-      })
-    ).forEach(function (b) { btns.appendChild(b); });
+    for (let p = startPage; p <= endPage; p++) {
+      const pb = document.createElement('button');
+      pb.className = 'btn btn-sm py-0 ' + (p === page ? 'btn-secondary' : 'btn-outline-secondary');
+      pb.textContent = p;
+      const captured = p;
+      pb.addEventListener('click', function () { renderPage(captured); });
+      btns.appendChild(pb);
+    }
 
     const next = document.createElement('button');
     next.className = 'btn btn-sm btn-outline-secondary py-0';
-    next.textContent = '下一頁 ›';
+    next.textContent = '›';
     next.disabled = page === totalPages;
     next.addEventListener('click', function () { renderPage(page + 1); });
     btns.appendChild(next);
 
     ctrl.appendChild(info);
     ctrl.appendChild(btns);
-    wrapper.parentNode.insertBefore(ctrl, wrapper.nextSibling);
+    pane.appendChild(ctrl);
   }
 
   renderPage(1);
