@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_20_100223) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_21_080631) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -57,10 +57,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_20_100223) do
     t.boolean "silent_only", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "first_order_number"
+    t.string "second_order_number"
+    t.string "second_product"
+    t.string "second_series"
+    t.datetime "second_date"
+    t.datetime "last_order_date"
+    t.integer "silent_days_threshold", default: 30, null: false
     t.index ["email"], name: "index_customer_purchase_summaries_on_email", unique: true
     t.index ["first_date"], name: "index_customer_purchase_summaries_on_first_date"
+    t.index ["first_order_number"], name: "index_customer_purchase_summaries_on_first_order_number"
     t.index ["first_series"], name: "index_customer_purchase_summaries_on_first_series"
+    t.index ["last_order_date"], name: "index_customer_purchase_summaries_on_last_order_date"
     t.index ["purchase_count"], name: "index_customer_purchase_summaries_on_purchase_count"
+    t.index ["second_series"], name: "index_customer_purchase_summaries_on_second_series"
     t.index ["silent_only"], name: "index_customer_purchase_summaries_on_silent_only"
   end
 

@@ -73,7 +73,7 @@
       <div class="fp-filter-group">
         <label class="fp-filter-label">狀態</label>
         <%= select_tag :silent_only,
-            options_for_select([["全部客人", "0"], ["只看沉默客（僅1筆）", "1"]], @silent_only ? "1" : "0"),
+            options_for_select([["全部客人", "0"], ["只看沉默客（超過該系列回購週期且僅1筆）", "1"]], @silent_only ? "1" : "0"),
             class: "fp-select" %>
       </div>
 
@@ -115,13 +115,14 @@
           <th>累積消費</th>
           <th>訂單數</th>
           <th>狀態</th>
+          <th>第二購方向</th>
           <th>IG</th>
         </tr>
       </thead>
       <tbody>
         <% @customers.each do |c| %>
           <% purchase_count = c.purchase_count.to_i %>
-          <% is_silent = purchase_count == 1 %>
+          <% is_silent = ActiveModel::Type::Boolean.new.cast(c.silent_only) %>
           <tr class="<%= is_silent ? 'row-silent' : '' %>">
             <td>
               <%= link_to (c.full_name.presence || "（無名）"), customer_path(c), class: "fp-customer-link" %>
@@ -132,8 +133,7 @@
                 <%= c.membership_level.presence || "一般" %>
               </span>
             </td>
-            <td><span class="fp-series-tag"><%= c.first_product %></span></td>
-            <td class="fp-date"><%= c.first_date&.strftime("%Y/%m/%d") || "—" %></td>
+            <td><span class="fp-series-tag"><%= c.first_series.presence || c.first_product %></span></td>            <td class="fp-date"><%= c.first_date&.strftime("%Y/%m/%d") || "—" %></td>
             <td class="fp-amount">NT$ <%= number_with_delimiter(c.first_amount.to_f.round(0).to_i) %></td>
             <td class="fp-amount">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
             <td class="fp-count">
@@ -151,6 +151,15 @@
               <% end %>
             </td>
             <td>
+              <% if c.second_series.present? %>
+                <span class="fp-series-tag"><%= c.second_series %></span>
+              <% elsif !is_silent %>
+                <span class="fp-muted">有回購但未分類</span>
+              <% else %>
+                <span class="fp-muted">—</span>
+              <% end %>
+            </td>
+            <td>
               <% if c.instagram_account.present? %>
                 <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>"
                    target="_blank" class="fp-ig-link">
@@ -165,7 +174,7 @@
 
         <% if @customers.blank? %>
           <tr>
-            <td colspan="9" class="fp-empty">查無符合條件的客人</td>
+            <td colspan="10" class="fp-empty">查無符合條件的客人</td>
           </tr>
         <% end %>
       </tbody>
