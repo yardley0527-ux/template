@@ -101,6 +101,7 @@ class FirstPurchaseController < ApplicationController
   def dynamic_second_purchase_map
     rows = CustomerPurchaseSummary
       .where.not(first_series: nil, second_series: nil)
+      .where("second_series <> ''")
       .group(:first_series, :second_series)
       .count
 

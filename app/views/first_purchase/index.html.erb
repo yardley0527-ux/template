@@ -54,9 +54,12 @@
           </div>
         <% end %>
       </div>
-      <p class="fp-path-hint">
-        → 推薦話術：聯繫時可主動提到「<%= @second_purchase_map[@selected_series].first.first %>」
-      </p>
+      <% top_product = @second_purchase_map[@selected_series].find { |p, _| p.present? }&.first %>
+      <% if top_product.present? %>
+        <p class="fp-path-hint">
+          → 推薦話術：聯繫時可主動提到「<%= top_product %>」
+        </p>
+      <% end %>
     </div>
   <% end %>
 
