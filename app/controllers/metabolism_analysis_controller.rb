@@ -266,27 +266,70 @@ class MetabolismAnalysisController < ApplicationController
       metabolism_emails(feb25)
     ).uniq
 
+    last_orders_raw = ShoplineOrder
+      .where(METABOLISM)
+      .where(email: all_prev_emails)
+      .where(order_date: jul4.first..feb25.last)
+      .order(:email, order_date: :desc)
+      .pluck(:email, :product_name, :order_date)
+
+    last_order_by_email = {}
+    last_orders_raw.each do |email, product_name, order_date|
+      last_order_by_email[email] ||= { product_name: product_name, order_date: order_date }
+    end
+
     history_counts  = ShoplineOrder.where(METABOLISM).where(email: all_prev_emails).group(:email).count
     history_amounts = ShoplineOrder.where(METABOLISM).where(email: all_prev_emails).group(:email).sum(:total_amount)
 
-    # ✅ 改成全部等級
+    today = Date.today
+
     customers = ShoplineCustomer
       .where(email: all_prev_emails)
-      .select(:id, :full_name, :email, :membership_level, :instagram_account, :shopline_id)
-      .sort_by { |c| [-MEMBERSHIP_RANK.fetch(c.membership_level, 0), -(history_counts[c.email] || 0), -(history_amounts[c.email] || 0).to_f] }
+      .select(:id, :full_name, :email, :membership_level, :instagram_account, :shopline_id, :mobile_phone)
+
+    rows = customers.map do |c|
+      last          = last_order_by_email[c.email]
+      bottles       = extract_bottles(last&.dig(:product_name))
+      last_date     = last&.dig(:order_date)&.to_date
+      expected_days = bottles * DAYS_PER_BOTTLE
+      overdue_days  = last_date ? (today - last_date).to_i - expected_days : nil
+
+      status = if overdue_days.nil? || overdue_days > 0
+                "已吃完（補貨）"
+              elsif overdue_days >= -14
+                "14天內吃完（提醒）"
+              else
+                "邀請看直播"
+              end
+
+      {
+        customer:       c,
+        last_date:      last_date,
+        bottles:        bottles,
+        overdue_days:   overdue_days,
+        status:         status,
+        history_count:  history_counts[c.email]  || 0,
+        history_amount: history_amounts[c.email] || 0
+      }
+    end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["姓名", "卡別", "Email", "IG帳號", "歷史購買次數", "歷史消費金額", "Shopline 客人連結"]
-      customers.each do |c|
-        sl_url = "https://admin.shoplineapp.com/admin/yardley/users/#{c.shopline_id}"
+      csv << ["狀態", "姓名", "卡別", "電話", "Email", "IG帳號",
+              "上次購買", "瓶數", "歷史購買次數", "歷史消費金額", "Shopline 連結"]
+      rows.each do |r|
+        c = r[:customer]
         csv << [
+          r[:status],
           c.full_name,
           c.membership_level,
+          c.mobile_phone,
           c.email,
           c.instagram_account,
-          history_counts[c.email] || 0,
-          history_amounts[c.email]&.to_i || 0,
-          sl_url
+          r[:last_date]&.strftime("%Y/%m/%d"),
+          r[:bottles],
+          r[:history_count],
+          r[:history_amount]&.to_i || 0,
+          "https://admin.shoplineapp.com/admin/yardley/users/#{c.shopline_id}"
         ]
       end
     end
