@@ -9,6 +9,8 @@ Rails.application.routes.draw do
   get 'expiring_members', to: 'expiring_members#index', as: :expiring_members
   get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
+  get '/product_strategy', to: 'product_strategy#index', as: :product_strategy
+
 
   resources :products, only: [:index, :show], param: :id
   resources :customers, only: [:index, :show] do

@@ -33,6 +33,12 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "策略管理",
+          children: [
+            { href: product_strategy_path,                 title: "產品策略報表",   icon: "fa-chart-line" },
+          ]
+        },
+        {
           group_title: "產品分類快速檢視",
           children: [
             { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },

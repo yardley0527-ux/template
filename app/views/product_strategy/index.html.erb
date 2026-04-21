@@ -1,0 +1,244 @@
+<% content_for :page_title, "產品策略報表" %>
+
+<div class="ps-page">
+
+  <div class="ps-header">
+    <div>
+      <h4 class="ps-title">📊 產品策略報表</h4>
+      <p class="ps-subtitle">各系列首購、回購、忠實客全覽，供產品方向決策參考</p>
+    </div>
+    <div class="ps-updated">資料每小時更新</div>
+  </div>
+
+  <%# 整體概覽 %>
+  <div class="ps-overview-grid">
+    <div class="ps-overview-card">
+      <div class="ps-ov-label">總首購客數</div>
+      <div class="ps-ov-num"><%= number_with_delimiter(@overview[:total_customers]) %></div>
+      <div class="ps-ov-sub">有明確首購系列的客人</div>
+    </div>
+    <div class="ps-overview-card">
+      <div class="ps-ov-label">整體回購率</div>
+      <div class="ps-ov-num" style="color: #d97706;"><%= @overview[:avg_return_rate] %>%</div>
+      <div class="ps-ov-sub">各系列平均</div>
+    </div>
+    <div class="ps-overview-card">
+      <div class="ps-ov-label">總沉默客數</div>
+      <div class="ps-ov-num" style="color: #dc2626;"><%= number_with_delimiter(@overview[:total_silent]) %></div>
+      <div class="ps-ov-sub">首購後未回購</div>
+    </div>
+    <div class="ps-overview-card">
+      <div class="ps-ov-label">總鐵粉數</div>
+      <div class="ps-ov-num" style="color: #b45309;"><%= number_with_delimiter(@overview[:total_iron]) %></div>
+      <div class="ps-ov-sub">同系列買 5 次以上</div>
+    </div>
+    <div class="ps-overview-card">
+      <div class="ps-ov-label">黏著度最高</div>
+      <div class="ps-ov-num" style="color: #16a34a; font-size: 1.4rem;">
+        <%= @overview[:best_retention]&.dig(:series) %>
+      </div>
+      <div class="ps-ov-sub"><%= @overview[:best_retention]&.dig(:return_rate) %>% 回購率</div>
+    </div>
+  </div>
+
+  <%# 主表格 %>
+  <div class="ps-table-wrap">
+    <table class="ps-table">
+      <thead>
+        <tr>
+          <th rowspan="2" class="ps-th-main">系列</th>
+          <th colspan="4" class="ps-th-group ps-group-blue">首購分析</th>
+          <th colspan="3" class="ps-th-group ps-group-purple">忠誠度</th>
+          <th colspan="3" class="ps-th-group ps-group-amber">第二購方向</th>
+        </tr>
+        <tr>
+          <th>首購人數</th>
+          <th>回購率</th>
+          <th>沉默客</th>
+          <th>平均首購金額</th>
+          <th>忠實客 (3-4次)</th>
+          <th>鐵粉 (5次+)</th>
+          <th>平均購買次數</th>
+          <th>Top 1</th>
+          <th>Top 2</th>
+          <th>Top 3</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @report.each do |r| %>
+          <% rate = r[:return_rate] %>
+          <% rate_color = rate >= 60 ? "#16a34a" : rate >= 50 ? "#d97706" : "#dc2626" %>
+          <% rate_bg    = rate >= 60 ? "#f0fdf4" : rate >= 50 ? "#fffbeb" : "#fef2f2" %>
+          <tr>
+            <td class="ps-series-cell">
+              <span class="ps-series-name"><%= r[:series] %></span>
+            </td>
+            <td class="ps-num"><%= number_with_delimiter(r[:total]) %></td>
+            <td>
+              <div class="ps-rate-cell" style="background: <%= rate_bg %>; color: <%= rate_color %>">
+                <%= rate %>%
+                <div class="ps-rate-bar-wrap">
+                  <div class="ps-rate-bar" style="width: <%= rate %>%; background: <%= rate_color %>; opacity: 0.3;"></div>
+                </div>
+              </div>
+            </td>
+            <td class="ps-num ps-silent"><%= number_with_delimiter(r[:silent]) %></td>
+            <td class="ps-num">NT$<%= number_with_delimiter(r[:avg_first]) %></td>
+            <td class="ps-num ps-loyal"><%= number_with_delimiter(r[:loyal]) %></td>
+            <td class="ps-num ps-iron"><%= number_with_delimiter(r[:iron]) %></td>
+            <td class="ps-num"><%= r[:avg_count] %> 次</td>
+            <% 3.times do |i| %>
+              <td>
+                <% item = r[:second_purchases][i] %>
+                <% if item %>
+                  <span class="ps-tag"><%= item[0] %></span>
+                  <span class="ps-tag-pct"><%= item[1] %>%</span>
+                <% else %>
+                  <span class="ps-muted">—</span>
+                <% end %>
+              </td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# 決策摘要 %>
+  <div class="ps-insights">
+    <h5 class="ps-insights-title">💡 決策參考</h5>
+    <div class="ps-insights-grid">
+
+      <%# 高首購低回購 %>
+      <% weak_retention = @report.select { |r| r[:total] >= 50 && r[:return_rate] < 50 } %>
+      <% if weak_retention.any? %>
+        <div class="ps-insight-card ps-insight-warn">
+          <div class="ps-insight-label">⚠️ 高首購、低黏著</div>
+          <p>
+            <%= weak_retention.map { |r| "#{r[:series]}（#{r[:return_rate]}%）" }.join("、") %>
+            回購率偏低，客人買了一次不再回購。建議檢視使用體驗、售後追蹤機制，或設計補貨提醒。
+          </p>
+        </div>
+      <% end %>
+
+      <%# 最強鐵粉 %>
+      <% top_iron = @report.select { |r| r[:iron] > 0 }.max_by { |r| r[:iron].to_f / [r[:total], 1].max } %>
+      <% if top_iron %>
+        <div class="ps-insight-card ps-insight-success">
+          <div class="ps-insight-label">⭐ 鐵粉比例最高</div>
+          <p>
+            <%= top_iron[:series] %> 有 <%= top_iron[:iron] %> 位鐵粉，
+            佔首購客 <%= (top_iron[:iron].to_f / [top_iron[:total], 1].max * 100).round(1) %>%。
+            這個系列客人黏著度最強，適合作為品牌核心產品主打。
+          </p>
+        </div>
+      <% end %>
+
+      <%# 最大沉默客商機 %>
+      <% top_silent = @report.max_by { |r| r[:silent] } %>
+      <% if top_silent %>
+        <div class="ps-insight-card ps-insight-danger">
+          <div class="ps-insight-label">🔴 最大喚醒商機</div>
+          <p>
+            <%= top_silent[:series] %> 有 <%= number_with_delimiter(top_silent[:silent]) %> 位沉默客，
+            是最大的未開發回購潛力。若喚醒其中 10%，可增加約
+            <%= number_with_delimiter((top_silent[:silent] * 0.1 * top_silent[:avg_first]).round(-3).to_i) %> 元營業額。
+          </p>
+        </div>
+      <% end %>
+
+      <%# 套組機會 %>
+      <% cross_sell = @report.select { |r| r[:second_purchases].any? }.first %>
+      <% if cross_sell %>
+        <div class="ps-insight-card ps-insight-info">
+          <div class="ps-insight-label">🛒 套組搭配機會</div>
+          <p>
+            代謝錠首購客最常在第二購選擇
+            <%= @report.find { |r| r[:series] == "代謝錠" }&.dig(:second_purchases)&.first(2)&.map { |s, pct| "#{s}（#{pct}%）" }&.join("、") %>。
+            建議設計代謝錠＋這兩個系列的組合套組，提升客單價。
+          </p>
+        </div>
+      <% end %>
+
+    </div>
+  </div>
+
+</div>
+
+<style>
+.ps-page { max-width: 1400px; margin: 0 auto; padding: 24px 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+
+.ps-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.ps-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; color: #1a1a2e; }
+.ps-subtitle { font-size: 13px; color: #9ca3af; margin: 0; }
+.ps-updated { font-size: 12px; color: #9ca3af; }
+
+/* 概覽卡片 */
+.ps-overview-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+.ps-overview-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+.ps-ov-label { font-size: 11px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.ps-ov-num { font-size: 26px; font-weight: 700; color: #111827; line-height: 1; margin-bottom: 4px; }
+.ps-ov-sub { font-size: 11px; color: #9ca3af; }
+
+/* 主表格 */
+.ps-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #e5e7eb; background: #fff; margin-bottom: 24px; }
+.ps-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ps-table thead th { padding: 10px 14px; text-align: center; font-weight: 600; font-size: 11px; white-space: nowrap; border-bottom: 1px solid #e5e7eb; }
+.ps-th-main { background: #1f2937; color: #fff; text-align: left !important; border-radius: 12px 0 0 0; vertical-align: middle; }
+.ps-th-group { color: #fff; }
+.ps-group-blue   { background: #1d4ed8; }
+.ps-group-purple { background: #7c3aed; }
+.ps-group-amber  { background: #b45309; }
+.ps-table thead tr:last-child th { background: #f8fafc; color: #374151; font-size: 11px; }
+.ps-table tbody td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; text-align: center; }
+.ps-table tbody tr:last-child td { border-bottom: none; }
+.ps-table tbody tr:hover td { background: #fafafa; }
+
+.ps-series-cell { text-align: left !important; }
+.ps-series-name { font-weight: 700; font-size: 14px; color: #1f2937; }
+
+.ps-num { font-weight: 600; color: #374151; white-space: nowrap; }
+.ps-silent { color: #dc2626; }
+.ps-loyal  { color: #7c3aed; }
+.ps-iron   { color: #b45309; }
+
+.ps-rate-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 80px;
+  position: relative;
+  overflow: hidden;
+}
+.ps-rate-bar-wrap { width: 100%; height: 3px; background: #e5e7eb; border-radius: 99px; margin-top: 4px; }
+.ps-rate-bar { height: 3px; border-radius: 99px; }
+
+.ps-tag { background: #ede9fe; color: #6d28d9; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.ps-tag-pct { font-size: 11px; color: #6b7280; margin-left: 2px; }
+.ps-muted { color: #d1d5db; }
+
+/* 決策摘要 */
+.ps-insights { margin-top: 8px; }
+.ps-insights-title { font-size: 16px; font-weight: 700; color: #1f2937; margin: 0 0 16px; }
+.ps-insights-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.ps-insight-card { border-radius: 10px; padding: 16px 20px; }
+.ps-insight-label { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+.ps-insight-card p { font-size: 13px; color: #374151; margin: 0; line-height: 1.6; }
+.ps-insight-warn    { background: #fffbeb; border: 1px solid #fcd34d; }
+.ps-insight-warn    .ps-insight-label { color: #92400e; }
+.ps-insight-success { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.ps-insight-success .ps-insight-label { color: #166534; }
+.ps-insight-danger  { background: #fef2f2; border: 1px solid #fecaca; }
+.ps-insight-danger  .ps-insight-label { color: #991b1b; }
+.ps-insight-info    { background: #eff6ff; border: 1px solid #bfdbfe; }
+.ps-insight-info    .ps-insight-label { color: #1e40af; }
+
+@media (max-width: 768px) {
+  .ps-overview-grid { grid-template-columns: repeat(2, 1fr); }
+  .ps-insights-grid { grid-template-columns: 1fr; }
+}
+</style>
