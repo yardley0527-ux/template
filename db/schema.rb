@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_21_080631) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_21_093854) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -72,6 +72,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_21_080631) do
     t.index ["purchase_count"], name: "index_customer_purchase_summaries_on_purchase_count"
     t.index ["second_series"], name: "index_customer_purchase_summaries_on_second_series"
     t.index ["silent_only"], name: "index_customer_purchase_summaries_on_silent_only"
+  end
+
+  create_table "customer_series_loyalties", force: :cascade do |t|
+    t.string "email", null: false
+    t.string "series", null: false
+    t.integer "order_count", default: 0, null: false
+    t.decimal "total_amount", precision: 10, scale: 2, default: "0.0"
+    t.date "first_date"
+    t.date "last_date"
+    t.integer "days_since_last"
+    t.string "tier"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email", "series"], name: "index_customer_series_loyalties_on_email_and_series", unique: true
+    t.index ["series"], name: "index_customer_series_loyalties_on_series"
+    t.index ["tier"], name: "index_customer_series_loyalties_on_tier"
   end
 
   create_table "health_assessment_products", force: :cascade do |t|

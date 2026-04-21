@@ -1,0 +1,235 @@
+<%# app/views/loyal_customers/index.html.erb %>
+<% content_for :page_title, "忠實客分析" %>
+
+<div class="fp-page">
+
+  <div class="fp-header">
+    <div>
+      <h4 class="fp-title">⭐ 忠實客分析</h4>
+      <p class="fp-subtitle">持續回購同系列產品的客人，依購買次數分層</p>
+    </div>
+  </div>
+
+  <%# 系列卡片 %>
+  <div class="fp-stats-grid">
+    <% @series_stats.each do |stat| %>
+      <a href="<%= loyal_customers_path(series: stat[:series]) %>"
+         class="fp-stat-card <%= @selected_series == stat[:series] ? 'is-active' : '' %>">
+        <div class="fp-stat-series"><%= stat[:series] %></div>
+        <div class="fp-stat-row">
+          <div class="fp-stat-item">
+            <span class="fp-stat-num lc-iron"><%= stat[:iron] %></span>
+            <span class="fp-stat-label">鐵粉(5+)</span>
+          </div>
+          <div class="fp-stat-item">
+            <span class="fp-stat-num lc-loyal"><%= stat[:loyal] %></span>
+            <span class="fp-stat-label">忠實客(3-4)</span>
+          </div>
+          <div class="fp-stat-item">
+            <span class="fp-stat-num"><%= stat[:repurchase] %></span>
+            <span class="fp-stat-label">回購客(2)</span>
+          </div>
+          <div class="fp-stat-item">
+            <span class="fp-stat-num" style="color:#6b7280"><%= stat[:avg_count] %></span>
+            <span class="fp-stat-label">平均購買</span>
+          </div>
+        </div>
+      </a>
+    <% end %>
+  </div>
+
+  <%# 篩選列 %>
+  <div class="fp-filter-bar">
+    <%= form_with url: loyal_customers_path, method: :get, local: true, class: "fp-filter-form" do %>
+      <div class="fp-filter-group">
+        <label class="fp-filter-label">系列</label>
+        <%= select_tag :series,
+            options_for_select(@series_options.map { |s| [s, s] }, @selected_series),
+            class: "fp-select" %>
+      </div>
+
+      <div class="fp-filter-group">
+        <label class="fp-filter-label">層級</label>
+        <%= select_tag :tier,
+            options_for_select([["全部", ""], ["⭐⭐ 鐵粉（5次+）", "鐵粉"], ["⭐ 忠實客（3-4次）", "忠實客"], ["回購客（2次）", "回購客"]], @selected_tier),
+            class: "fp-select" %>
+      </div>
+
+      <div class="fp-filter-group">
+        <label class="fp-filter-label">排序</label>
+        <%= select_tag :sort,
+            options_for_select([
+              ["總消費↓", "total_desc"],
+              ["總消費↑", "total_asc"],
+              ["購買次數↓", "count_desc"],
+              ["最後購買↓（最近）", "last_desc"],
+              ["最後購買↑（最舊）", "last_asc"],
+            ], @sort),
+            class: "fp-select" %>
+      </div>
+
+      <div class="fp-filter-actions">
+        <%= button_tag "查詢", type: "submit", class: "fp-btn-primary" %>
+        <%= link_to "清除", loyal_customers_path, class: "fp-btn-secondary" %>
+      </div>
+    <% end %>
+
+    <div class="fp-filter-meta">
+      <%= @selected_series %> ｜
+      鐵粉 <strong><%= @tier_counts["鐵粉"].to_i %></strong> 人・
+      忠實客 <strong><%= @tier_counts["忠實客"].to_i %></strong> 人・
+      回購客 <strong><%= @tier_counts["回購客"].to_i %></strong> 人　
+      共 <strong><%= number_with_delimiter(@total) %></strong> 人　
+      第 <%= @page %> / <%= @total_pages %> 頁
+    </div>
+  </div>
+
+  <%# 名單 %>
+  <div class="fp-table-wrap">
+    <table class="fp-table">
+      <thead>
+        <tr>
+          <th>姓名</th>
+          <th>會員</th>
+          <th>層級</th>
+          <th>購買次數</th>
+          <th>系列總消費</th>
+          <th>首次購買</th>
+          <th>最後購買</th>
+          <th>距今天數</th>
+          <th>IG</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @customers.each do |c| %>
+          <tr>
+            <td>
+              <%= link_to (c.full_name.presence || "（無名）"), customer_path(c.customer_id), class: "fp-customer-link" %>
+            </td>
+            <td>
+              <span class="fp-level fp-level-<%= c.membership_level&.gsub('卡','') %>">
+                <%= c.membership_level.presence || "一般" %>
+              </span>
+            </td>
+            <td>
+              <span class="lc-tier-badge lc-tier-<%= c.tier %>">
+                <%= c.tier == "鐵粉" ? "⭐⭐ 鐵粉" : c.tier == "忠實客" ? "⭐ 忠實客" : "回購客" %>
+              </span>
+            </td>
+            <td class="fp-count"><%= c.order_count %> 次</td>
+            <td class="fp-amount">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
+            <td class="fp-date"><%= c.first_date&.strftime("%Y/%m/%d") || "—" %></td>
+            <td class="fp-date"><%= c.last_date&.strftime("%Y/%m/%d") || "—" %></td>
+            <td>
+              <% days = c.days_since_last.to_i %>
+              <span class="<%= days > 90 ? 'fp-badge-warn' : 'fp-badge-ok' %>">
+                <%= days %> 天前
+              </span>
+            </td>
+            <td>
+              <% if c.instagram_account.present? %>
+                <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>"
+                   target="_blank" class="fp-ig-link">
+                  📷 <%= c.instagram_account %>
+                </a>
+              <% else %>
+                <span class="fp-muted">—</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+
+        <% if @customers.blank? %>
+          <tr>
+            <td colspan="9" class="fp-empty">查無符合條件的客人</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @total_pages > 1 %>
+    <div class="fp-pagination">
+      <% prev_page = [@page - 1, 1].max %>
+      <% next_page = [@page + 1, @total_pages].min %>
+      <%= link_to "← 上一頁",
+            loyal_customers_path(request.query_parameters.merge(page: prev_page)),
+            class: "fp-page-btn #{'is-disabled' if @page <= 1}" %>
+      <span class="fp-page-info">第 <%= @page %> 頁，共 <%= @total_pages %> 頁</span>
+      <%= link_to "下一頁 →",
+            loyal_customers_path(request.query_parameters.merge(page: next_page)),
+            class: "fp-page-btn #{'is-disabled' if @page >= @total_pages}" %>
+    </div>
+  <% end %>
+
+</div>
+
+<style>
+.fp-page { max-width: 1300px; margin: 0 auto; padding: 24px 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.fp-header { margin-bottom: 24px; }
+.fp-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; color: #1a1a2e; }
+.fp-subtitle { font-size: 13px; color: #9ca3af; margin: 0; }
+
+.fp-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.fp-stat-card { background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; text-decoration: none; color: inherit; transition: border-color 0.15s, box-shadow 0.15s; display: block; }
+.fp-stat-card:hover { border-color: #886ab5; box-shadow: 0 0 0 3px rgba(136,106,181,.1); }
+.fp-stat-card.is-active { border-color: #886ab5; background: #f9f5ff; }
+.fp-stat-series { font-weight: 700; font-size: 15px; color: #374151; margin-bottom: 10px; }
+.fp-stat-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.fp-stat-item { display: flex; flex-direction: column; gap: 2px; }
+.fp-stat-num { font-size: 18px; font-weight: 700; color: #111827; }
+.fp-stat-label { font-size: 10px; color: #9ca3af; }
+.lc-iron  { color: #b45309; }
+.lc-loyal { color: #7c3aed; }
+
+.fp-filter-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; }
+.fp-filter-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 10px; }
+.fp-filter-group { display: flex; flex-direction: column; gap: 4px; }
+.fp-filter-label { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+.fp-select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #374151; background: #fff; }
+.fp-filter-actions { display: flex; gap: 8px; }
+.fp-btn-primary { padding: 7px 18px; background: #886ab5; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.fp-btn-primary:hover { background: #6d52a0; }
+.fp-btn-secondary { padding: 7px 14px; background: transparent; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
+.fp-filter-meta { font-size: 13px; color: #6b7280; }
+
+.fp-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; }
+.fp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fp-table thead th { background: #886ab5; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.fp-table tbody td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.fp-table tbody tr:last-child td { border-bottom: none; }
+.fp-table tbody tr:hover td { background: #faf9ff; }
+
+.fp-customer-link { font-weight: 600; color: #374151; text-decoration: none; }
+.fp-customer-link:hover { color: #886ab5; }
+
+.fp-level { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.fp-level-黑 { background: #1f2937; color: #fff; }
+.fp-level-金 { background: #d97706; color: #fff; }
+.fp-level-銀 { background: #9ca3af; color: #fff; }
+.fp-level-白 { background: #f3f4f6; color: #374151; }
+
+.lc-tier-badge { font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 99px; white-space: nowrap; }
+.lc-tier-鐵粉  { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+.lc-tier-忠實客 { background: #ede9fe; color: #7c3aed; border: 1px solid #c4b5fd; }
+.lc-tier-回購客 { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+.fp-date, .fp-amount, .fp-count { white-space: nowrap; color: #374151; }
+.fp-muted { color: #9ca3af; }
+.fp-badge-ok   { background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.fp-badge-warn { background: #fef9c3; color: #92400e; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.fp-ig-link { color: #6b7280; font-size: 12px; text-decoration: none; }
+.fp-ig-link:hover { color: #886ab5; }
+.fp-empty { text-align: center; color: #9ca3af; padding: 40px; }
+
+.fp-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 20px; }
+.fp-page-btn { padding: 6px 16px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; font-size: 13px; color: #374151; text-decoration: none; }
+.fp-page-btn:hover { background: #f9fafb; }
+.fp-page-btn.is-disabled { opacity: 0.4; pointer-events: none; }
+.fp-page-info { font-size: 13px; color: #6b7280; }
+
+@media (max-width: 768px) {
+  .fp-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .fp-filter-form { flex-direction: column; }
+}
+</style>

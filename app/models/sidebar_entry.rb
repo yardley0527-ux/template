@@ -27,6 +27,12 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "忠實客管理",
+          children: [
+            { href: loyal_customers_path,                 title: "忠實客分析",   icon: "fa-shopping-star" },
+          ]
+        },
+        {
           group_title: "產品分類快速檢視",
           children: [
             { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },
