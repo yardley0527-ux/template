@@ -129,6 +129,52 @@ class MetabolismAnalysisController < ApplicationController
     @overdue_customers = all_customers.select { |r| r[:overdue_days].nil? || r[:overdue_days] > 0 }
     @not_due_customers = all_customers.select { |r| r[:overdue_days] && r[:overdue_days] <= 0 }
 
+    # 14 天內即將吃完（還沒到期，但快了）— 全會員等級
+    all_emails_for_alert = @all_prev_emails
+
+    last_orders_all_raw = ShoplineOrder
+      .where(METABOLISM)
+      .where(email: all_emails_for_alert)
+      .where(order_date: jul4.first..feb25.last)
+      .order(:email, order_date: :desc)
+      .pluck(:email, :product_name, :order_date)
+
+    last_order_all_by_email = {}
+    last_orders_all_raw.each do |email, product_name, order_date|
+      last_order_all_by_email[email] ||= { product_name: product_name, order_date: order_date }
+    end
+
+    history_counts_all  = ShoplineOrder.where(METABOLISM).where(email: all_emails_for_alert).group(:email).count
+    history_amounts_all = ShoplineOrder.where(METABOLISM).where(email: all_emails_for_alert).group(:email).sum(:total_amount)
+
+    all_customers_for_alert = ShoplineCustomer
+      .where(email: all_emails_for_alert)
+      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
+      .map do |c|
+        last          = last_order_all_by_email[c.email]
+        bottles       = extract_bottles(last&.dig(:product_name))
+        last_date     = last&.dig(:order_date)&.to_date
+        expected_days = bottles * DAYS_PER_BOTTLE
+        overdue_days  = last_date ? (today - last_date).to_i - expected_days : nil
+
+        {
+          customer:       c,
+          last_product:   last&.dig(:product_name),
+          last_date:      last_date,
+          bottles:        bottles,
+          expected_days:  expected_days,
+          overdue_days:   overdue_days,
+          days_remaining: overdue_days ? -overdue_days : nil,
+          history_count:  history_counts_all[c.email]  || 0,
+          history_amount: history_amounts_all[c.email] || 0
+        }
+      end
+
+    # 14 天內即將吃完（overdue_days 在 -14 ~ 0 之間，還沒過期但快了）
+    @expiring_soon = all_customers_for_alert
+    .select { |r| r[:overdue_days] && r[:overdue_days] >= -14 && r[:overdue_days] <= 0 }
+    .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), r[:overdue_days].to_i] }
+
     loyal_4_emails = @jul4_emails & @jul22_emails & @oct9_emails & @feb25_emails
 
     loyal_3_emails = (
@@ -223,8 +269,8 @@ class MetabolismAnalysisController < ApplicationController
     history_counts  = ShoplineOrder.where(METABOLISM).where(email: all_prev_emails).group(:email).count
     history_amounts = ShoplineOrder.where(METABOLISM).where(email: all_prev_emails).group(:email).sum(:total_amount)
 
+    # ✅ 改成全部等級
     customers = ShoplineCustomer
-      .where(membership_level: TARGET_MEMBERSHIPS)
       .where(email: all_prev_emails)
       .select(:id, :full_name, :email, :membership_level, :instagram_account, :shopline_id)
       .sort_by { |c| [-MEMBERSHIP_RANK.fetch(c.membership_level, 0), -(history_counts[c.email] || 0), -(history_amounts[c.email] || 0).to_f] }
