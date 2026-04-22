@@ -22,27 +22,20 @@ class SidebarEntry
         {
           group_title: "首購管理",
           children: [
-            { href: first_purchase_index_path,                 title: "首購總覽",   icon: "fa-shopping-bag" },
-            { href: first_purchase_index_path(silent_only: 1), title: "沉默客名單", icon: "fa-user-slash" }
+            { href: first_purchase_index_path,title: "首購總覽",   icon: "fa-shopping-bag" },
+            { href: first_purchase_index_path(silent_only: 1), title: "沉默客名單", icon: "fa-user-times" }
           ]
         },
         {
           group_title: "忠實客管理",
           children: [
-            { href: loyal_customers_path,                 title: "忠實客分析",   icon: "fa-shopping-star" },
+            { href: loyal_customers_path, title: "忠實客分析", icon: "fa-heart" }
           ]
         },
         {
           group_title: "策略管理",
           children: [
-            { href: product_strategy_path,                 title: "產品策略報表",   icon: "fa-chart-line" },
-          ]
-        },
-        {
-          group_title: "產品分類快速檢視",
-          children: [
-            { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },
-            *flat_product_entries
+            { href: product_strategy_path,title: "產品策略報表",   icon: "fa-chart-line" }
           ]
         },
         {
@@ -50,6 +43,13 @@ class SidebarEntry
           children: [
             { href: livestream_analysis_path, title: "直播分析 - 薑黃品牌之夜",   icon: "fa-video" },
             { href: metabolism_analysis_path, title: "直播分析 - 代謝錠品牌之夜", icon: "fa-video" }
+          ]
+        },
+        {
+          group_title: "產品分類快速檢視",
+          children: [
+            { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },
+            *flat_product_entries
           ]
         }
       ]
