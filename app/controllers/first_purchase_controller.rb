@@ -5,7 +5,7 @@ class FirstPurchaseController < ApplicationController
     代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣
   ].freeze
 
-  PER_PAGE = 50
+  PER_PAGE = 20
 
   def index
     @series_options = SERIES_OPTIONS
