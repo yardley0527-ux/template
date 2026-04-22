@@ -1,0 +1,214 @@
+<div class="container py-4">
+  <h1 class="mb-4">破萬新客分析</h1>
+
+  <%= form_with url: high_spender_first_purchase_path, method: :get, local: true, class: "row g-3 mb-4" do %>
+    <div class="col-md-2">
+      <label class="form-label">年份</label>
+      <%= select_tag :year,
+            options_for_select([["全部", ""]] + @year_stats.map { |y| [y[:year], y[:year]] }, @selected_year),
+            class: "form-select" %>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">首購系列</label>
+      <%= select_tag :series,
+            options_for_select([["全部", ""]] + @series_options.map { |s| [s, s] }, @selected_series),
+            class: "form-select" %>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">排序</label>
+      <%= select_tag :sort,
+            options_for_select([
+              ["首購日期新到舊", "first_date_desc"],
+              ["首購日期舊到新", "first_date_asc"],
+              ["首購金額高到低", "first_amount_desc"],
+              ["首購金額低到高", "first_amount_asc"],
+              ["購買次數高到低", "repurchase"]
+            ], @sort),
+            class: "form-select" %>
+    </div>
+
+    <div class="col-md-2 d-flex align-items-end">
+      <div class="form-check">
+        <%= check_box_tag :repurchase_only, "1", @repurchase_only, class: "form-check-input", id: "repurchase_only" %>
+        <%= label_tag :repurchase_only, "只看有回購", class: "form-check-label" %>
+      </div>
+    </div>
+
+    <div class="col-md-3 d-flex align-items-end">
+      <%= submit_tag "搜尋", class: "btn btn-primary me-2" %>
+      <%= link_to "清除", high_spender_first_purchase_path, class: "btn btn-outline-secondary" %>
+    </div>
+  <% end %>
+
+  <div class="row mb-4">
+    <% @summary_cards.each do |card| %>
+      <div class="col-md-3 mb-3">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <div class="text-muted small mb-2"><%= card[:label] %></div>
+            <div class="fs-3 fw-bold"><%= number_with_delimiter(card[:value]) %></div>
+            <div class="small text-secondary mt-2"><%= card[:note] %></div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">年度統計</div>
+    <div class="card-body p-0">
+      <table class="table table-striped mb-0">
+        <thead>
+          <tr>
+            <th>年份</th>
+            <th>破萬新客數</th>
+            <th>有回購人數</th>
+            <th>回購率</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @year_stats.each do |row| %>
+            <tr>
+              <td><%= row[:year] %></td>
+              <td><%= number_with_delimiter(row[:total]) %></td>
+              <td><%= number_with_delimiter(row[:repurchased]) %></td>
+              <td><%= row[:repurchase_rate] %>%</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">每月趨勢</div>
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>月份</th>
+            <th>破萬新客數</th>
+            <th>平均首筆金額</th>
+            <th>回購率</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @monthly_stats.each do |row| %>
+            <tr>
+              <td><%= row[:month] %></td>
+              <td><%= number_with_delimiter(row[:total]) %></td>
+              <td>$<%= number_with_delimiter(row[:avg_first_amount]) %></td>
+              <td><%= row[:repurchase_rate] %>%</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">首購系列表現</div>
+    <div class="card-body p-0">
+      <table class="table table-bordered mb-0">
+        <thead>
+          <tr>
+            <th>系列</th>
+            <th>人數</th>
+            <th>有回購</th>
+            <th>回購率</th>
+            <th>平均首筆金額</th>
+            <th>第二次最常買什麼</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @series_stats.each do |row| %>
+            <% second_rows = @second_purchase_map[row[:series]] || [] %>
+            <tr>
+              <td><%= row[:series] %></td>
+              <td><%= number_with_delimiter(row[:total]) %></td>
+              <td><%= number_with_delimiter(row[:repurchased]) %></td>
+              <td><%= row[:repurchase_rate] %>%</td>
+              <td>$<%= number_with_delimiter(row[:avg_first_amount]) %></td>
+              <td>
+                <% if second_rows.any? %>
+                  <% second_rows.each do |second| %>
+                    <div>
+                      <%= second[:second_series] %>
+                      (<%= second[:count] %>人 / <%= second[:rate] %>%)
+                    </div>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      名單明細
+      <span class="text-muted small ms-2">
+        共 <%= number_with_delimiter(@total) %> 筆，第 <%= @page %> / <%= @total_pages %> 頁
+      </span>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>姓名</th>
+            <th>首購系列</th>
+            <th>首購商品</th>
+            <th>首購日期</th>
+            <th>首購金額</th>
+            <th>購買次數</th>
+            <th>第二購系列</th>
+            <th>最後下單日</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @customers.each do |customer| %>
+            <tr>
+              <td><%= customer.email %></td>
+              <td><%= customer.full_name %></td>
+              <td><%= customer.first_series %></td>
+              <td><%= customer.first_product %></td>
+              <td><%= customer.first_date&.strftime("%Y-%m-%d") %></td>
+              <td>$<%= number_with_delimiter(customer.first_amount.to_i) %></td>
+              <td><%= customer.purchase_count %></td>
+              <td><%= customer.second_series.presence || "—" %></td>
+              <td><%= customer.last_order_date&.strftime("%Y-%m-%d") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <% if @total_pages > 1 %>
+    <nav class="mt-3">
+      <ul class="pagination">
+        <% prev_page = @page - 1 %>
+        <% next_page = @page + 1 %>
+
+        <li class="page-item <%= 'disabled' if @page <= 1 %>">
+          <%= link_to "上一頁", high_spender_first_purchase_path(request.query_parameters.merge(page: prev_page)), class: "page-link" %>
+        </li>
+
+        <li class="page-item disabled">
+          <span class="page-link"><%= @page %> / <%= @total_pages %></span>
+        </li>
+
+        <li class="page-item <%= 'disabled' if @page >= @total_pages %>">
+          <%= link_to "下一頁", high_spender_first_purchase_path(request.query_parameters.merge(page: next_page)), class: "page-link" %>
+        </li>
+      </ul>
+    </nav>
+  <% end %>
+</div>

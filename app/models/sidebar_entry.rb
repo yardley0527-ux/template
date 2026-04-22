@@ -26,6 +26,12 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "破萬管理",
+          children: [
+            { href: high_spender_first_purchase_path, title: "破萬新客、產品分析", icon: "fa-gem" }
+          ]
+        },
+        {
           group_title: "首購管理",
           children: [
             { href: first_purchase_index_path,title: "首購總覽",   icon: "fa-shopping-bag" },
