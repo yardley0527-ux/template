@@ -24,8 +24,7 @@ class SidebarEntry
           children: [
             { href: loyal_customers_path, title: "忠實客分析", icon: "fa-heart" }
           ]
-        }
-        ,
+        },
         {
           group_title: "首購管理",
           children: [
