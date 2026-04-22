@@ -26,7 +26,11 @@ class HighSpenderFirstPurchaseAnalytics
       scope = scope.where("customer_purchase_summaries.purchase_count > 1")
     end
 
-    scope.select(<<~SQL.squish)
+    scope
+  end
+
+  def customer_scope_with_select
+    customer_scope.select(<<~SQL.squish)
       shopline_customers.*,
       customer_purchase_summaries.first_order_number,
       customer_purchase_summaries.first_product,
