@@ -1,345 +1,312 @@
 <%# app/views/first_purchase/index.html.erb %>
 <% content_for :page_title, "首購管理" %>
 
-<div class="fp-page">
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-shopping-bag"></i>
+    首購管理
+    <small>分析客人第一筆購買，找出沉默客並預測第二購方向</small>
+  </h1>
+</div>
 
-  <%# ── 頁首 ── %>
-  <div class="fp-header">
-    <div>
-      <h4 class="fp-title">🛒 首購管理</h4>
-      <p class="fp-subtitle">分析客人第一筆購買，找出沉默客並預測第二購方向</p>
-    </div>
-  </div>
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-container show">
+        <div class="panel-content">
 
-  <%# ── 系列卡片總覽 ── %>
-  <div class="fp-stats-grid">
-    <% @series_stats.each do |stat| %>
-      <% rate = stat[:return_rate] %>
-      <% rate_color = rate >= 60 ? "#16a34a" : rate >= 50 ? "#d97706" : "#dc2626" %>
-      <a href="<%= first_purchase_index_path(series: stat[:series], silent_only: 0) %>"
-         class="fp-stat-card <%= @selected_series == stat[:series] ? 'is-active' : '' %>">
-        <div class="fp-stat-series"><%= stat[:series] %></div>
-        <div class="fp-stat-row">
-          <div class="fp-stat-item">
-            <span class="fp-stat-num"><%= stat[:total] %></span>
-            <span class="fp-stat-label">首購人數</span>
-          </div>
-          <div class="fp-stat-item">
-            <span class="fp-stat-num warn"><%= stat[:silent] %></span>
-            <span class="fp-stat-label">沉默客</span>
-          </div>
-          <div class="fp-stat-item">
-            <span class="fp-stat-num" style="color:<%= rate_color %>"><%= rate %>%</span>
-            <span class="fp-stat-label">回購率</span>
-          </div>
-        </div>
-      </a>
-    <% end %>
-  </div>
-
-  <%# ── 第二購路徑提示（有選系列時顯示）── %>
-  <% if @selected_series.present? && @second_purchase_map[@selected_series] %>
-    <div class="fp-path-card">
-      <div class="fp-path-title">
-        💡 首購【<%= @selected_series %>】的客人，第二筆通常買什麼？
-      </div>
-      <div class="fp-path-bars">
-        <% @second_purchase_map[@selected_series].each_with_index do |(product, pct), i| %>
-          <% next if product.blank? %>
-          <div class="fp-path-bar-row">
-            <span class="fp-path-name"><%= product %></span>
-            <div class="fp-path-bar-wrap">
-              <div class="fp-path-bar-fill" style="width: <%= pct %>%; background: <%= i == 0 ? '#886ab5' : '#c4b5d8' %>"></div>
-            </div>
-            <span class="fp-path-pct"><%= pct %>%</span>
-          </div>
-        <% end %>
-      </div>
-      <% top_product = @second_purchase_map[@selected_series].find { |p, _| p.present? }&.first %>
-      <% if top_product.present? %>
-        <p class="fp-path-hint">
-          → 推薦話術：聯繫時可主動提到「<%= top_product %>」
-        </p>
-      <% end %>
-    </div>
-  <% end %>
-
-  <%# ── 篩選列 ── %>
-  <div class="fp-filter-bar">
-    <%= form_with url: first_purchase_index_path, method: :get, local: true, class: "fp-filter-form" do %>
-      <div class="fp-filter-row">
-        <div class="fp-filter-group">
-          <label class="fp-filter-label">首購系列</label>
-          <%= select_tag :series,
-              options_for_select([["全部", ""]] + @series_options.map { |s| [s, s] }, @selected_series),
-              class: "fp-select" %>
-        </div>
-
-        <div class="fp-filter-group">
-          <label class="fp-filter-label">狀態</label>
-          <%= select_tag :silent_only,
-              options_for_select([["全部客人", "0"], ["只看沉默客（超過該系列回購週期且僅1筆）", "1"]], @silent_only ? "1" : "0"),
-              class: "fp-select" %>
-        </div>
-
-        <div class="fp-filter-group">
-          <label class="fp-filter-label">排序</label>
-          <%= select_tag :sort,
-              options_for_select([
-                ["累積消費↓", "amount_desc"],
-                ["累積消費↑", "amount_asc"],
-                ["首購日期↓（最新）", "first_desc"],
-                ["首購日期↑（最舊）", "first_asc"],
-                ["沉默優先", "silent"],
-              ], @sort),
-              class: "fp-select" %>
-        </div>
-
-        <div class="fp-filter-actions">
-          <%= button_tag "查詢", type: "submit", class: "fp-btn-primary" %>
-          <%= link_to "清除", first_purchase_index_path, class: "fp-btn-secondary" %>
-        </div>
-      </div>
-    <% end %>
-
-    <div class="fp-filter-meta">
-      共 <strong><%= number_with_delimiter(@total) %></strong> 人　
-      第 <%= @page %> / <%= @total_pages %> 頁
-    </div>
-  </div>
-
-  <%# ── 客人列表 ── %>
-  <% show_table = @selected_series.present? || @silent_only %>
-
-  <% if show_table %>
-
-    <%# Desktop 表格 %>
-    <div class="fp-table-wrap fp-desktop-only">
-      <table class="fp-table">
-        <thead>
-          <tr>
-            <th>姓名</th>
-            <th>會員</th>
-            <th>首購系列</th>
-            <th>首購日期</th>
-            <th>首購金額</th>
-            <th>累積消費</th>
-            <th>訂單數</th>
-            <% if @silent_only %>
-              <th>沉默天數</th>
-            <% end %>
-            <th>第二購方向</th>
-            <th>IG</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @customers.each do |c| %>
-            <% purchase_count = c.purchase_count.to_i %>
-            <% is_silent = ActiveModel::Type::Boolean.new.cast(c.silent_only) %>
-            <tr class="<%= is_silent ? 'row-silent' : '' %>">
-              <td>
-                <%= link_to (c.full_name.presence || "（無名）"), customer_path(c), class: "fp-customer-link" %>
-                <div class="fp-email"><%= c.email %></div>
-              </td>
-              <td>
-                <span class="fp-level fp-level-<%= c.membership_level&.gsub('卡','') %>">
-                  <%= c.membership_level.presence || "一般" %>
-                </span>
-              </td>
-              <td><span class="fp-series-tag"><%= c.first_series.presence || c.first_product %></span></td>
-              <td class="fp-date"><%= c.first_date&.strftime("%Y/%m/%d") || "—" %></td>
-              <td class="fp-amount">NT$ <%= number_with_delimiter(c.first_amount.to_f.round(0).to_i) %></td>
-              <td class="fp-amount">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
-              <td class="fp-count">
-                <% if is_silent %>
-                  <span class="fp-badge-silent">1筆（沉默）</span>
-                <% else %>
-                  <%= purchase_count %> 筆
-                <% end %>
-              </td>
-              <% if @silent_only %>
-                <td>
-                  <% silent_days = c.try(:silent_days).to_i %>
-                  <% if silent_days > 0 %>
-                    <span class="<%= silent_days > 180 ? 'fp-badge-silent' : 'fp-badge-warn' %>">
-                      <%= silent_days %> 天
-                    </span>
-                  <% else %>
-                    <span class="fp-muted">—</span>
-                  <% end %>
-                </td>
-              <% end %>
-              <td>
-                <% if c.second_series.present? %>
-                  <span class="fp-series-tag"><%= c.second_series %></span>
-                <% else %>
-                  <span class="fp-muted">—</span>
-                <% end %>
-              </td>
-              <td>
-                <% if c.instagram_account.present? %>
-                  <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>"
-                     target="_blank" class="fp-ig-link">
-                    📷 <%= c.instagram_account %>
-                  </a>
-                <% else %>
-                  <span class="fp-muted">—</span>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-
-          <% if @customers.blank? %>
-            <tr>
-              <td colspan="<%= @silent_only ? 9 : 8 %>" class="fp-empty">查無符合條件的客人</td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-
-    <%# Mobile 卡片列表 %>
-    <div class="fp-card-list fp-mobile-only">
-      <% if @customers.blank? %>
-        <div class="fp-empty-hint">查無符合條件的客人</div>
-      <% else %>
-        <% @customers.each do |c| %>
-          <% purchase_count = c.purchase_count.to_i %>
-          <% is_silent = ActiveModel::Type::Boolean.new.cast(c.silent_only) %>
-          <% silent_days = c.try(:silent_days).to_i %>
-
-          <div class="fp-cust-card <%= is_silent ? 'is-silent' : '' %>">
-            <div class="fp-cust-card-top">
-              <div>
-                <%= link_to (c.full_name.presence || "（無名）"), customer_path(c), class: "fp-cust-name" %>
-                <div class="fp-email"><%= c.email %></div>
-              </div>
-              <div class="fp-cust-card-badges">
-                <span class="fp-level fp-level-<%= c.membership_level&.gsub('卡','') %>">
-                  <%= c.membership_level.presence || "一般" %>
-                </span>
-                <% if is_silent %>
-                  <span class="fp-badge-silent">沉默</span>
-                <% end %>
-              </div>
-            </div>
-
-            <div class="fp-cust-card-tags">
-              <span class="fp-series-tag"><%= c.first_series.presence || c.first_product %></span>
-              <% if c.second_series.present? %>
-                <span class="fp-cust-arrow">→</span>
-                <span class="fp-series-tag fp-series-tag-second"><%= c.second_series %></span>
-              <% end %>
-            </div>
-
-            <div class="fp-cust-card-grid">
-              <div class="fp-cust-meta-item">
-                <span class="fp-cust-meta-label">首購日期</span>
-                <span class="fp-cust-meta-value"><%= c.first_date&.strftime("%Y/%m/%d") || "—" %></span>
-              </div>
-              <div class="fp-cust-meta-item">
-                <span class="fp-cust-meta-label">首購金額</span>
-                <span class="fp-cust-meta-value">NT$ <%= number_with_delimiter(c.first_amount.to_f.round(0).to_i) %></span>
-              </div>
-              <div class="fp-cust-meta-item">
-                <span class="fp-cust-meta-label">累積消費</span>
-                <span class="fp-cust-meta-value fp-highlight">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></span>
-              </div>
-              <div class="fp-cust-meta-item">
-                <span class="fp-cust-meta-label">訂單數</span>
-                <span class="fp-cust-meta-value">
-                  <% if is_silent %>
-                    <span class="fp-badge-silent">1筆（沉默）</span>
-                  <% else %>
-                    <%= purchase_count %> 筆
-                  <% end %>
-                </span>
-              </div>
-              <% if @silent_only && silent_days > 0 %>
-                <div class="fp-cust-meta-item">
-                  <span class="fp-cust-meta-label">沉默天數</span>
-                  <span class="fp-cust-meta-value">
-                    <span class="<%= silent_days > 180 ? 'fp-badge-silent' : 'fp-badge-warn' %>">
-                      <%= silent_days %> 天
-                    </span>
-                  </span>
+          <%# ── 系列卡片總覽 ── %>
+          <div class="fp-stats-grid mb-4">
+            <% @series_stats.each do |stat| %>
+              <% rate = stat[:return_rate] %>
+              <% rate_color = rate >= 60 ? "#16a34a" : rate >= 50 ? "#d97706" : "#dc2626" %>
+              <a href="<%= first_purchase_index_path(series: stat[:series], silent_only: 0) %>"
+                 class="fp-stat-card <%= @selected_series == stat[:series] ? 'is-active' : '' %>">
+                <div class="fp-stat-series"><%= stat[:series] %></div>
+                <div class="fp-stat-row">
+                  <div class="fp-stat-item">
+                    <span class="fp-stat-num"><%= stat[:total] %></span>
+                    <span class="fp-stat-label">首購人數</span>
+                  </div>
+                  <div class="fp-stat-item">
+                    <span class="fp-stat-num warn"><%= stat[:silent] %></span>
+                    <span class="fp-stat-label">沉默客</span>
+                  </div>
+                  <div class="fp-stat-item">
+                    <span class="fp-stat-num" style="color:<%= rate_color %>"><%= rate %>%</span>
+                    <span class="fp-stat-label">回購率</span>
+                  </div>
                 </div>
+              </a>
+            <% end %>
+          </div>
+
+          <%# ── 第二購路徑提示 ── %>
+          <% if @selected_series.present? && @second_purchase_map[@selected_series] %>
+            <div class="fp-path-card mb-4">
+              <div class="fp-path-title">
+                💡 首購【<%= @selected_series %>】的客人，第二筆通常買什麼？
+              </div>
+              <div class="fp-path-bars">
+                <% @second_purchase_map[@selected_series].each_with_index do |(product, pct), i| %>
+                  <% next if product.blank? %>
+                  <div class="fp-path-bar-row">
+                    <span class="fp-path-name"><%= product %></span>
+                    <div class="fp-path-bar-wrap">
+                      <div class="fp-path-bar-fill" style="width: <%= pct %>%; background: <%= i == 0 ? '#886ab5' : '#c4b5d8' %>"></div>
+                    </div>
+                    <span class="fp-path-pct"><%= pct %>%</span>
+                  </div>
+                <% end %>
+              </div>
+              <% top_product = @second_purchase_map[@selected_series].find { |p, _| p.present? }&.first %>
+              <% if top_product.present? %>
+                <p class="fp-path-hint">→ 推薦話術：聯繫時可主動提到「<%= top_product %>」</p>
+              <% end %>
+            </div>
+          <% end %>
+
+          <%# ── 篩選列 ── %>
+          <div class="fp-filter-bar mb-3">
+            <%= form_with url: first_purchase_index_path, method: :get, local: true do %>
+              <div class="fp-filter-row">
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">首購系列</label>
+                  <%= select_tag :series,
+                      options_for_select([["全部", ""]] + @series_options.map { |s| [s, s] }, @selected_series),
+                      class: "fp-select" %>
+                </div>
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">狀態</label>
+                  <%= select_tag :silent_only,
+                      options_for_select([["全部客人", "0"], ["只看沉默客（超過該系列回購週期且僅1筆）", "1"]], @silent_only ? "1" : "0"),
+                      class: "fp-select" %>
+                </div>
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">排序</label>
+                  <%= select_tag :sort,
+                      options_for_select([
+                        ["累積消費↓", "amount_desc"],
+                        ["累積消費↑", "amount_asc"],
+                        ["首購日期↓（最新）", "first_desc"],
+                        ["首購日期↑（最舊）", "first_asc"],
+                        ["沉默優先", "silent"],
+                      ], @sort),
+                      class: "fp-select" %>
+                </div>
+                <div class="fp-filter-actions">
+                  <%= button_tag "查詢", type: "submit", class: "fp-btn-primary" %>
+                  <%= link_to "清除", first_purchase_index_path, class: "fp-btn-secondary" %>
+                </div>
+              </div>
+            <% end %>
+            <div class="fp-filter-meta mt-2">
+              共 <strong><%= number_with_delimiter(@total) %></strong> 人　
+              第 <%= @page %> / <%= @total_pages %> 頁
+            </div>
+          </div>
+
+          <%# ── 客人列表 ── %>
+          <% show_table = @selected_series.present? || @silent_only %>
+
+          <% if show_table %>
+
+            <%# Desktop 表格 %>
+            <div class="fp-table-wrap fp-desktop-only">
+              <table class="fp-table">
+                <thead>
+                  <tr>
+                    <th>姓名</th>
+                    <th>會員</th>
+                    <th>首購系列</th>
+                    <th>首購日期</th>
+                    <th>首購金額</th>
+                    <th>累積消費</th>
+                    <th>訂單數</th>
+                    <% if @silent_only %>
+                      <th>沉默天數</th>
+                    <% end %>
+                    <th>第二購方向</th>
+                    <th>IG</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @customers.each do |c| %>
+                    <% purchase_count = c.purchase_count.to_i %>
+                    <% is_silent = ActiveModel::Type::Boolean.new.cast(c.silent_only) %>
+                    <tr class="<%= is_silent ? 'row-silent' : '' %>">
+                      <td>
+                        <%= link_to (c.full_name.presence || "（無名）"), customer_path(c), class: "fp-customer-link" %>
+                        <div class="fp-email"><%= c.email %></div>
+                      </td>
+                      <td>
+                        <span class="fp-level fp-level-<%= c.membership_level&.gsub('卡','') %>">
+                          <%= c.membership_level.presence || "一般" %>
+                        </span>
+                      </td>
+                      <td><span class="fp-series-tag"><%= c.first_series.presence || c.first_product %></span></td>
+                      <td class="fp-date"><%= c.first_date&.strftime("%Y/%m/%d") || "—" %></td>
+                      <td class="fp-amount">NT$ <%= number_with_delimiter(c.first_amount.to_f.round(0).to_i) %></td>
+                      <td class="fp-amount">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
+                      <td class="fp-count">
+                        <% if is_silent %>
+                          <span class="fp-badge-silent">1筆（沉默）</span>
+                        <% else %>
+                          <%= purchase_count %> 筆
+                        <% end %>
+                      </td>
+                      <% if @silent_only %>
+                        <td>
+                          <% silent_days = c.try(:silent_days).to_i %>
+                          <% if silent_days > 0 %>
+                            <span class="<%= silent_days > 180 ? 'fp-badge-silent' : 'fp-badge-warn' %>">
+                              <%= silent_days %> 天
+                            </span>
+                          <% else %>
+                            <span class="fp-muted">—</span>
+                          <% end %>
+                        </td>
+                      <% end %>
+                      <td>
+                        <% if c.second_series.present? %>
+                          <span class="fp-series-tag"><%= c.second_series %></span>
+                        <% else %>
+                          <span class="fp-muted">—</span>
+                        <% end %>
+                      </td>
+                      <td>
+                        <% if c.instagram_account.present? %>
+                          <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>"
+                             target="_blank" class="fp-ig-link">
+                            📷 <%= c.instagram_account %>
+                          </a>
+                        <% else %>
+                          <span class="fp-muted">—</span>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                  <% if @customers.blank? %>
+                    <tr>
+                      <td colspan="<%= @silent_only ? 9 : 8 %>" class="fp-empty">查無符合條件的客人</td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+
+            <%# Mobile 卡片列表 %>
+            <div class="fp-card-list fp-mobile-only">
+              <% if @customers.blank? %>
+                <div class="fp-empty-hint">查無符合條件的客人</div>
+              <% else %>
+                <% @customers.each do |c| %>
+                  <% purchase_count = c.purchase_count.to_i %>
+                  <% is_silent = ActiveModel::Type::Boolean.new.cast(c.silent_only) %>
+                  <% silent_days = c.try(:silent_days).to_i %>
+                  <div class="fp-cust-card <%= is_silent ? 'is-silent' : '' %>">
+                    <div class="fp-cust-card-top">
+                      <div>
+                        <%= link_to (c.full_name.presence || "（無名）"), customer_path(c), class: "fp-cust-name" %>
+                        <div class="fp-email"><%= c.email %></div>
+                      </div>
+                      <div class="fp-cust-card-badges">
+                        <span class="fp-level fp-level-<%= c.membership_level&.gsub('卡','') %>">
+                          <%= c.membership_level.presence || "一般" %>
+                        </span>
+                        <% if is_silent %><span class="fp-badge-silent">沉默</span><% end %>
+                      </div>
+                    </div>
+                    <div class="fp-cust-card-tags">
+                      <span class="fp-series-tag"><%= c.first_series.presence || c.first_product %></span>
+                      <% if c.second_series.present? %>
+                        <span class="fp-cust-arrow">→</span>
+                        <span class="fp-series-tag fp-series-tag-second"><%= c.second_series %></span>
+                      <% end %>
+                    </div>
+                    <div class="fp-cust-card-grid">
+                      <div class="fp-cust-meta-item">
+                        <span class="fp-cust-meta-label">首購日期</span>
+                        <span class="fp-cust-meta-value"><%= c.first_date&.strftime("%Y/%m/%d") || "—" %></span>
+                      </div>
+                      <div class="fp-cust-meta-item">
+                        <span class="fp-cust-meta-label">首購金額</span>
+                        <span class="fp-cust-meta-value">NT$ <%= number_with_delimiter(c.first_amount.to_f.round(0).to_i) %></span>
+                      </div>
+                      <div class="fp-cust-meta-item">
+                        <span class="fp-cust-meta-label">累積消費</span>
+                        <span class="fp-cust-meta-value fp-highlight">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></span>
+                      </div>
+                      <div class="fp-cust-meta-item">
+                        <span class="fp-cust-meta-label">訂單數</span>
+                        <span class="fp-cust-meta-value">
+                          <% if is_silent %>
+                            <span class="fp-badge-silent">1筆（沉默）</span>
+                          <% else %>
+                            <%= purchase_count %> 筆
+                          <% end %>
+                        </span>
+                      </div>
+                      <% if @silent_only && silent_days > 0 %>
+                        <div class="fp-cust-meta-item">
+                          <span class="fp-cust-meta-label">沉默天數</span>
+                          <span class="fp-cust-meta-value">
+                            <span class="<%= silent_days > 180 ? 'fp-badge-silent' : 'fp-badge-warn' %>"><%= silent_days %> 天</span>
+                          </span>
+                        </div>
+                      <% end %>
+                    </div>
+                    <% if c.instagram_account.present? %>
+                      <div class="fp-cust-card-footer">
+                        <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="fp-ig-link">
+                          📷 <%= c.instagram_account %>
+                        </a>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
               <% end %>
             </div>
 
-            <% if c.instagram_account.present? %>
-              <div class="fp-cust-card-footer">
-                <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>"
-                   target="_blank" class="fp-ig-link">
-                  📷 <%= c.instagram_account %>
-                </a>
+            <%# 分頁 %>
+            <% if @total_pages > 1 %>
+              <div class="fp-pagination mt-3">
+                <% prev_page = [@page - 1, 1].max %>
+                <% next_page = [@page + 1, @total_pages].min %>
+                <%= link_to "← 上一頁",
+                      first_purchase_index_path(request.query_parameters.merge(page: prev_page)),
+                      class: "fp-page-btn #{'is-disabled' if @page <= 1}" %>
+                <span class="fp-page-info">第 <%= @page %> 頁，共 <%= @total_pages %> 頁</span>
+                <%= link_to "下一頁 →",
+                      first_purchase_index_path(request.query_parameters.merge(page: next_page)),
+                      class: "fp-page-btn #{'is-disabled' if @page >= @total_pages}" %>
               </div>
             <% end %>
-          </div>
-        <% end %>
-      <% end %>
-    </div>
 
-    <%# 分頁 %>
-    <% if @total_pages > 1 %>
-      <div class="fp-pagination">
-        <% prev_page = [@page - 1, 1].max %>
-        <% next_page = [@page + 1, @total_pages].min %>
-        <%= link_to "← 上一頁",
-              first_purchase_index_path(request.query_parameters.merge(page: prev_page)),
-              class: "fp-page-btn #{'is-disabled' if @page <= 1}" %>
-        <span class="fp-page-info">第 <%= @page %> 頁，共 <%= @total_pages %> 頁</span>
-        <%= link_to "下一頁 →",
-              first_purchase_index_path(request.query_parameters.merge(page: next_page)),
-              class: "fp-page-btn #{'is-disabled' if @page >= @total_pages}" %>
+          <% else %>
+            <div class="fp-empty-hint">
+              請從上方選擇系列，或切換為「沉默客」後查看名單
+            </div>
+          <% end %>
+
+        </div>
       </div>
-    <% end %>
-
-  <% else %>
-    <div class="fp-empty-hint">
-      請從上方選擇系列，或切換為「沉默客」後查看名單
     </div>
-  <% end %>
-
+  </div>
 </div>
 
 <style>
 *, *::before, *::after { box-sizing: border-box; }
 
-@media (max-width: 576px) {
-  #js-page-content.page-content {
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-}
-
-.fp-page {
-  max-width: 1300px;
-  margin: 0 auto;
-  padding: 24px 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.fp-header { margin-bottom: 24px; }
-.fp-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; color: #1a1a2e; }
-.fp-subtitle { font-size: 13px; color: #9ca3af; margin: 0; }
-
-/* 系列卡片 */
 .fp-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
-  margin-bottom: 20px;
 }
 .fp-stat-card {
-  background: #fff;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 14px 16px;
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  display: block;
+  background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px;
+  padding: 14px 16px; text-decoration: none; color: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s; display: block;
 }
 .fp-stat-card:hover { border-color: #886ab5; box-shadow: 0 0 0 3px rgba(136,106,181,.1); }
 .fp-stat-card.is-active { border-color: #886ab5; background: #f9f5ff; }
@@ -350,14 +317,7 @@
 .fp-stat-num.warn { color: #dc2626; }
 .fp-stat-label { font-size: 10px; color: #9ca3af; }
 
-/* 第二購路徑 */
-.fp-path-card {
-  background: #fdf8ff;
-  border: 1px solid #d8b4fe;
-  border-radius: 10px;
-  padding: 16px 20px;
-  margin-bottom: 20px;
-}
+.fp-path-card { background: #fdf8ff; border: 1px solid #d8b4fe; border-radius: 10px; padding: 16px 20px; }
 .fp-path-title { font-weight: 700; font-size: 14px; color: #6b21a8; margin-bottom: 12px; }
 .fp-path-bars { display: flex; flex-direction: column; gap: 8px; }
 .fp-path-bar-row { display: flex; align-items: center; gap: 10px; }
@@ -367,15 +327,8 @@
 .fp-path-pct { width: 40px; font-size: 12px; color: #6b7280; text-align: right; flex-shrink: 0; }
 .fp-path-hint { margin: 12px 0 0; font-size: 13px; color: #7c3aed; font-weight: 600; }
 
-/* 篩選列 */
-.fp-filter-bar {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 16px 20px;
-  margin-bottom: 16px;
-}
-.fp-filter-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 10px; }
+.fp-filter-bar { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+.fp-filter-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 .fp-filter-group { display: flex; flex-direction: column; gap: 4px; }
 .fp-filter-label { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
 .fp-select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #374151; background: #fff; }
@@ -385,7 +338,6 @@
 .fp-btn-secondary { padding: 7px 14px; background: transparent; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
 .fp-filter-meta { font-size: 13px; color: #6b7280; }
 
-/* 共用 tag / badge */
 .fp-series-tag { background: #ede9fe; color: #6d28d9; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
 .fp-series-tag-second { background: #f0fdf4; color: #16a34a; }
 .fp-muted { color: #9ca3af; }
@@ -402,13 +354,9 @@
 .fp-ig-link { color: #6b7280; font-size: 12px; text-decoration: none; }
 .fp-ig-link:hover { color: #886ab5; }
 
-/* Desktop 表格 */
-.fp-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid #e5e7eb; background: #fff; }
+.fp-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; }
 .fp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.fp-table thead th {
-  background: #886ab5; color: #fff; padding: 10px 14px;
-  text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap;
-}
+.fp-table thead th { background: #886ab5; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
 .fp-table tbody td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
 .fp-table tbody tr:last-child td { border-bottom: none; }
 .fp-table tbody tr:hover td { background: #faf9ff; }
@@ -419,95 +367,51 @@
 .fp-date, .fp-amount, .fp-count { white-space: nowrap; color: #374151; }
 .fp-empty { text-align: center; color: #9ca3af; padding: 40px; }
 
-/* Mobile 卡片 */
 .fp-card-list { display: flex; flex-direction: column; gap: 12px; }
-
-.fp-cust-card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.05);
-}
+.fp-cust-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 .fp-cust-card.is-silent { background: #fff9f9; border-color: #fecaca; }
-
-.fp-cust-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 10px;
-}
+.fp-cust-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
 .fp-cust-name { font-weight: 700; font-size: 15px; color: #374151; text-decoration: none; display: block; }
 .fp-cust-name:hover { color: #886ab5; }
 .fp-cust-card-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
-
-.fp-cust-card-tags {
-  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
-}
+.fp-cust-card-tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
 .fp-cust-arrow { font-size: 12px; color: #9ca3af; }
-
-.fp-cust-card-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 16px;
-  margin-bottom: 10px;
-}
+.fp-cust-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 10px; }
 .fp-cust-meta-item { display: flex; flex-direction: column; gap: 2px; }
 .fp-cust-meta-label { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
 .fp-cust-meta-value { font-size: 13px; font-weight: 600; color: #374151; }
 .fp-cust-meta-value.fp-highlight { color: #886ab5; }
-
 .fp-cust-card-footer { border-top: 1px solid #f3f4f6; padding-top: 10px; margin-top: 4px; }
 
-/* 顯示/隱藏切換 */
 .fp-desktop-only { display: block; }
 .fp-mobile-only  { display: none; }
 
-/* 分頁 */
-.fp-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 20px; }
+.fp-pagination { display: flex; align-items: center; justify-content: center; gap: 16px; }
 .fp-page-btn { padding: 6px 16px; border: 1px solid #e5e7eb; border-radius: 6px; background: #fff; font-size: 13px; color: #374151; text-decoration: none; white-space: nowrap; }
 .fp-page-btn:hover { background: #f9fafb; }
 .fp-page-btn.is-disabled { opacity: 0.4; pointer-events: none; }
 .fp-page-info { font-size: 13px; color: #6b7280; }
 
-.fp-empty-hint {
-  text-align: center; color: #9ca3af; padding: 60px 20px; font-size: 14px;
-  background: #fafafa; border: 1px dashed #e5e7eb; border-radius: 10px; margin-top: 16px;
-}
+.fp-empty-hint { text-align: center; color: #9ca3af; padding: 60px 20px; font-size: 14px; background: #fafafa; border: 1px dashed #e5e7eb; border-radius: 10px; }
 
-/* ── RWD ── */
 @media (max-width: 900px) {
   .fp-stats-grid { grid-template-columns: repeat(3, 1fr); }
 }
-
 @media (max-width: 768px) {
-  .fp-page { padding: 16px 12px; }
-  .fp-title { font-size: 17px; }
-
   .fp-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .fp-stat-card { padding: 12px; }
   .fp-stat-series { font-size: 13px; margin-bottom: 8px; }
   .fp-stat-num { font-size: 16px; }
-
-  .fp-path-card { padding: 14px; }
   .fp-path-name { width: 64px; font-size: 12px; }
-
-  .fp-filter-bar { padding: 14px; }
   .fp-filter-row { flex-direction: column; gap: 10px; }
-  .fp-filter-group { width: 100%; }
-  .fp-select { width: 100%; }
+  .fp-filter-group, .fp-select { width: 100%; }
   .fp-filter-actions { width: 100%; }
-  .fp-btn-primary { flex: 1; text-align: center; }
-  .fp-btn-secondary { flex: 1; text-align: center; justify-content: center; }
-
+  .fp-btn-primary, .fp-btn-secondary { flex: 1; text-align: center; justify-content: center; }
   .fp-desktop-only { display: none; }
   .fp-mobile-only  { display: flex; }
-
   .fp-pagination { gap: 8px; }
   .fp-page-btn { padding: 6px 10px; font-size: 12px; }
 }
-
 @media (max-width: 380px) {
   .fp-stats-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .fp-stat-num { font-size: 14px; }
