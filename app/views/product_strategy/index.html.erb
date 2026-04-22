@@ -41,8 +41,8 @@
     </div>
   </div>
 
-  <%# 主表格 %>
-  <div class="ps-table-wrap">
+  <%# Desktop 主表格 %>
+  <div class="ps-table-wrap ps-desktop-only">
     <table class="ps-table">
       <thead>
         <tr>
@@ -104,12 +104,74 @@
     </table>
   </div>
 
+  <%# Mobile 系列卡片 %>
+  <div class="ps-mobile-only ps-series-cards">
+    <% @report.each do |r| %>
+      <% rate = r[:return_rate] %>
+      <% rate_color = rate >= 60 ? "#16a34a" : rate >= 50 ? "#d97706" : "#dc2626" %>
+      <div class="ps-series-card">
+        <div class="ps-series-card-title"><%= r[:series] %></div>
+
+        <%# 首購分析 %>
+        <div class="ps-card-section-label ps-label-blue">首購分析</div>
+        <div class="ps-card-grid">
+          <div class="ps-card-item">
+            <span class="ps-card-label">首購人數</span>
+            <span class="ps-card-value"><%= number_with_delimiter(r[:total]) %></span>
+          </div>
+          <div class="ps-card-item">
+            <span class="ps-card-label">回購率</span>
+            <span class="ps-card-value" style="color: <%= rate_color %>; font-size: 16px;"><%= rate %>%</span>
+          </div>
+          <div class="ps-card-item">
+            <span class="ps-card-label">沉默客</span>
+            <span class="ps-card-value ps-silent"><%= number_with_delimiter(r[:silent]) %></span>
+          </div>
+          <div class="ps-card-item">
+            <span class="ps-card-label">平均首購金額</span>
+            <span class="ps-card-value">NT$<%= number_with_delimiter(r[:avg_first]) %></span>
+          </div>
+        </div>
+
+        <%# 忠誠度 %>
+        <div class="ps-card-section-label ps-label-purple">忠誠度</div>
+        <div class="ps-card-grid">
+          <div class="ps-card-item">
+            <span class="ps-card-label">忠實客 (3-4次)</span>
+            <span class="ps-card-value ps-loyal"><%= number_with_delimiter(r[:loyal]) %></span>
+          </div>
+          <div class="ps-card-item">
+            <span class="ps-card-label">鐵粉 (5次+)</span>
+            <span class="ps-card-value ps-iron"><%= number_with_delimiter(r[:iron]) %></span>
+          </div>
+          <div class="ps-card-item">
+            <span class="ps-card-label">平均購買次數</span>
+            <span class="ps-card-value"><%= r[:avg_count] %> 次</span>
+          </div>
+        </div>
+
+        <%# 第二購方向 %>
+        <% if r[:second_purchases].any? %>
+          <div class="ps-card-section-label ps-label-amber">第二購方向</div>
+          <div class="ps-card-second-list">
+            <% r[:second_purchases].first(3).each_with_index do |(product, pct), i| %>
+              <div class="ps-card-second-row">
+                <span class="ps-card-second-rank">#<%= i + 1 %></span>
+                <span class="ps-tag"><%= product %></span>
+                <span class="ps-tag-pct"><%= pct %>%</span>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+
   <%# 決策摘要 %>
   <div class="ps-insights">
     <h5 class="ps-insights-title">💡 決策參考</h5>
     <div class="ps-insights-grid">
 
-      <%# 高首購低回購 %>
       <% weak_retention = @report.select { |r| r[:total] >= 50 && r[:return_rate] < 50 } %>
       <% if weak_retention.any? %>
         <div class="ps-insight-card ps-insight-warn">
@@ -121,7 +183,6 @@
         </div>
       <% end %>
 
-      <%# 最強鐵粉 %>
       <% top_iron = @report.select { |r| r[:iron] > 0 }.max_by { |r| r[:iron].to_f / [r[:total], 1].max } %>
       <% if top_iron %>
         <div class="ps-insight-card ps-insight-success">
@@ -134,7 +195,6 @@
         </div>
       <% end %>
 
-      <%# 最大沉默客商機 %>
       <% top_silent = @report.max_by { |r| r[:silent] } %>
       <% if top_silent %>
         <div class="ps-insight-card ps-insight-danger">
@@ -147,7 +207,6 @@
         </div>
       <% end %>
 
-      <%# 套組機會 %>
       <% cross_sell = @report.select { |r| r[:second_purchases].any? }.first %>
       <% if cross_sell %>
         <div class="ps-insight-card ps-insight-info">
@@ -166,12 +225,14 @@
 </div>
 
 <style>
+*, *::before, *::after { box-sizing: border-box; }
+
 .ps-page { max-width: 1400px; margin: 0 auto; padding: 24px 16px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 
-.ps-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.ps-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; gap: 12px; flex-wrap: wrap; }
 .ps-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; color: #1a1a2e; }
 .ps-subtitle { font-size: 13px; color: #9ca3af; margin: 0; }
-.ps-updated { font-size: 12px; color: #9ca3af; }
+.ps-updated { font-size: 12px; color: #9ca3af; white-space: nowrap; }
 
 /* 概覽卡片 */
 .ps-overview-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
@@ -180,7 +241,7 @@
 .ps-ov-num { font-size: 26px; font-weight: 700; color: #111827; line-height: 1; margin-bottom: 4px; }
 .ps-ov-sub { font-size: 11px; color: #9ca3af; }
 
-/* 主表格 */
+/* Desktop 表格 */
 .ps-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #e5e7eb; background: #fff; margin-bottom: 24px; }
 .ps-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .ps-table thead th { padding: 10px 14px; text-align: center; font-weight: 600; font-size: 11px; white-space: nowrap; border-bottom: 1px solid #e5e7eb; }
@@ -193,33 +254,54 @@
 .ps-table tbody td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; text-align: center; }
 .ps-table tbody tr:last-child td { border-bottom: none; }
 .ps-table tbody tr:hover td { background: #fafafa; }
-
 .ps-series-cell { text-align: left !important; }
 .ps-series-name { font-weight: 700; font-size: 14px; color: #1f2937; }
-
 .ps-num { font-weight: 600; color: #374151; white-space: nowrap; }
 .ps-silent { color: #dc2626; }
 .ps-loyal  { color: #7c3aed; }
 .ps-iron   { color: #b45309; }
 
-.ps-rate-cell {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 4px 12px;
-  border-radius: 8px;
-  font-weight: 700;
-  font-size: 14px;
-  min-width: 80px;
-  position: relative;
-  overflow: hidden;
-}
+.ps-rate-cell { display: inline-flex; flex-direction: column; align-items: center; padding: 4px 12px; border-radius: 8px; font-weight: 700; font-size: 14px; min-width: 80px; }
 .ps-rate-bar-wrap { width: 100%; height: 3px; background: #e5e7eb; border-radius: 99px; margin-top: 4px; }
 .ps-rate-bar { height: 3px; border-radius: 99px; }
 
 .ps-tag { background: #ede9fe; color: #6d28d9; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
 .ps-tag-pct { font-size: 11px; color: #6b7280; margin-left: 2px; }
 .ps-muted { color: #d1d5db; }
+
+/* Mobile 系列卡片 */
+.ps-series-cards { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+
+.ps-series-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+.ps-series-card-title { font-weight: 700; font-size: 16px; color: #1f2937; margin-bottom: 14px; }
+
+.ps-card-section-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+  padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 10px; margin-top: 14px;
+}
+.ps-card-section-label:first-of-type { margin-top: 0; }
+.ps-label-blue   { background: #dbeafe; color: #1d4ed8; }
+.ps-label-purple { background: #ede9fe; color: #7c3aed; }
+.ps-label-amber  { background: #fef3c7; color: #b45309; }
+
+.ps-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.ps-card-item { display: flex; flex-direction: column; gap: 2px; }
+.ps-card-label { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+.ps-card-value { font-size: 14px; font-weight: 700; color: #374151; }
+
+.ps-card-second-list { display: flex; flex-direction: column; gap: 6px; }
+.ps-card-second-row { display: flex; align-items: center; gap: 8px; }
+.ps-card-second-rank { font-size: 11px; color: #9ca3af; font-weight: 700; width: 20px; flex-shrink: 0; }
+
+/* 顯示/隱藏 */
+.ps-desktop-only { display: block; }
+.ps-mobile-only  { display: none; }
 
 /* 決策摘要 */
 .ps-insights { margin-top: 8px; }
@@ -237,8 +319,28 @@
 .ps-insight-info    { background: #eff6ff; border: 1px solid #bfdbfe; }
 .ps-insight-info    .ps-insight-label { color: #1e40af; }
 
+/* ── RWD ── */
+@media (max-width: 1024px) {
+  .ps-overview-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
 @media (max-width: 768px) {
-  .ps-overview-grid { grid-template-columns: repeat(2, 1fr); }
+  .ps-page { padding: 16px 12px; }
+  .ps-title { font-size: 17px; }
+
+  .ps-overview-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .ps-ov-num { font-size: 20px; }
+
+  .ps-desktop-only { display: none; }
+  .ps-mobile-only  { display: flex; }
+
   .ps-insights-grid { grid-template-columns: 1fr; }
+  .ps-insight-card { padding: 14px; }
+}
+
+@media (max-width: 380px) {
+  .ps-overview-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .ps-ov-num { font-size: 18px; }
+  .ps-card-grid { grid-template-columns: 1fr 1fr; }
 }
 </style>
