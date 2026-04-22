@@ -7,7 +7,7 @@ class LoyalCustomersController < ApplicationController
   ].freeze
 
   TIERS = %w[鐵粉 忠實客 回購客].freeze
-  PER_PAGE = 50
+  PER_PAGE = 20
 
   def index
     @series_options  = SERIES_OPTIONS
