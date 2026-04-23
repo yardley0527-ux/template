@@ -9,7 +9,6 @@ Bundler.require(*Rails.groups)
 
 module SmartadminRailsSeed
   class Application < Rails::Application
-
     config.load_defaults 7.1
     config.app = 'SmartAdmin'
     config.version = '4.0.3'

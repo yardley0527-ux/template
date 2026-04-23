@@ -1,214 +1,395 @@
-<div class="container py-4">
-  <h1 class="mb-4">破萬新客分析</h1>
+<%# app/views/high_spender_first_purchase/index.html.erb %>
+<% content_for :page_title, "破萬新客分析" %>
 
-  <%= form_with url: high_spender_first_purchase_path, method: :get, local: true, class: "row g-3 mb-4" do %>
-    <div class="col-md-2">
-      <label class="form-label">年份</label>
-      <%= select_tag :year,
-            options_for_select([["全部", ""]] + @year_stats.map { |y| [y[:year], y[:year]] }, @selected_year),
-            class: "form-select" %>
-    </div>
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-crown"></i>
+    破萬新客分析
+    <small>首筆消費 ≥ $10,000 的新顧客，追蹤首購行為與回購狀況</small>
+  </h1>
+</div>
 
-    <div class="col-md-3">
-      <label class="form-label">首購系列</label>
-      <%= select_tag :series,
-            options_for_select([["全部", ""]] + @series_options.map { |s| [s, s] }, @selected_series),
-            class: "form-select" %>
-    </div>
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-container show">
+        <div class="panel-content">
 
-    <div class="col-md-2">
-      <label class="form-label">排序</label>
-      <%= select_tag :sort,
-            options_for_select([
-              ["首購日期新到舊", "first_date_desc"],
-              ["首購日期舊到新", "first_date_asc"],
-              ["首購金額高到低", "first_amount_desc"],
-              ["首購金額低到高", "first_amount_asc"],
-              ["購買次數高到低", "repurchase"]
-            ], @sort),
-            class: "form-select" %>
-    </div>
-
-    <div class="col-md-2 d-flex align-items-end">
-      <div class="form-check">
-        <%= check_box_tag :repurchase_only, "1", @repurchase_only, class: "form-check-input", id: "repurchase_only" %>
-        <%= label_tag :repurchase_only, "只看有回購", class: "form-check-label" %>
-      </div>
-    </div>
-
-    <div class="col-md-3 d-flex align-items-end">
-      <%= submit_tag "搜尋", class: "btn btn-primary me-2" %>
-      <%= link_to "清除", high_spender_first_purchase_path, class: "btn btn-outline-secondary" %>
-    </div>
-  <% end %>
-
-  <div class="row mb-4">
-    <% @summary_cards.each do |card| %>
-      <div class="col-md-3 mb-3">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <div class="text-muted small mb-2"><%= card[:label] %></div>
-            <div class="fs-3 fw-bold"><%= number_with_delimiter(card[:value]) %></div>
-            <div class="small text-secondary mt-2"><%= card[:note] %></div>
+          <%# 摘要 KPI 卡片 %>
+          <div class="fp-stats-grid mb-4">
+            <% @summary_cards.each do |card| %>
+              <div class="fp-stat-card">
+                <div class="fp-stat-series"><%= card[:label] %></div>
+                <div class="fp-stat-row">
+                  <div class="fp-stat-item">
+                    <span class="fp-stat-num"><%= number_with_delimiter(card[:value]) %></span>
+                    <span class="fp-stat-label"><%= card[:note] %></span>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           </div>
+
+          <%# 篩選列 %>
+          <div class="fp-filter-bar mb-3">
+            <%= form_with url: high_spender_first_purchase_path, method: :get, local: true do %>
+              <div class="fp-filter-row">
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">年份</label>
+                  <%= select_tag :year,
+                        options_for_select([["全部", ""]] + @year_stats.map { |y| [y[:year], y[:year]] }, @selected_year),
+                        class: "fp-select" %>
+                </div>
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">首購系列</label>
+                  <%= select_tag :series,
+                        options_for_select([["全部", ""]] + @series_options.map { |s| [s, s] }, @selected_series),
+                        class: "fp-select" %>
+                </div>
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">排序</label>
+                  <%= select_tag :sort,
+                        options_for_select([
+                          ["首購日期新到舊", "first_date_desc"],
+                          ["首購日期舊到新", "first_date_asc"],
+                          ["首購金額高到低", "first_amount_desc"],
+                          ["首購金額低到高", "first_amount_asc"],
+                          ["購買次數高到低", "repurchase"]
+                        ], @sort),
+                        class: "fp-select" %>
+                </div>
+                <div class="fp-filter-group" style="justify-content: flex-end;">
+                  <label class="fp-filter-label">&nbsp;</label>
+                  <label class="fp-checkbox-label">
+                    <%= check_box_tag :repurchase_only, "1", @repurchase_only, class: "fp-checkbox" %>
+                    只看有回購
+                  </label>
+                </div>
+                <div class="fp-filter-actions">
+                  <%= button_tag "查詢", type: "submit", class: "fp-btn-primary" %>
+                  <%= link_to "清除", high_spender_first_purchase_path, class: "fp-btn-secondary" %>
+                </div>
+              </div>
+            <% end %>
+            <div class="fp-filter-meta mt-2">
+              共 <strong><%= number_with_delimiter(@total) %></strong> 筆　第 <%= @page %> / <%= @total_pages %> 頁
+            </div>
+          </div>
+
+          <%# 年度 × 首購系列 統計 %>
+          <div class="hs-section-grid mb-4">
+
+            <%# 年度統計 %>
+            <div class="hs-stat-block">
+              <div class="hs-block-title">年度統計</div>
+              <div class="fp-table-wrap">
+                <table class="fp-table">
+                  <thead>
+                    <tr>
+                      <th>年份</th>
+                      <th>破萬新客</th>
+                      <th>有回購</th>
+                      <th>回購率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @year_stats.each do |row| %>
+                      <tr>
+                        <td><%= row[:year] %></td>
+                        <td><%= number_with_delimiter(row[:total]) %></td>
+                        <td><%= number_with_delimiter(row[:repurchased]) %></td>
+                        <td>
+                          <span class="<%= row[:repurchase_rate] >= 70 ? 'fp-badge-ok' : row[:repurchase_rate] >= 55 ? 'fp-badge-mid' : 'fp-badge-warn' %>">
+                            <%= row[:repurchase_rate] %>%
+                          </span>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <%# 首購系列表現 %>
+            <div class="hs-stat-block">
+              <div class="hs-block-title">首購系列表現</div>
+              <div class="fp-table-wrap">
+                <table class="fp-table">
+                  <thead>
+                    <tr>
+                      <th>系列</th>
+                      <th>人數</th>
+                      <th>有回購</th>
+                      <th>回購率</th>
+                      <th>平均首筆</th>
+                      <th>第二次最常買</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @series_stats.each do |row| %>
+                      <% second_rows = @second_purchase_map[row[:series]] || [] %>
+                      <tr>
+                        <td><strong><%= row[:series] %></strong></td>
+                        <td><%= number_with_delimiter(row[:total]) %></td>
+                        <td><%= number_with_delimiter(row[:repurchased]) %></td>
+                        <td>
+                          <span class="<%= row[:repurchase_rate] >= 70 ? 'fp-badge-ok' : row[:repurchase_rate] >= 55 ? 'fp-badge-mid' : 'fp-badge-warn' %>">
+                            <%= row[:repurchase_rate] %>%
+                          </span>
+                        </td>
+                        <td class="fp-amount">$<%= number_with_delimiter(row[:avg_first_amount]) %></td>
+                        <td>
+                          <% if second_rows.any? %>
+                            <% second_rows.first(3).each do |second| %>
+                              <div class="hs-next-buy">
+                                <span class="hs-next-series"><%= second[:second_series] %></span>
+                                <span class="hs-next-count"><%= second[:count] %>人・<%= second[:rate] %>%</span>
+                              </div>
+                            <% end %>
+                          <% else %>
+                            <span class="fp-muted">—</span>
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <%# 每月趨勢 %>
+          <div class="hs-stat-block mb-4">
+            <div class="hs-block-title">每月趨勢</div>
+            <div class="fp-table-wrap">
+              <table class="fp-table">
+                <thead>
+                  <tr>
+                    <th>月份</th>
+                    <th>破萬新客數</th>
+                    <th>平均首筆金額</th>
+                    <th>回購率</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @monthly_stats.each do |row| %>
+                    <tr>
+                      <td><%= row[:month] %></td>
+                      <td><%= number_with_delimiter(row[:total]) %></td>
+                      <td class="fp-amount">$<%= number_with_delimiter(row[:avg_first_amount]) %></td>
+                      <td>
+                        <span class="<%= row[:repurchase_rate] >= 70 ? 'fp-badge-ok' : row[:repurchase_rate] >= 55 ? 'fp-badge-mid' : 'fp-badge-warn' %>">
+                          <%= row[:repurchase_rate] %>%
+                        </span>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <%# 名單明細 — Desktop %>
+          <div class="hs-block-title mb-2">
+            名單明細
+            <span class="fp-filter-meta ms-2" style="font-weight: 400;">
+              共 <%= number_with_delimiter(@total) %> 筆，第 <%= @page %> / <%= @total_pages %> 頁
+            </span>
+          </div>
+
+          <div class="fp-table-wrap fp-desktop-only mb-3">
+            <table class="fp-table">
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th>Email</th>
+                  <th>首購系列</th>
+                  <th>首購商品</th>
+                  <th>首購日期</th>
+                  <th>首購金額</th>
+                  <th>購買次數</th>
+                  <th>第二購系列</th>
+                  <th>最後下單日</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @customers.each do |customer| %>
+                  <tr>
+                    <td>
+                      <%= link_to (customer.full_name.presence || "（無名）"), customer_path(customer.customer_id), class: "fp-customer-link" %>
+                    </td>
+                    <td class="fp-muted" style="font-size: 12px;"><%= customer.email %></td>
+                    <td><%= customer.first_series %></td>
+                    <td><%= customer.first_product %></td>
+                    <td class="fp-date"><%= customer.first_date&.strftime("%Y/%m/%d") %></td>
+                    <td class="fp-amount">$<%= number_with_delimiter(customer.first_amount.to_i) %></td>
+                    <td>
+                      <% count = customer.purchase_count.to_i %>
+                      <span class="<%= count > 1 ? 'fp-badge-ok' : 'fp-badge-neutral' %>">
+                        <%= count %> 次
+                      </span>
+                    </td>
+                    <td><%= customer.second_series.presence || "—" %></td>
+                    <td class="fp-date"><%= customer.last_order_date&.strftime("%Y/%m/%d") || "—" %></td>
+                  </tr>
+                <% end %>
+                <% if @customers.blank? %>
+                  <tr>
+                    <td colspan="9" class="fp-empty">查無符合條件的客人</td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <%# 名單明細 — Mobile 卡片 %>
+          <div class="fp-card-list fp-mobile-only">
+            <% if @customers.blank? %>
+              <div class="fp-empty-hint">查無符合條件的客人</div>
+            <% else %>
+              <% @customers.each do |customer| %>
+                <div class="fp-cust-card">
+                  <div class="fp-cust-card-top">
+                    <div>
+                      <%= link_to (customer.full_name.presence || "（無名）"), customer_path(customer.customer_id), class: "fp-cust-name" %>
+                      <div class="fp-email"><%= customer.email %></div>
+                    </div>
+                    <div class="fp-cust-card-badges">
+                      <% count = customer.purchase_count.to_i %>
+                      <span class="<%= count > 1 ? 'fp-badge-ok' : 'fp-badge-neutral' %>">
+                        <%= count %> 次
+                      </span>
+                    </div>
+                  </div>
+                  <div class="fp-cust-card-grid">
+                    <div class="fp-cust-meta-item">
+                      <span class="fp-cust-meta-label">首購系列</span>
+                      <span class="fp-cust-meta-value"><%= customer.first_series || "—" %></span>
+                    </div>
+                    <div class="fp-cust-meta-item">
+                      <span class="fp-cust-meta-label">首購金額</span>
+                      <span class="fp-cust-meta-value fp-highlight">$<%= number_with_delimiter(customer.first_amount.to_i) %></span>
+                    </div>
+                    <div class="fp-cust-meta-item">
+                      <span class="fp-cust-meta-label">首購日期</span>
+                      <span class="fp-cust-meta-value"><%= customer.first_date&.strftime("%Y/%m/%d") || "—" %></span>
+                    </div>
+                    <div class="fp-cust-meta-item">
+                      <span class="fp-cust-meta-label">最後下單</span>
+                      <span class="fp-cust-meta-value"><%= customer.last_order_date&.strftime("%Y/%m/%d") || "—" %></span>
+                    </div>
+                    <div class="fp-cust-meta-item">
+                      <span class="fp-cust-meta-label">第二購系列</span>
+                      <span class="fp-cust-meta-value"><%= customer.second_series.presence || "—" %></span>
+                    </div>
+                    <div class="fp-cust-meta-item">
+                      <span class="fp-cust-meta-label">首購商品</span>
+                      <span class="fp-cust-meta-value"><%= customer.first_product || "—" %></span>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+
+          <%# 分頁 %>
+          <% if @total_pages > 1 %>
+            <div class="fp-pagination mt-3">
+              <% prev_page = [@page - 1, 1].max %>
+              <% next_page = [@page + 1, @total_pages].min %>
+              <%= link_to "← 上一頁",
+                    high_spender_first_purchase_path(request.query_parameters.merge(page: prev_page)),
+                    class: "fp-page-btn #{'is-disabled' if @page <= 1}" %>
+              <span class="fp-page-info">第 <%= @page %> 頁，共 <%= @total_pages %> 頁</span>
+              <%= link_to "下一頁 →",
+                    high_spender_first_purchase_path(request.query_parameters.merge(page: next_page)),
+                    class: "fp-page-btn #{'is-disabled' if @page >= @total_pages}" %>
+            </div>
+          <% end %>
+
         </div>
       </div>
-    <% end %>
-  </div>
-
-  <div class="card mb-4">
-    <div class="card-header">年度統計</div>
-    <div class="card-body p-0">
-      <table class="table table-striped mb-0">
-        <thead>
-          <tr>
-            <th>年份</th>
-            <th>破萬新客數</th>
-            <th>有回購人數</th>
-            <th>回購率</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @year_stats.each do |row| %>
-            <tr>
-              <td><%= row[:year] %></td>
-              <td><%= number_with_delimiter(row[:total]) %></td>
-              <td><%= number_with_delimiter(row[:repurchased]) %></td>
-              <td><%= row[:repurchase_rate] %>%</td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
     </div>
   </div>
-
-  <div class="card mb-4">
-    <div class="card-header">每月趨勢</div>
-    <div class="card-body p-0">
-      <table class="table table-hover mb-0">
-        <thead>
-          <tr>
-            <th>月份</th>
-            <th>破萬新客數</th>
-            <th>平均首筆金額</th>
-            <th>回購率</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @monthly_stats.each do |row| %>
-            <tr>
-              <td><%= row[:month] %></td>
-              <td><%= number_with_delimiter(row[:total]) %></td>
-              <td>$<%= number_with_delimiter(row[:avg_first_amount]) %></td>
-              <td><%= row[:repurchase_rate] %>%</td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card mb-4">
-    <div class="card-header">首購系列表現</div>
-    <div class="card-body p-0">
-      <table class="table table-bordered mb-0">
-        <thead>
-          <tr>
-            <th>系列</th>
-            <th>人數</th>
-            <th>有回購</th>
-            <th>回購率</th>
-            <th>平均首筆金額</th>
-            <th>第二次最常買什麼</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @series_stats.each do |row| %>
-            <% second_rows = @second_purchase_map[row[:series]] || [] %>
-            <tr>
-              <td><%= row[:series] %></td>
-              <td><%= number_with_delimiter(row[:total]) %></td>
-              <td><%= number_with_delimiter(row[:repurchased]) %></td>
-              <td><%= row[:repurchase_rate] %>%</td>
-              <td>$<%= number_with_delimiter(row[:avg_first_amount]) %></td>
-              <td>
-                <% if second_rows.any? %>
-                  <% second_rows.each do |second| %>
-                    <div>
-                      <%= second[:second_series] %>
-                      (<%= second[:count] %>人 / <%= second[:rate] %>%)
-                    </div>
-                  <% end %>
-                <% else %>
-                  <span class="text-muted">—</span>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card mb-4">
-    <div class="card-header">
-      名單明細
-      <span class="text-muted small ms-2">
-        共 <%= number_with_delimiter(@total) %> 筆，第 <%= @page %> / <%= @total_pages %> 頁
-      </span>
-    </div>
-    <div class="card-body p-0">
-      <table class="table table-sm table-hover mb-0">
-        <thead>
-          <tr>
-            <th>Email</th>
-            <th>姓名</th>
-            <th>首購系列</th>
-            <th>首購商品</th>
-            <th>首購日期</th>
-            <th>首購金額</th>
-            <th>購買次數</th>
-            <th>第二購系列</th>
-            <th>最後下單日</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @customers.each do |customer| %>
-            <tr>
-              <td><%= customer.email %></td>
-              <td><%= customer.full_name %></td>
-              <td><%= customer.first_series %></td>
-              <td><%= customer.first_product %></td>
-              <td><%= customer.first_date&.strftime("%Y-%m-%d") %></td>
-              <td>$<%= number_with_delimiter(customer.first_amount.to_i) %></td>
-              <td><%= customer.purchase_count %></td>
-              <td><%= customer.second_series.presence || "—" %></td>
-              <td><%= customer.last_order_date&.strftime("%Y-%m-%d") %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <% if @total_pages > 1 %>
-    <nav class="mt-3">
-      <ul class="pagination">
-        <% prev_page = @page - 1 %>
-        <% next_page = @page + 1 %>
-
-        <li class="page-item <%= 'disabled' if @page <= 1 %>">
-          <%= link_to "上一頁", high_spender_first_purchase_path(request.query_parameters.merge(page: prev_page)), class: "page-link" %>
-        </li>
-
-        <li class="page-item disabled">
-          <span class="page-link"><%= @page %> / <%= @total_pages %></span>
-        </li>
-
-        <li class="page-item <%= 'disabled' if @page >= @total_pages %>">
-          <%= link_to "下一頁", high_spender_first_purchase_path(request.query_parameters.merge(page: next_page)), class: "page-link" %>
-        </li>
-      </ul>
-    </nav>
-  <% end %>
 </div>
+
+<style>
+<%# ── 只補這個頁面才有的 class，其他共用 class 從 loyal_customers 的 CSS 繼承 ── %>
+
+.hs-section-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.hs-stat-block {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.hs-block-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.hs-next-buy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+.hs-next-series {
+  font-weight: 600;
+  color: #374151;
+}
+.hs-next-count {
+  color: #9ca3af;
+}
+
+.fp-badge-mid {
+  background: #fef9c3;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.fp-badge-neutral {
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.fp-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  padding: 7px 0;
+}
+.fp-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #886ab5;
+}
+
+@media (max-width: 900px) {
+  .hs-section-grid { grid-template-columns: 1fr; }
+}
+</style>
