@@ -58,8 +58,8 @@ class CustomerPurchaseSummaryRefreshService
           so.order_number,
           MIN(so.order_date) AS order_date,
           COALESCE(
-            NULLIF(SUM(COALESCE(so.checkout_amount, 0) * COALESCE(so.quantity, 1)), 0),
             MAX(NULLIF(so.total_amount, 0)),
+            NULLIF(SUM(COALESCE(so.checkout_amount, 0)), 0),
             0
           ) AS order_amount
         FROM shopline_orders so
