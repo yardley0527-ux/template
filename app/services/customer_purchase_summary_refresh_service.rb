@@ -57,11 +57,21 @@ class CustomerPurchaseSummaryRefreshService
           LOWER(TRIM(MIN(so.email)))        AS email,
           so.order_number,
           MIN(so.order_date) AS order_date,
-          COALESCE(
-            MAX(NULLIF(so.total_amount, 0)),
-            NULLIF(SUM(COALESCE(so.checkout_amount, 0)), 0),
-            0
-          ) AS order_amount
+          CASE
+            WHEN MAX(NULLIF(so.total_amount, 0)) IS NOT NULL
+            AND NULLIF(SUM(COALESCE(so.checkout_amount, 0)), 0) IS NOT NULL
+            AND MAX(NULLIF(so.total_amount, 0)) >= SUM(COALESCE(so.checkout_amount, 0))
+            AND MAX(NULLIF(so.total_amount, 0)) <= SUM(COALESCE(so.checkout_amount, 0)) * 1.5
+            THEN MAX(NULLIF(so.total_amount, 0))
+
+            WHEN NULLIF(SUM(COALESCE(so.checkout_amount, 0)), 0) IS NOT NULL
+            THEN SUM(COALESCE(so.checkout_amount, 0))
+
+            WHEN MAX(NULLIF(so.total_amount, 0)) IS NOT NULL
+            THEN MAX(NULLIF(so.total_amount, 0))
+
+            ELSE 0
+          END AS order_amount
         FROM shopline_orders so
         LEFT JOIN shopline_customers sc
           ON LOWER(TRIM(sc.email)) = LOWER(TRIM(so.email))
