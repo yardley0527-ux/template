@@ -6,8 +6,9 @@ Rails.application.routes.draw do
   get '/livestream_analysis', to: 'livestream_analysis#index'
   get '/metabolism_analysis',        to: 'metabolism_analysis#index',  as: :metabolism_analysis
   get '/metabolism_analysis/export', to: 'metabolism_analysis#export', as: :metabolism_analysis_export
-  get 'expiring_members', to: 'expiring_members#index', as: :expiring_members
-  get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
+  resources :expiring_members, only: [:index] do
+    post :confirm_renewal, on: :member
+  end  get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
   get '/product_strategy', to: 'product_strategy#index', as: :product_strategy
   get '/high_spender_first_purchase', to: 'high_spender_first_purchase#index', as: :high_spender_first_purchase

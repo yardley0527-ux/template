@@ -7,6 +7,7 @@
         <th>會員等級</th>
         <th>到期日</th>
         <th class="text-center">剩餘天數</th>
+        <th class="text-center">續會確認</th>
       </tr>
     </thead>
     <tbody>
@@ -42,11 +43,26 @@
               <%= days_left %> 天
             </span>
           </td>
+          <td class="text-center">
+            <% profile = c.customer_profile %>
+            <% confirmed = profile&.renewal_confirmed_for == c.membership_expiry_date %>
+            <% if confirmed %>
+              <span style="color:#27ae60; font-weight:600;">✅ 已確認</span>
+              <div class="text-muted" style="font-size:10px;">
+                <%= profile.renewal_confirmed_at.strftime("%Y/%m/%d %H:%M") %>
+              </div>
+            <% else %>
+              <%= button_to "確認續會", confirm_renewal_expiring_member_path(c),
+                  method: :post,
+                  class: "btn btn-sm btn-outline-success",
+                  form: { style: "display:inline" } %>
+            <% end %>
+          </td>
         </tr>
       <% end %>
 
       <% if customers.blank? %>
-        <tr><td colspan="7" class="text-center text-muted py-4">目前無即將到期會員</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-4">目前無即將到期會員</td></tr>
       <% end %>
     </tbody>
   </table>
