@@ -8,7 +8,8 @@ Rails.application.routes.draw do
   get '/metabolism_analysis/export', to: 'metabolism_analysis#export', as: :metabolism_analysis_export
   resources :expiring_members, only: [:index] do
     post :confirm_renewal, on: :member
-  end  get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
+  end  
+  get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
   get '/product_strategy', to: 'product_strategy#index', as: :product_strategy
   get '/high_spender_first_purchase', to: 'high_spender_first_purchase#index', as: :high_spender_first_purchase
