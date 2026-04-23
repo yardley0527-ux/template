@@ -38,24 +38,32 @@ class CustomerPurchaseSummaryRefreshService
   private
 
   def rebuild_summary_table!
+    # 清除同一個人有 mobile_phone 但舊的 email identity_key 還留著的重複資料
+    ActiveRecord::Base.connection.execute(<<~CLEAN_SQL)
+      DELETE FROM customer_purchase_summaries
+      WHERE identity_key = email
+        AND mobile_phone IS NOT NULL
+        AND mobile_phone <> ''
+    CLEAN_SQL
+
     sql = <<~SQL
       WITH normalized_orders AS (
         SELECT
           COALESCE(NULLIF(sc.mobile_phone, ''), so.email) AS identity_key,
-          NULLIF(sc.mobile_phone, '')                     AS mobile_phone,
+          NULLIF(sc.mobile_phone, '')                      AS mobile_phone,
           so.email,
           so.order_number,
-          MIN(so.order_date)                                                    AS order_date,
-          COALESCE(MAX(NULLIF(so.checkout_amount, 0)), SUM(so.total_amount)) AS order_amount
-          FROM shopline_orders so
-          LEFT JOIN shopline_customers sc
-            ON sc.email = so.email            
-          AND sc.mobile_phone IS NOT NULL
-          AND sc.mobile_phone <> ''
-          AND (
-            (so.email IS NOT NULL AND so.email <> '')
-            OR (sc.mobile_phone IS NOT NULL AND sc.mobile_phone <> '')
-          )
+          MIN(so.order_date)                                                   AS order_date,
+          COALESCE(MAX(NULLIF(so.total_amount, 0)), SUM(so.checkout_amount))  AS order_amount
+        FROM shopline_orders so
+        LEFT JOIN shopline_customers sc
+          ON sc.email = so.email
+         AND sc.mobile_phone IS NOT NULL
+         AND sc.mobile_phone <> ''
+        WHERE so.order_number IS NOT NULL
+          AND so.order_number <> ''
+          AND so.email IS NOT NULL
+          AND so.email <> ''
         GROUP BY
           COALESCE(NULLIF(sc.mobile_phone, ''), so.email),
           NULLIF(sc.mobile_phone, ''),
@@ -70,7 +78,7 @@ class CustomerPurchaseSummaryRefreshService
             PARTITION BY no.identity_key
             ORDER BY no.order_date ASC, no.order_number ASC
           ) AS order_rank,
-          COUNT(*) OVER (PARTITION BY no.identity_key)     AS purchase_count,
+          COUNT(*) OVER (PARTITION BY no.identity_key)           AS purchase_count,
           MAX(no.order_date) OVER (PARTITION BY no.identity_key) AS last_order_date
         FROM normalized_orders no
       ),
@@ -142,7 +150,7 @@ class CustomerPurchaseSummaryRefreshService
       first_order_picked AS (
         SELECT
           fosr.identity_key,
-          fosr.product_name AS first_product,
+          fosr.product_name   AS first_product,
           fosr.matched_series AS first_series
         FROM first_order_series_ranked fosr
         WHERE fosr.rn = 1
@@ -151,7 +159,7 @@ class CustomerPurchaseSummaryRefreshService
       second_order_picked AS (
         SELECT
           sosr.identity_key,
-          sosr.product_name AS second_product,
+          sosr.product_name   AS second_product,
           sosr.matched_series AS second_series
         FROM second_order_series_ranked sosr
         WHERE sosr.rn = 1
@@ -216,22 +224,22 @@ class CustomerPurchaseSummaryRefreshService
       LEFT JOIN second_order        so  ON so.identity_key  = fo.identity_key
       LEFT JOIN second_order_picked sop ON sop.identity_key = fo.identity_key
       ON CONFLICT (identity_key) DO UPDATE SET
-        mobile_phone            = EXCLUDED.mobile_phone,
-        email                   = EXCLUDED.email,
-        first_order_number      = EXCLUDED.first_order_number,
-        first_product           = EXCLUDED.first_product,
-        first_series            = EXCLUDED.first_series,
-        first_date              = EXCLUDED.first_date,
-        first_amount            = EXCLUDED.first_amount,
-        second_order_number     = EXCLUDED.second_order_number,
-        second_product          = EXCLUDED.second_product,
-        second_series           = EXCLUDED.second_series,
-        second_date             = EXCLUDED.second_date,
-        purchase_count          = EXCLUDED.purchase_count,
-        silent_only             = EXCLUDED.silent_only,
-        silent_days_threshold   = EXCLUDED.silent_days_threshold,
-        last_order_date         = EXCLUDED.last_order_date,
-        updated_at              = NOW()
+        mobile_phone          = EXCLUDED.mobile_phone,
+        email                 = EXCLUDED.email,
+        first_order_number    = EXCLUDED.first_order_number,
+        first_product         = EXCLUDED.first_product,
+        first_series          = EXCLUDED.first_series,
+        first_date            = EXCLUDED.first_date,
+        first_amount          = EXCLUDED.first_amount,
+        second_order_number   = EXCLUDED.second_order_number,
+        second_product        = EXCLUDED.second_product,
+        second_series         = EXCLUDED.second_series,
+        second_date           = EXCLUDED.second_date,
+        purchase_count        = EXCLUDED.purchase_count,
+        silent_only           = EXCLUDED.silent_only,
+        silent_days_threshold = EXCLUDED.silent_days_threshold,
+        last_order_date       = EXCLUDED.last_order_date,
+        updated_at            = NOW()
     SQL
 
     ActiveRecord::Base.connection.execute(sql)
