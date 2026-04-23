@@ -47,11 +47,11 @@ class CustomerPurchaseSummaryRefreshService
           so.order_number,
           MIN(so.order_date)                                                    AS order_date,
           COALESCE(MAX(NULLIF(so.checkout_amount, 0)), SUM(so.total_amount)) AS order_amount
-        FROM shopline_orders so
-        LEFT JOIN shopline_customers sc
-          ON sc.id = so.shopline_customer_id
-        WHERE so.order_number IS NOT NULL
-          AND so.order_number <> ''
+          FROM shopline_orders so
+          LEFT JOIN shopline_customers sc
+            ON sc.email = so.email              # ← 所有有 email 的訂單都能拿到電話
+          AND sc.mobile_phone IS NOT NULL
+          AND sc.mobile_phone <> ''
           AND (
             (so.email IS NOT NULL AND so.email <> '')
             OR (sc.mobile_phone IS NOT NULL AND sc.mobile_phone <> '')
