@@ -226,25 +226,43 @@
                 <table class="fp-table">
                   <thead>
                     <tr>
-                      <th>Email</th>
-                      <th>手機</th>
+                      <th>姓名</th>
+                      <th>IG</th>
                       <th>首購商品</th>
                       <th>首購日期</th>
                       <th>首購金額</th>
                       <th>是否回購</th>
                       <th>第二次購買</th>
-                      <th>購買次數</th>
+                      <th>第二次日期</th>
+                      <th>第二次金額</th>
                     </tr>
                   </thead>
                   <tbody>
                     <% if @customers.any? %>
                       <% @customers.each do |c| %>
                         <tr>
-                          <td><%= c.email %></td>
-                          <td><%= c.mobile_phone.presence || "—" %></td>
-                          <td><%= c.first_product %></td>
-                          <td><%= c.first_date&.strftime("%Y-%m-%d") %></td>
-                          <td>$<%= number_with_delimiter(c.first_amount.to_i) %></td>
+                          <td>
+                            <% if c.shopline_customer_id.present? %>
+                              <%= link_to(c.customer_name.presence || c.email, customer_path(c.shopline_customer_id), class: "fp-customer-link") %>
+                            <% else %>
+                              <span class="fp-customer-link"><%= c.customer_name.presence || c.email %></span>
+                            <% end %>
+                          </td>
+
+                          <td>
+                            <% if c.instagram_account.present? %>
+                              <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer">
+                                <%= c.instagram_account %>
+                              </a>
+                            <% else %>
+                              <span class="fp-muted">—</span>
+                            <% end %>
+                          </td>
+
+                          <td><%= c.first_product.presence || "—" %></td>
+                          <td><%= c.first_date&.strftime("%Y-%m-%d") || "—" %></td>
+                          <td class="fp-amount">$<%= number_with_delimiter(c.first_amount.to_i) %></td>
+
                           <td>
                             <% if c.purchase_count >= 2 %>
                               <span class="fp-badge-ok">有</span>
@@ -252,13 +270,21 @@
                               <span class="fp-badge-neutral">無</span>
                             <% end %>
                           </td>
-                          <td><%= c.second_series.presence || "—" %></td>
-                          <td><%= c.purchase_count %></td>
+
+                          <td><%= c.second_product.presence || c.second_series.presence || "—" %></td>
+                          <td><%= c.second_date&.strftime("%Y-%m-%d") || "—" %></td>
+                          <td>
+                            <% if c.purchase_count >= 2 %>
+                              <span class="fp-amount">—</span>
+                            <% else %>
+                              <span class="fp-muted">—</span>
+                            <% end %>
+                          </td>
                         </tr>
                       <% end %>
                     <% else %>
                       <tr>
-                        <td colspan="8" class="fp-muted">查無資料</td>
+                        <td colspan="9" class="fp-muted">查無資料</td>
                       </tr>
                     <% end %>
                   </tbody>
@@ -273,7 +299,6 @@
             </div>
 
           <% end %>
-        
         </div>
       </div>
     </div>

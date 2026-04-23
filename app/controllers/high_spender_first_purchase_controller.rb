@@ -22,6 +22,8 @@ class HighSpenderFirstPurchaseController < ApplicationController
     @second_purchase_map = analytics.second_purchase_map
     @series_options      = analytics.series_options
 
+    @customers = []
+
     if @view_mode == "customers" && @selected_series.present?
       scope = CustomerPurchaseSummary
         .where("first_amount >= ?", THRESHOLD)
@@ -31,8 +33,16 @@ class HighSpenderFirstPurchaseController < ApplicationController
         scope = scope.where("EXTRACT(YEAR FROM first_date) = ?", @selected_year.to_i)
       end
 
-      @customers = scope.order(first_date: :desc)
+      @customers = scope
+        .joins("LEFT JOIN shopline_customers sc ON LOWER(TRIM(sc.email)) = LOWER(TRIM(customer_purchase_summaries.email))")
+        .select(
+          "customer_purchase_summaries.*",
+          "sc.id AS shopline_customer_id",
+          "sc.full_name AS customer_name",
+          "sc.instagram_account AS instagram_account"
+        )
+        .order(Arel.sql("CASE WHEN customer_purchase_summaries.purchase_count >= 2 THEN 0 ELSE 1 END"))
+        .order(first_date: :desc)
     end
   end
-
 end
