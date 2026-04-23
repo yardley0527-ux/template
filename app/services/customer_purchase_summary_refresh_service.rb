@@ -36,38 +36,50 @@ class CustomerPurchaseSummaryRefreshService
   end
 
   private
-
+  
   def rebuild_summary_table!
-    # 清除同一個人有 mobile_phone 但舊的 email identity_key 還留著的重複資料
-    ActiveRecord::Base.connection.execute(<<~CLEAN_SQL)
+    # 清除同一個人已經能用 mobile_phone 辨識，但舊的 email identity_key 還殘留的重複資料
+    ActiveRecord::Base.connection.execute(<<~SQL)
       DELETE FROM customer_purchase_summaries
-      WHERE identity_key = email
+      WHERE identity_key = LOWER(TRIM(email))
         AND mobile_phone IS NOT NULL
-        AND mobile_phone <> ''
-    CLEAN_SQL
+        AND TRIM(mobile_phone) <> ''
+    SQL
 
     sql = <<~SQL
       WITH normalized_orders AS (
         SELECT
-          COALESCE(NULLIF(sc.mobile_phone, ''), so.email) AS identity_key,
-          NULLIF(sc.mobile_phone, '')                      AS mobile_phone,
-          so.email,
+          COALESCE(
+            NULLIF(TRIM(sc.mobile_phone), ''),
+            LOWER(TRIM(so.email))
+          ) AS identity_key,
+
+          NULLIF(TRIM(sc.mobile_phone), '') AS mobile_phone,
+          LOWER(TRIM(MIN(so.email)))        AS email,
           so.order_number,
-          MIN(so.order_date)                                                   AS order_date,
-          COALESCE(MAX(NULLIF(so.total_amount, 0)), SUM(so.checkout_amount))  AS order_amount
+          MIN(so.order_date) AS order_date,
+          COALESCE(
+            MAX(NULLIF(so.total_amount, 0)),
+            SUM(COALESCE(so.checkout_amount, 0))
+          ) AS order_amount
         FROM shopline_orders so
         LEFT JOIN shopline_customers sc
-          ON sc.email = so.email
-         AND sc.mobile_phone IS NOT NULL
-         AND sc.mobile_phone <> ''
+          ON LOWER(TRIM(sc.email)) = LOWER(TRIM(so.email))
+        AND sc.mobile_phone IS NOT NULL
+        AND TRIM(sc.mobile_phone) <> ''
         WHERE so.order_number IS NOT NULL
-          AND so.order_number <> ''
+          AND TRIM(so.order_number) <> ''
           AND so.email IS NOT NULL
-          AND so.email <> ''
+          AND TRIM(so.email) <> ''
+          AND so.order_date IS NOT NULL
+          AND so.payment_status = '已付款'
+          AND COALESCE(TRIM(so.order_status), '') NOT IN ('取消', '已取消')
         GROUP BY
-          COALESCE(NULLIF(sc.mobile_phone, ''), so.email),
-          NULLIF(sc.mobile_phone, ''),
-          so.email,
+          COALESCE(
+            NULLIF(TRIM(sc.mobile_phone), ''),
+            LOWER(TRIM(so.email))
+          ),
+          NULLIF(TRIM(sc.mobile_phone), ''),
           so.order_number
       ),
 
@@ -99,7 +111,7 @@ class CustomerPurchaseSummaryRefreshService
         INNER JOIN shopline_orders so
           ON so.order_number = fo.order_number
         WHERE so.product_name IS NOT NULL
-          AND so.product_name <> ''
+          AND TRIM(so.product_name) <> ''
       ),
 
       second_order_items AS (
@@ -110,7 +122,7 @@ class CustomerPurchaseSummaryRefreshService
         INNER JOIN shopline_orders so
           ON so.order_number = so2.order_number
         WHERE so.product_name IS NOT NULL
-          AND so.product_name <> ''
+          AND TRIM(so.product_name) <> ''
       ),
 
       first_order_series_ranked AS (
@@ -189,26 +201,26 @@ class CustomerPurchaseSummaryRefreshService
         fo.identity_key,
         fo.mobile_phone,
         fo.email,
-        fo.order_number                     AS first_order_number,
+        fo.order_number              AS first_order_number,
         fop.first_product,
         fop.first_series,
-        fo.order_date                       AS first_date,
-        COALESCE(fo.order_amount, 0)        AS first_amount,
-        so.order_number                     AS second_order_number,
+        fo.order_date                AS first_date,
+        COALESCE(fo.order_amount, 0) AS first_amount,
+        so.order_number              AS second_order_number,
         sop.second_product,
         sop.second_series,
-        so.order_date                       AS second_date,
+        so.order_date                AS second_date,
         fo.purchase_count,
         CASE
           WHEN fo.purchase_count = 1
-           AND fo.order_date <= NOW() - (
-             INTERVAL '1 day' * (
-               CASE
-                 #{silent_days_case_sql("fop.first_series")}
-                 ELSE #{DEFAULT_SILENT_DAYS_THRESHOLD}
-               END
-             )
-           )
+          AND fo.order_date <= NOW() - (
+            INTERVAL '1 day' * (
+              CASE
+                #{silent_days_case_sql("fop.first_series")}
+                ELSE #{DEFAULT_SILENT_DAYS_THRESHOLD}
+              END
+            )
+          )
           THEN TRUE
           ELSE FALSE
         END AS silent_only,
