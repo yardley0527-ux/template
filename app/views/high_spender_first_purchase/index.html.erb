@@ -124,7 +124,17 @@
                     <% @series_stats.each do |row| %>
                       <% second_rows = @second_purchase_map[row[:series]] || [] %>
                       <tr>
-                        <td><strong><%= row[:series] %></strong></td>
+                        <td>
+                          <strong>
+                            <%= link_to row[:series],
+                                high_spender_first_purchase_path(
+                                  view: "customers",
+                                  series: row[:series],
+                                  year: @selected_year
+                                ),
+                                class: "fp-customer-link" %>
+                          </strong>
+                        </td>
                         <td><%= number_with_delimiter(row[:total]) %></td>
                         <td><%= number_with_delimiter(row[:repurchased]) %></td>
                         <td>
@@ -205,7 +215,65 @@
               </table>
             </div>
           </div>
+          <% if @view_mode == "customers" && @selected_series.present? %>
 
+            <div class="hs-stat-block mt-4">
+              <div class="hs-block-title">
+                <%= @selected_series %>｜顧客名單（<%= number_with_delimiter(@customers.size) %> 人）
+              </div>
+
+              <div class="fp-table-wrap">
+                <table class="fp-table">
+                  <thead>
+                    <tr>
+                      <th>Email</th>
+                      <th>手機</th>
+                      <th>首購商品</th>
+                      <th>首購日期</th>
+                      <th>首購金額</th>
+                      <th>是否回購</th>
+                      <th>第二次購買</th>
+                      <th>購買次數</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% if @customers.any? %>
+                      <% @customers.each do |c| %>
+                        <tr>
+                          <td><%= c.email %></td>
+                          <td><%= c.mobile_phone.presence || "—" %></td>
+                          <td><%= c.first_product %></td>
+                          <td><%= c.first_date&.strftime("%Y-%m-%d") %></td>
+                          <td>$<%= number_with_delimiter(c.first_amount.to_i) %></td>
+                          <td>
+                            <% if c.purchase_count >= 2 %>
+                              <span class="fp-badge-ok">有</span>
+                            <% else %>
+                              <span class="fp-badge-neutral">無</span>
+                            <% end %>
+                          </td>
+                          <td><%= c.second_series.presence || "—" %></td>
+                          <td><%= c.purchase_count %></td>
+                        </tr>
+                      <% end %>
+                    <% else %>
+                      <tr>
+                        <td colspan="8" class="fp-muted">查無資料</td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="mt-2">
+                <%= link_to "← 返回總覽",
+                    high_spender_first_purchase_path(year: @selected_year),
+                    class: "fp-btn-secondary" %>
+              </div>
+            </div>
+
+          <% end %>
+        
         </div>
       </div>
     </div>
