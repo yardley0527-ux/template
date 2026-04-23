@@ -15,7 +15,7 @@
       <div class="panel-container show">
         <div class="panel-content">
 
-          <%# 摘要 KPI 卡片 %>
+          <%# ── KPI 卡片 ── %>
           <div class="fp-stats-grid mb-4">
             <% @summary_cards.each do |card| %>
               <div class="fp-stat-card">
@@ -30,7 +30,7 @@
             <% end %>
           </div>
 
-          <%# 篩選列 %>
+          <%# ── 篩選列 ── %>
           <div class="fp-filter-bar mb-3">
             <%= form_with url: high_spender_first_purchase_path, method: :get, local: true do %>
               <div class="fp-filter-row">
@@ -58,7 +58,7 @@
                         ], @sort),
                         class: "fp-select" %>
                 </div>
-                <div class="fp-filter-group" style="justify-content: flex-end;">
+                <div class="fp-filter-group fp-filter-check-group">
                   <label class="fp-filter-label">&nbsp;</label>
                   <label class="fp-checkbox-label">
                     <%= check_box_tag :repurchase_only, "1", @repurchase_only, class: "fp-checkbox" %>
@@ -71,15 +71,11 @@
                 </div>
               </div>
             <% end %>
-            <div class="fp-filter-meta mt-2">
-              共 <strong><%= number_with_delimiter(@total) %></strong> 筆　第 <%= @page %> / <%= @total_pages %> 頁
-            </div>
           </div>
 
-          <%# 年度 × 首購系列 統計 %>
+          <%# ── 年度 + 系列並排 ── %>
           <div class="hs-section-grid mb-4">
 
-            <%# 年度統計 %>
             <div class="hs-stat-block">
               <div class="hs-block-title">年度統計</div>
               <div class="fp-table-wrap">
@@ -110,7 +106,6 @@
               </div>
             </div>
 
-            <%# 首購系列表現 %>
             <div class="hs-stat-block">
               <div class="hs-block-title">首購系列表現</div>
               <div class="fp-table-wrap">
@@ -159,7 +154,7 @@
 
           </div>
 
-          <%# 每月趨勢 %>
+          <%# ── 每月趨勢（含首購商品分布）── %>
           <div class="hs-stat-block mb-4">
             <div class="hs-block-title">每月趨勢</div>
             <div class="fp-table-wrap">
@@ -170,10 +165,13 @@
                     <th>破萬新客數</th>
                     <th>平均首筆金額</th>
                     <th>回購率</th>
+                    <th>首購商品分布（Top 4）</th>
                   </tr>
                 </thead>
                 <tbody>
                   <% @monthly_stats.each do |row| %>
+                    <% series_breakdown = @monthly_series_map[row[:month]] || [] %>
+                    <% row_total = series_breakdown.sum { |s| s[:count] }.to_f %>
                     <tr>
                       <td><%= row[:month] %></td>
                       <td><%= number_with_delimiter(row[:total]) %></td>
@@ -183,130 +181,30 @@
                           <%= row[:repurchase_rate] %>%
                         </span>
                       </td>
+                      <td>
+                        <% if series_breakdown.any? %>
+                          <div class="hs-series-bar-group">
+                            <% series_breakdown.each do |s| %>
+                              <% pct = row_total > 0 ? (s[:count] / row_total * 100).round(0).to_i : 0 %>
+                              <div class="hs-series-bar-row">
+                                <span class="hs-series-name"><%= s[:series] %></span>
+                                <div class="hs-bar-wrap">
+                                  <div class="hs-bar" style="width:<%= pct %>%;background:<%= hs_series_color(s[:series]) %>;"></div>
+                                </div>
+                                <span class="hs-series-pct"><%= s[:count] %>人</span>
+                              </div>
+                            <% end %>
+                          </div>
+                        <% else %>
+                          <span class="fp-muted">—</span>
+                        <% end %>
+                      </td>
                     </tr>
                   <% end %>
                 </tbody>
               </table>
             </div>
           </div>
-
-          <%# 名單明細 — Desktop %>
-          <div class="hs-block-title mb-2">
-            名單明細
-            <span class="fp-filter-meta ms-2" style="font-weight: 400;">
-              共 <%= number_with_delimiter(@total) %> 筆，第 <%= @page %> / <%= @total_pages %> 頁
-            </span>
-          </div>
-
-          <div class="fp-table-wrap fp-desktop-only mb-3">
-            <table class="fp-table">
-              <thead>
-                <tr>
-                  <th>姓名</th>
-                  <th>Email</th>
-                  <th>首購系列</th>
-                  <th>首購商品</th>
-                  <th>首購日期</th>
-                  <th>首購金額</th>
-                  <th>購買次數</th>
-                  <th>第二購系列</th>
-                  <th>最後下單日</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% @customers.each do |customer| %>
-                  <tr>
-                    <td>
-                      <%= link_to (customer.full_name.presence || "（無名）"), customer_path(customer.shopline_id), class: "fp-customer-link" %>
-                    </td>
-                    <td class="fp-muted" style="font-size: 12px;"><%= customer.email %></td>
-                    <td><%= customer.first_series %></td>
-                    <td><%= customer.first_product %></td>
-                    <td class="fp-date"><%= customer.first_date&.strftime("%Y/%m/%d") %></td>
-                    <td class="fp-amount">$<%= number_with_delimiter(customer.first_amount.to_i) %></td>
-                    <td>
-                      <% count = customer.purchase_count.to_i %>
-                      <span class="<%= count > 1 ? 'fp-badge-ok' : 'fp-badge-neutral' %>">
-                        <%= count %> 次
-                      </span>
-                    </td>
-                    <td><%= customer.second_series.presence || "—" %></td>
-                    <td class="fp-date"><%= customer.last_order_date&.strftime("%Y/%m/%d") || "—" %></td>
-                  </tr>
-                <% end %>
-                <% if @customers.blank? %>
-                  <tr>
-                    <td colspan="9" class="fp-empty">查無符合條件的客人</td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
-
-          <%# 名單明細 — Mobile 卡片 %>
-          <div class="fp-card-list fp-mobile-only">
-            <% if @customers.blank? %>
-              <div class="fp-empty-hint">查無符合條件的客人</div>
-            <% else %>
-              <% @customers.each do |customer| %>
-                <div class="fp-cust-card">
-                  <div class="fp-cust-card-top">
-                    <div>
-                      <%= link_to (customer.full_name.presence || "（無名）"), customer_path(customer.shopline_id), class: "fp-cust-name" %>
-                      <div class="fp-email"><%= customer.email %></div>
-                    </div>
-                    <div class="fp-cust-card-badges">
-                      <% count = customer.purchase_count.to_i %>
-                      <span class="<%= count > 1 ? 'fp-badge-ok' : 'fp-badge-neutral' %>">
-                        <%= count %> 次
-                      </span>
-                    </div>
-                  </div>
-                  <div class="fp-cust-card-grid">
-                    <div class="fp-cust-meta-item">
-                      <span class="fp-cust-meta-label">首購系列</span>
-                      <span class="fp-cust-meta-value"><%= customer.first_series || "—" %></span>
-                    </div>
-                    <div class="fp-cust-meta-item">
-                      <span class="fp-cust-meta-label">首購金額</span>
-                      <span class="fp-cust-meta-value fp-highlight">$<%= number_with_delimiter(customer.first_amount.to_i) %></span>
-                    </div>
-                    <div class="fp-cust-meta-item">
-                      <span class="fp-cust-meta-label">首購日期</span>
-                      <span class="fp-cust-meta-value"><%= customer.first_date&.strftime("%Y/%m/%d") || "—" %></span>
-                    </div>
-                    <div class="fp-cust-meta-item">
-                      <span class="fp-cust-meta-label">最後下單</span>
-                      <span class="fp-cust-meta-value"><%= customer.last_order_date&.strftime("%Y/%m/%d") || "—" %></span>
-                    </div>
-                    <div class="fp-cust-meta-item">
-                      <span class="fp-cust-meta-label">第二購系列</span>
-                      <span class="fp-cust-meta-value"><%= customer.second_series.presence || "—" %></span>
-                    </div>
-                    <div class="fp-cust-meta-item">
-                      <span class="fp-cust-meta-label">首購商品</span>
-                      <span class="fp-cust-meta-value"><%= customer.first_product || "—" %></span>
-                    </div>
-                  </div>
-                </div>
-              <% end %>
-            <% end %>
-          </div>
-
-          <%# 分頁 %>
-          <% if @total_pages > 1 %>
-            <div class="fp-pagination mt-3">
-              <% prev_page = [@page - 1, 1].max %>
-              <% next_page = [@page + 1, @total_pages].min %>
-              <%= link_to "← 上一頁",
-                    high_spender_first_purchase_path(request.query_parameters.merge(page: prev_page)),
-                    class: "fp-page-btn #{'is-disabled' if @page <= 1}" %>
-              <span class="fp-page-info">第 <%= @page %> 頁，共 <%= @total_pages %> 頁</span>
-              <%= link_to "下一頁 →",
-                    high_spender_first_purchase_path(request.query_parameters.merge(page: next_page)),
-                    class: "fp-page-btn #{'is-disabled' if @page >= @total_pages}" %>
-            </div>
-          <% end %>
 
         </div>
       </div>
@@ -315,81 +213,77 @@
 </div>
 
 <style>
-<%# ── 只補這個頁面才有的 class，其他共用 class 從 loyal_customers 的 CSS 繼承 ── %>
+*, *::before, *::after { box-sizing: border-box; }
 
-.hs-section-grid {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 16px;
-  align-items: start;
-}
+.fp-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.fp-stat-card { background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; text-decoration: none; color: inherit; transition: border-color .15s, box-shadow .15s; display: block; }
+.fp-stat-card:hover { border-color: #886ab5; box-shadow: 0 0 0 3px rgba(136,106,181,.1); }
+.fp-stat-series { font-weight: 700; font-size: 15px; color: #374151; margin-bottom: 10px; }
+.fp-stat-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.fp-stat-item { display: flex; flex-direction: column; gap: 2px; }
+.fp-stat-num { font-size: 22px; font-weight: 700; color: #111827; }
+.fp-stat-label { font-size: 10px; color: #9ca3af; }
 
-.hs-stat-block {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  overflow: hidden;
-}
+.fp-filter-bar { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+.fp-filter-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.fp-filter-group { display: flex; flex-direction: column; gap: 4px; }
+.fp-filter-label { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: .5px; }
+.fp-select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #374151; background: #fff; }
+.fp-filter-actions { display: flex; gap: 8px; align-items: flex-end; }
+.fp-btn-primary { padding: 7px 18px; background: #886ab5; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.fp-btn-primary:hover { background: #6d52a0; }
+.fp-btn-secondary { padding: 7px 14px; background: transparent; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
 
-.hs-block-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #374151;
-  padding: 12px 16px;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-}
+.fp-table-wrap { overflow-x: auto; background: #fff; }
+.fp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fp-table thead th { background: #886ab5; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.fp-table tbody td { padding: 8px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.fp-table tbody tr:last-child td { border-bottom: none; }
+.fp-table tbody tr:hover td { background: #faf9ff; }
 
-.hs-next-buy {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  margin-bottom: 2px;
-}
-.hs-next-series {
-  font-weight: 600;
-  color: #374151;
-}
-.hs-next-count {
-  color: #9ca3af;
-}
+.fp-muted { color: #9ca3af; }
+.fp-amount { white-space: nowrap; color: #374151; }
+.fp-customer-link { font-weight: 600; color: #374151; text-decoration: none; }
+.fp-customer-link:hover { color: #886ab5; }
 
-.fp-badge-mid {
-  background: #fef9c3;
-  color: #92400e;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
-}
+.fp-badge-ok     { background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-mid    { background: #fef9c3; color: #92400e; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-warn   { background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-neutral{ background: #f3f4f6; color: #6b7280; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
 
-.fp-badge-neutral {
-  background: #f3f4f6;
-  color: #6b7280;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
-}
+.hs-section-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; align-items: start; }
+.hs-stat-block { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+.hs-block-title { font-size: 14px; font-weight: 700; color: #374151; padding: 12px 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
 
-.fp-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #374151;
-  cursor: pointer;
-  padding: 7px 0;
-}
-.fp-checkbox {
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-  accent-color: #886ab5;
-}
+.hs-next-buy { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 2px; }
+.hs-next-series { font-weight: 600; color: #374151; }
+.hs-next-count { color: #9ca3af; }
+
+.fp-filter-check-group { justify-content: flex-end; }
+.fp-checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #374151; cursor: pointer; padding: 7px 0; white-space: nowrap; }
+.fp-checkbox { width: 15px; height: 15px; cursor: pointer; accent-color: #886ab5; }
+
+/* 每月商品分布 bar */
+.hs-series-bar-group { display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
+.hs-series-bar-row { display: flex; align-items: center; gap: 6px; }
+.hs-series-name { font-size: 11px; color: #374151; font-weight: 600; width: 44px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-bar-wrap { flex: 1; height: 8px; background: #f3f4f6; border-radius: 99px; overflow: hidden; }
+.hs-bar { height: 100%; border-radius: 99px; transition: width .3s; }
+.hs-series-pct { font-size: 11px; color: #9ca3af; width: 30px; text-align: right; flex-shrink: 0; }
 
 @media (max-width: 900px) {
   .hs-section-grid { grid-template-columns: 1fr; }
+  .fp-stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+  .fp-stats-grid { gap: 8px; }
+  .fp-stat-card { padding: 12px; }
+  .fp-stat-num { font-size: 17px; }
+  .fp-filter-bar { padding: 14px; }
+  .fp-filter-row { flex-direction: column; gap: 10px; }
+  .fp-filter-group, .fp-select { width: 100%; }
+  .fp-filter-check-group { justify-content: flex-start; }
+  .fp-filter-actions { width: 100%; }
+  .fp-btn-primary, .fp-btn-secondary { flex: 1; text-align: center; justify-content: center; }
 }
 </style>

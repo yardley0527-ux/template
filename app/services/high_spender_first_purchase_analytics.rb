@@ -178,6 +178,23 @@ class HighSpenderFirstPurchaseAnalytics
       .pluck(:first_series)
   end
 
+  def monthly_series_breakdown
+    rows = filtered_base_scope
+      .where.not(first_date: nil, first_series: [nil, ""])
+      .group("DATE_TRUNC('month', first_date)", :first_series)
+      .pluck(
+        Arel.sql("DATE_TRUNC('month', first_date)"),
+        :first_series,
+        Arel.sql("COUNT(*)")
+      )
+
+    rows.each_with_object({}) do |(month_date, series, count), hash|
+      key = month_date.strftime("%Y-%m")
+      hash[key] ||= []
+      hash[key] << { series: series, count: count }
+    end.transform_values { |arr| arr.sort_by { |h| -h[:count] }.first(4) }
+  end
+
   private
 
   def filtered_base_scope
