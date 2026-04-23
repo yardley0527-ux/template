@@ -6,17 +6,17 @@ class CustomerPurchaseSummaryRefreshService
   ].freeze
 
   SERIES_SILENT_DAYS_MAP = {
-    "代謝錠"  => 56,
-    "全能"    => 61,
-    "薑黃"    => 63,
-    "膠原蛋白" => 54,
-    "美白"    => 60,
-    "蝦紅素"  => 64,
-    "清纖粉"  => 46,
-    "魚油"    => 71,
-    "私密粉"  => 53,
-    "益生菌"  => 60,  # 樣本少，先用保守值
-    "穀胱甘肽" => 60, # 樣本少，先用保守值
+    "代謝錠"   => 56,
+    "全能"     => 61,
+    "薑黃"     => 63,
+    "膠原蛋白"  => 54,
+    "美白"     => 60,
+    "蝦紅素"   => 64,
+    "清纖粉"   => 46,
+    "魚油"     => 71,
+    "私密粉"   => 53,
+    "益生菌"   => 60,
+    "穀胱甘肽"  => 60,
     "維DK鈣"  => 28
   }.freeze
 
@@ -41,73 +41,77 @@ class CustomerPurchaseSummaryRefreshService
     sql = <<~SQL
       WITH normalized_orders AS (
         SELECT
+          COALESCE(NULLIF(sc.mobile_phone, ''), so.email) AS identity_key,
+          NULLIF(sc.mobile_phone, '')                     AS mobile_phone,
           so.email,
           so.order_number,
-          MIN(so.order_date) AS order_date,
-          MAX(COALESCE(so.checkout_amount, so.total_amount, 0)) AS order_amount
+          MIN(so.order_date)                                                    AS order_date,
+          SUM(COALESCE(so.checkout_amount, so.total_amount, 0))                AS order_amount
         FROM shopline_orders so
-        WHERE so.email IS NOT NULL
-          AND so.email <> ''
-          AND so.order_number IS NOT NULL
+        LEFT JOIN shopline_customers sc
+          ON sc.id = so.shopline_customer_id
+        WHERE so.order_number IS NOT NULL
           AND so.order_number <> ''
-        GROUP BY so.email, so.order_number
+          AND (
+            (so.email IS NOT NULL AND so.email <> '')
+            OR (sc.mobile_phone IS NOT NULL AND sc.mobile_phone <> '')
+          )
+        GROUP BY
+          COALESCE(NULLIF(sc.mobile_phone, ''), so.email),
+          NULLIF(sc.mobile_phone, ''),
+          so.email,
+          so.order_number
       ),
 
       ranked_orders AS (
         SELECT
           no.*,
           ROW_NUMBER() OVER (
-            PARTITION BY no.email
+            PARTITION BY no.identity_key
             ORDER BY no.order_date ASC, no.order_number ASC
           ) AS order_rank,
-          COUNT(*) OVER (PARTITION BY no.email) AS purchase_count,
-          MAX(no.order_date) OVER (PARTITION BY no.email) AS last_order_date
+          COUNT(*) OVER (PARTITION BY no.identity_key)     AS purchase_count,
+          MAX(no.order_date) OVER (PARTITION BY no.identity_key) AS last_order_date
         FROM normalized_orders no
       ),
 
       first_order AS (
-        SELECT *
-        FROM ranked_orders
-        WHERE order_rank = 1
+        SELECT * FROM ranked_orders WHERE order_rank = 1
       ),
 
       second_order AS (
-        SELECT *
-        FROM ranked_orders
-        WHERE order_rank = 2
+        SELECT * FROM ranked_orders WHERE order_rank = 2
       ),
 
       first_order_items AS (
         SELECT
-          fo.email,
+          fo.identity_key,
           so.product_name
         FROM first_order fo
         INNER JOIN shopline_orders so
-          ON so.email = fo.email
-         AND so.order_number = fo.order_number
+          ON so.order_number = fo.order_number
         WHERE so.product_name IS NOT NULL
           AND so.product_name <> ''
       ),
 
       second_order_items AS (
         SELECT
-          so2.email,
+          so2.identity_key,
           so.product_name
         FROM second_order so2
         INNER JOIN shopline_orders so
-          ON so.email = so2.email
-         AND so.order_number = so2.order_number
+          ON so.order_number = so2.order_number
         WHERE so.product_name IS NOT NULL
           AND so.product_name <> ''
       ),
 
       first_order_series_ranked AS (
         SELECT
-          foi.email,
+          foi.identity_key,
           #{series_match_case_sql("foi.product_name")} AS matched_series,
           foi.product_name,
           ROW_NUMBER() OVER (
-            PARTITION BY foi.email
+            PARTITION BY foi.identity_key
             ORDER BY
               CASE
                 #{series_priority_case_sql("foi.product_name")}
@@ -120,11 +124,11 @@ class CustomerPurchaseSummaryRefreshService
 
       second_order_series_ranked AS (
         SELECT
-          soi.email,
+          soi.identity_key,
           #{series_match_case_sql("soi.product_name")} AS matched_series,
           soi.product_name,
           ROW_NUMBER() OVER (
-            PARTITION BY soi.email
+            PARTITION BY soi.identity_key
             ORDER BY
               CASE
                 #{series_priority_case_sql("soi.product_name")}
@@ -137,7 +141,7 @@ class CustomerPurchaseSummaryRefreshService
 
       first_order_picked AS (
         SELECT
-          fosr.email,
+          fosr.identity_key,
           fosr.product_name AS first_product,
           fosr.matched_series AS first_series
         FROM first_order_series_ranked fosr
@@ -146,7 +150,7 @@ class CustomerPurchaseSummaryRefreshService
 
       second_order_picked AS (
         SELECT
-          sosr.email,
+          sosr.identity_key,
           sosr.product_name AS second_product,
           sosr.matched_series AS second_series
         FROM second_order_series_ranked sosr
@@ -154,6 +158,8 @@ class CustomerPurchaseSummaryRefreshService
       )
 
       INSERT INTO customer_purchase_summaries (
+        identity_key,
+        mobile_phone,
         email,
         first_order_number,
         first_product,
@@ -172,16 +178,18 @@ class CustomerPurchaseSummaryRefreshService
         updated_at
       )
       SELECT
+        fo.identity_key,
+        fo.mobile_phone,
         fo.email,
-        fo.order_number AS first_order_number,
+        fo.order_number                     AS first_order_number,
         fop.first_product,
         fop.first_series,
-        fo.order_date AS first_date,
-        COALESCE(fo.order_amount, 0) AS first_amount,
-        so.order_number AS second_order_number,
+        fo.order_date                       AS first_date,
+        COALESCE(fo.order_amount, 0)        AS first_amount,
+        so.order_number                     AS second_order_number,
         sop.second_product,
         sop.second_series,
-        so.order_date AS second_date,
+        so.order_date                       AS second_date,
         fo.purchase_count,
         CASE
           WHEN fo.purchase_count = 1
@@ -204,13 +212,12 @@ class CustomerPurchaseSummaryRefreshService
         NOW(),
         NOW()
       FROM first_order fo
-      LEFT JOIN first_order_picked fop
-        ON fop.email = fo.email
-      LEFT JOIN second_order so
-        ON so.email = fo.email
-      LEFT JOIN second_order_picked sop
-        ON sop.email = fo.email
-      ON CONFLICT (email) DO UPDATE SET
+      LEFT JOIN first_order_picked  fop ON fop.identity_key = fo.identity_key
+      LEFT JOIN second_order        so  ON so.identity_key  = fo.identity_key
+      LEFT JOIN second_order_picked sop ON sop.identity_key = fo.identity_key
+      ON CONFLICT (identity_key) DO UPDATE SET
+        mobile_phone            = EXCLUDED.mobile_phone,
+        email                   = EXCLUDED.email,
         first_order_number      = EXCLUDED.first_order_number,
         first_product           = EXCLUDED.first_product,
         first_series            = EXCLUDED.first_series,
