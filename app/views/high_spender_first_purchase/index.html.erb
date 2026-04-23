@@ -217,7 +217,7 @@
                 <% @customers.each do |customer| %>
                   <tr>
                     <td>
-                      <%= link_to (customer.full_name.presence || "（無名）"), customer_path(customer.customer_id), class: "fp-customer-link" %>
+                      <%= link_to (customer.full_name.presence || "（無名）"), customer_path(customer.shopline_id), class: "fp-customer-link" %>
                     </td>
                     <td class="fp-muted" style="font-size: 12px;"><%= customer.email %></td>
                     <td><%= customer.first_series %></td>
@@ -252,7 +252,7 @@
                 <div class="fp-cust-card">
                   <div class="fp-cust-card-top">
                     <div>
-                      <%= link_to (customer.full_name.presence || "（無名）"), customer_path(customer.customer_id), class: "fp-cust-name" %>
+                      <%= link_to (customer.full_name.presence || "（無名）"), customer_path(customer.shopline_id), class: "fp-cust-name" %>
                       <div class="fp-email"><%= customer.email %></div>
                     </div>
                     <div class="fp-cust-card-badges">
