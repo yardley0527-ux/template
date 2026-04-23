@@ -46,7 +46,7 @@ class CustomerPurchaseSummaryRefreshService
           so.email,
           so.order_number,
           MIN(so.order_date)                                                    AS order_date,
-          SUM(COALESCE(so.checkout_amount, so.total_amount, 0))                AS order_amount
+          COALESCE(MAX(NULLIF(so.checkout_amount, 0)), SUM(so.total_amount)) AS order_amount
         FROM shopline_orders so
         LEFT JOIN shopline_customers sc
           ON sc.id = so.shopline_customer_id

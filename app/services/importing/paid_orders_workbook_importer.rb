@@ -159,15 +159,16 @@ module Importing
     end
 
     def resolve_customer!(raw, import_run_id)
-      email = ShoplineCustomer.normalize_email(raw[:email])
-      phone = ShoplineCustomer.normalize_phone(raw[:phone])
-      ig = ShoplineCustomer.normalize_ig(raw[:instagram_account])
+      email  = ShoplineCustomer.normalize_email(raw[:email])
+      phone  = ShoplineCustomer.normalize_phone(raw[:phone])
+      ig     = ShoplineCustomer.normalize_ig(raw[:instagram_account])
 
       customer =
         if email
           ShoplineCustomer.find_or_initialize_by(email: email)
         elsif phone
-          ShoplineCustomer.find_or_initialize_by(phone: phone)
+          # mobile_phone 才是正確欄位
+          ShoplineCustomer.find_or_initialize_by(mobile_phone: phone)
         elsif ig
           ShoplineCustomer.find_or_initialize_by(instagram_account: ig)
         end
@@ -175,12 +176,12 @@ module Importing
       return nil unless customer
 
       customer.assign_attributes(
-        full_name: raw[:customer_name]&.to_s&.strip.presence || customer.full_name,
-        email: email || customer.email,
-        phone: phone || customer.phone,
+        full_name:         raw[:customer_name]&.to_s&.strip.presence || customer.full_name,
+        email:             email || customer.email,
+        mobile_phone:      phone || customer.mobile_phone,  # ← 改這裡
         instagram_account: ig || customer.instagram_account,
-        membership_level: raw[:membership_level]&.to_s&.strip.presence || customer.membership_level,
-        city: raw[:city]&.to_s&.strip.presence || customer.city
+        membership_level:  raw[:membership_level]&.to_s&.strip.presence || customer.membership_level,
+        city:              raw[:city]&.to_s&.strip.presence || customer.city
       )
 
       customer.import_run_id = import_run_id if customer.respond_to?(:import_run_id=)
