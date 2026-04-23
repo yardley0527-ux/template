@@ -36,7 +36,7 @@ class CustomerPurchaseSummaryRefreshService
   end
 
   private
-  
+
   def rebuild_summary_table!
     # 清除同一個人已經能用 mobile_phone 辨識，但舊的 email identity_key 還殘留的重複資料
     ActiveRecord::Base.connection.execute(<<~SQL)
@@ -53,14 +53,14 @@ class CustomerPurchaseSummaryRefreshService
             NULLIF(TRIM(sc.mobile_phone), ''),
             LOWER(TRIM(so.email))
           ) AS identity_key,
-
           NULLIF(TRIM(sc.mobile_phone), '') AS mobile_phone,
           LOWER(TRIM(MIN(so.email)))        AS email,
           so.order_number,
           MIN(so.order_date) AS order_date,
           COALESCE(
+            NULLIF(SUM(COALESCE(so.checkout_amount, 0)), 0),
             MAX(NULLIF(so.total_amount, 0)),
-            SUM(COALESCE(so.checkout_amount, 0))
+            0
           ) AS order_amount
         FROM shopline_orders so
         LEFT JOIN shopline_customers sc
@@ -73,7 +73,6 @@ class CustomerPurchaseSummaryRefreshService
           AND TRIM(so.email) <> ''
           AND so.order_date IS NOT NULL
           AND so.payment_status = '已付款'
-          AND COALESCE(TRIM(so.order_status), '') NOT IN ('取消', '已取消')
         GROUP BY
           COALESCE(
             NULLIF(TRIM(sc.mobile_phone), ''),
