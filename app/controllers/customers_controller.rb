@@ -9,7 +9,6 @@ class CustomersController < ApplicationController
 
   def index
     @q                = params[:q].to_s.strip
-    @city             = params[:city].to_s.strip
     @membership_level = params[:membership_level].to_s.strip
     @min_credits      = to_number(params[:min_credits])
     @sort             = params[:sort].to_s.strip.presence || "amount_desc"
@@ -54,8 +53,6 @@ class CustomersController < ApplicationController
         like: like
       )
     end
-
-    scope = scope.where("city ILIKE ?", "%#{@city}%") if @city.present?
 
     if @membership_level.present?
       if @membership_level == "非會員"

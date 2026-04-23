@@ -19,11 +19,6 @@
             </div>
 
             <div class="col-sm-6 col-md-2">
-              <label class="form-label">城市</label>
-              <%= text_field_tag :city, @city, class: "form-control", placeholder: "台北 / 台中..." %>
-            </div>
-
-            <div class="col-sm-6 col-md-2">
               <label class="form-label">購物金 ≥</label>
               <%= number_field_tag :min_credits, (@min_credits&.to_i), class: "form-control", placeholder: "3000" %>
             </div>
