@@ -416,7 +416,7 @@ class MetabolismAnalysisController < ApplicationController
       .where(order_date: range)
       .group(:product_name)
       .order("count_all DESC")
-      .limit(3)
+      .limit(5)
       .count
   end
 
@@ -444,6 +444,8 @@ class MetabolismAnalysisController < ApplicationController
   def extract_bottles(product_name)
     return 1 if product_name.nil?
     m = product_name.match(/代謝錠(\d+)/)
+    return m[1].to_i if m
+    m = product_name.match(/代謝(\d+)/)        # ← 補：cover「代謝1」
     return m[1].to_i if m
     m = product_name.match(/[（(](\d+)[瓶盒]/)
     return m[1].to_i if m
