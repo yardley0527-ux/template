@@ -237,7 +237,7 @@
                       <span class="badge <%= r[:attended_jul22] ? 'bg-success' : 'bg-light text-muted' %> me-1">7/22</span>
                       <span class="badge <%= r[:attended_oct9]  ? 'bg-success' : 'bg-light text-muted' %> me-1">10/9</span>
                       <span class="badge <%= r[:attended_feb25] ? 'bg-success' : 'bg-light text-muted' %> me-1">2/25</span>
-                      <span class="badge bg-danger bg-opacity-25 text-danger">4/24✗</span>
+                      <span class="badge bg-light text-muted border">4/24 ✗</span>
                     </td>
                     <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
                     <td class="text-center"><%= r[:bottles] %> 瓶</td>
