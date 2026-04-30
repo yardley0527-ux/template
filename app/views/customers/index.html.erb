@@ -220,6 +220,10 @@
   </div>
 </div>
 
+<%= link_to "📥 匯出未購 365 天名單",
+  export_inactive_customers_path(format: :csv, days: 365),
+  class: "btn btn-success mt-2" %>
+
 <style>
 /* 針對電腦版的微調 */
 .table th { vertical-align: middle; }

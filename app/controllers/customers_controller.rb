@@ -267,6 +267,58 @@ class CustomersController < ApplicationController
     end
   end
 
+  def export_inactive
+    threshold_days = (params[:days] || 365).to_i
+    cutoff_date = Date.today - threshold_days
+
+    # 找出最後購買日在 cutoff 之前的客人
+    inactive_emails = ShoplineOrder
+      .where.not(product_name: [nil, ""])
+      .group(:email)
+      .having("MAX(order_date) < ?", cutoff_date)
+      .pluck(:email)
+
+    customers = ShoplineCustomer
+      .where(email: inactive_emails)
+      .order(:full_name)
+
+    # 算每個人的最後購買日和天數
+    last_orders = ShoplineOrder
+      .where(email: inactive_emails)
+      .where.not(product_name: [nil, ""])
+      .group(:email)
+      .maximum(:order_date)
+
+    respond_to do |format|
+      format.csv do
+        csv_data = CSV.generate(encoding: "UTF-8") do |csv|
+          csv << ["客戶ID", "姓名", "Email", "手機", "城市", "會員等級", "累積消費", "訂單數", "最後購買日", "未購天數"]
+
+          customers.each do |c|
+            last_date = last_orders[c.email]&.to_date
+            days = last_date ? (Date.today - last_date).to_i : nil
+            csv << [
+              c.shopline_id,   # ← 加這行
+              c.full_name,
+              c.email,
+              c.mobile_phone,
+              c.city,
+              c.membership_level,
+              c.total_amount,
+              c.order_count,
+              last_date&.strftime("%Y/%m/%d"),
+              days
+            ]
+          end
+        end
+
+        send_data "\xEF\xBB\xBF" + csv_data,
+          filename: "未購#{threshold_days}天名單_#{Date.today}.csv",
+          type: "text/csv; charset=utf-8"
+      end
+    end
+  end
+
   private
 
   def profile_params
