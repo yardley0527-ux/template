@@ -6,7 +6,7 @@ Rails.application.routes.draw do
   get '/livestream_analysis', to: 'livestream_analysis#index'
   get '/metabolism_analysis',        to: 'metabolism_analysis#index',  as: :metabolism_analysis
   get '/metabolism_analysis/export', to: 'metabolism_analysis#export', as: :metabolism_analysis_export
-  get 'customers/export_inactive', to: 'customers#export_inactive'
+  get 'customers/export_inactive', to: 'customers#export_inactive', as: :export_inactive_customers
 
   resources :expiring_members, only: [:index] do
     post :confirm_renewal, on: :member
