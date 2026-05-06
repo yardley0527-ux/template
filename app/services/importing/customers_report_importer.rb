@@ -51,7 +51,14 @@ module Importing
 
       flush = lambda do
         if shopline_batch.any?
-          # email 欄位不放進 shopline_batch 的 upsert，避免觸發 email unique constraint
+          # ✅ 新增：先把 email 已存在但 shopline_id 為 nil 的舊記錄補上 shopline_id
+          # 這樣 upsert_all 就能找到這筆記錄，不會建立重複
+          shopline_batch.each do |r|
+            next if r[:email].blank? || r[:shopline_id].blank?
+            ShoplineCustomer.where(email: r[:email], shopline_id: nil)
+                            .update_all(shopline_id: r[:shopline_id])
+          end
+
           batch_without_email = shopline_batch.map { |r| r.except(:email) }
           ShoplineCustomer.upsert_all(
             batch_without_email,
@@ -59,7 +66,7 @@ module Importing
             update_only: upsertable_columns
           )
 
-          # 補回填 email：只更新目前 email 為 nil 的筆，不覆蓋已有值
+          # 補回填 email（原本的邏輯不變）
           shopline_batch.each do |r|
             next if r[:email].blank? || r[:shopline_id].blank?
             ShoplineCustomer.where(shopline_id: r[:shopline_id], email: nil)
