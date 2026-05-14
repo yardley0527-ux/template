@@ -1,0 +1,394 @@
+<% content_for :page_title, "穀胱甘肽直播分析" %>
+
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <h4 class="fw-bold mb-0">穀胱甘肽直播分析 — 2026/1/23</h4>
+    <p class="text-muted small mb-0">追蹤 1/23 購買情況，以及曾買過穀胱甘肽的金卡以上客人回流狀況</p>
+  </div>
+</div>
+
+<%# ══════════════════════════════════════════ %>
+<%# 區塊一：策略參考                           %>
+<%# ══════════════════════════════════════════ %>
+
+<div class="d-flex align-items-center mb-3">
+  <div class="border-start border-3 border-secondary ps-3">
+    <h5 class="fw-bold mb-0 text-secondary">📊 策略參考</h5>
+    <p class="text-muted small mb-0">本場數據總覽</p>
+  </div>
+</div>
+
+<%# 人數卡片 %>
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm text-center py-4">
+      <div class="text-muted mb-2">1/23 直播買穀胱甘肽人數</div>
+      <div class="fw-bold text-primary" style="font-size: 2rem; line-height: 1;"><%= @jan23_emails.size %></div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm text-center py-4">
+      <div class="text-muted mb-2">曾購買過（1/23 前）</div>
+      <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #495057;"><%= @prev_count %></div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm text-center py-4">
+      <div class="text-muted mb-2">舊客回流率</div>
+      <div class="fw-bold text-success" style="font-size: 2rem; line-height: 1;"><%= @prev_return_rate %>%</div>
+      <div class="text-muted small mt-1"><%= @prev_returned_count %> / <%= @prev_count %> 人</div>
+    </div>
+  </div>
+</div>
+
+<%# 黑卡/金卡出席率 %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header text-white" style="background-color: #4a4a4a;">黑卡 / 金卡 出席狀況</div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0 text-center" style="font-size: 0.9rem;">
+      <thead class="table-light">
+        <tr>
+          <th></th>
+          <th>總人數</th>
+          <th>1/23 出席</th>
+          <th>1/23 出席率</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fw-bold text-start ps-3">黑卡</td>
+          <td><%= @black_card_total %></td>
+          <td><%= @black_jan23 %></td>
+          <td><%= @black_jan23_rate %>%</td>
+        </tr>
+        <tr>
+          <td class="fw-bold text-start ps-3">金卡</td>
+          <td><%= @gold_card_total %></td>
+          <td><%= @gold_jan23 %></td>
+          <td><%= @gold_jan23_rate %>%</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%# 建議行動 %>
+<div class="card border-0 shadow-sm mb-5">
+  <div class="card-header text-white" style="background-color: #4a4a4a;">📌 建議行動</div>
+  <div class="card-body">
+    <% @insights.each do |insight| %>
+      <% bg = { info: "alert-info", warning: "alert-warning", danger: "alert-danger", success: "alert-success" }[insight[:type]] %>
+      <div class="alert <%= bg %> py-2 px-3 mb-2" style="font-size: 0.9rem;"><%= insight[:text] %></div>
+    <% end %>
+  </div>
+</div>
+
+<%# ══════════════════════════════════════════════════ %>
+<%# 曾買、1/23 未出現（金卡以上）                     %>
+<%# ══════════════════════════════════════════════════ %>
+
+<% if @missing_customers.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-3 border-danger ps-3">
+      <h5 class="fw-bold mb-0 text-danger">🚨 曾買穀胱甘肽、1/23 未回購</h5>
+      <p class="text-muted small mb-0">黑卡 / 金卡｜逾期越多越優先，建議盡快聯繫</p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #8b1a1a;">
+      <div>
+        <span class="fw-bold">1/23 未回購名單</span>
+        <span class="ms-2 small opacity-75">依卡級 → 逾期天數排列</span>
+      </div>
+      <span class="badge bg-white text-dark"><%= @missing_customers.size %> 人</span>
+    </div>
+
+    <div class="px-3 pt-2 border-bottom">
+      <ul class="nav nav-tabs" id="tabs-missing">
+        <% [["黑卡", "black"], ["金卡", "gold"]].each do |level, key| %>
+          <% next if @missing_customers.none? { |r| r[:customer].membership_level == level } %>
+          <li class="nav-item">
+            <button class="nav-link"
+                    data-tab-prefix="missing"
+                    data-tab-target="missing-<%= key %>"
+                    type="button">
+              <%= level %>
+              <span class="badge bg-secondary">
+                <%= @missing_customers.count { |r| r[:customer].membership_level == level } %>
+              </span>
+            </button>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <div class="card-body p-0">
+      <% [["黑卡", "black"], ["金卡", "gold"]].each do |level, key| %>
+        <% rows = @missing_customers.select { |r| r[:customer].membership_level == level } %>
+        <% next if rows.empty? %>
+        <div class="invite-pane" id="pane-missing-<%= key %>" style="display: none;">
+          <div class="table-responsive" data-paginate="true" data-page-size="20">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>姓名</th>
+                  <th>卡別</th>
+                  <th>上次買穀胱甘肽</th>
+                  <th>瓶數</th>
+                  <th>預期回購</th>
+                  <th>逾期</th>
+                  <th>歷史次數</th>
+                  <th>歷史消費</th>
+                  <th>電話</th>
+                  <th>IG</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.each_with_index do |r, i| %>
+                  <% c = r[:customer] %>
+                  <tr>
+                    <td>
+                      <span class="badge <%= i < 3 ? 'bg-danger' : i < 8 ? 'bg-warning text-dark' : 'bg-light text-dark' %>">
+                        #<%= i + 1 %>
+                      </span>
+                    </td>
+                    <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                    <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                    <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
+                    <td class="text-center"><%= r[:bottles] %> 瓶</td>
+                    <td><%= r[:last_date] ? (r[:last_date] + r[:expected_days]).strftime("%m/%d") : "-" %></td>
+                    <td>
+                      <% od = r[:overdue_days] %>
+                      <% if od.nil? %>
+                        <span class="text-muted">-</span>
+                      <% elsif od > 14 %>
+                        <span class="badge bg-danger">+<%= od %>天</span>
+                      <% elsif od > 0 %>
+                        <span class="badge bg-warning text-dark">+<%= od %>天</span>
+                      <% else %>
+                        <span class="badge bg-success">未到期</span>
+                      <% end %>
+                    </td>
+                    <td class="text-center"><%= r[:history_count] %> 次</td>
+                    <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
+                    <td>
+                      <% if c.mobile_phone.present? %>
+                        <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
+                          📞 <%= c.mobile_phone %>
+                        </a>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if c.instagram_account.present? %>
+                        <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
+                          📷 <%= c.instagram_account %>
+                        </a>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<%# ══════════════════════════════════════════ %>
+<%# 1/23 購買的黑卡/金卡客人                   %>
+<%# ══════════════════════════════════════════ %>
+
+<% if @jan23_customers.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-3 border-success ps-3">
+      <h5 class="fw-bold mb-0 text-success">⭐ 1/23 購買名單（黑卡 / 金卡）</h5>
+      <p class="text-muted small mb-0">本場核心客群，適合追蹤後續回購</p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #2d5a3d;">
+      <span class="fw-bold">本場購買名單</span>
+      <span class="badge bg-white text-dark"><%= @jan23_customers.size %> 人</span>
+    </div>
+
+    <div class="px-3 pt-2 border-bottom">
+      <ul class="nav nav-tabs" id="tabs-jan23">
+        <% [["黑卡", "black"], ["金卡", "gold"]].each do |level, key| %>
+          <% next if @jan23_customers.none? { |r| r[:customer].membership_level == level } %>
+          <li class="nav-item">
+            <button class="nav-link"
+                    data-tab-prefix="jan23"
+                    data-tab-target="jan23-<%= key %>"
+                    type="button">
+              <%= level %>
+              <span class="badge bg-secondary">
+                <%= @jan23_customers.count { |r| r[:customer].membership_level == level } %>
+              </span>
+            </button>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <div class="card-body p-0">
+      <% [["黑卡", "black"], ["金卡", "gold"]].each do |level, key| %>
+        <% rows = @jan23_customers.select { |r| r[:customer].membership_level == level } %>
+        <% next if rows.empty? %>
+        <div class="invite-pane" id="pane-jan23-<%= key %>" style="display: none;">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>姓名</th>
+                  <th>卡別</th>
+                  <th>購買品項</th>
+                  <th>瓶數</th>
+                  <th>歷史次數</th>
+                  <th>歷史消費</th>
+                  <th>電話</th>
+                  <th>IG</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.each do |r| %>
+                  <% c = r[:customer] %>
+                  <tr>
+                    <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                    <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                    <td><%= r[:last_product] || "-" %></td>
+                    <td class="text-center"><%= r[:bottles] %> 瓶</td>
+                    <td class="text-center"><%= r[:history_count] %> 次</td>
+                    <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
+                    <td>
+                      <% if c.mobile_phone.present? %>
+                        <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
+                          📞 <%= c.mobile_phone %>
+                        </a>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if c.instagram_account.present? %>
+                        <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
+                          📷 <%= c.instagram_account %>
+                        </a>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[id^="tabs-"]').forEach(function (tabGroup) {
+    const firstBtn = tabGroup.querySelector('.nav-link');
+    if (firstBtn) activateTab(firstBtn);
+  });
+});
+
+function activateTab(btn) {
+  const prefix = btn.dataset.tabPrefix;
+  const targetId = btn.dataset.tabTarget;
+
+  document.querySelectorAll(`[id^="pane-${prefix}-"]`).forEach(function (p) {
+    p.style.display = 'none';
+  });
+  document.querySelectorAll(`#tabs-${prefix} .nav-link`).forEach(function (b) {
+    b.classList.remove('active');
+  });
+
+  const target = document.getElementById('pane-' + targetId);
+  if (target) {
+    target.style.display = 'block';
+    target.querySelectorAll('[data-paginate="true"]').forEach(function (wrapper) {
+      if (!wrapper.dataset.paginated) initPaginate(wrapper);
+    });
+  }
+  btn.classList.add('active');
+}
+
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('[data-tab-target]');
+  if (btn) activateTab(btn);
+});
+
+function initPaginate(wrapper) {
+  wrapper.dataset.paginated = 'true';
+  const pageSize = parseInt(wrapper.dataset.pageSize) || 20;
+  const tbody = wrapper.querySelector('tbody');
+  if (!tbody) return;
+
+  const allRows = Array.from(tbody.querySelectorAll('tr'));
+  if (allRows.length <= pageSize) return;
+
+  const totalPages = Math.ceil(allRows.length / pageSize);
+  const pane = wrapper.closest('.invite-pane') || wrapper.parentNode;
+
+  function renderPage(page) {
+    allRows.forEach(function (row, i) {
+      row.style.display = (i >= (page - 1) * pageSize && i < page * pageSize) ? '' : 'none';
+    });
+
+    const old = pane.querySelector('.paginate-controls');
+    if (old) old.remove();
+
+    const ctrl = document.createElement('div');
+    ctrl.className = 'paginate-controls d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light';
+    ctrl.style.fontSize = '0.85rem';
+
+    const info = document.createElement('span');
+    info.className = 'text-muted';
+    const start = (page - 1) * pageSize + 1;
+    const end = Math.min(page * pageSize, allRows.length);
+    info.textContent = `第 ${start}–${end} 筆，共 ${allRows.length} 筆`;
+
+    const btns = document.createElement('div');
+    btns.className = 'd-flex gap-1 flex-wrap';
+
+    const prev = document.createElement('button');
+    prev.className = 'btn btn-sm btn-outline-secondary py-0';
+    prev.textContent = '‹';
+    prev.disabled = page === 1;
+    prev.addEventListener('click', function () { renderPage(page - 1); });
+    btns.appendChild(prev);
+
+    const startPage = Math.max(1, page - 2);
+    const endPage   = Math.min(totalPages, startPage + 4);
+
+    for (let p = startPage; p <= endPage; p++) {
+      const pb = document.createElement('button');
+      pb.className = 'btn btn-sm py-0 ' + (p === page ? 'btn-secondary' : 'btn-outline-secondary');
+      pb.textContent = p;
+      const captured = p;
+      pb.addEventListener('click', function () { renderPage(captured); });
+      btns.appendChild(pb);
+    }
+
+    const next = document.createElement('button');
+    next.className = 'btn btn-sm btn-outline-secondary py-0';
+    next.textContent = '›';
+    next.disabled = page === totalPages;
+    next.addEventListener('click', function () { renderPage(page + 1); });
+    btns.appendChild(next);
+
+    ctrl.appendChild(info);
+    ctrl.appendChild(btns);
+    pane.appendChild(ctrl);
+  }
+
+  renderPage(1);
+}
+</script>
