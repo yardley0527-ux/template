@@ -168,7 +168,7 @@ class GlutathioneAnalysisController < ApplicationController
           value_score:  value_score,
           value_tier:   value_tier
         }
-      end.sort_by { |r| [-r[:value_score], -r[:glut_count], -r[:total_spend]] }
+      end.sort_by { |r| [-r[:value_score], -r[:bottles], -r[:glut_count], -r[:total_spend]] }
 
     # ── Insights ──────────────────────────────────────────────────────────────
     @insights = []
