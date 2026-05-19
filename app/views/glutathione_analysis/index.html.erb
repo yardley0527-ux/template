@@ -226,7 +226,7 @@
         <div class="vt-stat-icon">🏆</div>
         <div class="vt-stat-num"><%= vip_count %></div>
         <div class="vt-stat-label">重點維護</div>
-        <div class="vt-stat-hint">分數 ≥ 8</div>
+        <div class="vt-stat-hint">分數 ≥ 12</div>
       </div>
     </div>
     <div class="col-4">
@@ -234,7 +234,7 @@
         <div class="vt-stat-icon">📌</div>
         <div class="vt-stat-num"><%= track_count %></div>
         <div class="vt-stat-label">值得追蹤</div>
-        <div class="vt-stat-hint">分數 5–7</div>
+        <div class="vt-stat-hint">分數 7–11</div>
       </div>
     </div>
     <div class="col-4">
@@ -242,7 +242,7 @@
         <div class="vt-stat-icon">👤</div>
         <div class="vt-stat-num"><%= basic_count %></div>
         <div class="vt-stat-label">一般客群</div>
-        <div class="vt-stat-hint">分數 &lt; 5</div>
+        <div class="vt-stat-hint">分數 &lt; 7</div>
       </div>
     </div>
   </div>
@@ -300,9 +300,10 @@
                   <th>姓名</th>
                   <th>卡別</th>
                   <th>購買品項</th>
-                  <th>瓶數</th>
-                  <th>歷史次數</th>
-                  <th>歷史消費</th>
+                  <th>本次瓶數</th>
+                  <th>本次金額</th>
+                  <th>整體消費力</th>
+                  <th>穀胱甘肽歷史</th>
                   <th>電話</th>
                   <th>IG</th>
                 </tr>
@@ -320,8 +321,9 @@
                     <td><span class="text-muted small"><%= c.membership_level %></span></td>
                     <td><%= r[:last_product] || "-" %></td>
                     <td class="text-center"><%= r[:bottles] %> 瓶</td>
-                    <td class="text-center"><%= r[:history_count] %> 次</td>
-                    <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
+                    <td>NT$<%= number_with_delimiter(r[:order_amount].to_i) %></td>
+                    <td class="fw-semibold">NT$<%= number_with_delimiter(r[:total_spend].to_i) %></td>
+                    <td class="text-center text-muted"><%= r[:glut_count] %> 次</td>
                     <td>
                       <% if c.mobile_phone.present? %>
                         <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">

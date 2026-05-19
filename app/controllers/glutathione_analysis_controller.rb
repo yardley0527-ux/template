@@ -127,42 +127,48 @@ class GlutathioneAnalysisController < ApplicationController
       .where(email: @jan23_emails)
       .where(order_date: EVENT_RANGE)
       .order(:email, order_date: :desc)
-      .pluck(:email, :product_name, :order_date)
+      .pluck(:email, :product_name, :order_date, :checkout_amount, :total_amount)
 
     jan23_by_email = {}
-    jan23_orders_raw.each do |email, product_name, order_date|
-      jan23_by_email[email] ||= { product_name: product_name, order_date: order_date }
+    jan23_orders_raw.each do |email, product_name, order_date, checkout_amount, total_amount|
+      jan23_by_email[email] ||= {
+        product_name: product_name,
+        order_date:   order_date,
+        order_amount: (checkout_amount || total_amount).to_f
+      }
     end
 
-    h_counts  = ShoplineOrder.where(GLUTATHIONE).where(email: @jan23_emails).group(:email).count
-    h_amounts = ShoplineOrder.where(GLUTATHIONE).where(email: @jan23_emails).group(:email).sum(:total_amount)
+    h_counts = ShoplineOrder.where(GLUTATHIONE).where(email: @jan23_emails).group(:email).count
 
     @jan23_customers = ShoplineCustomer
       .where(email: @jan23_emails)
       .where(membership_level: TARGET_MEMBERSHIPS)
-      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
+      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
       .map do |c|
-        order          = jan23_by_email[c.email]
-        history_count  = h_counts[c.email]  || 0
-        history_amount = h_amounts[c.email] || 0
+        order        = jan23_by_email[c.email]
+        bottles      = extract_bottles(order&.dig(:product_name))
+        order_amount = order&.dig(:order_amount).to_f
+        total_spend  = c.total_amount.to_f
 
-        mem_score    = MEMBERSHIP_RANK[c.membership_level].to_f
-        count_score  = history_count >= 5 ? 3 : history_count >= 3 ? 2 : history_count >= 2 ? 1 : 0
-        amount_score = history_amount >= 50_000 ? 3 : history_amount >= 20_000 ? 2 : history_amount >= 10_000 ? 1 : 0
-        value_score  = mem_score + count_score + amount_score
-        value_tier   = value_score >= 8 ? "重點維護" : value_score >= 5 ? "值得追蹤" : "一般客群"
+        # 評分：卡別（鑑別力最強）+ 整體消費力 + 本次購買瓶數
+        mem_score      = (MEMBERSHIP_RANK[c.membership_level] || 0) * 2
+        spend_score    = total_spend >= 200_000 ? 3 : total_spend >= 100_000 ? 2 : total_spend >= 50_000 ? 1 : 0
+        purchase_score = bottles >= 3 ? 2 : bottles >= 2 ? 1 : 0
+        value_score    = mem_score + spend_score + purchase_score
+        value_tier     = value_score >= 12 ? "重點維護" : value_score >= 7 ? "值得追蹤" : "一般客群"
 
         {
-          customer:       c,
-          last_product:   order&.dig(:product_name),
-          last_date:      order&.dig(:order_date)&.to_date,
-          bottles:        extract_bottles(order&.dig(:product_name)),
-          history_count:  history_count,
-          history_amount: history_amount,
-          value_score:    value_score,
-          value_tier:     value_tier
+          customer:     c,
+          last_product: order&.dig(:product_name),
+          last_date:    order&.dig(:order_date)&.to_date,
+          bottles:      bottles,
+          order_amount: order_amount,
+          total_spend:  total_spend,
+          glut_count:   h_counts[c.email] || 0,
+          value_score:  value_score,
+          value_tier:   value_tier
         }
-      end.sort_by { |r| [-r[:value_score], -r[:history_amount].to_f] }
+      end.sort_by { |r| [-r[:value_score], -r[:total_spend]] }
 
     # ── Insights ──────────────────────────────────────────────────────────────
     @insights = []
@@ -214,11 +220,12 @@ class GlutathioneAnalysisController < ApplicationController
   def jan23_csv
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["客戶價值", "姓名", "卡別", "電話", "購買品項", "瓶數", "歷史次數", "歷史消費(NT$)", "IG"]
+      csv << ["客戶價值", "姓名", "卡別", "電話", "購買品項", "本次瓶數", "本次金額(NT$)", "整體消費力(NT$)", "穀胱甘肽歷史次數", "IG"]
       @jan23_customers.each do |r|
         c = r[:customer]
         csv << [r[:value_tier], c.full_name, c.membership_level, c.mobile_phone,
-                r[:last_product], r[:bottles], r[:history_count], r[:history_amount].to_i, c.instagram_account]
+                r[:last_product], r[:bottles], r[:order_amount].to_i,
+                r[:total_spend].to_i, r[:glut_count], c.instagram_account]
       end
     end
   end
