@@ -208,10 +208,42 @@
 <%# ══════════════════════════════════════════ %>
 
 <% if @jan23_customers.any? %>
+  <% vip_count  = @jan23_customers.count { |r| r[:value_tier] == "重點維護" } %>
+  <% track_count = @jan23_customers.count { |r| r[:value_tier] == "值得追蹤" } %>
+  <% basic_count = @jan23_customers.count { |r| r[:value_tier] == "一般客群" } %>
+
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-success ps-3">
       <h5 class="fw-bold mb-0 text-success">⭐ 1/23 購買名單（所有卡別）</h5>
-      <p class="text-muted small mb-0">本場核心客群，適合追蹤後續回購</p>
+      <p class="text-muted small mb-0">本場核心客群，依客戶價值分層排列</p>
+    </div>
+  </div>
+
+  <%# 價值分層統計卡片 %>
+  <div class="row g-2 mb-3">
+    <div class="col-4">
+      <div class="vt-stat-card vt-vip" data-tier-filter="重點維護">
+        <div class="vt-stat-icon">🏆</div>
+        <div class="vt-stat-num"><%= vip_count %></div>
+        <div class="vt-stat-label">重點維護</div>
+        <div class="vt-stat-hint">分數 ≥ 8</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="vt-stat-card vt-track" data-tier-filter="值得追蹤">
+        <div class="vt-stat-icon">📌</div>
+        <div class="vt-stat-num"><%= track_count %></div>
+        <div class="vt-stat-label">值得追蹤</div>
+        <div class="vt-stat-hint">分數 5–7</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="vt-stat-card vt-basic" data-tier-filter="一般客群">
+        <div class="vt-stat-icon">👤</div>
+        <div class="vt-stat-num"><%= basic_count %></div>
+        <div class="vt-stat-label">一般客群</div>
+        <div class="vt-stat-hint">分數 &lt; 5</div>
+      </div>
     </div>
   </div>
 
@@ -220,9 +252,18 @@
          style="background-color: #2d5a3d;">
       <span class="fw-bold">本場購買名單</span>
       <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-white text-dark"><%= @jan23_customers.size %> 人</span>
+        <span class="badge bg-white text-dark" id="jan23-visible-count"><%= @jan23_customers.size %> 人</span>
         <%= link_to "⬇ 匯出 CSV", glutathione_export_jan23_path, class: "btn btn-sm btn-light fw-semibold" %>
       </div>
+    </div>
+
+    <%# 價值層篩選 %>
+    <div class="px-3 pt-3 pb-2 border-bottom bg-light d-flex align-items-center gap-2 flex-wrap">
+      <span class="text-muted small fw-semibold me-1">篩選：</span>
+      <button class="vt-filter-btn is-active" data-tier="all">全部</button>
+      <button class="vt-filter-btn vt-btn-vip"   data-tier="重點維護">🏆 重點維護</button>
+      <button class="vt-filter-btn vt-btn-track"  data-tier="值得追蹤">📌 值得追蹤</button>
+      <button class="vt-filter-btn vt-btn-basic"  data-tier="一般客群">👤 一般客群</button>
     </div>
 
     <div class="px-3 pt-2 border-bottom">
@@ -255,6 +296,7 @@
             <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
               <thead class="table-light">
                 <tr>
+                  <th>客戶價值</th>
                   <th>姓名</th>
                   <th>卡別</th>
                   <th>購買品項</th>
@@ -268,7 +310,12 @@
               <tbody>
                 <% rows.each do |r| %>
                   <% c = r[:customer] %>
-                  <tr>
+                  <tr data-tier="<%= r[:value_tier] %>">
+                    <td>
+                      <span class="vt-badge vt-badge-<%= r[:value_tier] %>">
+                        <%= r[:value_tier] == "重點維護" ? "🏆 重點維護" : r[:value_tier] == "值得追蹤" ? "📌 值得追蹤" : "👤 一般" %>
+                      </span>
+                    </td>
                     <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
                     <td><span class="text-muted small"><%= c.membership_level %></span></td>
                     <td><%= r[:last_product] || "-" %></td>
@@ -301,12 +348,52 @@
 <% end %>
 
 <script>
+let currentTierFilter = 'all';
+
 document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('[id^="tabs-"]').forEach(function (tabGroup) {
     const firstBtn = tabGroup.querySelector('.nav-link');
     if (firstBtn) activateTab(firstBtn);
   });
+
+  // 價值層篩選卡片點擊
+  document.querySelectorAll('.vt-stat-card[data-tier-filter]').forEach(function (card) {
+    card.addEventListener('click', function () {
+      const tier = card.dataset.tierFilter;
+      applyTierFilter(currentTierFilter === tier ? 'all' : tier);
+    });
+  });
+
+  // 篩選按鈕
+  document.querySelectorAll('.vt-filter-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      applyTierFilter(btn.dataset.tier);
+    });
+  });
 });
+
+function applyTierFilter(tier) {
+  currentTierFilter = tier;
+
+  // 更新按鈕狀態
+  document.querySelectorAll('.vt-filter-btn').forEach(function (btn) {
+    btn.classList.toggle('is-active', btn.dataset.tier === tier);
+  });
+  document.querySelectorAll('.vt-stat-card[data-tier-filter]').forEach(function (card) {
+    card.classList.toggle('is-active', card.dataset.tierFilter === tier);
+  });
+
+  // 在所有 jan23 pane 中過濾行
+  let visibleCount = 0;
+  document.querySelectorAll('[id^="pane-jan23-"] tbody tr[data-tier]').forEach(function (row) {
+    const show = tier === 'all' || row.dataset.tier === tier;
+    row.style.display = show ? '' : 'none';
+    if (show) visibleCount++;
+  });
+
+  const countBadge = document.getElementById('jan23-visible-count');
+  if (countBadge) countBadge.textContent = visibleCount + ' 人';
+}
 
 function activateTab(btn) {
   const prefix   = btn.dataset.tabPrefix;
@@ -322,6 +409,12 @@ function activateTab(btn) {
   const target = document.getElementById('pane-' + targetId);
   if (target) {
     target.style.display = 'block';
+    // Re-apply current tier filter to newly visible pane
+    if (prefix === 'jan23' && currentTierFilter !== 'all') {
+      target.querySelectorAll('tbody tr[data-tier]').forEach(function (row) {
+        row.style.display = row.dataset.tier === currentTierFilter ? '' : 'none';
+      });
+    }
     target.querySelectorAll('[data-paginate="true"]').forEach(function (wrapper) {
       if (!wrapper.dataset.paginated) initPaginate(wrapper);
     });
@@ -401,3 +494,31 @@ function initPaginate(wrapper) {
   renderPage(1);
 }
 </script>
+
+<style>
+.vt-stat-card { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 14px 12px; text-align: center; cursor: pointer; transition: border-color .15s, box-shadow .15s; background: #fff; user-select: none; }
+.vt-stat-card:hover { border-color: #6b7280; box-shadow: 0 0 0 3px rgba(107,114,128,.1); }
+.vt-stat-card.is-active { box-shadow: 0 0 0 3px rgba(0,0,0,.12); }
+.vt-vip   { border-color: #fcd34d; }
+.vt-vip.is-active   { background: #fffbeb; border-color: #f59e0b; }
+.vt-track { border-color: #93c5fd; }
+.vt-track.is-active { background: #eff6ff; border-color: #3b82f6; }
+.vt-basic { border-color: #d1d5db; }
+.vt-basic.is-active { background: #f9fafb; border-color: #6b7280; }
+.vt-stat-icon { font-size: 1.3rem; margin-bottom: 4px; }
+.vt-stat-num  { font-size: 1.8rem; font-weight: 800; line-height: 1; color: #111827; }
+.vt-stat-label { font-size: 0.8rem; font-weight: 700; margin-top: 4px; color: #374151; }
+.vt-stat-hint  { font-size: 0.7rem; color: #9ca3af; margin-top: 2px; }
+
+.vt-filter-btn { padding: 4px 12px; font-size: 0.8rem; font-weight: 600; border: 1px solid #d1d5db; border-radius: 99px; background: #fff; cursor: pointer; transition: background .12s, border-color .12s; }
+.vt-filter-btn:hover { background: #f3f4f6; }
+.vt-filter-btn.is-active { background: #1f2937; color: #fff; border-color: #1f2937; }
+.vt-btn-vip.is-active   { background: #d97706; border-color: #d97706; color: #fff; }
+.vt-btn-track.is-active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.vt-btn-basic.is-active { background: #6b7280; border-color: #6b7280; color: #fff; }
+
+.vt-badge { font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 99px; white-space: nowrap; }
+.vt-badge-重點維護 { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+.vt-badge-值得追蹤 { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.vt-badge-一般客群 { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+</style>

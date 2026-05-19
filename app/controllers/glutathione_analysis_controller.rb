@@ -142,16 +142,27 @@ class GlutathioneAnalysisController < ApplicationController
       .where(membership_level: TARGET_MEMBERSHIPS)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
       .map do |c|
-        order = jan23_by_email[c.email]
+        order          = jan23_by_email[c.email]
+        history_count  = h_counts[c.email]  || 0
+        history_amount = h_amounts[c.email] || 0
+
+        mem_score    = MEMBERSHIP_RANK[c.membership_level].to_f
+        count_score  = history_count >= 5 ? 3 : history_count >= 3 ? 2 : history_count >= 2 ? 1 : 0
+        amount_score = history_amount >= 50_000 ? 3 : history_amount >= 20_000 ? 2 : history_amount >= 10_000 ? 1 : 0
+        value_score  = mem_score + count_score + amount_score
+        value_tier   = value_score >= 8 ? "重點維護" : value_score >= 5 ? "值得追蹤" : "一般客群"
+
         {
           customer:       c,
           last_product:   order&.dig(:product_name),
           last_date:      order&.dig(:order_date)&.to_date,
           bottles:        extract_bottles(order&.dig(:product_name)),
-          history_count:  h_counts[c.email]  || 0,
-          history_amount: h_amounts[c.email] || 0
+          history_count:  history_count,
+          history_amount: history_amount,
+          value_score:    value_score,
+          value_tier:     value_tier
         }
-      end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_amount].to_f] }
+      end.sort_by { |r| [-r[:value_score], -r[:history_amount].to_f] }
 
     # ── Insights ──────────────────────────────────────────────────────────────
     @insights = []
@@ -203,10 +214,10 @@ class GlutathioneAnalysisController < ApplicationController
   def jan23_csv
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["姓名", "卡別", "電話", "購買品項", "瓶數", "歷史次數", "歷史消費(NT$)", "IG"]
+      csv << ["客戶價值", "姓名", "卡別", "電話", "購買品項", "瓶數", "歷史次數", "歷史消費(NT$)", "IG"]
       @jan23_customers.each do |r|
         c = r[:customer]
-        csv << [c.full_name, c.membership_level, c.mobile_phone,
+        csv << [r[:value_tier], c.full_name, c.membership_level, c.mobile_phone,
                 r[:last_product], r[:bottles], r[:history_count], r[:history_amount].to_i, c.instagram_account]
       end
     end
