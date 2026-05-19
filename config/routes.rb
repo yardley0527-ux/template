@@ -14,6 +14,7 @@ Rails.application.routes.draw do
   end  
   get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
+  get '/black_card_active',          to: 'black_card_active#index',    as: :black_card_active
   get '/product_strategy', to: 'product_strategy#index', as: :product_strategy
   get '/high_spender_first_purchase', to: 'high_spender_first_purchase#index', as: :high_spender_first_purchase
 

@@ -20,6 +20,12 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "黑卡管理",
+          children: [
+            { href: black_card_active_path, title: "今年消費黑卡名單", icon: "fa-crown" }
+          ]
+        },
+        {
           group_title: "忠實客管理",
           children: [
             { href: loyal_customers_path, title: "忠實客分析", icon: "fa-heart" }
