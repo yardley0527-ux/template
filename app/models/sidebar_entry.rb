@@ -16,13 +16,8 @@ class SidebarEntry
           children: [
             { href: customers_path,       title: "客人資料庫總覽", icon: "fa-address-book" },
             { href: expiring_members_path, title: "即將降級會員",   icon: "fa-bell" },
-            { href: stats_customers_path,  title: "會員卡別統計",   icon: "fa-chart-bar" }
-          ]
-        },
-        {
-          group_title: "黑卡管理",
-          children: [
-            { href: black_card_active_path, title: "今年消費黑卡名單", icon: "fa-crown" }
+            { href: stats_customers_path,  title: "會員卡別統計",   icon: "fa-chart-bar" },
+            { href: inactive_members_path, title: "近期未消費名單", icon: "fa-user-clock" }
           ]
         },
         {

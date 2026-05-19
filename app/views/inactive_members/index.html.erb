@@ -1,11 +1,11 @@
-<%# app/views/black_card_active/index.html.erb %>
-<% content_for :page_title, "黑卡活躍名單" %>
+<%# app/views/inactive_members/index.html.erb %>
+<% content_for :page_title, "近期未消費名單" %>
 
 <div class="subheader">
   <h1 class="subheader-title">
-    <i class="subheader-icon fal fa-credit-card"></i>
-    黑卡活躍名單
-    <small><%= @year %> 年有消費的黑卡會員，共 <strong><%= number_with_delimiter(@total) %></strong> 人</small>
+    <i class="subheader-icon fal fa-user-clock"></i>
+    近期未消費名單
+    <small>依卡別列出超過 <strong><%= @days %></strong> 天未消費的會員</small>
   </h1>
 </div>
 
@@ -15,18 +15,40 @@
       <div class="panel-container show">
         <div class="panel-content">
 
+          <%# 卡別統計卡片 %>
+          <div class="im-level-grid mb-4">
+            <% @tier_counts.each do |level, count| %>
+              <a href="<%= inactive_members_path(level: level, days: @days) %>"
+                 class="im-level-card <%= @selected_level == level ? 'is-active' : '' %>">
+                <span class="im-level-badge im-level-<%= level.delete('卡') %>"><%= level %></span>
+                <div class="im-level-count"><%= number_with_delimiter(count) %></div>
+                <div class="im-level-label">超過 <%= @days %> 天未消費</div>
+              </a>
+            <% end %>
+          </div>
+
           <%# 篩選列 %>
           <div class="fp-filter-bar mb-3">
-            <%= form_with url: black_card_active_path, method: :get, local: true do %>
+            <%= form_with url: inactive_members_path, method: :get, local: true do %>
               <div class="fp-filter-row">
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">卡別</label>
+                  <%= select_tag :level,
+                      options_for_select([["黑卡", "黑卡"], ["金卡", "金卡"], ["銀卡", "銀卡"]], @selected_level),
+                      class: "fp-select" %>
+                </div>
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">未消費天數</label>
+                  <%= select_tag :days,
+                      options_for_select([[">30 天", 30], [">60 天", 60], [">90 天", 90], [">180 天", 180]], @days),
+                      class: "fp-select" %>
+                </div>
                 <div class="fp-filter-group">
                   <label class="fp-filter-label">排序</label>
                   <%= select_tag :sort,
                       options_for_select([
-                        ["今年消費金額↓", "amount_desc"],
-                        ["今年消費金額↑", "amount_asc"],
-                        ["今年消費次數↓", "count_desc"],
-                        ["最後消費↓（最近）", "last_desc"],
+                        ["最久未消費優先", "days_desc"],
+                        ["最近消費優先",   "days_asc"],
                         ["會籍到期↑（最快）", "expiry_asc"],
                         ["會籍到期↓（最晚）", "expiry_desc"],
                       ], @sort),
@@ -34,12 +56,12 @@
                 </div>
                 <div class="fp-filter-actions">
                   <%= button_tag "查詢", type: "submit", class: "fp-btn-primary" %>
-                  <%= link_to "清除", black_card_active_path, class: "fp-btn-secondary" %>
+                  <%= link_to "清除", inactive_members_path, class: "fp-btn-secondary" %>
                 </div>
               </div>
             <% end %>
             <div class="fp-filter-meta mt-2">
-              共 <strong><%= number_with_delimiter(@total) %></strong> 位黑卡會員在 <%= @year %> 年有消費
+              <%= @selected_level %> 超過 <%= @days %> 天未消費　共 <strong><%= number_with_delimiter(@total) %></strong> 人
               第 <%= @page %> / <%= @total_pages %> 頁
             </div>
           </div>
@@ -50,16 +72,18 @@
               <thead>
                 <tr>
                   <th>姓名</th>
+                  <th>卡別</th>
                   <th>手機</th>
                   <th>會籍到期</th>
-                  <th>今年消費次數</th>
-                  <th>今年消費金額</th>
-                  <th>今年最後消費</th>
+                  <th>總消費次數</th>
+                  <th>最後消費日</th>
+                  <th>距今天數</th>
                   <th>IG</th>
                 </tr>
               </thead>
               <tbody>
                 <% @customers.each do |c| %>
+                  <% days_since = c.days_since_last&.to_f&.round(0)&.to_i %>
                   <tr>
                     <td>
                       <%= link_to (c.full_name.presence || "（無名）"), customer_path(c.id), class: "fp-customer-link" %>
@@ -67,21 +91,33 @@
                         <div class="fp-email"><%= c.email %></div>
                       <% end %>
                     </td>
+                    <td>
+                      <span class="fp-level fp-level-<%= c.membership_level&.delete('卡') %>">
+                        <%= c.membership_level %>
+                      </span>
+                    </td>
                     <td class="fp-nowrap"><%= c.mobile_phone.presence || "—" %></td>
                     <td>
                       <% if c.membership_expiry_date.present? %>
                         <% days_left = (c.membership_expiry_date - Date.current).to_i %>
-                        <span class="<%= expiry_badge_class(days_left) %>">
+                        <span class="<%= im_expiry_class(days_left) %>">
                           <%= c.membership_expiry_date.strftime("%Y/%m/%d") %>
-                          <% if days_left <= 30 %>（<%= days_left %> 天後）<% end %>
                         </span>
                       <% else %>
                         <span class="fp-muted">—</span>
                       <% end %>
                     </td>
-                    <td class="fp-count"><%= c.year_order_count %> 次</td>
-                    <td class="fp-amount">NT$ <%= number_with_delimiter(c.year_total_amount.to_f.round(0).to_i) %></td>
-                    <td class="fp-date"><%= c.year_last_order_date&.strftime("%Y/%m/%d") || "—" %></td>
+                    <td class="fp-count"><%= c.purchase_count || 0 %> 次</td>
+                    <td class="fp-date"><%= c.last_order_date&.strftime("%Y/%m/%d") || "從未消費" %></td>
+                    <td>
+                      <% if days_since %>
+                        <span class="<%= days_since > 180 ? 'im-badge-danger' : days_since > 90 ? 'im-badge-warn' : 'im-badge-ok' %>">
+                          <%= days_since %> 天前
+                        </span>
+                      <% else %>
+                        <span class="im-badge-danger">從未消費</span>
+                      <% end %>
+                    </td>
                     <td>
                       <% if c.instagram_account.present? %>
                         <a href="https://instagram.com/<%= c.instagram_account.delete_prefix("@") %>"
@@ -96,7 +132,7 @@
                 <% end %>
                 <% if @customers.blank? %>
                   <tr>
-                    <td colspan="7" class="fp-empty">查無符合條件的客人</td>
+                    <td colspan="8" class="fp-empty">查無符合條件的客人</td>
                   </tr>
                 <% end %>
               </tbody>
@@ -109,6 +145,7 @@
               <div class="fp-empty-hint">查無符合條件的客人</div>
             <% else %>
               <% @customers.each do |c| %>
+                <% days_since = c.days_since_last&.to_f&.round(0)&.to_i %>
                 <div class="fp-cust-card">
                   <div class="fp-cust-card-top">
                     <div>
@@ -117,27 +154,37 @@
                         <div class="fp-email"><%= c.email %></div>
                       <% end %>
                     </div>
-                    <span class="bc-badge">黑卡</span>
+                    <span class="fp-level fp-level-<%= c.membership_level&.delete('卡') %>">
+                      <%= c.membership_level %>
+                    </span>
                   </div>
                   <div class="fp-cust-card-grid">
                     <div class="fp-cust-meta-item">
-                      <span class="fp-cust-meta-label">今年消費次數</span>
-                      <span class="fp-cust-meta-value"><%= c.year_order_count %> 次</span>
+                      <span class="fp-cust-meta-label">最後消費日</span>
+                      <span class="fp-cust-meta-value"><%= c.last_order_date&.strftime("%Y/%m/%d") || "從未消費" %></span>
                     </div>
                     <div class="fp-cust-meta-item">
-                      <span class="fp-cust-meta-label">今年消費金額</span>
-                      <span class="fp-cust-meta-value fp-highlight">NT$ <%= number_with_delimiter(c.year_total_amount.to_f.round(0).to_i) %></span>
+                      <span class="fp-cust-meta-label">距今天數</span>
+                      <span class="fp-cust-meta-value">
+                        <% if days_since %>
+                          <span class="<%= days_since > 180 ? 'im-badge-danger' : days_since > 90 ? 'im-badge-warn' : 'im-badge-ok' %>">
+                            <%= days_since %> 天前
+                          </span>
+                        <% else %>
+                          <span class="im-badge-danger">從未消費</span>
+                        <% end %>
+                      </span>
                     </div>
                     <div class="fp-cust-meta-item">
-                      <span class="fp-cust-meta-label">最後消費</span>
-                      <span class="fp-cust-meta-value"><%= c.year_last_order_date&.strftime("%Y/%m/%d") || "—" %></span>
+                      <span class="fp-cust-meta-label">總消費次數</span>
+                      <span class="fp-cust-meta-value"><%= c.purchase_count || 0 %> 次</span>
                     </div>
                     <div class="fp-cust-meta-item">
                       <span class="fp-cust-meta-label">會籍到期</span>
                       <span class="fp-cust-meta-value">
                         <% if c.membership_expiry_date.present? %>
                           <% days_left = (c.membership_expiry_date - Date.current).to_i %>
-                          <span class="<%= expiry_badge_class(days_left) %>">
+                          <span class="<%= im_expiry_class(days_left) %>">
                             <%= c.membership_expiry_date.strftime("%Y/%m/%d") %>
                           </span>
                         <% else %>
@@ -171,11 +218,11 @@
               <% prev_page = [@page - 1, 1].max %>
               <% next_page = [@page + 1, @total_pages].min %>
               <%= link_to "← 上一頁",
-                    black_card_active_path(request.query_parameters.merge(page: prev_page)),
+                    inactive_members_path(request.query_parameters.merge(page: prev_page)),
                     class: "fp-page-btn #{'is-disabled' if @page <= 1}" %>
               <span class="fp-page-info">第 <%= @page %> 頁，共 <%= @total_pages %> 頁</span>
               <%= link_to "下一頁 →",
-                    black_card_active_path(request.query_parameters.merge(page: next_page)),
+                    inactive_members_path(request.query_parameters.merge(page: next_page)),
                     class: "fp-page-btn #{'is-disabled' if @page >= @total_pages}" %>
             </div>
           <% end %>
@@ -189,11 +236,25 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; }
 
-.bc-badge { background: #1f2937; color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+.im-level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.im-level-card { background: #fff; border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 16px 20px; text-decoration: none; color: inherit; transition: border-color 0.15s, box-shadow 0.15s; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.im-level-card:hover { border-color: #6b7280; box-shadow: 0 0 0 3px rgba(107,114,128,.1); }
+.im-level-card.is-active { border-color: #374151; background: #f9fafb; box-shadow: 0 0 0 3px rgba(55,65,81,.08); }
+.im-level-count { font-size: 28px; font-weight: 800; color: #111827; line-height: 1; }
+.im-level-label { font-size: 11px; color: #9ca3af; }
 
-.bc-expiry-ok   { background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
-.bc-expiry-warn { background: #fff7ed; color: #c2410c; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
-.bc-expiry-gone { background: #fef2f2; color: #991b1b; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.im-level-badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+.im-level-黑 { background: #1f2937; color: #fff; }
+.im-level-金 { background: #d97706; color: #fff; }
+.im-level-銀 { background: #9ca3af; color: #fff; }
+
+.im-badge-ok     { background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.im-badge-warn   { background: #fff7ed; color: #c2410c; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.im-badge-danger { background: #fef2f2; color: #991b1b; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+
+.im-expiry-ok   { background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.im-expiry-warn { background: #fff7ed; color: #c2410c; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.im-expiry-gone { background: #fef2f2; color: #991b1b; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
 
 .fp-filter-bar { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
 .fp-filter-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
@@ -201,27 +262,33 @@
 .fp-filter-label { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
 .fp-select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: #374151; background: #fff; }
 .fp-filter-actions { display: flex; gap: 8px; }
-.fp-btn-primary { padding: 7px 18px; background: #1f2937; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
-.fp-btn-primary:hover { background: #111827; }
+.fp-btn-primary { padding: 7px 18px; background: #374151; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.fp-btn-primary:hover { background: #1f2937; }
 .fp-btn-secondary { padding: 7px 14px; background: transparent; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
 .fp-filter-meta { font-size: 13px; color: #6b7280; line-height: 1.6; }
 
+.fp-level { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.fp-level-黑 { background: #1f2937; color: #fff; }
+.fp-level-金 { background: #d97706; color: #fff; }
+.fp-level-銀 { background: #9ca3af; color: #fff; }
+.fp-level-白 { background: #f3f4f6; color: #374151; }
+
 .fp-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; }
 .fp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.fp-table thead th { background: #1f2937; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.fp-table thead th { background: #374151; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
 .fp-table tbody td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
 .fp-table tbody tr:last-child td { border-bottom: none; }
 .fp-table tbody tr:hover td { background: #f9fafb; }
 .fp-empty { text-align: center; color: #9ca3af; padding: 40px; }
 
 .fp-nowrap { white-space: nowrap; }
-.fp-date, .fp-amount, .fp-count { white-space: nowrap; color: #374151; }
+.fp-date, .fp-count { white-space: nowrap; color: #374151; }
 .fp-muted { color: #9ca3af; }
 .fp-customer-link { font-weight: 600; color: #374151; text-decoration: none; }
 .fp-customer-link:hover { color: #1f2937; }
 .fp-email { font-size: 11px; color: #9ca3af; margin-top: 2px; }
 .fp-ig-link { color: #6b7280; font-size: 12px; text-decoration: none; }
-.fp-ig-link:hover { color: #1f2937; }
+.fp-ig-link:hover { color: #374151; }
 
 .fp-card-list { display: flex; flex-direction: column; gap: 12px; }
 .fp-cust-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
@@ -232,7 +299,6 @@
 .fp-cust-meta-item { display: flex; flex-direction: column; gap: 2px; }
 .fp-cust-meta-label { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
 .fp-cust-meta-value { font-size: 13px; font-weight: 600; color: #374151; }
-.fp-cust-meta-value.fp-highlight { color: #1f2937; }
 .fp-cust-card-footer { border-top: 1px solid #f3f4f6; padding-top: 10px; margin-top: 4px; }
 
 .fp-desktop-only { display: block; }
@@ -247,6 +313,9 @@
 .fp-empty-hint { text-align: center; color: #9ca3af; padding: 60px 20px; font-size: 14px; background: #fafafa; border: 1px dashed #e5e7eb; border-radius: 10px; }
 
 @media (max-width: 768px) {
+  .im-level-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .im-level-card { padding: 12px; }
+  .im-level-count { font-size: 22px; }
   .fp-filter-bar { padding: 14px; }
   .fp-filter-row { flex-direction: column; gap: 10px; }
   .fp-filter-group, .fp-select { width: 100%; }
