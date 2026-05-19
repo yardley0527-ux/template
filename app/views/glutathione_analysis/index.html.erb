@@ -1,9 +1,12 @@
+<%# app/views/glutathione_analysis/index.html.erb %>
 <% content_for :page_title, "穀胱甘肽直播分析" %>
+
+<% level_keys = GlutathioneAnalysisController::LEVEL_KEYS %>
 
 <div class="row g-3 mb-4">
   <div class="col-12">
     <h4 class="fw-bold mb-0">穀胱甘肽直播分析 — 2026/1/23</h4>
-    <p class="text-muted small mb-0">追蹤 1/23 購買情況，以及曾買過穀胱甘肽的金卡以上客人回流狀況</p>
+    <p class="text-muted small mb-0">追蹤 1/23 購買情況，以及曾買過穀胱甘肽的各卡別客人回流狀況</p>
   </div>
 </div>
 
@@ -41,9 +44,9 @@
   </div>
 </div>
 
-<%# 黑卡/金卡出席率 %>
+<%# 各卡別出席率 %>
 <div class="card border-0 shadow-sm mb-3">
-  <div class="card-header text-white" style="background-color: #4a4a4a;">黑卡 / 金卡 出席狀況</div>
+  <div class="card-header text-white" style="background-color: #4a4a4a;">各卡別出席狀況</div>
   <div class="card-body p-0 table-responsive">
     <table class="table align-middle mb-0 text-center" style="font-size: 0.9rem;">
       <thead class="table-light">
@@ -55,18 +58,14 @@
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td class="fw-bold text-start ps-3">黑卡</td>
-          <td><%= @black_card_total %></td>
-          <td><%= @black_jan23 %></td>
-          <td><%= @black_jan23_rate %>%</td>
-        </tr>
-        <tr>
-          <td class="fw-bold text-start ps-3">金卡</td>
-          <td><%= @gold_card_total %></td>
-          <td><%= @gold_jan23 %></td>
-          <td><%= @gold_jan23_rate %>%</td>
-        </tr>
+        <% @level_stats.each do |stat| %>
+          <tr>
+            <td class="fw-bold text-start ps-3"><%= stat[:level] %></td>
+            <td><%= stat[:total] %></td>
+            <td><%= stat[:attended] %></td>
+            <td><%= stat[:rate] %>%</td>
+          </tr>
+        <% end %>
       </tbody>
     </table>
   </div>
@@ -84,14 +83,14 @@
 </div>
 
 <%# ══════════════════════════════════════════════════ %>
-<%# 曾買、1/23 未出現（金卡以上）                     %>
+<%# 曾買、1/23 未出現                                  %>
 <%# ══════════════════════════════════════════════════ %>
 
 <% if @missing_customers.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-danger ps-3">
       <h5 class="fw-bold mb-0 text-danger">🚨 曾買穀胱甘肽、1/23 未回購</h5>
-      <p class="text-muted small mb-0">黑卡 / 金卡｜逾期越多越優先，建議盡快聯繫</p>
+      <p class="text-muted small mb-0">逾期越多越優先，建議盡快聯繫</p>
     </div>
   </div>
 
@@ -102,12 +101,16 @@
         <span class="fw-bold">1/23 未回購名單</span>
         <span class="ms-2 small opacity-75">依卡級 → 逾期天數排列</span>
       </div>
-      <span class="badge bg-white text-dark"><%= @missing_customers.size %> 人</span>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-white text-dark"><%= @missing_customers.size %> 人</span>
+        <%= link_to "⬇ 匯出 CSV", glutathione_export_missing_path, class: "btn btn-sm btn-light fw-semibold" %>
+      </div>
     </div>
 
     <div class="px-3 pt-2 border-bottom">
       <ul class="nav nav-tabs" id="tabs-missing">
-        <% [["黑卡", "black"], ["金卡", "gold"]].each do |level, key| %>
+        <% GlutathioneAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
+          <% key = level_keys[level] %>
           <% next if @missing_customers.none? { |r| r[:customer].membership_level == level } %>
           <li class="nav-item">
             <button class="nav-link"
@@ -125,7 +128,8 @@
     </div>
 
     <div class="card-body p-0">
-      <% [["黑卡", "black"], ["金卡", "gold"]].each do |level, key| %>
+      <% GlutathioneAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
+        <% key  = level_keys[level] %>
         <% rows = @missing_customers.select { |r| r[:customer].membership_level == level } %>
         <% next if rows.empty? %>
         <div class="invite-pane" id="pane-missing-<%= key %>" style="display: none;">
@@ -200,13 +204,13 @@
 <% end %>
 
 <%# ══════════════════════════════════════════ %>
-<%# 1/23 購買的黑卡/金卡客人                   %>
+<%# 1/23 購買名單（所有卡別）                  %>
 <%# ══════════════════════════════════════════ %>
 
 <% if @jan23_customers.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-success ps-3">
-      <h5 class="fw-bold mb-0 text-success">⭐ 1/23 購買名單（黑卡 / 金卡）</h5>
+      <h5 class="fw-bold mb-0 text-success">⭐ 1/23 購買名單（所有卡別）</h5>
       <p class="text-muted small mb-0">本場核心客群，適合追蹤後續回購</p>
     </div>
   </div>
@@ -215,12 +219,16 @@
     <div class="card-header text-white d-flex justify-content-between align-items-center"
          style="background-color: #2d5a3d;">
       <span class="fw-bold">本場購買名單</span>
-      <span class="badge bg-white text-dark"><%= @jan23_customers.size %> 人</span>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-white text-dark"><%= @jan23_customers.size %> 人</span>
+        <%= link_to "⬇ 匯出 CSV", glutathione_export_jan23_path, class: "btn btn-sm btn-light fw-semibold" %>
+      </div>
     </div>
 
     <div class="px-3 pt-2 border-bottom">
       <ul class="nav nav-tabs" id="tabs-jan23">
-        <% [["黑卡", "black"], ["金卡", "gold"]].each do |level, key| %>
+        <% GlutathioneAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
+          <% key = level_keys[level] %>
           <% next if @jan23_customers.none? { |r| r[:customer].membership_level == level } %>
           <li class="nav-item">
             <button class="nav-link"
@@ -238,7 +246,8 @@
     </div>
 
     <div class="card-body p-0">
-      <% [["黑卡", "black"], ["金卡", "gold"]].each do |level, key| %>
+      <% GlutathioneAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
+        <% key  = level_keys[level] %>
         <% rows = @jan23_customers.select { |r| r[:customer].membership_level == level } %>
         <% next if rows.empty? %>
         <div class="invite-pane" id="pane-jan23-<%= key %>" style="display: none;">
@@ -300,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function activateTab(btn) {
-  const prefix = btn.dataset.tabPrefix;
+  const prefix   = btn.dataset.tabPrefix;
   const targetId = btn.dataset.tabTarget;
 
   document.querySelectorAll(`[id^="pane-${prefix}-"]`).forEach(function (p) {
@@ -328,14 +337,14 @@ document.addEventListener('click', function (e) {
 function initPaginate(wrapper) {
   wrapper.dataset.paginated = 'true';
   const pageSize = parseInt(wrapper.dataset.pageSize) || 20;
-  const tbody = wrapper.querySelector('tbody');
+  const tbody    = wrapper.querySelector('tbody');
   if (!tbody) return;
 
-  const allRows = Array.from(tbody.querySelectorAll('tr'));
+  const allRows  = Array.from(tbody.querySelectorAll('tr'));
   if (allRows.length <= pageSize) return;
 
   const totalPages = Math.ceil(allRows.length / pageSize);
-  const pane = wrapper.closest('.invite-pane') || wrapper.parentNode;
+  const pane       = wrapper.closest('.invite-pane') || wrapper.parentNode;
 
   function renderPage(page) {
     allRows.forEach(function (row, i) {
@@ -349,10 +358,10 @@ function initPaginate(wrapper) {
     ctrl.className = 'paginate-controls d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light';
     ctrl.style.fontSize = '0.85rem';
 
-    const info = document.createElement('span');
+    const info  = document.createElement('span');
     info.className = 'text-muted';
     const start = (page - 1) * pageSize + 1;
-    const end = Math.min(page * pageSize, allRows.length);
+    const end   = Math.min(page * pageSize, allRows.length);
     info.textContent = `第 ${start}–${end} 筆，共 ${allRows.length} 筆`;
 
     const btns = document.createElement('div');

@@ -1,7 +1,7 @@
 class GlutathioneAnalysisController < ApplicationController
-  GLUTATHIONE = "product_name LIKE '%穀胱甘肽%'"
+  GLUTATHIONE           = "product_name LIKE '%穀胱甘肽%'"
   GLUTATHIONE_BOTTLES_REGEX = /穀胱甘肽(\d+)/
-  DAYS_PER_BOTTLE = 30
+  DAYS_PER_BOTTLE       = 30
 
   MEMBERSHIP_RANK = {
     "黑卡"    => 5,
@@ -11,11 +11,37 @@ class GlutathioneAnalysisController < ApplicationController
     "一般會員" => 1
   }.freeze
 
-  TARGET_MEMBERSHIPS = %w[黑卡 金卡].freeze
+  TARGET_MEMBERSHIPS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
+
+  LEVEL_KEYS = {
+    "黑卡"    => "black",
+    "金卡"    => "gold",
+    "銀卡"    => "silver",
+    "白卡"    => "white",
+    "一般會員" => "normal"
+  }.freeze
 
   EVENT_RANGE = Date.new(2026, 1, 22).beginning_of_day..Date.new(2026, 1, 24).end_of_day
 
-  def index
+  before_action :build_analysis_data, only: [:index, :export_missing, :export_jan23]
+
+  def index; end
+
+  def export_missing
+    send_data "\xEF\xBB\xBF" + missing_csv,
+              filename: "穀胱甘肽_未回購名單_#{Date.today}.csv",
+              type: "text/csv; charset=utf-8"
+  end
+
+  def export_jan23
+    send_data "\xEF\xBB\xBF" + jan23_csv,
+              filename: "穀胱甘肽_1月23日購買名單_#{Date.today}.csv",
+              type: "text/csv; charset=utf-8"
+  end
+
+  private
+
+  def build_analysis_data
     @jan23_emails = glutathione_emails(EVENT_RANGE)
 
     all_prev_emails = ShoplineOrder
@@ -29,18 +55,22 @@ class GlutathioneAnalysisController < ApplicationController
     @prev_returned_count = (all_prev_emails & @jan23_emails).size
     @prev_return_rate    = pct(@prev_returned_count, @prev_count)
 
-    black_emails = ShoplineCustomer.where(membership_level: "黑卡").where.not(email: [nil, ""]).pluck(:email)
-    gold_emails  = ShoplineCustomer.where(membership_level: "金卡").where.not(email: [nil, ""]).pluck(:email)
+    # Per-level attendance stats
+    @level_stats = TARGET_MEMBERSHIPS.filter_map do |level|
+      total = ShoplineCustomer.where(membership_level: level).where.not(shopline_id: nil).count
+      next if total.zero?
+      emails   = ShoplineCustomer.where(membership_level: level).where.not(email: [nil, ""]).pluck(:email)
+      attended = (emails & @jan23_emails).size
+      { level: level, total: total, attended: attended, rate: pct(attended, total) }
+    end
 
-    @black_card_total = ShoplineCustomer.where(membership_level: "黑卡").where.not(shopline_id: nil).count
-    @gold_card_total  = ShoplineCustomer.where(membership_level: "金卡").where.not(shopline_id: nil).count
+    # Backward-compat vars used by insights
+    black_stat        = @level_stats.find { |s| s[:level] == "黑卡" } || {}
+    gold_stat         = @level_stats.find { |s| s[:level] == "金卡" } || {}
+    @black_jan23_rate = black_stat[:rate].to_f
+    @gold_jan23_rate  = gold_stat[:rate].to_f
 
-    @black_jan23      = (black_emails & @jan23_emails).size
-    @gold_jan23       = (gold_emails  & @jan23_emails).size
-    @black_jan23_rate = pct(@black_jan23, @black_card_total)
-    @gold_jan23_rate  = pct(@gold_jan23,  @gold_card_total)
-
-    # ── 曾買、1/23 未出現（黑卡/金卡）─────────────────────────────────────────
+    # ── 曾買、1/23 未出現 ────────────────────────────────────────────────────
     missing_emails = all_prev_emails - @jan23_emails
     today = Date.today
 
@@ -91,7 +121,7 @@ class GlutathioneAnalysisController < ApplicationController
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
      .reject { |r| r[:overdue_days] && r[:overdue_days] <= 0 }
 
-    # ── 1/23 購買的黑卡/金卡客人 ──────────────────────────────────────────────
+    # ── 1/23 購買名單（所有卡別）────────────────────────────────────────────
     jan23_orders_raw = ShoplineOrder
       .where(GLUTATHIONE)
       .where(email: @jan23_emails)
@@ -141,16 +171,46 @@ class GlutathioneAnalysisController < ApplicationController
     end
 
     overdue_count = @missing_customers.count { |r| r[:overdue_days] && r[:overdue_days] > 14 }
-    @insights << { type: :danger, text: "有 #{overdue_count} 位金卡以上客人逾期超過 14 天未回購，建議立即聯繫。" } if overdue_count > 0
+    @insights << { type: :danger, text: "有 #{overdue_count} 位客人逾期超過 14 天未回購，建議立即聯繫。" } if overdue_count > 0
 
     black_missing = @missing_customers.count { |r| r[:customer].membership_level == "黑卡" }
     @insights << { type: :danger, text: "#{black_missing} 位黑卡客人曾購買穀胱甘肽但 1/23 未出現，流失風險最高，請優先追蹤。" } if black_missing > 0
 
-    @insights << { type: :success, text: "#{@jan23_customers.size} 位黑卡/金卡客人在 1/23 購買穀胱甘肽，是本場核心客群。" } if @jan23_customers.any?
-    @insights << { type: :info,    text: "本場穀胱甘肽直播共吸引 #{@jan23_emails.size} 位不重複買家。" }
+    if @jan23_customers.any?
+      black_count = @jan23_customers.count { |r| r[:customer].membership_level == "黑卡" }
+      gold_count  = @jan23_customers.count { |r| r[:customer].membership_level == "金卡" }
+      @insights << { type: :success, text: "#{@jan23_customers.size} 位會員在 1/23 購買穀胱甘肽（黑卡 #{black_count} 人、金卡 #{gold_count} 人）。" }
+    end
+
+    @insights << { type: :info, text: "本場穀胱甘肽直播共吸引 #{@jan23_emails.size} 位不重複買家。" }
   end
 
-  private
+  def missing_csv
+    require "csv"
+    CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["姓名", "卡別", "電話", "上次購買穀胱甘肽", "購買瓶數", "預期回購日", "逾期天數", "歷史次數", "歷史消費(NT$)", "IG"]
+      @missing_customers.each do |r|
+        c             = r[:customer]
+        expected_date = r[:last_date] ? (r[:last_date] + r[:expected_days]).strftime("%Y/%m/%d") : ""
+        overdue       = r[:overdue_days] ? (r[:overdue_days] > 0 ? "+#{r[:overdue_days]}天" : "未到期") : ""
+        csv << [c.full_name, c.membership_level, c.mobile_phone,
+                r[:last_date]&.strftime("%Y/%m/%d"), r[:bottles], expected_date,
+                overdue, r[:history_count], r[:history_amount].to_i, c.instagram_account]
+      end
+    end
+  end
+
+  def jan23_csv
+    require "csv"
+    CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["姓名", "卡別", "電話", "購買品項", "瓶數", "歷史次數", "歷史消費(NT$)", "IG"]
+      @jan23_customers.each do |r|
+        c = r[:customer]
+        csv << [c.full_name, c.membership_level, c.mobile_phone,
+                r[:last_product], r[:bottles], r[:history_count], r[:history_amount].to_i, c.instagram_account]
+      end
+    end
+  end
 
   def glutathione_emails(range)
     ShoplineOrder
