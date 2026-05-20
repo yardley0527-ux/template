@@ -12,6 +12,12 @@ class SidebarEntry
     def all
       [
         {
+          group_title: "網紅管理",
+          children: [
+            { href: ig_dashboard_path, title: "IG 帳號追蹤", icon: "fa-instagram" },
+          ]
+        },
+        {
           group_title: "系統管理",
           children: [
             { href: customers_path,       title: "客人資料庫總覽", icon: "fa-address-book" },
