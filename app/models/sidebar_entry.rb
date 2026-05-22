@@ -49,11 +49,11 @@ class SidebarEntry
         {
           group_title: "直播管理",
           children: [
-            { href: livestream_analysis_path, title: "直播分析 - 品牌之夜場次總覽", icon: "fa-video" },
-            { href: turmeric_analysis_path,   title: "直播分析 - 薑黃品牌之夜",     icon: "fa-video" },
-            { href: metabolism_analysis_path, title: "直播分析 - 代謝錠品牌之夜",   icon: "fa-video" },
-            { href: glutathione_analysis_path,  title: "直播分析 - 穀胱甘肽（1/23）", icon: "fa-video" },
-            { href: livestream_strategy_path,   title: "直播策略報表",               icon: "fa-chart-line" }
+            { href: livestream_strategy_path,   title: "直播策略報表",               icon: "fa-chart-line" },
+            { href: livestream_analysis_path,   title: "直播分析 - 品牌之夜場次總覽", icon: "fa-video" },
+            { href: turmeric_analysis_path,     title: "直播分析 - 薑黃品牌之夜",     icon: "fa-video" },
+            { href: metabolism_analysis_path,   title: "直播分析 - 代謝錠品牌之夜",   icon: "fa-video" },
+            { href: glutathione_analysis_path,  title: "直播分析 - 穀胱甘肽（1/23）", icon: "fa-video" }
           ]
         },
         {
