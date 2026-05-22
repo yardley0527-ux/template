@@ -34,11 +34,12 @@ class LivestreamStrategyController < ApplicationController
     @top_attendance = all.sort_by { |e| -e[:levels].values.sum { |d| d[:n] } }.first(10)
 
     # 1. 最佳直播月份
-    monthly = Hash.new { |h, k| h[k] = { events: 0, rev: 0, rev_cnt: 0, att: 0 } }
+    monthly = Hash.new { |h, k| h[k] = { events: 0, rev: 0, rev_cnt: 0, att: 0, years: Set.new } }
     all.each do |e|
       m = e[:date].month
       monthly[m][:events] += 1
       monthly[m][:att]    += e[:levels].values.sum { |d| d[:n] }
+      monthly[m][:years]  << e[:date].year
       if e[:revenue] > 0
         monthly[m][:rev]     += e[:revenue]
         monthly[m][:rev_cnt] += 1
@@ -51,7 +52,8 @@ class LivestreamStrategyController < ApplicationController
         month:   m,
         events:  d[:events],
         avg_rev: d[:rev_cnt] > 0 ? (d[:rev].to_f / d[:rev_cnt]).round(0) : nil,
-        avg_att: (d[:att].to_f / d[:events]).round(1)
+        avg_att: (d[:att].to_f / d[:events]).round(1),
+        years:   d[:years].to_a.sort
       }
     end
 
@@ -69,14 +71,22 @@ class LivestreamStrategyController < ApplicationController
         end
       end
     end
-    @series_stats = series_data.filter_map do |name, d|
+    raw_series = series_data.filter_map do |name, d|
       {
         name:    name,
         events:  d[:events],
         avg_rev: d[:rev_cnt] > 0 ? (d[:rev].to_f / d[:rev_cnt]).round(0) : nil,
         avg_att: (d[:att].to_f / d[:events]).round(1)
       }
-    end.sort_by { |s| -(s[:avg_rev] || 0) }
+    end
+    # 貝氏加權排名：場次少的系列分數拉向全體平均，C = 全部系列平均場次數
+    with_rev = raw_series.select { |s| s[:avg_rev] }
+    global_mean = with_rev.sum { |s| s[:avg_rev] }.to_f / [with_rev.size, 1].max
+    c = raw_series.sum { |s| s[:events] }.to_f / [raw_series.size, 1].max
+    @series_stats = raw_series.map do |s|
+      bayes = s[:avg_rev] ? ((c * global_mean + s[:events] * s[:avg_rev]) / (c + s[:events])).round(0) : 0
+      s.merge(bayes_score: bayes)
+    end.sort_by { |s| -s[:bayes_score] }
 
     # 3. 黑卡出席率趨勢
     @black_total = ShoplineCustomer.where(membership_level: "黑卡").count

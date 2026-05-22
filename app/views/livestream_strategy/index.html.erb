@@ -222,6 +222,7 @@
               <thead>
                 <tr>
                   <th>月份</th>
+                  <th class="text-center">年份</th>
                   <th class="text-center">累積場次</th>
                   <th class="text-center">場均出席</th>
                   <th class="text-end">場均業績</th>
@@ -233,6 +234,7 @@
                 <% @monthly_stats.sort_by { |m| -(m[:avg_rev] || 0) }.each do |m| %>
                   <tr>
                     <td class="fw-semibold"><%= m[:month] %> 月</td>
+                    <td class="text-center text-muted small"><%= m[:years].map { |y| y.to_s[2..] }.join("、") %></td>
                     <td class="text-center"><%= m[:events] %> 場</td>
                     <td class="text-center">
                       <%= m[:avg_att] %> 人
@@ -261,7 +263,7 @@
 <div class="row mb-4">
   <div class="col-12">
     <div class="panel">
-      <div class="panel-hdr"><h2>產品系列勝率</h2><div class="panel-toolbar"><span class="text-muted small">各主打產品的歷史場均業績與出席，依業績排序</span></div></div>
+      <div class="panel-hdr"><h2>產品系列勝率</h2><div class="panel-toolbar"><span class="text-muted small">依貝氏加權分數排序（場次少的系列分數會往全體平均靠攏）</span></div></div>
       <div class="panel-container show">
         <div class="panel-content p-0">
           <div class="ls-table-wrap">
@@ -273,6 +275,7 @@
                   <th class="text-center">出場次數</th>
                   <th class="text-center">場均出席</th>
                   <th class="text-end">場均業績</th>
+                  <th class="text-end">加權分數</th>
                 </tr>
               </thead>
               <tbody>
@@ -285,6 +288,7 @@
                     <td class="text-end">
                       <% if s[:avg_rev] %>NT$<%= number_with_delimiter(s[:avg_rev].to_i) %><% else %><span class="ls-muted">—</span><% end %>
                     </td>
+                    <td class="text-end text-muted small">NT$<%= number_with_delimiter(s[:bayes_score]) %></td>
                   </tr>
                 <% end %>
               </tbody>
