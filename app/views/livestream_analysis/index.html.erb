@@ -239,7 +239,7 @@
 <% if @missing_customers.any? %>
 <div class="la-accordion mb-4">
   <div class="la-accordion-header" onclick="toggleSection('missing-section')">
-    <span>⚠️ 近期曾出席但 <%= @selected[:year] %>/<%= @selected[:label] %> 未出現（<%= @missing_customers.size %> 人）</span>
+    <span>本場缺席的老面孔 <span class="la-count-badge"><%= @missing_customers.size %> 人</span> <span class="la-hint">之前有來、這場沒出現 → 建議主動聯繫</span></span>
     <span class="la-toggle-icon" id="missing-section-icon">▼</span>
   </div>
   <div id="missing-section" class="la-accordion-body" style="display:none;">
@@ -297,7 +297,7 @@
   <% next if customers.empty? %>
   <div class="la-accordion mb-4">
     <div class="la-accordion-header" onclick="toggleSection('<%= card_id %>')">
-      <span><%= title %>（<%= customers.size %> 人）</span>
+      <span><%= title %> <span class="la-count-badge"><%= customers.size %> 人</span></span>
       <span class="la-toggle-icon" id="<%= card_id %>-icon">▼</span>
     </div>
     <div id="<%= card_id %>" class="la-accordion-body" style="display:none;">
@@ -350,8 +350,8 @@
   </div>
 <% end %>
 
-<% loyal_block.call(@loyal_3_customers, "loyal3", "⭐⭐⭐ 最近三場全勤") %>
-<% loyal_block.call(@loyal_2_customers, "loyal2", "⭐⭐ 近三場出席兩場") %>
+<% loyal_block.call(@loyal_3_customers, "loyal3", "死忠粉絲 · 最近三場都來") %>
+<% loyal_block.call(@loyal_2_customers, "loyal2", "潛力粉絲 · 最近三場來了兩場") %>
 
 <% end %><%# end if @events_data.empty? %>
 
@@ -372,6 +372,8 @@
 .la-accordion-body { background: #fff; }
 .la-toggle-icon { font-size: 0.75rem; color: #6b7280; transition: transform 0.2s; }
 .la-toggle-icon.open { transform: rotate(180deg); }
+.la-count-badge { display: inline-block; background: #374151; color: #fff; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 99px; margin-left: 6px; vertical-align: middle; }
+.la-hint { font-size: 11px; font-weight: 400; color: #6b7280; margin-left: 8px; }
 </style>
 
 <% content_for :scripts_block do %>
