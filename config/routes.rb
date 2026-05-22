@@ -5,7 +5,8 @@ Rails.application.routes.draw do
   get  '/ig_dashboard',         to: 'ig_dashboard#index',   as: :ig_dashboard
   post '/ig_dashboard/refresh', to: 'ig_dashboard#refresh', as: :ig_dashboard_refresh
   get "/api/birthday_customers", to: "welcome#birthday_customers"
-  get '/livestream_analysis', to: 'livestream_analysis#index'
+  get '/livestream_analysis', to: 'livestream_analysis#index', as: :livestream_analysis
+  get '/turmeric_analysis',   to: 'turmeric_analysis#index',   as: :turmeric_analysis
   get '/metabolism_analysis',        to: 'metabolism_analysis#index',  as: :metabolism_analysis
   get '/metabolism_analysis/export', to: 'metabolism_analysis#export', as: :metabolism_analysis_export
   get '/glutathione_analysis',                to: 'glutathione_analysis#index',          as: :glutathione_analysis
