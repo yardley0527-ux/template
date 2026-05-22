@@ -1,244 +1,218 @@
-class LivestreamAnalysisController < ApplicationController
-  TURMERIC = "product_name LIKE '%薑黃%'"
-  TURMERIC_BOTTLES_REGEX = /薑黃(\d+)/
-  DAYS_PER_BOTTLE = 30
+# frozen_string_literal: true
 
+class LivestreamAnalysisController < ApplicationController
   MEMBERSHIP_RANK = {
-    "黑卡"   => 5,
-    "金卡"   => 4,
-    "銀卡"   => 3,
-    "白卡"   => 2,
+    "黑卡"    => 5,
+    "金卡"    => 4,
+    "銀卡"    => 3,
+    "白卡"    => 2,
     "一般會員" => 1
   }.freeze
 
-  TARGET_MEMBERSHIPS = %w[黑卡 金卡].freeze
+  ALL_LEVELS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
 
-def index
-  jan9  = Date.new(2026, 1, 8).beginning_of_day..Date.new(2026, 1, 10).end_of_day
-  feb25 = Date.new(2026, 2, 24).beginning_of_day..Date.new(2026, 2, 26).end_of_day
-  apr10 = Date.new(2026, 4, 9).beginning_of_day..Date.new(2026, 4, 11).end_of_day
-
-  @jan9_emails  = turmeric_emails(jan9)
-  @feb25_emails = turmeric_emails(feb25)
-  @apr10_emails = turmeric_emails(apr10)
-
-  @jan9_to_feb25_count  = (@jan9_emails & @feb25_emails).size
-  @feb25_to_apr10_count = (@feb25_emails & @apr10_emails).size
-  @all_prev_emails      = (@jan9_emails | @feb25_emails).uniq
-  @prev_to_apr10_count  = (@all_prev_emails & @apr10_emails).size
-
-  @jan9_return_rate  = pct(@jan9_to_feb25_count, @jan9_emails.size)
-  @feb25_return_rate = pct(@feb25_to_apr10_count, @feb25_emails.size)
-  @prev_return_rate  = pct(@prev_to_apr10_count, @all_prev_emails.size)
-
-  # 黑卡金卡有 email 的名單（不限 shopline_id）
-  black_emails = ShoplineCustomer.where(membership_level: "黑卡").where.not(email: [nil, ""]).pluck(:email)
-  gold_emails  = ShoplineCustomer.where(membership_level: "金卡").where.not(email: [nil, ""]).pluck(:email)
-
-  # 總人數維持用 shopline_id 的 83/240
-  @black_card_total = ShoplineCustomer.where(membership_level: "黑卡").where.not(shopline_id: nil).count
-  @gold_card_total  = ShoplineCustomer.where(membership_level: "金卡").where.not(shopline_id: nil).count
-
-  # 各場出席人數
-  @black_jan9  = (black_emails & @jan9_emails).size
-  @black_feb25 = (black_emails & @feb25_emails).size
-  @black_apr10 = (black_emails & @apr10_emails).size
-
-  @gold_jan9   = (gold_emails & @jan9_emails).size
-  @gold_feb25  = (gold_emails & @feb25_emails).size
-  @gold_apr10  = (gold_emails & @apr10_emails).size
-
-  @black_jan9_rate  = pct(@black_jan9,  @black_card_total)
-  @black_feb25_rate = pct(@black_feb25, @black_card_total)
-  @black_apr10_rate = pct(@black_apr10, @black_card_total)
-  @gold_jan9_rate   = pct(@gold_jan9,   @gold_card_total)
-  @gold_feb25_rate  = pct(@gold_feb25,  @gold_card_total)
-  @gold_apr10_rate  = pct(@gold_apr10,  @gold_card_total)
-
-  missing_emails = @all_prev_emails - @apr10_emails
-
-  last_orders_raw = ShoplineOrder
-    .where(TURMERIC)
-    .where(email: missing_emails)
-    .where(order_date: jan9.first..feb25.last)
-    .order(:email, order_date: :desc)
-    .pluck(:email, :product_name, :order_date)
-
-  last_order_by_email = {}
-  last_orders_raw.each do |email, product_name, order_date|
-    last_order_by_email[email] ||= { product_name: product_name, order_date: order_date }
-  end
-
-  history_counts = ShoplineOrder
-    .where(TURMERIC)
-    .where(email: missing_emails)
-    .group(:email)
-    .count
-
-  history_amounts = ShoplineOrder
-    .where(TURMERIC)
-    .where(email: missing_emails)
-    .group(:email)
-    .sum(:total_amount)
-
-  customers = ShoplineCustomer
-    .where(membership_level: TARGET_MEMBERSHIPS)
-    .where(email: missing_emails)
-    .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
-
-  today = Date.today
-
-  @missing_customers = customers.map do |c|
-    last = last_order_by_email[c.email]
-    bottles = extract_bottles(last&.dig(:product_name))
-    last_date = last&.dig(:order_date)&.to_date
-    expected_days = bottles * DAYS_PER_BOTTLE
-    overdue_days = last_date ? (today - last_date).to_i - expected_days : nil
-
-    history_count = history_counts[c.email] || 0
-    history_amount = history_amounts[c.email] || 0
-    membership_rank = MEMBERSHIP_RANK[c.membership_level] || 0
-
-    overdue_score = overdue_days ? [overdue_days, 0].max / 10.0 : 0
-    priority_score = (membership_rank * 3) + overdue_score + (history_count * 0.5)
-
+  # 資料來自 Shopline 品牌之夜匯出報表
+  EVENTS_2026 = [
     {
-      customer: c,
-      last_product: last&.dig(:product_name),
-      last_date: last_date,
-      bottles: bottles,
-      expected_days: expected_days,
-      overdue_days: overdue_days,
-      history_count: history_count,
-      history_amount: history_amount,
-      priority_score: priority_score.round(1)
-    }
-  end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
-  .reject { |r| r[:overdue_days] && r[:overdue_days] <= 0 }
+      date: Date.new(2026,  1,  9), label: "1/9",  note: "代謝+膠原、薑黃",
+      orders: 129, revenue: 1_452_573,
+      levels: { "黑卡" => { n: 30, amt: 400_489 }, "金卡" => { n: 34, amt: 378_144 },
+                "銀卡" => { n: 23, amt: 255_598 }, "白卡" => { n: 27, amt: 309_208 }, "一般會員" => { n: 12, amt:  86_784 } }
+    },
+    {
+      date: Date.new(2026,  1, 23), label: "1/23", note: "穀胱甘肽",
+      orders: 161, revenue: 1_908_734,
+      levels: { "黑卡" => { n: 34, amt: 556_675 }, "金卡" => { n: 36, amt: 436_355 },
+                "銀卡" => { n: 36, amt: 384_426 }, "白卡" => { n: 32, amt: 320_968 }, "一般會員" => { n: 16, amt: 139_988 } }
+    },
+    {
+      date: Date.new(2026,  2,  6), label: "2/6",  note: "益生菌",
+      orders:  67, revenue:   905_036,
+      levels: { "黑卡" => { n: 22, amt: 329_315 }, "金卡" => { n: 18, amt: 246_355 },
+                "銀卡" => { n: 12, amt: 150_859 }, "白卡" => { n: 11, amt: 148_722 }, "一般會員" => { n:  3, amt:  25_885 } }
+    },
+    {
+      date: Date.new(2026,  2, 25), label: "2/25", note: "薑黃、清纖粉、代謝",
+      orders: 173, revenue: 1_391_860,
+      levels: { "黑卡" => { n: 15, amt: 311_869 }, "金卡" => { n: 16, amt: 282_473 },
+                "銀卡" => { n: 20, amt: 259_763 }, "白卡" => { n: 20, amt: 354_786 }, "一般會員" => { n: 10, amt:  96_403 } }
+    },
+    {
+      date: Date.new(2026,  3,  5), label: "3/5",  note: "膠原、益生菌",
+      orders:  86, revenue: 1_034_106,
+      levels: { "黑卡" => { n: 14, amt: 184_053 }, "金卡" => { n: 22, amt: 247_930 },
+                "銀卡" => { n: 24, amt: 300_101 }, "白卡" => { n: 18, amt: 207_252 }, "一般會員" => { n:  6, amt:  60_210 } }
+    },
+    {
+      date: Date.new(2026,  3, 20), label: "3/20", note: "全能、私密粉、益生菌",
+      orders: 208, revenue: 3_480_382,
+      levels: { "黑卡" => { n: 48, amt: 1_393_108 }, "金卡" => { n: 57, amt: 931_457 },
+                "銀卡" => { n: 30, amt:   458_031 }, "白卡" => { n: 26, amt: 302_522 }, "一般會員" => { n: 18, amt:  99_959 } }
+    },
+    {
+      date: Date.new(2026,  3, 27), label: "3/27", note: "魚油、蝦紅素、維DK鈣",
+      orders:  70, revenue:   470_191,
+      levels: { "黑卡" => { n:  8, amt: 112_523 }, "金卡" => { n: 18, amt: 135_000 },
+                "銀卡" => { n:  9, amt:  63_300 }, "白卡" => { n: 15, amt:  70_966 }, "一般會員" => { n: 14, amt:  63_193 } }
+    },
+    {
+      date: Date.new(2026,  4, 10), label: "4/10", note: "薑黃",
+      orders: 103, revenue: 1_505_901,
+      levels: { "黑卡" => { n: 18, amt: 296_147 }, "金卡" => { n: 26, amt: 408_476 },
+                "銀卡" => { n: 20, amt: 331_295 }, "白卡" => { n: 21, amt: 295_933 }, "一般會員" => { n: 15, amt: 116_050 } }
+    },
+    {
+      date: Date.new(2026,  4, 24), label: "4/24", note: "代謝錠、薑黃",
+      orders:  77, revenue:   676_698,
+      levels: { "黑卡" => { n: 11, amt: 144_600 }, "金卡" => { n: 11, amt: 142_827 },
+                "銀卡" => { n: 13, amt: 166_843 }, "白卡" => { n: 18, amt: 166_280 }, "一般會員" => { n: 10, amt:  48_668 } }
+    },
+    {
+      date: Date.new(2026,  5,  8), label: "5/8",  note: "蝦紅素、維DK鈣、薑黃",
+      orders:  70, revenue:   633_562,
+      levels: { "黑卡" => { n: 17, amt: 215_535 }, "金卡" => { n: 21, amt: 138_770 },
+                "銀卡" => { n: 11, amt:  82_124 }, "白卡" => { n: 11, amt: 118_123 }, "一般會員" => { n:  7, amt:  47_680 } }
+    },
+  ].freeze
 
-  loyal_3_emails = @jan9_emails & @feb25_emails & @apr10_emails
+  WINDOW_DAYS = 1  # 活動日 ±1 天視窗
 
-  loyal_2_emails = (
-    (@jan9_emails & @feb25_emails) |
-    (@feb25_emails & @apr10_emails) |
-    (@jan9_emails & @apr10_emails)
-  ).uniq - loyal_3_emails
+  def index
+    today = Date.today
+    past_events = EVENTS_2026.select { |e| e[:date] <= today }
+    return (@events_data = []) if past_events.empty?
 
-  build_loyal = lambda do |emails|
-    return [] if emails.empty?
-
-    apr10_orders = ShoplineOrder
-      .where(TURMERIC)
-      .where(email: emails)
-      .where(order_date: apr10)
-      .order(:email, order_date: :desc)
-      .pluck(:email, :product_name, :order_date)
-
-    apr10_by_email = {}
-    apr10_orders.each do |email, product_name, order_date|
-      apr10_by_email[email] ||= { product_name: product_name, order_date: order_date }
+    # 每場從 DB 撈出席 email（有匯入資料的場次才有值）
+    @events_data = past_events.map do |event|
+      range = event[:date].beginning_of_day..(event[:date] + WINDOW_DAYS).end_of_day
+      db_emails = ShoplineOrder
+        .where(order_date: range)
+        .where.not(email: [nil, ""])
+        .distinct.pluck(:email)
+      event.merge(db_emails: db_emails)
     end
 
-    prev_orders = ShoplineOrder
-      .where(TURMERIC)
-      .where(email: emails)
-      .where(order_date: jan9.first..feb25.last)
-      .order(:email, order_date: :desc)
-      .pluck(:email, :order_date)
+    @latest = @events_data.last
 
-    prev_date_by_email = {}
-    prev_orders.each do |email, order_date|
-      prev_date_by_email[email] ||= order_date
+    # 連場回流率（只計算 DB 兩邊都有資料的相鄰場次）
+    @return_rates = []
+    @events_data.each_cons(2) do |prev, curr|
+      next if prev[:db_emails].empty? || curr[:db_emails].empty?
+      overlap = (prev[:db_emails] & curr[:db_emails]).size
+      @return_rates << {
+        from: prev[:label], to: curr[:label],
+        count: overlap, from_total: prev[:db_emails].size,
+        rate: pct(overlap, prev[:db_emails].size)
+      }
     end
 
-    h_counts  = ShoplineOrder.where(TURMERIC).where(email: emails).group(:email).count
-    h_amounts = ShoplineOrder.where(TURMERIC).where(email: emails).group(:email).sum(:total_amount)
+    # 最近 N 場都有 DB 資料的場次（用於客戶追蹤）
+    db_events = @events_data.select { |e| e[:db_emails].any? }
 
-    ShoplineCustomer
-      .where(email: emails)
-      .where(membership_level: TARGET_MEMBERSHIPS)  # 加這行
-      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
-      .map do |c|
-        apr10_order = apr10_by_email[c.email]
-        bottles = extract_bottles(apr10_order&.dig(:product_name))
+    if db_events.size >= 2
+      lookback      = db_events[-[4, db_events.size].min..-2]
+      prev_emails   = lookback.flat_map { |e| e[:db_emails] }.uniq
+      missing_emails = prev_emails - db_events.last[:db_emails]
+
+      customers_map = ShoplineCustomer
+        .where(email: missing_emails)
+        .index_by(&:email)
+
+      @missing_customers = missing_emails.filter_map do |email|
+        c = customers_map[email]
+        next unless c
+        appeared_in = lookback.select { |e| e[:db_emails].include?(email) }.map { |e| e[:label] }
         {
           customer: c,
-          last_product: apr10_order&.dig(:product_name),
-          last_date: prev_date_by_email[c.email]&.to_date,
-          bottles: bottles,
-          history_count: h_counts[c.email] || 0,
-          history_amount: h_amounts[c.email] || 0
+          appeared_in: appeared_in,
+          appeared_count: appeared_in.size
         }
-      end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:bottles], -r[:history_amount].to_f] }
+      end.sort_by { |r|
+        [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0),
+         -r[:appeared_count],
+         -r[:customer].total_amount.to_f]
+      }
+    else
+      @missing_customers = []
+    end
+
+    # 忠實客：最近 3 場（有 DB 資料）
+    if db_events.size >= 3
+      last3          = db_events.last(3)
+      loyal_3_emails = last3.map { |e| e[:db_emails] }.reduce(:&)
+      loyal_2_emails = last3.combination(2)
+                            .flat_map { |a, b| a[:db_emails] & b[:db_emails] }
+                            .uniq - loyal_3_emails
+
+      @loyal_3_customers = build_loyal_customers(loyal_3_emails, last3)
+      @loyal_2_customers = build_loyal_customers(loyal_2_emails, last3)
+    else
+      @loyal_3_customers = []
+      @loyal_2_customers = []
+    end
+
+    # 各卡別總人數（出席率分母）
+    @level_totals = ALL_LEVELS.index_with do |level|
+      ShoplineCustomer.where(membership_level: level).count
+    end
+
+    build_insights
   end
-
-  @loyal_3_customers = build_loyal.call(loyal_3_emails)
-  @loyal_2_customers = build_loyal.call(loyal_2_emails)
-
-  # 動態分析結論
-  @insights = []
-
-  # 出席率分析
-  if @black_jan9_rate > @gold_jan9_rate
-    @insights << { type: :info, text: "黑卡客人對薑黃直播的黏著度（#{@black_jan9_rate}%）高於金卡（#{@gold_jan9_rate}%），維護黑卡關係是提升業績的關鍵。" }
-  end
-
-  if @feb25_emails.size < @jan9_emails.size * 0.7
-    @insights << { type: :warning, text: "2/25 薑黃購買人數（#{@feb25_emails.size} 人）較 1/9（#{@jan9_emails.size} 人）明顯下滑，需確認是否因多產品場次分散了薑黃買氣。" }
-  end
-
-  if @apr10_emails.size >= @jan9_emails.size * 0.8
-    @insights << { type: :success, text: "4/10 薑黃品牌之夜出席人數（#{@apr10_emails.size} 人）接近 1/9 水準，純薑黃主題直播吸引力較強。" }
-  end
-
-  # 回流率分析
-  if @prev_return_rate < 20
-    @insights << { type: :warning, text: "曾買過薑黃的客人整體回流率為 #{@prev_return_rate}%，低於 20%，建議加強直播前主動提醒機制。" }
-  elsif @prev_return_rate >= 20
-    @insights << { type: :success, text: "曾買過薑黃的客人整體回流率為 #{@prev_return_rate}%，表現良好。" }
-  end
-
-  # 未回流風險
-  overdue_count = @missing_customers.count { |r| r[:overdue_days] && r[:overdue_days] > 14 }
-  if overdue_count > 0
-    @insights << { type: :danger, text: "有 #{overdue_count} 位金卡以上客人逾期超過 14 天未回購，建議立即聯繫，優先從黑卡開始。" }
-  end
-
-  black_missing = @missing_customers.count { |r| r[:customer].membership_level == "黑卡" }
-  if black_missing > 0
-    @insights << { type: :danger, text: "#{black_missing} 位黑卡客人在 1/9 或 2/25 有買薑黃，但 4/10 未出現，流失風險最高，需優先追蹤。" }
-  end
-
-  # 忠實客
-  if @loyal_3_customers.size > 0
-    @insights << { type: :success, text: "#{@loyal_3_customers.size} 位客人三場都有購買薑黃，是最核心的忠實客，適合邀請成為品牌大使或提供 VIP 優惠。" }
-  end
-
-  if @loyal_2_customers.size > 0
-    @insights << { type: :info, text: "#{@loyal_2_customers.size} 位客人任意兩場有購買，具穩定回購習慣，下次直播前 3 天建議主動提醒。" }
-  end
-
-  # 黑卡出席率持續偏低
-  if @black_apr10_rate < 20 && @black_jan9_rate < 20
-    @insights << { type: :warning, text: "黑卡客人連續兩場出席率均低於 20%，建議檢視通知方式或提供黑卡專屬誘因。" }
-  end
-end
 
   private
 
-  def turmeric_emails(range)
-    ShoplineOrder
-      .where(TURMERIC)
-      .where(order_date: range)
-      .where.not(email: [nil, ""])
-      .distinct
-      .pluck(:email)
+  def build_loyal_customers(emails, recent_events)
+    return [] if emails.empty?
+
+    ShoplineCustomer
+      .where(email: emails)
+      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
+      .map do |c|
+        attended = recent_events.select { |e| e[:db_emails].include?(c.email) }.map { |e| e[:label] }
+        { customer: c, attended_labels: attended }
+      end
+      .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
   end
 
-  def extract_bottles(product_name)
-    return 1 if product_name.nil?
-    m = product_name.match(TURMERIC_BOTTLES_REGEX)
-    m ? m[1].to_i : 1
+  def build_insights
+    @insights = []
+    return if @events_data.size < 2
+
+    latest = @events_data.last
+    prev   = @events_data[-2]
+
+    # 營業額趨勢
+    if latest[:revenue] > prev[:revenue]
+      chg = ((latest[:revenue].to_f / prev[:revenue] - 1) * 100).round(0)
+      @insights << { type: :success, text: "#{latest[:label]} 場次營業額較 #{prev[:label]} 成長 #{chg}%（NT$#{ActiveSupport::NumberHelper.number_to_delimited(latest[:revenue])}）。" }
+    else
+      chg = ((1 - latest[:revenue].to_f / prev[:revenue]) * 100).round(0)
+      @insights << { type: :warning, text: "#{latest[:label]} 場次營業額較 #{prev[:label]} 下滑 #{chg}%（NT$#{ActiveSupport::NumberHelper.number_to_delimited(latest[:revenue])}）。" }
+    end
+
+    # 貢獻最高卡別
+    top_level, top_data = latest[:levels].max_by { |_, v| v[:amt] }
+    @insights << { type: :info, text: "#{latest[:label]} 場次 #{top_level} 貢獻最高，#{top_data[:n]} 人，消費 NT$#{ActiveSupport::NumberHelper.number_to_delimited(top_data[:amt])}。" }
+
+    # 連場回流率
+    if @return_rates.any?
+      rr = @return_rates.last
+      if rr[:rate] >= 30
+        @insights << { type: :success, text: "#{rr[:from]} → #{rr[:to]} 連場回流率 #{rr[:rate]}%（#{rr[:count]}/#{rr[:from_total]} 人），黏著度良好。" }
+      else
+        @insights << { type: :warning, text: "#{rr[:from]} → #{rr[:to]} 連場回流率 #{rr[:rate]}%（#{rr[:count]}/#{rr[:from_total]} 人），建議直播前 2 天主動通知。" }
+      end
+    end
+
+    # 未出席
+    if @missing_customers.any?
+      black_n = @missing_customers.count { |r| r[:customer].membership_level == "黑卡" }
+      suffix  = black_n > 0 ? "，其中 #{black_n} 位黑卡請優先聯繫" : ""
+      @insights << { type: :danger, text: "#{@missing_customers.size} 位近期曾出席的客人 #{latest[:label]} 未出現#{suffix}。" }
+    end
+
+    @insights << { type: :success, text: "#{@loyal_3_customers.size} 位客人最近三場全勤，是核心忠實客，適合邀請為品牌大使。" } if @loyal_3_customers.size > 0
+    @insights << { type: :info,    text: "#{@loyal_2_customers.size} 位客人近三場出席兩場，下場直播前建議主動通知。" } if @loyal_2_customers.size > 0
   end
 
   def pct(num, den)
