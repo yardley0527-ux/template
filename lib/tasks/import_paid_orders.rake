@@ -50,5 +50,9 @@ namespace :import do
       sample = (run.respond_to?(:error_messages) ? run.error_messages : []).first(5)
       puts "[task] sample_errors=#{sample.inspect}"
     end
+
+    puts "[task] refreshing purchase summary cache..."
+    CustomerPurchaseSummaryRefreshService.call
+    puts "[task] cache refresh done."
   end
 end

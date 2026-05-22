@@ -20,5 +20,9 @@ namespace :import do
       "upserted=#{run.upserted_rows} skipped=#{run.skipped_rows} errors=#{run.error_rows}"
     )
     puts "[task] sample_errors=#{run.error_messages.first(5).inspect}" if run.error_rows.to_i > 0
+
+    puts "[task] refreshing purchase summary cache..."
+    CustomerPurchaseSummaryRefreshService.call
+    puts "[task] cache refresh done."
   end
 end
