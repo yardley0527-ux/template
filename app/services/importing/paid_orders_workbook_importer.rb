@@ -23,9 +23,10 @@ module Importing
 
     PROGRESS_EVERY = 500
 
-    def initialize(file_path:, source_year:, only_payment_status: nil, verbose: true)
+    def initialize(file_path:, source_year:, source_month: nil, only_payment_status: nil, verbose: true)
       @file_path = file_path
       @source_year = source_year.to_i
+      @source_month = source_month&.to_i
       @only_payment_status = only_payment_status
       @verbose = verbose
     end
@@ -53,7 +54,10 @@ module Importing
 
       book.sheets.each do |sheet_name|
         month = sheet_name.to_i
-        next if month <= 0 || month > 12
+        if month <= 0 || month > 12
+          month = @source_month || infer_month_from_filename
+          next unless month
+        end
 
         log "[import] sheet=#{sheet_name} month=#{month} begin"
 
@@ -127,6 +131,14 @@ module Importing
     end
 
     private
+
+    def infer_month_from_filename
+      File.basename(@file_path, ".*")
+        .scan(/\b(\d{1,2})\b/)
+        .flatten
+        .map(&:to_i)
+        .find { |n| n >= 1 && n <= 12 }
+    end
 
     def extract_row(row, index)
       out = {}

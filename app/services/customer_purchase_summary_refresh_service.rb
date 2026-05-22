@@ -59,16 +59,10 @@ class CustomerPurchaseSummaryRefreshService
           MIN(so.order_date) AS order_date,
           CASE
             WHEN MAX(NULLIF(so.total_amount, 0)) IS NOT NULL
-            AND NULLIF(SUM(COALESCE(so.checkout_amount, 0)), 0) IS NOT NULL
-            AND MAX(NULLIF(so.total_amount, 0)) >= SUM(COALESCE(so.checkout_amount, 0))
-            AND MAX(NULLIF(so.total_amount, 0)) <= SUM(COALESCE(so.checkout_amount, 0)) * 1.5
             THEN MAX(NULLIF(so.total_amount, 0))
 
             WHEN NULLIF(SUM(COALESCE(so.checkout_amount, 0)), 0) IS NOT NULL
             THEN SUM(COALESCE(so.checkout_amount, 0))
-
-            WHEN MAX(NULLIF(so.total_amount, 0)) IS NOT NULL
-            THEN MAX(NULLIF(so.total_amount, 0))
 
             ELSE 0
           END AS order_amount

@@ -6,6 +6,7 @@ class CustomersController < ApplicationController
 
   AGE_GROUP_ORDER = ["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
   ZODIAC_ORDER    = %w[牡羊 金牛 雙子 巨蟹 獅子 處女 天秤 天蠍 射手 摩羯 水瓶 雙魚].freeze
+  SERIES_OPTIONS  = %w[穀胱甘肽 代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 維DK鈣].freeze
 
   def index
     @q                = params[:q].to_s.strip
@@ -418,12 +419,13 @@ class CustomersController < ApplicationController
     series_grouped = Hash.new { |h, k| h[k] = [] }
 
     orders.where.not(product_name: [nil, ""]).each do |order|
-      series, bottles_per_unit = parse_product(order.product_name)
-      series_grouped[series] << {
-        order: order,
-        bottles_per_unit: bottles_per_unit,
-        bottles_total: (order.quantity.to_i * bottles_per_unit)
-      }
+      expand_product(order.product_name).each do |series, bottles_per_unit|
+        series_grouped[series] << {
+          order: order,
+          bottles_per_unit: bottles_per_unit,
+          bottles_total: (order.quantity.to_i * bottles_per_unit)
+        }
+      end
     end
 
     series_grouped.map do |series_name, items|
@@ -480,12 +482,23 @@ class CustomersController < ApplicationController
     end.sort_by { |p| [-p[:total_qty_bottles], -p[:order_count], p[:avg_cycle_days] || Float::INFINITY] }
   end
 
-  def parse_product(name)
-    if name =~ /^(.+?)(\d+)$/
-      [$1.strip, $2.to_i]
-    else
-      [name, 1]
+  def expand_product(name)
+    matches = SERIES_OPTIONS.filter_map do |s|
+      next unless name.include?(s)
+      m = name.match(/#{Regexp.escape(s)}(\d+)/)
+      [s, m ? m[1].to_i : 1]
     end
+    return matches if matches.any?
+    name =~ /^(.+?)(\d+)$/ ? [[$1.strip, $2.to_i]] : [[name, 1]]
+  end
+
+  def parse_product(name)
+    SERIES_OPTIONS.each do |s|
+      next unless name.include?(s)
+      m = name.match(/#{Regexp.escape(s)}(\d+)/)
+      return [s, m ? m[1].to_i : 1]
+    end
+    name =~ /^(.+?)(\d+)$/ ? [$1.strip, $2.to_i] : [name, 1]
   end
 
   def to_number(v)

@@ -25,23 +25,42 @@ class CustomerSeriesLoyaltyRefreshService
   private
 
   def rebuild!
+    series_array_sql = SERIES_OPTIONS
+      .map { |s| ActiveRecord::Base.connection.quote(s) }
+      .join(", ")
+
     sql = <<~SQL
-      WITH order_series AS (
+      WITH raw_matches AS (
         SELECT
           so.email,
           so.order_number,
-          MIN(so.order_date) AS order_date,
-          MAX(COALESCE(so.checkout_amount, so.total_amount, 0)) AS order_amount,
-          #{series_match_case_sql("so.product_name")} AS series
+          so.product_name,
+          so.order_date,
+          COALESCE(so.checkout_amount, so.total_amount, 0) AS row_amount,
+          sa.series,
+          COUNT(*) OVER (
+            PARTITION BY so.email, so.order_number, so.product_name
+          ) AS matched_series_count
         FROM shopline_orders so
+        JOIN (SELECT unnest(ARRAY[#{series_array_sql}]) AS series) sa
+          ON so.product_name LIKE '%' || sa.series || '%'
         WHERE so.email IS NOT NULL
           AND so.email <> ''
           AND so.order_number IS NOT NULL
           AND so.order_number <> ''
           AND so.product_name IS NOT NULL
           AND so.product_name <> ''
-          AND #{series_where_clause}
-        GROUP BY so.email, so.order_number, series
+      ),
+
+      order_series AS (
+        SELECT
+          email,
+          order_number,
+          series,
+          MIN(order_date) AS order_date,
+          SUM(row_amount / matched_series_count::numeric) AS order_amount
+        FROM raw_matches
+        GROUP BY email, order_number, series
       ),
 
       aggregated AS (
@@ -54,7 +73,6 @@ class CustomerSeriesLoyaltyRefreshService
           MAX(order_date)::date                 AS last_date,
           (NOW()::date - MAX(order_date)::date) AS days_since_last
         FROM order_series
-        WHERE series IS NOT NULL
         GROUP BY email, series
       )
 
@@ -72,42 +90,24 @@ class CustomerSeriesLoyaltyRefreshService
         last_date,
         days_since_last,
         CASE
-          WHEN order_count >= #{IRON_FAN_THRESHOLD}  THEN '鐵粉'
-          WHEN order_count >= #{LOYAL_THRESHOLD}     THEN '忠實客'
-          WHEN order_count >= #{REPURCHASE_THRESHOLD} THEN '回購客'
-          ELSE '單次'
+          WHEN order_count >= #{IRON_FAN_THRESHOLD} THEN '鐵粉'
+          WHEN order_count >= #{LOYAL_THRESHOLD}    THEN '忠實客'
+          ELSE '回購客'
         END AS tier,
         NOW(),
         NOW()
       FROM aggregated
       WHERE order_count >= #{REPURCHASE_THRESHOLD}
       ON CONFLICT (email, series) DO UPDATE SET
-        order_count    = EXCLUDED.order_count,
-        total_amount   = EXCLUDED.total_amount,
-        first_date     = EXCLUDED.first_date,
-        last_date      = EXCLUDED.last_date,
+        order_count     = EXCLUDED.order_count,
+        total_amount    = EXCLUDED.total_amount,
+        first_date      = EXCLUDED.first_date,
+        last_date       = EXCLUDED.last_date,
         days_since_last = EXCLUDED.days_since_last,
-        tier           = EXCLUDED.tier,
-        updated_at     = NOW()
+        tier            = EXCLUDED.tier,
+        updated_at      = NOW()
     SQL
 
     ActiveRecord::Base.connection.execute(sql)
-  end
-
-  def series_match_case_sql(column)
-    cases = SERIES_OPTIONS.map do |s|
-      pattern = ActiveRecord::Base.connection.quote("%#{s}%")
-      result  = ActiveRecord::Base.connection.quote(s)
-      "WHEN #{column} LIKE #{pattern} THEN #{result}"
-    end.join("\n")
-
-    "CASE #{cases} ELSE NULL END"
-  end
-
-  def series_where_clause
-    conditions = SERIES_OPTIONS.map do |s|
-      "so.product_name LIKE #{ActiveRecord::Base.connection.quote("%#{s}%")}"
-    end.join(" OR ")
-    "(#{conditions})"
   end
 end
