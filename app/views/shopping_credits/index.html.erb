@@ -1,0 +1,180 @@
+<%# app/views/shopping_credits/index.html.erb %>
+<% content_for :page_title, "購物金分析" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-coins"></i>
+    購物金分析
+    <small>依卡別與到期年月統計現有購物金</small>
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-container show">
+        <div class="panel-content">
+
+          <%# 卡別合計卡片 %>
+          <div class="sc-level-grid mb-4">
+            <% [["黑卡", "黑"], ["金卡", "金"], ["銀卡", "銀"], ["白卡", "白"]].each do |level, badge| %>
+              <div class="sc-level-card">
+                <span class="sc-level-badge sc-level-<%= badge %>"><%= level %></span>
+                <div class="sc-level-amount">$ <%= number_with_delimiter(@level_totals[level].to_i) %></div>
+                <div class="sc-level-label">現有購物金合計</div>
+              </div>
+            <% end %>
+            <div class="sc-level-card sc-level-card--total">
+              <span class="sc-level-badge sc-level-total">全部</span>
+              <div class="sc-level-amount">$ <%= number_with_delimiter(@grand_total.to_i) %></div>
+              <div class="sc-level-label">全卡別合計</div>
+            </div>
+          </div>
+
+          <%# 到期月份明細表 %>
+          <div class="sc-table-wrap">
+            <table class="sc-table">
+              <thead>
+                <tr>
+                  <th>到期年月</th>
+                  <th>黑卡</th>
+                  <th>金卡</th>
+                  <th>銀卡</th>
+                  <th>白卡</th>
+                  <th>小計</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if @rows.blank? %>
+                  <tr>
+                    <td colspan="6" class="sc-empty">查無資料</td>
+                  </tr>
+                <% else %>
+                  <% @rows.each do |row| %>
+                    <tr>
+                      <td class="sc-month"><%= row[:month].strftime("%Y 年 %m 月") %></td>
+                      <% %w[黑卡 金卡 銀卡 白卡].each do |lv| %>
+                        <td class="sc-amount">
+                          <% v = row[:credits][lv].to_i %>
+                          <% if v > 0 %>
+                            $ <%= number_with_delimiter(v) %>
+                          <% else %>
+                            <span class="sc-zero">—</span>
+                          <% end %>
+                        </td>
+                      <% end %>
+                      <td class="sc-amount sc-subtotal">$ <%= number_with_delimiter(row[:total].to_i) %></td>
+                    </tr>
+                  <% end %>
+                  <tr class="sc-footer-row">
+                    <td class="sc-month">合計</td>
+                    <% %w[黑卡 金卡 銀卡 白卡].each do |lv| %>
+                      <td class="sc-amount sc-subtotal">$ <%= number_with_delimiter(@level_totals[lv].to_i) %></td>
+                    <% end %>
+                    <td class="sc-amount sc-grand-total">$ <%= number_with_delimiter(@grand_total.to_i) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+
+.sc-level-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+}
+.sc-level-card {
+  background: #fff;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sc-level-card--total {
+  border-color: #374151;
+  background: #f9fafb;
+}
+.sc-level-amount {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.2;
+}
+.sc-level-label {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.sc-level-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  align-self: flex-start;
+}
+.sc-level-黑   { background: #1f2937; color: #fff; }
+.sc-level-金   { background: #d97706; color: #fff; }
+.sc-level-銀   { background: #9ca3af; color: #fff; }
+.sc-level-白   { background: #f3f4f6; color: #374151; }
+.sc-level-total { background: #374151; color: #fff; }
+
+.sc-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+}
+.sc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.sc-table thead th {
+  background: #374151;
+  color: #fff;
+  padding: 10px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.sc-table tbody td {
+  padding: 10px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+.sc-table tbody tr:last-child td { border-bottom: none; }
+.sc-table tbody tr:hover td { background: #f9fafb; }
+
+.sc-month    { font-weight: 600; color: #374151; white-space: nowrap; }
+.sc-amount   { text-align: right; white-space: nowrap; color: #374151; }
+.sc-subtotal { font-weight: 700; }
+.sc-grand-total { font-weight: 800; color: #111827; }
+.sc-zero     { color: #d1d5db; }
+.sc-empty    { text-align: center; color: #9ca3af; padding: 40px; }
+
+.sc-footer-row td {
+  background: #f3f4f6;
+  border-top: 2px solid #e5e7eb;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .sc-level-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+  .sc-level-grid { grid-template-columns: repeat(2, 1fr); }
+  .sc-level-amount { font-size: 18px; }
+}
+</style>

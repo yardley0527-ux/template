@@ -17,7 +17,8 @@ class SidebarEntry
             { href: customers_path,       title: "客人資料庫總覽", icon: "fa-address-book" },
             { href: expiring_members_path, title: "即將降級會員",   icon: "fa-bell" },
             { href: stats_customers_path,  title: "會員卡別統計",   icon: "fa-chart-bar" },
-            { href: inactive_members_path, title: "近期未消費名單", icon: "fa-user-clock" }
+            { href: inactive_members_path,   title: "近期未消費名單", icon: "fa-user-clock" },
+            { href: shopping_credits_path,  title: "購物金分析",     icon: "fa-coins" }
           ]
         },
         {
