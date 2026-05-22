@@ -38,7 +38,13 @@ class InactiveMembersController < ApplicationController
   def inactive_scope(level, cutoff)
     ShoplineCustomer
       .where(membership_level: level)
-      .joins("LEFT JOIN customer_purchase_summaries cps ON cps.email = shopline_customers.email")
+      .joins(<<~SQL.squish)
+        LEFT JOIN customer_purchase_summaries cps
+          ON cps.identity_key = COALESCE(
+            NULLIF(TRIM(shopline_customers.mobile_phone), ''),
+            LOWER(TRIM(shopline_customers.email))
+          )
+      SQL
       .where("cps.last_order_date IS NULL OR cps.last_order_date < ?", cutoff)
   end
 
