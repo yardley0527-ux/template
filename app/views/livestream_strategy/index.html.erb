@@ -210,6 +210,178 @@
   </div>
 </div>
 
+<%# ── 1. 最佳直播月份 ─────────────────────────────────────── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>最佳直播月份</h2><div class="panel-toolbar"><span class="text-muted small">依歷史場次累計，場均業績 / 出席最高的月份</span></div></div>
+      <div class="panel-container show">
+        <div class="panel-content p-0">
+          <div class="ls-table-wrap">
+            <table class="ls-table">
+              <thead>
+                <tr>
+                  <th>月份</th>
+                  <th class="text-center">累積場次</th>
+                  <th class="text-center">場均出席</th>
+                  <th class="text-end">場均業績</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% max_att = @monthly_stats.map { |m| m[:avg_att] }.max || 1 %>
+                <% max_rev = @monthly_stats.filter_map { |m| m[:avg_rev] }.max || 1 %>
+                <% @monthly_stats.sort_by { |m| -(m[:avg_rev] || 0) }.each do |m| %>
+                  <tr>
+                    <td class="fw-semibold"><%= m[:month] %> 月</td>
+                    <td class="text-center"><%= m[:events] %> 場</td>
+                    <td class="text-center">
+                      <%= m[:avg_att] %> 人
+                      <div class="ls-bar-bg"><div class="ls-bar-fill" style="width:<%= (m[:avg_att] / max_att * 100).round %>%"></div></div>
+                    </td>
+                    <td class="text-end">
+                      <% if m[:avg_rev] %>
+                        NT$<%= number_with_delimiter(m[:avg_rev].to_i) %>
+                        <div class="ls-bar-bg"><div class="ls-bar-fill ls-bar-green" style="width:<%= (m[:avg_rev] / max_rev * 100).round %>%"></div></div>
+                      <% else %>
+                        <span class="ls-muted">無資料</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 2. 產品系列勝率 ─────────────────────────────────────── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>產品系列勝率</h2><div class="panel-toolbar"><span class="text-muted small">各主打產品的歷史場均業績與出席，依業績排序</span></div></div>
+      <div class="panel-container show">
+        <div class="panel-content p-0">
+          <div class="ls-table-wrap">
+            <table class="ls-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>產品系列</th>
+                  <th class="text-center">出場次數</th>
+                  <th class="text-center">場均出席</th>
+                  <th class="text-end">場均業績</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @series_stats.each_with_index do |s, i| %>
+                  <tr>
+                    <td><span class="ls-rank <%= i == 0 ? 'gold' : i == 1 ? 'silver' : i == 2 ? 'bronze' : '' %>">#<%= i+1 %></span></td>
+                    <td class="fw-semibold"><%= s[:name] %></td>
+                    <td class="text-center"><%= s[:events] %> 場</td>
+                    <td class="text-center"><%= s[:avg_att] %> 人</td>
+                    <td class="text-end">
+                      <% if s[:avg_rev] %>NT$<%= number_with_delimiter(s[:avg_rev].to_i) %><% else %><span class="ls-muted">—</span><% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 3. 黑卡出席率趨勢 ──────────────────────────────────── %>
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="panel h-100">
+      <div class="panel-hdr"><h2>黑卡 VIP 出席趨勢</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content p-0">
+          <div class="ls-table-wrap">
+            <table class="ls-table">
+              <thead>
+                <tr>
+                  <th>年度</th>
+                  <th class="text-center">場次數</th>
+                  <th class="text-center">場均出席</th>
+                  <th class="text-center">出席率 <span class="ls-muted-sm">/ 總 <%= @black_total %> 人</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @black_by_year.each_with_index do |b, i| %>
+                  <% prev = i > 0 ? @black_by_year[i-1] : nil %>
+                  <tr>
+                    <td class="fw-semibold"><%= b[:year] %> 年</td>
+                    <td class="text-center"><%= b[:events] %> 場</td>
+                    <td class="text-center">
+                      <%= b[:avg_n] %> 人
+                      <% if prev && prev[:avg_n] > 0 %>
+                        <% pct = ((b[:avg_n].to_f / prev[:avg_n] - 1) * 100).round(0) %>
+                        <span class="ls-trend <%= pct >= 0 ? 'up' : 'down' %>"><%= pct >= 0 ? '↑' : '↓' %><%= pct.abs %>%</span>
+                      <% end %>
+                    </td>
+                    <td class="text-center">
+                      <span class="ls-rate-badge <%= b[:rate] >= 30 ? 'high' : b[:rate] >= 15 ? 'mid' : 'low' %>">
+                        <%= b[:rate] %>%
+                      </span>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── 4. 場次間隔分析 ──────────────────────────────────── %>
+  <div class="col-md-6">
+    <div class="panel h-100">
+      <div class="panel-hdr"><h2>場次間隔分析</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content p-0">
+          <div class="ls-table-wrap">
+            <table class="ls-table">
+              <thead>
+                <tr>
+                  <th>間隔區間</th>
+                  <th class="text-center">場次數</th>
+                  <th class="text-center">場均出席</th>
+                  <th class="text-end">場均業績</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @gap_buckets.each do |b| %>
+                  <tr class="<%= b[:label] == @best_gap_label ? 'ls-highlight-row' : '' %>">
+                    <td>
+                      <%= b[:label] %>
+                      <% if b[:label] == @best_gap_label %>
+                        <span class="ls-best-tag">出席最高</span>
+                      <% end %>
+                    </td>
+                    <td class="text-center"><%= b[:count] %> 場</td>
+                    <td class="text-center"><%= b[:avg_att] %> 人</td>
+                    <td class="text-end">
+                      <% if b[:avg_rev] %>NT$<%= number_with_delimiter(b[:avg_rev].to_i) %><% else %><span class="ls-muted">—</span><% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <style>
 .ls-year-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
 .ls-year-card { padding: 20px 24px; border-right: 1px solid #f3f4f6; }
@@ -252,6 +424,18 @@
 .ls-summary-success { background: #f0fdf4; color: #14532d; border-left: 3px solid #16a34a; }
 .ls-summary-warning { background: #fffbeb; color: #78350f; border-left: 3px solid #d97706; }
 .ls-summary-info    { background: #eff6ff; color: #1e3a5f; border-left: 3px solid #3b82f6; }
+
+.ls-bar-bg   { height: 4px; background: #f3f4f6; border-radius: 2px; margin-top: 4px; }
+.ls-bar-fill { height: 4px; background: #3b82f6; border-radius: 2px; }
+.ls-bar-green { background: #16a34a; }
+
+.ls-rate-badge { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 99px; }
+.ls-rate-badge.high { background: #f0fdf4; color: #16a34a; }
+.ls-rate-badge.mid  { background: #fffbeb; color: #b45309; }
+.ls-rate-badge.low  { background: #fef2f2; color: #dc2626; }
+
+.ls-highlight-row td { background: #f0fdf4; }
+.ls-best-tag { font-size: 10px; font-weight: 700; background: #16a34a; color: #fff; padding: 1px 6px; border-radius: 99px; margin-left: 4px; }
 
 @media (max-width: 768px) {
   .ls-year-grid { grid-template-columns: 1fr; }
