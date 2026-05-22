@@ -1,0 +1,260 @@
+<%# app/views/livestream_strategy/index.html.erb %>
+<% content_for :page_title, "直播策略報表" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-chart-line"></i>
+    直播策略報表
+    <small>年度趨勢、卡別成長、最佳場次分析</small>
+  </h1>
+</div>
+
+<%# ── 結論摘要 ────────────────────────────────────────────── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2>重點摘要</h2>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content py-3">
+          <% @summaries.each do |s| %>
+            <% cls = { success: "ls-summary-success", warning: "ls-summary-warning", info: "ls-summary-info" }[s[:type]] %>
+            <div class="ls-summary-item <%= cls %>"><%= s[:text] %></div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 年度對比 ────────────────────────────────────────────── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>年度對比</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content p-0">
+          <div class="ls-year-grid">
+            <% @years.each_with_index do |y, idx| %>
+              <% prev = idx > 0 ? @years[idx - 1] : nil %>
+              <div class="ls-year-card">
+                <div class="ls-year-label"><%= y[:year] %> 年</div>
+
+                <div class="ls-metric-row">
+                  <span class="ls-metric-label">場次數</span>
+                  <span class="ls-metric-val"><%= y[:event_count] %> 場</span>
+                </div>
+
+                <div class="ls-metric-row">
+                  <span class="ls-metric-label">總業績</span>
+                  <span class="ls-metric-val">
+                    <% if y[:total_rev] > 0 %>
+                      NT$<%= number_with_delimiter(y[:total_rev]) %>
+                      <% if prev && prev[:total_rev] > 0 %>
+                        <% pct = ((y[:total_rev].to_f / prev[:total_rev] - 1) * 100).round(0) %>
+                        <span class="ls-trend <%= pct >= 0 ? 'up' : 'down' %>"><%= pct >= 0 ? '↑' : '↓' %><%= pct.abs %>%</span>
+                      <% end %>
+                    <% else %>
+                      <span class="ls-muted">無資料</span>
+                    <% end %>
+                  </span>
+                </div>
+
+                <div class="ls-metric-row">
+                  <span class="ls-metric-label">場均業績</span>
+                  <span class="ls-metric-val">
+                    <% if y[:avg_rev] > 0 %>
+                      NT$<%= number_with_delimiter(y[:avg_rev].to_i) %>
+                      <% if prev && prev[:avg_rev] > 0 %>
+                        <% pct = ((y[:avg_rev].to_f / prev[:avg_rev] - 1) * 100).round(0) %>
+                        <span class="ls-trend <%= pct >= 0 ? 'up' : 'down' %>"><%= pct >= 0 ? '↑' : '↓' %><%= pct.abs %>%</span>
+                      <% end %>
+                    <% else %>
+                      <span class="ls-muted">無資料</span>
+                    <% end %>
+                  </span>
+                </div>
+
+                <div class="ls-metric-row">
+                  <span class="ls-metric-label">場均訂單</span>
+                  <span class="ls-metric-val"><%= y[:avg_orders] %> 單
+                    <% if prev && prev[:avg_orders] > 0 %>
+                      <% pct = ((y[:avg_orders].to_f / prev[:avg_orders] - 1) * 100).round(0) %>
+                      <span class="ls-trend <%= pct >= 0 ? 'up' : 'down' %>"><%= pct >= 0 ? '↑' : '↓' %><%= pct.abs %>%</span>
+                    <% end %>
+                  </span>
+                </div>
+
+                <% if y[:best_event] %>
+                  <div class="ls-best-event">
+                    最佳場次：<%= y[:best_event][:label] %> <%= y[:best_event][:note] %>
+                    <span class="ls-muted ms-1">NT$<%= number_with_delimiter(y[:best_event][:revenue]) %></span>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 卡別成長趨勢 ────────────────────────────────────────── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>卡別場均出席人數（年度趨勢）</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content p-0">
+          <div class="ls-table-wrap">
+            <table class="ls-table">
+              <thead>
+                <tr>
+                  <th>卡別</th>
+                  <th class="text-center">2024 場均</th>
+                  <th class="text-center">2025 場均</th>
+                  <th class="text-center">24→25</th>
+                  <th class="text-center">2026 場均</th>
+                  <th class="text-center">25→26</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @level_by_year.each do |row| %>
+                  <tr>
+                    <td><span class="ls-level-badge ls-level-<%= row[:level].delete('卡') %>"><%= row[:level] %></span></td>
+                    <td class="text-center"><%= row[:avg_2024] %> 人</td>
+                    <td class="text-center"><%= row[:avg_2025] %> 人</td>
+                    <td class="text-center">
+                      <% if row[:trend_25] %>
+                        <span class="ls-trend <%= row[:trend_25][:up] ? 'up' : 'down' %>">
+                          <%= row[:trend_25][:up] ? '↑' : '↓' %><%= row[:trend_25][:pct].abs %>%
+                        </span>
+                      <% else %>—<% end %>
+                    </td>
+                    <td class="text-center"><%= row[:avg_2026] %> 人</td>
+                    <td class="text-center">
+                      <% if row[:trend_26] %>
+                        <span class="ls-trend <%= row[:trend_26][:up] ? 'up' : 'down' %>">
+                          <%= row[:trend_26][:up] ? '↑' : '↓' %><%= row[:trend_26][:pct].abs %>%
+                        </span>
+                      <% else %>—<% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 最佳場次排行 ────────────────────────────────────────── %>
+<div class="row mb-4">
+  <div class="col-md-6">
+    <div class="panel h-100">
+      <div class="panel-hdr"><h2>業績排行 Top 10</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content p-0">
+          <div class="ls-table-wrap">
+            <table class="ls-table">
+              <thead>
+                <tr><th>#</th><th>場次</th><th>主力產品</th><th class="text-end">業績</th></tr>
+              </thead>
+              <tbody>
+                <% @top_revenue.each_with_index do |e, i| %>
+                  <tr>
+                    <td><span class="ls-rank <%= i == 0 ? 'gold' : i == 1 ? 'silver' : i == 2 ? 'bronze' : '' %>">#<%= i+1 %></span></td>
+                    <td class="ls-nowrap"><%= e[:year] %>/<%= e[:label] %></td>
+                    <td class="ls-muted-sm"><%= e[:note] %></td>
+                    <td class="text-end ls-nowrap">NT$<%= number_with_delimiter(e[:revenue]) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="panel h-100">
+      <div class="panel-hdr"><h2>出席人數排行 Top 10</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content p-0">
+          <div class="ls-table-wrap">
+            <table class="ls-table">
+              <thead>
+                <tr><th>#</th><th>場次</th><th>主力產品</th><th class="text-end">出席</th></tr>
+              </thead>
+              <tbody>
+                <% @top_attendance.each_with_index do |e, i| %>
+                  <% total_n = e[:levels].values.sum { |d| d[:n] } %>
+                  <tr>
+                    <td><span class="ls-rank <%= i == 0 ? 'gold' : i == 1 ? 'silver' : i == 2 ? 'bronze' : '' %>">#<%= i+1 %></span></td>
+                    <td class="ls-nowrap"><%= e[:year] %>/<%= e[:label] %></td>
+                    <td class="ls-muted-sm"><%= e[:note] %></td>
+                    <td class="text-end ls-nowrap"><%= total_n %> 人</td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.ls-year-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+.ls-year-card { padding: 20px 24px; border-right: 1px solid #f3f4f6; }
+.ls-year-card:last-child { border-right: none; }
+.ls-year-label { font-size: 18px; font-weight: 800; color: #111827; margin-bottom: 14px; }
+
+.ls-metric-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f9fafb; }
+.ls-metric-label { font-size: 12px; color: #9ca3af; }
+.ls-metric-val { font-size: 14px; font-weight: 700; color: #111827; }
+
+.ls-best-event { margin-top: 12px; font-size: 11px; color: #6b7280; background: #f9fafb; border-radius: 6px; padding: 6px 10px; }
+
+.ls-trend { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 99px; margin-left: 4px; }
+.ls-trend.up   { background: #f0fdf4; color: #16a34a; }
+.ls-trend.down { background: #fef2f2; color: #dc2626; }
+
+.ls-muted    { color: #9ca3af; }
+.ls-muted-sm { font-size: 12px; color: #9ca3af; }
+.ls-nowrap   { white-space: nowrap; }
+
+.ls-table-wrap { overflow-x: auto; }
+.ls-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ls-table thead th { background: #374151; color: #fff; padding: 9px 14px; font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; }
+.ls-table tbody td { padding: 9px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.ls-table tbody tr:last-child td { border-bottom: none; }
+.ls-table tbody tr:hover td { background: #f9fafb; }
+
+.ls-level-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.ls-level-黑 { background: #1f2937; color: #fff; }
+.ls-level-金 { background: #d97706; color: #fff; }
+.ls-level-銀 { background: #9ca3af; color: #fff; }
+.ls-level-白 { background: #f3f4f6; color: #374151; }
+
+.ls-rank { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #f3f4f6; color: #374151; }
+.ls-rank.gold   { background: #fef3c7; color: #b45309; }
+.ls-rank.silver { background: #f3f4f6; color: #374151; }
+.ls-rank.bronze { background: #fed7aa; color: #c2410c; }
+
+.ls-summary-item { padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 14px; line-height: 1.6; }
+.ls-summary-success { background: #f0fdf4; color: #14532d; border-left: 3px solid #16a34a; }
+.ls-summary-warning { background: #fffbeb; color: #78350f; border-left: 3px solid #d97706; }
+.ls-summary-info    { background: #eff6ff; color: #1e3a5f; border-left: 3px solid #3b82f6; }
+
+@media (max-width: 768px) {
+  .ls-year-grid { grid-template-columns: 1fr; }
+  .ls-year-card { border-right: none; border-bottom: 1px solid #f3f4f6; }
+}
+</style>

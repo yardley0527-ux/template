@@ -22,7 +22,8 @@ Rails.application.routes.draw do
   get '/inactive_members',           to: 'inactive_members#index',     as: :inactive_members
   get '/product_strategy', to: 'product_strategy#index', as: :product_strategy
   get '/high_spender_first_purchase', to: 'high_spender_first_purchase#index', as: :high_spender_first_purchase
-  get '/shopping_credits', to: 'shopping_credits#index', as: :shopping_credits
+  get '/shopping_credits',    to: 'shopping_credits#index',    as: :shopping_credits
+  get '/livestream_strategy', to: 'livestream_strategy#index', as: :livestream_strategy
 
   resources :products, only: [:index, :show], param: :id
   resources :customers, only: [:index, :show] do
