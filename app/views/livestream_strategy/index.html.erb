@@ -230,7 +230,6 @@
               </thead>
               <tbody>
                 <% max_att = @monthly_stats.map { |m| m[:avg_att] }.max || 1 %>
-                <% max_rev = @monthly_stats.filter_map { |m| m[:avg_rev] }.max || 1 %>
                 <% @monthly_stats.sort_by { |m| -(m[:avg_rev] || 0) }.each do |m| %>
                   <tr>
                     <td class="fw-semibold"><%= m[:month] %> 月</td>
@@ -243,7 +242,6 @@
                     <td class="text-end">
                       <% if m[:avg_rev] %>
                         NT$<%= number_with_delimiter(m[:avg_rev].to_i) %>
-                        <div class="ls-bar-bg"><div class="ls-bar-fill ls-bar-green" style="width:<%= (m[:avg_rev] / max_rev * 100).round %>%"></div></div>
                       <% else %>
                         <span class="ls-muted">無資料</span>
                       <% end %>
