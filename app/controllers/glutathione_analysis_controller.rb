@@ -53,7 +53,7 @@ class GlutathioneAnalysisController < ApplicationController
     return (@event_emails = []) unless @current_event
 
     @event_label = "#{@current_event[:year]}/#{@current_event[:label]}"
-    event_range  = @current_event[:date].beginning_of_day..(@current_event[:date] + 1).end_of_day
+    event_range  = @current_event[:date].beginning_of_day..(@current_event[:date] + 3).end_of_day
 
     @event_emails = glutathione_emails(event_range)
 
@@ -241,7 +241,7 @@ class GlutathioneAnalysisController < ApplicationController
     return if @all_glut_events.empty?
 
     all_event_emails = @all_glut_events.map do |ev|
-      glutathione_emails(ev[:date].beginning_of_day..(ev[:date] + 1).end_of_day)
+      glutathione_emails(ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day)
     end
 
     @cross_event_stats = @all_glut_events.each_with_index.map do |ev, i|

@@ -16,9 +16,9 @@ class TurmericAnalysisController < ApplicationController
   TARGET_MEMBERSHIPS = %w[黑卡 金卡].freeze
 
   def index
-    jan9  = Date.new(2026, 1, 8).beginning_of_day..Date.new(2026, 1, 10).end_of_day
-    feb25 = Date.new(2026, 2, 24).beginning_of_day..Date.new(2026, 2, 26).end_of_day
-    apr10 = Date.new(2026, 4, 9).beginning_of_day..Date.new(2026, 4, 11).end_of_day
+    jan9  = Date.new(2026, 1, 8).beginning_of_day..Date.new(2026, 1, 12).end_of_day
+    feb25 = Date.new(2026, 2, 24).beginning_of_day..Date.new(2026, 2, 28).end_of_day
+    apr10 = Date.new(2026, 4, 9).beginning_of_day..Date.new(2026, 4, 13).end_of_day
 
     @jan9_emails  = turmeric_emails(jan9)
     @feb25_emails = turmeric_emails(feb25)

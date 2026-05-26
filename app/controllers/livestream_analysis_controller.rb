@@ -162,7 +162,7 @@ class LivestreamAnalysisController < ApplicationController
 
   ALL_EVENTS = (EVENTS_2024 + EVENTS_2025 + EVENTS_2026).freeze
 
-  WINDOW_DAYS = 1
+  WINDOW_DAYS = 3
 
   def index
     today = Date.today

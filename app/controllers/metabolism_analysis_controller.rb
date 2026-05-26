@@ -15,11 +15,11 @@ class MetabolismAnalysisController < ApplicationController
   TARGET_MEMBERSHIPS = %w[黑卡 金卡].freeze
 
   EVENT_RANGES = {
-    jul4:  Date.new(2025,  7,  3).beginning_of_day..Date.new(2025,  7,  5).end_of_day,
-    jul22: Date.new(2025,  7, 21).beginning_of_day..Date.new(2025,  7, 23).end_of_day,
-    oct9:  Date.new(2025, 10,  8).beginning_of_day..Date.new(2025, 10, 11).end_of_day,
-    feb25: Date.new(2026,  2, 24).beginning_of_day..Date.new(2026,  2, 26).end_of_day,
-    apr24: Date.new(2026,  4, 23).beginning_of_day..Date.new(2026,  4, 25).end_of_day,
+    jul4:  Date.new(2025,  7,  3).beginning_of_day..Date.new(2025,  7,  7).end_of_day,
+    jul22: Date.new(2025,  7, 21).beginning_of_day..Date.new(2025,  7, 25).end_of_day,
+    oct9:  Date.new(2025, 10,  8).beginning_of_day..Date.new(2025, 10, 12).end_of_day,
+    feb25: Date.new(2026,  2, 24).beginning_of_day..Date.new(2026,  2, 28).end_of_day,
+    apr24: Date.new(2026,  4, 23).beginning_of_day..Date.new(2026,  4, 27).end_of_day,
   }.freeze
 
   def index
