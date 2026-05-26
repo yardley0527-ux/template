@@ -248,8 +248,9 @@ class GlutathioneAnalysisController < ApplicationController
       emails  = all_event_emails[i]
       prev    = i > 0 ? all_event_emails[i - 1] : []
       overlap = (prev & emails).size
+      end_date = ev[:date] + 3
       {
-        label:        "#{ev[:year]}/#{ev[:label]}",
+        label:        "#{ev[:year]}/#{ev[:label]}~#{end_date.month}/#{end_date.day}",
         note:         ev[:note],
         buyers:       emails.size,
         revenue:      ev[:revenue],

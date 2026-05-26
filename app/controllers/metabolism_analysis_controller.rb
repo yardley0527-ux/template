@@ -287,11 +287,11 @@ class MetabolismAnalysisController < ApplicationController
     @insights << { type: :info,    text: "累計 #{@all_prev_emails.size} 位不重複客人曾在五場中購買代謝錠。" }
 
     @cross_event_stats = [
-      { label: "2025/7/4",  note: "薑黃+代謝",        buyers: @jul4_emails.size,  revenue: @jul4_revenue,  aov: @jul4_aov,  return_rate: nil,               return_count: nil },
-      { label: "2025/7/22", note: "薑黃+代謝",          buyers: @jul22_emails.size, revenue: @jul22_revenue, aov: @jul22_aov, return_rate: @jul4_return_rate,  return_count: @jul4_to_jul22_count },
-      { label: "2025/10/9", note: "代謝錠",             buyers: @oct9_emails.size,  revenue: @oct9_revenue,  aov: @oct9_aov,  return_rate: @jul22_return_rate, return_count: @jul22_to_oct9_count },
-      { label: "2026/2/25", note: "薑黃、清纖粉、代謝", buyers: @feb25_emails.size, revenue: @feb25_revenue, aov: @feb25_aov, return_rate: @oct9_return_rate,  return_count: @oct9_to_feb25_count },
-      { label: "2026/4/24", note: "代謝錠、薑黃",       buyers: @apr24_emails.size, revenue: @apr24_revenue, aov: @apr24_aov, return_rate: @feb25_return_rate, return_count: @feb25_to_apr24_count },
+      { label: "2025/7/4~7/7",    note: "薑黃+代謝",        buyers: @jul4_emails.size,  revenue: @jul4_revenue,  aov: @jul4_aov,  return_rate: nil,               return_count: nil },
+      { label: "2025/7/22~7/25",  note: "薑黃+代謝",          buyers: @jul22_emails.size, revenue: @jul22_revenue, aov: @jul22_aov, return_rate: @jul4_return_rate,  return_count: @jul4_to_jul22_count },
+      { label: "2025/10/9~10/12", note: "代謝錠",             buyers: @oct9_emails.size,  revenue: @oct9_revenue,  aov: @oct9_aov,  return_rate: @jul22_return_rate, return_count: @jul22_to_oct9_count },
+      { label: "2026/2/25~2/28",  note: "薑黃、清纖粉、代謝", buyers: @feb25_emails.size, revenue: @feb25_revenue, aov: @feb25_aov, return_rate: @oct9_return_rate,  return_count: @oct9_to_feb25_count },
+      { label: "2026/4/24~4/27",  note: "代謝錠、薑黃",       buyers: @apr24_emails.size, revenue: @apr24_revenue, aov: @apr24_aov, return_rate: @feb25_return_rate, return_count: @feb25_to_apr24_count },
     ]
     @iron_fans = @loyal_5_customers.map { |r| { customer: r[:customer], attended_count: 5 } }
     @high_risk_lost = @did_not_return.map do |r|
