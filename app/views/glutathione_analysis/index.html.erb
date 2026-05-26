@@ -4,9 +4,20 @@
 <% level_keys = GlutathioneAnalysisController::LEVEL_KEYS %>
 
 <div class="row g-3 mb-4">
-  <div class="col-12">
-    <h4 class="fw-bold mb-0">穀胱甘肽直播分析 — <%= @event_label %></h4>
-    <p class="text-muted small mb-0">追蹤 <%= @event_label %> 購買情況，以及曾買過穀胱甘肽的各卡別客人回流狀況</p>
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">穀胱甘肽直播分析 — <%= @event_label %></h4>
+      <p class="text-muted small mb-0">追蹤 <%= @event_label %> 購買情況，以及曾買過穀胱甘肽的各卡別客人回流狀況</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <% @all_glut_events.each do |ev| %>
+        <% label = "#{ev[:year]}/#{ev[:label]}" %>
+        <% active = ev[:date] == @current_event[:date] %>
+        <%= link_to label,
+              glutathione_analysis_path(event: ev[:date].to_s),
+              class: "btn btn-sm #{active ? 'btn-secondary' : 'btn-outline-secondary'}" %>
+      <% end %>
+    </div>
   </div>
 </div>
 

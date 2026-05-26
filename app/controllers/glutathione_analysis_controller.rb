@@ -27,7 +27,9 @@ class GlutathioneAnalysisController < ApplicationController
 
   before_action :build_analysis_data, only: [:index, :export_missing, :export_event]
 
-  def index; end
+  def index
+    @all_glut_events = GLUT_EVENTS.select { |e| e[:date] <= Date.today }
+  end
 
   def export_missing
     send_data "\xEF\xBB\xBF" + missing_csv,
@@ -44,7 +46,9 @@ class GlutathioneAnalysisController < ApplicationController
   private
 
   def build_analysis_data
-    @current_event = GLUT_EVENTS.select { |e| e[:date] <= Date.today }.last
+    past_events    = GLUT_EVENTS.select { |e| e[:date] <= Date.today }
+    selected_date  = params[:event].presence && Date.parse(params[:event]) rescue nil
+    @current_event = (selected_date && past_events.find { |e| e[:date] == selected_date }) || past_events.last
     return (@event_emails = []) unless @current_event
 
     @event_label = "#{@current_event[:year]}/#{@current_event[:label]}"
