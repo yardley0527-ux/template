@@ -21,9 +21,11 @@ class GlutathioneAnalysisController < ApplicationController
     "一般會員" => "normal"
   }.freeze
 
-  EVENT_RANGE = Date.new(2026, 1, 22).beginning_of_day..Date.new(2026, 1, 24).end_of_day
+  GLUT_EVENTS = LivestreamAnalysisController::ALL_EVENTS
+    .select { |e| e[:note]&.include?("穀胱甘肽") }
+    .freeze
 
-  before_action :build_analysis_data, only: [:index, :export_missing, :export_jan23]
+  before_action :build_analysis_data, only: [:index, :export_missing, :export_event]
 
   def index; end
 
@@ -33,51 +35,54 @@ class GlutathioneAnalysisController < ApplicationController
               type: "text/csv; charset=utf-8"
   end
 
-  def export_jan23
-    send_data "\xEF\xBB\xBF" + jan23_csv,
-              filename: "穀胱甘肽_1月23日購買名單_#{Date.today}.csv",
+  def export_event
+    send_data "\xEF\xBB\xBF" + event_csv,
+              filename: "穀胱甘肽_#{@event_label}購買名單_#{Date.today}.csv",
               type: "text/csv; charset=utf-8"
   end
 
   private
 
   def build_analysis_data
-    @jan23_emails = glutathione_emails(EVENT_RANGE)
+    @current_event = GLUT_EVENTS.select { |e| e[:date] <= Date.today }.last
+    return (@event_emails = []) unless @current_event
+
+    @event_label = "#{@current_event[:year]}/#{@current_event[:label]}"
+    event_range  = @current_event[:date].beginning_of_day..(@current_event[:date] + 1).end_of_day
+
+    @event_emails = glutathione_emails(event_range)
 
     all_prev_emails = ShoplineOrder
       .where(GLUTATHIONE)
-      .where("order_date < ?", EVENT_RANGE.first)
+      .where("order_date < ?", event_range.first)
       .where.not(email: [nil, ""])
       .distinct
       .pluck(:email)
 
     @prev_count          = all_prev_emails.size
-    @prev_returned_count = (all_prev_emails & @jan23_emails).size
+    @prev_returned_count = (all_prev_emails & @event_emails).size
     @prev_return_rate    = pct(@prev_returned_count, @prev_count)
 
-    # Per-level attendance stats
     @level_stats = TARGET_MEMBERSHIPS.filter_map do |level|
       total = ShoplineCustomer.where(membership_level: level).where.not(shopline_id: nil).count
       next if total.zero?
       emails   = ShoplineCustomer.where(membership_level: level).where.not(email: [nil, ""]).pluck(:email)
-      attended = (emails & @jan23_emails).size
+      attended = (emails & @event_emails).size
       { level: level, total: total, attended: attended, rate: pct(attended, total) }
     end
 
-    # Backward-compat vars used by insights
     black_stat        = @level_stats.find { |s| s[:level] == "黑卡" } || {}
     gold_stat         = @level_stats.find { |s| s[:level] == "金卡" } || {}
-    @black_jan23_rate = black_stat[:rate].to_f
-    @gold_jan23_rate  = gold_stat[:rate].to_f
+    @black_event_rate = black_stat[:rate].to_f
+    @gold_event_rate  = gold_stat[:rate].to_f
 
-    # ── 曾買、1/23 未出現 ────────────────────────────────────────────────────
-    missing_emails = all_prev_emails - @jan23_emails
+    missing_emails = all_prev_emails - @event_emails
     today = Date.today
 
     last_orders_raw = ShoplineOrder
       .where(GLUTATHIONE)
       .where(email: missing_emails)
-      .where("order_date < ?", EVENT_RANGE.first)
+      .where("order_date < ?", event_range.first)
       .order(:email, order_date: :desc)
       .pluck(:email, :product_name, :order_date)
 
@@ -121,36 +126,34 @@ class GlutathioneAnalysisController < ApplicationController
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
      .reject { |r| r[:overdue_days] && r[:overdue_days] <= 0 }
 
-    # ── 1/23 購買名單（所有卡別）────────────────────────────────────────────
-    jan23_orders_raw = ShoplineOrder
+    event_orders_raw = ShoplineOrder
       .where(GLUTATHIONE)
-      .where(email: @jan23_emails)
-      .where(order_date: EVENT_RANGE)
+      .where(email: @event_emails)
+      .where(order_date: event_range)
       .order(:email, order_date: :desc)
       .pluck(:email, :product_name, :order_date, :checkout_amount, :total_amount)
 
-    jan23_by_email = {}
-    jan23_orders_raw.each do |email, product_name, order_date, checkout_amount, total_amount|
-      jan23_by_email[email] ||= {
+    event_by_email = {}
+    event_orders_raw.each do |email, product_name, order_date, checkout_amount, total_amount|
+      event_by_email[email] ||= {
         product_name: product_name,
         order_date:   order_date,
         order_amount: (checkout_amount || total_amount).to_f
       }
     end
 
-    h_counts = ShoplineOrder.where(GLUTATHIONE).where(email: @jan23_emails).group(:email).count
+    h_counts = ShoplineOrder.where(GLUTATHIONE).where(email: @event_emails).group(:email).count
 
-    @jan23_customers = ShoplineCustomer
-      .where(email: @jan23_emails)
+    @event_customers = ShoplineCustomer
+      .where(email: @event_emails)
       .where(membership_level: TARGET_MEMBERSHIPS)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
       .map do |c|
-        order        = jan23_by_email[c.email]
+        order        = event_by_email[c.email]
         bottles      = extract_bottles(order&.dig(:product_name))
         order_amount = order&.dig(:order_amount).to_f
         total_spend  = c.total_amount.to_f
 
-        # 評分：卡別（鑑別力最強）+ 整體消費力 + 本次購買瓶數
         mem_score      = (MEMBERSHIP_RANK[c.membership_level] || 0) * 2
         spend_score    = total_spend >= 200_000 ? 3 : total_spend >= 100_000 ? 2 : total_spend >= 50_000 ? 1 : 0
         purchase_score = bottles >= 3 ? 2 : bottles >= 2 ? 1 : 0
@@ -170,18 +173,17 @@ class GlutathioneAnalysisController < ApplicationController
         }
       end.sort_by { |r| [-r[:value_score], -r[:bottles], -r[:glut_count], -r[:total_spend]] }
 
-    # ── Insights ──────────────────────────────────────────────────────────────
     @insights = []
 
-    if @black_jan23_rate > @gold_jan23_rate
-      @insights << { type: :info, text: "黑卡客人對穀胱甘肽直播的參與率（#{@black_jan23_rate}%）高於金卡（#{@gold_jan23_rate}%），黑卡是核心推廣對象。" }
-    elsif @gold_jan23_rate > @black_jan23_rate
-      @insights << { type: :info, text: "金卡客人參與率（#{@gold_jan23_rate}%）高於黑卡（#{@black_jan23_rate}%），可針對黑卡加強個人化邀請。" }
+    if @black_event_rate > @gold_event_rate
+      @insights << { type: :info, text: "黑卡客人對穀胱甘肽直播的參與率（#{@black_event_rate}%）高於金卡（#{@gold_event_rate}%），黑卡是核心推廣對象。" }
+    elsif @gold_event_rate > @black_event_rate
+      @insights << { type: :info, text: "金卡客人參與率（#{@gold_event_rate}%）高於黑卡（#{@black_event_rate}%），可針對黑卡加強個人化邀請。" }
     end
 
     if @prev_count > 0
       if @prev_return_rate >= 30
-        @insights << { type: :success, text: "曾購買過穀胱甘肽的客人，有 #{@prev_return_rate}%（#{@prev_returned_count}/#{@prev_count} 人）在 1/23 再次購買，回流率良好。" }
+        @insights << { type: :success, text: "曾購買過穀胱甘肽的客人，有 #{@prev_return_rate}%（#{@prev_returned_count}/#{@prev_count} 人）在 #{@event_label} 再次購買，回流率良好。" }
       else
         @insights << { type: :warning, text: "曾購買過穀胱甘肽的客人回流率為 #{@prev_return_rate}%（#{@prev_returned_count}/#{@prev_count} 人），建議下次直播前主動提醒。" }
       end
@@ -191,15 +193,15 @@ class GlutathioneAnalysisController < ApplicationController
     @insights << { type: :danger, text: "有 #{overdue_count} 位客人逾期超過 14 天未回購，建議立即聯繫。" } if overdue_count > 0
 
     black_missing = @missing_customers.count { |r| r[:customer].membership_level == "黑卡" }
-    @insights << { type: :danger, text: "#{black_missing} 位黑卡客人曾購買穀胱甘肽但 1/23 未出現，流失風險最高，請優先追蹤。" } if black_missing > 0
+    @insights << { type: :danger, text: "#{black_missing} 位黑卡客人曾購買穀胱甘肽但 #{@event_label} 未出現，流失風險最高，請優先追蹤。" } if black_missing > 0
 
-    if @jan23_customers.any?
-      black_count = @jan23_customers.count { |r| r[:customer].membership_level == "黑卡" }
-      gold_count  = @jan23_customers.count { |r| r[:customer].membership_level == "金卡" }
-      @insights << { type: :success, text: "#{@jan23_customers.size} 位會員在 1/23 購買穀胱甘肽（黑卡 #{black_count} 人、金卡 #{gold_count} 人）。" }
+    if @event_customers.any?
+      black_count = @event_customers.count { |r| r[:customer].membership_level == "黑卡" }
+      gold_count  = @event_customers.count { |r| r[:customer].membership_level == "金卡" }
+      @insights << { type: :success, text: "#{@event_customers.size} 位會員在 #{@event_label} 購買穀胱甘肽（黑卡 #{black_count} 人、金卡 #{gold_count} 人）。" }
     end
 
-    @insights << { type: :info, text: "本場穀胱甘肽直播共吸引 #{@jan23_emails.size} 位不重複買家。" }
+    @insights << { type: :info, text: "本場穀胱甘肽直播共吸引 #{@event_emails.size} 位不重複買家。" }
   end
 
   def missing_csv
@@ -217,11 +219,11 @@ class GlutathioneAnalysisController < ApplicationController
     end
   end
 
-  def jan23_csv
+  def event_csv
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
       csv << ["客戶價值", "姓名", "卡別", "電話", "購買品項", "本次瓶數", "本次金額(NT$)", "整體消費力(NT$)", "穀胱甘肽歷史次數", "IG"]
-      @jan23_customers.each do |r|
+      @event_customers.each do |r|
         c = r[:customer]
         csv << [r[:value_tier], c.full_name, c.membership_level, c.mobile_phone,
                 r[:last_product], r[:bottles], r[:order_amount].to_i,

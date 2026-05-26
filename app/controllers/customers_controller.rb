@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class CustomersController < ApplicationController
-  PER_PAGE = 50
+  PER_PAGE = 20
   MAX_PAGE = 200
 
   AGE_GROUP_ORDER = ["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze

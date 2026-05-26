@@ -154,6 +154,10 @@ class LivestreamAnalysisController < ApplicationController
       orders:  70, revenue:   633_562,
       levels: { "黑卡" => { n: 17, amt: 215_535 }, "金卡" => { n: 21, amt: 138_770 },
                 "銀卡" => { n: 11, amt:  82_124 }, "白卡" => { n: 11, amt: 118_123 }, "一般會員" => { n:  7, amt:  47_680 } } },
+    { date: Date.new(2026,  5, 22), label: "5/22", year: 2026, note: "穀胱甘肽、清纖粉、益生菌",
+      orders: 165, revenue: 2_263_491,
+      levels: { "黑卡" => { n: 19, amt: 810_218 }, "金卡" => { n: 15, amt: 325_408 },
+                "銀卡" => { n: 15, amt: 298_669 }, "白卡" => { n: 17, amt: 351_622 }, "一般會員" => { n: 12, amt: 194_594 } } },
   ].freeze
 
   ALL_EVENTS = (EVENTS_2024 + EVENTS_2025 + EVENTS_2026).freeze

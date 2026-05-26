@@ -5,8 +5,8 @@
 
 <div class="row g-3 mb-4">
   <div class="col-12">
-    <h4 class="fw-bold mb-0">穀胱甘肽直播分析 — 2026/1/23</h4>
-    <p class="text-muted small mb-0">追蹤 1/23 購買情況，以及曾買過穀胱甘肽的各卡別客人回流狀況</p>
+    <h4 class="fw-bold mb-0">穀胱甘肽直播分析 — <%= @event_label %></h4>
+    <p class="text-muted small mb-0">追蹤 <%= @event_label %> 購買情況，以及曾買過穀胱甘肽的各卡別客人回流狀況</p>
   </div>
 </div>
 
@@ -25,13 +25,13 @@
 <div class="row g-3 mb-3">
   <div class="col-md-4">
     <div class="card border-0 shadow-sm text-center py-4">
-      <div class="text-muted mb-2">1/23 直播買穀胱甘肽人數</div>
-      <div class="fw-bold text-primary" style="font-size: 2rem; line-height: 1;"><%= @jan23_emails.size %></div>
+      <div class="text-muted mb-2"><%= @event_label %> 直播買穀胱甘肽人數</div>
+      <div class="fw-bold text-primary" style="font-size: 2rem; line-height: 1;"><%= @event_emails.size %></div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="card border-0 shadow-sm text-center py-4">
-      <div class="text-muted mb-2">曾購買過（1/23 前）</div>
+      <div class="text-muted mb-2">曾購買過（<%= @event_label %> 前）</div>
       <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #495057;"><%= @prev_count %></div>
     </div>
   </div>
@@ -53,8 +53,8 @@
         <tr>
           <th></th>
           <th>總人數</th>
-          <th>1/23 出席</th>
-          <th>1/23 出席率</th>
+          <th><%= @event_label %> 出席</th>
+          <th><%= @event_label %> 出席率</th>
         </tr>
       </thead>
       <tbody>
@@ -83,13 +83,13 @@
 </div>
 
 <%# ══════════════════════════════════════════════════ %>
-<%# 曾買、1/23 未出現                                  %>
+<%# 曾買、本場未出現                                    %>
 <%# ══════════════════════════════════════════════════ %>
 
 <% if @missing_customers.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-danger ps-3">
-      <h5 class="fw-bold mb-0 text-danger">🚨 曾買穀胱甘肽、1/23 未回購</h5>
+      <h5 class="fw-bold mb-0 text-danger">🚨 曾買穀胱甘肽、<%= @event_label %> 未回購</h5>
       <p class="text-muted small mb-0">逾期越多越優先，建議盡快聯繫</p>
     </div>
   </div>
@@ -98,7 +98,7 @@
     <div class="card-header text-white d-flex justify-content-between align-items-center"
          style="background-color: #8b1a1a;">
       <div>
-        <span class="fw-bold">1/23 未回購名單</span>
+        <span class="fw-bold"><%= @event_label %> 未回購名單</span>
         <span class="ms-2 small opacity-75">依卡級 → 逾期天數排列</span>
       </div>
       <div class="d-flex align-items-center gap-2">
@@ -204,17 +204,17 @@
 <% end %>
 
 <%# ══════════════════════════════════════════ %>
-<%# 1/23 購買名單（所有卡別）                  %>
+<%# 本場購買名單（所有卡別）                    %>
 <%# ══════════════════════════════════════════ %>
 
-<% if @jan23_customers.any? %>
-  <% vip_count  = @jan23_customers.count { |r| r[:value_tier] == "重點維護" } %>
-  <% track_count = @jan23_customers.count { |r| r[:value_tier] == "值得追蹤" } %>
-  <% basic_count = @jan23_customers.count { |r| r[:value_tier] == "一般客群" } %>
+<% if @event_customers.any? %>
+  <% vip_count   = @event_customers.count { |r| r[:value_tier] == "重點維護" } %>
+  <% track_count = @event_customers.count { |r| r[:value_tier] == "值得追蹤" } %>
+  <% basic_count = @event_customers.count { |r| r[:value_tier] == "一般客群" } %>
 
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-success ps-3">
-      <h5 class="fw-bold mb-0 text-success">⭐ 1/23 購買名單（所有卡別）</h5>
+      <h5 class="fw-bold mb-0 text-success">⭐ <%= @event_label %> 購買名單（所有卡別）</h5>
       <p class="text-muted small mb-0">本場核心客群，依客戶價值分層排列</p>
     </div>
   </div>
@@ -252,8 +252,8 @@
          style="background-color: #2d5a3d;">
       <span class="fw-bold">本場購買名單</span>
       <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-white text-dark" id="jan23-visible-count"><%= @jan23_customers.size %> 人</span>
-        <%= link_to "⬇ 匯出 CSV", glutathione_export_jan23_path, class: "btn btn-sm btn-light fw-semibold" %>
+        <span class="badge bg-white text-dark" id="event-visible-count"><%= @event_customers.size %> 人</span>
+        <%= link_to "⬇ 匯出 CSV", glutathione_export_event_path, class: "btn btn-sm btn-light fw-semibold" %>
       </div>
     </div>
 
@@ -267,18 +267,18 @@
     </div>
 
     <div class="px-3 pt-2 border-bottom">
-      <ul class="nav nav-tabs" id="tabs-jan23">
+      <ul class="nav nav-tabs" id="tabs-event">
         <% GlutathioneAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
           <% key = level_keys[level] %>
-          <% next if @jan23_customers.none? { |r| r[:customer].membership_level == level } %>
+          <% next if @event_customers.none? { |r| r[:customer].membership_level == level } %>
           <li class="nav-item">
             <button class="nav-link"
-                    data-tab-prefix="jan23"
-                    data-tab-target="jan23-<%= key %>"
+                    data-tab-prefix="event"
+                    data-tab-target="event-<%= key %>"
                     type="button">
               <%= level %>
               <span class="badge bg-secondary">
-                <%= @jan23_customers.count { |r| r[:customer].membership_level == level } %>
+                <%= @event_customers.count { |r| r[:customer].membership_level == level } %>
               </span>
             </button>
           </li>
@@ -289,9 +289,9 @@
     <div class="card-body p-0">
       <% GlutathioneAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
         <% key  = level_keys[level] %>
-        <% rows = @jan23_customers.select { |r| r[:customer].membership_level == level } %>
+        <% rows = @event_customers.select { |r| r[:customer].membership_level == level } %>
         <% next if rows.empty? %>
-        <div class="invite-pane" id="pane-jan23-<%= key %>" style="display: none;">
+        <div class="invite-pane" id="pane-event-<%= key %>" style="display: none;">
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
               <thead class="table-light">
@@ -358,7 +358,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (firstBtn) activateTab(firstBtn);
   });
 
-  // 價值層篩選卡片點擊
   document.querySelectorAll('.vt-stat-card[data-tier-filter]').forEach(function (card) {
     card.addEventListener('click', function () {
       const tier = card.dataset.tierFilter;
@@ -366,7 +365,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  // 篩選按鈕
   document.querySelectorAll('.vt-filter-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       applyTierFilter(btn.dataset.tier);
@@ -377,7 +375,6 @@ document.addEventListener('DOMContentLoaded', function () {
 function applyTierFilter(tier) {
   currentTierFilter = tier;
 
-  // 更新按鈕狀態
   document.querySelectorAll('.vt-filter-btn').forEach(function (btn) {
     btn.classList.toggle('is-active', btn.dataset.tier === tier);
   });
@@ -385,15 +382,14 @@ function applyTierFilter(tier) {
     card.classList.toggle('is-active', card.dataset.tierFilter === tier);
   });
 
-  // 在所有 jan23 pane 中過濾行
   let visibleCount = 0;
-  document.querySelectorAll('[id^="pane-jan23-"] tbody tr[data-tier]').forEach(function (row) {
+  document.querySelectorAll('[id^="pane-event-"] tbody tr[data-tier]').forEach(function (row) {
     const show = tier === 'all' || row.dataset.tier === tier;
     row.style.display = show ? '' : 'none';
     if (show) visibleCount++;
   });
 
-  const countBadge = document.getElementById('jan23-visible-count');
+  const countBadge = document.getElementById('event-visible-count');
   if (countBadge) countBadge.textContent = visibleCount + ' 人';
 }
 
@@ -411,8 +407,7 @@ function activateTab(btn) {
   const target = document.getElementById('pane-' + targetId);
   if (target) {
     target.style.display = 'block';
-    // Re-apply current tier filter to newly visible pane
-    if (prefix === 'jan23' && currentTierFilter !== 'all') {
+    if (prefix === 'event' && currentTierFilter !== 'all') {
       target.querySelectorAll('tbody tr[data-tier]').forEach(function (row) {
         row.style.display = row.dataset.tier === currentTierFilter ? '' : 'none';
       });
