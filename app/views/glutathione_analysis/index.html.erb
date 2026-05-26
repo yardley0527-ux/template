@@ -3,6 +3,13 @@
 
 <% level_keys = GlutathioneAnalysisController::LEVEL_KEYS %>
 
+<%= render 'shared/next_livestream_plan',
+      cross_event_stats: @cross_event_stats || [],
+      iron_fans:         @iron_fans         || [],
+      expiring_soon:     @expiring_soon     || [],
+      high_risk_lost:    @high_risk_lost    || [],
+      section_id:        'glut' %>
+
 <div class="row g-3 mb-4">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>

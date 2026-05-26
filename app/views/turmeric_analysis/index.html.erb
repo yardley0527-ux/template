@@ -1,5 +1,12 @@
 <% content_for :page_title, "薑黃回購分析" %>
 
+<%= render 'shared/next_livestream_plan',
+      cross_event_stats: @cross_event_stats || [],
+      iron_fans:         @iron_fans         || [],
+      expiring_soon:     @expiring_soon     || [],
+      high_risk_lost:    @high_risk_lost    || [],
+      section_id:        'turm' %>
+
 <div class="row g-3 mb-3">
   <div class="col-12">
     <h4 class="fw-bold mb-0">薑黃回購分析</h4>

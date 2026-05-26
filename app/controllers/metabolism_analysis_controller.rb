@@ -285,6 +285,24 @@ class MetabolismAnalysisController < ApplicationController
     @insights << { type: :success, text: "#{@loyal_4_customers.size} 位客人任四場有購買，高忠誠度客群。" }                                   if @loyal_4_customers.size > 0
     @insights << { type: :info,    text: "#{@loyal_3_customers.size} 位客人任三場有購買。" }                                                  if @loyal_3_customers.size > 0
     @insights << { type: :info,    text: "累計 #{@all_prev_emails.size} 位不重複客人曾在五場中購買代謝錠。" }
+
+    @cross_event_stats = [
+      { label: "2025/7/4",  note: "薑黃+代謝",        buyers: @jul4_emails.size,  revenue: @jul4_revenue,  aov: @jul4_aov,  return_rate: nil,               return_count: nil },
+      { label: "2025/7/22", note: "薑黃+代謝",          buyers: @jul22_emails.size, revenue: @jul22_revenue, aov: @jul22_aov, return_rate: @jul4_return_rate,  return_count: @jul4_to_jul22_count },
+      { label: "2025/10/9", note: "代謝錠",             buyers: @oct9_emails.size,  revenue: @oct9_revenue,  aov: @oct9_aov,  return_rate: @jul22_return_rate, return_count: @jul22_to_oct9_count },
+      { label: "2026/2/25", note: "薑黃、清纖粉、代謝", buyers: @feb25_emails.size, revenue: @feb25_revenue, aov: @feb25_aov, return_rate: @oct9_return_rate,  return_count: @oct9_to_feb25_count },
+      { label: "2026/4/24", note: "代謝錠、薑黃",       buyers: @apr24_emails.size, revenue: @apr24_revenue, aov: @apr24_aov, return_rate: @feb25_return_rate, return_count: @feb25_to_apr24_count },
+    ]
+    @iron_fans = @loyal_5_customers.map { |r| { customer: r[:customer], attended_count: 5 } }
+    @high_risk_lost = @did_not_return.map do |r|
+      attended = []
+      attended << "2025/7/4"  if r[:attended_jul4]
+      attended << "2025/7/22" if r[:attended_jul22]
+      attended << "2025/10/9" if r[:attended_oct9]
+      attended << "2026/2/25" if r[:attended_feb25]
+      { customer: r[:customer], attended_labels: attended }
+    end
+    @expiring_soon = @expiring_soon.map { |r| r.merge(days_left: r[:days_remaining]) }
   end
 
   def export

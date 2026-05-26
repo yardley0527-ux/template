@@ -1,0 +1,228 @@
+<%# locals: cross_event_stats, iron_fans, expiring_soon, high_risk_lost, section_id %>
+
+<div class="d-flex align-items-center mb-3 mt-2">
+  <div class="border-start border-4 ps-3" style="border-color: #4a6fa5 !important;">
+    <h5 class="fw-bold mb-0" style="color: #4a6fa5;">🎯 下次直播規劃</h5>
+    <p class="text-muted small mb-0">跨場次趨勢 ＋ 三份行動名單</p>
+  </div>
+</div>
+
+<%# ── 場次趨勢表 ── %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header text-white fw-semibold" style="background-color: #4a6fa5;">📈 歷史場次趨勢</div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0 text-center" style="font-size: 0.875rem;">
+      <thead class="table-light">
+        <tr>
+          <th class="text-start ps-3">場次</th>
+          <th class="text-start">品項</th>
+          <th>買家數</th>
+          <th>業績</th>
+          <th>人均消費</th>
+          <th>連場回流率</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% cross_event_stats.each_with_index do |s, i| %>
+          <tr <%= i == cross_event_stats.size - 1 ? 'style="background-color:#f0f4ff;"' : '' %>>
+            <td class="fw-bold text-start ps-3">
+              <%= s[:label] %>
+              <% if i == cross_event_stats.size - 1 %>
+                <span class="badge ms-1" style="background-color:#4a6fa5;font-size:0.6rem;">最新</span>
+              <% end %>
+            </td>
+            <td class="text-start text-muted small"><%= s[:note] %></td>
+            <td><%= s[:buyers] %> 人</td>
+            <td><%= s[:revenue] > 0 ? "NT$#{number_with_delimiter(s[:revenue])}" : "—" %></td>
+            <td><%= s[:aov] > 0 ? "NT$#{number_with_delimiter(s[:aov])}" : "—" %></td>
+            <td>
+              <% if s[:return_rate] %>
+                <span class="fw-semibold <%= s[:return_rate] >= 30 ? 'text-success' : 'text-warning' %>">
+                  <%= s[:return_rate] %>%
+                </span>
+                <span class="text-muted small">（<%= s[:return_count] %>人）</span>
+              <% else %>
+                <span class="text-muted">—</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%# ── 三份行動名單 ── %>
+<div class="row g-3 mb-2">
+
+  <%# 鐵粉 %>
+  <div class="col-md-4">
+    <div class="plan-card plan-iron" data-target="<%= section_id %>-iron" style="cursor:pointer;">
+      <div class="plan-icon">⭐</div>
+      <div class="plan-num"><%= iron_fans.size %></div>
+      <div class="plan-label">鐵粉</div>
+      <div class="plan-hint">全場次都有購買</div>
+    </div>
+  </div>
+
+  <%# 快用完 %>
+  <div class="col-md-4">
+    <div class="plan-card plan-expire" data-target="<%= section_id %>-expire" style="cursor:pointer;">
+      <div class="plan-icon">⏰</div>
+      <div class="plan-num"><%= expiring_soon.size %></div>
+      <div class="plan-label">快用完</div>
+      <div class="plan-hint">21 天內需補貨</div>
+    </div>
+  </div>
+
+  <%# 高風險流失 %>
+  <div class="col-md-4">
+    <div class="plan-card plan-lost" data-target="<%= section_id %>-lost" style="cursor:pointer;">
+      <div class="plan-icon">🚨</div>
+      <div class="plan-num"><%= high_risk_lost.size %></div>
+      <div class="plan-label">高風險流失</div>
+      <div class="plan-hint">曾來、最近一場消失</div>
+    </div>
+  </div>
+</div>
+
+<%# 鐵粉清單 %>
+<div id="<%= section_id %>-iron" class="plan-detail mb-3" style="display:none;">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header fw-semibold text-white d-flex justify-content-between" style="background-color:#b45309;">
+      <span>⭐ 鐵粉名單（全場出席）</span>
+      <span class="badge bg-white text-dark"><%= iron_fans.size %> 人</span>
+    </div>
+    <% if iron_fans.empty? %>
+      <div class="text-center text-muted py-3 small">無資料（至少需要兩場以上才會產生鐵粉）</div>
+    <% else %>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
+          <thead class="table-light">
+            <tr><th>姓名</th><th>卡別</th><th>出席場數</th><th>電話</th><th>IG</th></tr>
+          </thead>
+          <tbody>
+            <% iron_fans.each do |r| %>
+              <% c = r[:customer] %>
+              <tr>
+                <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                <td class="text-center fw-bold text-warning"><%= r[:attended_count] %> 場</td>
+                <td><%= c.mobile_phone.present? ? content_tag(:a, "📞 #{c.mobile_phone}", href: "tel:#{c.mobile_phone}", class: "text-decoration-none text-muted small") : "" %></td>
+                <td><%= c.instagram_account.present? ? link_to("📷 #{c.instagram_account}", "https://instagram.com/#{c.instagram_account.gsub('@','')}", target: "_blank", class: "text-decoration-none small") : "" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# 快用完清單 %>
+<div id="<%= section_id %>-expire" class="plan-detail mb-3" style="display:none;">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header fw-semibold text-white d-flex justify-content-between" style="background-color:#0f766e;">
+      <span>⏰ 快用完名單（21 天內需補貨）</span>
+      <span class="badge bg-white text-dark"><%= expiring_soon.size %> 人</span>
+    </div>
+    <% if expiring_soon.empty? %>
+      <div class="text-center text-muted py-3 small">目前無人在 21 天內到期</div>
+    <% else %>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
+          <thead class="table-light">
+            <tr><th>姓名</th><th>卡別</th><th>剩餘天數</th><th>上次購買</th><th>品項</th><th>電話</th></tr>
+          </thead>
+          <tbody>
+            <% expiring_soon.each do |r| %>
+              <% c = r[:customer] %>
+              <% dl = r[:days_left] %>
+              <tr>
+                <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                <td class="text-center">
+                  <% if dl <= 0 %>
+                    <span class="badge bg-danger">已用完 <%= dl.abs %> 天</span>
+                  <% elsif dl <= 7 %>
+                    <span class="badge bg-warning text-dark">剩 <%= dl %> 天</span>
+                  <% else %>
+                    <span class="badge bg-info text-dark">剩 <%= dl %> 天</span>
+                  <% end %>
+                </td>
+                <td><%= r[:last_date]&.strftime("%m/%d") || "—" %></td>
+                <td class="text-muted small"><%= r[:last_product] || "—" %></td>
+                <td><%= c.mobile_phone.present? ? content_tag(:a, "📞 #{c.mobile_phone}", href: "tel:#{c.mobile_phone}", class: "text-decoration-none text-muted small") : "" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# 高風險流失清單 %>
+<div id="<%= section_id %>-lost" class="plan-detail mb-4" style="display:none;">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header fw-semibold text-white d-flex justify-content-between" style="background-color:#991b1b;">
+      <span>🚨 高風險流失（黑/金卡，最近一場未出現）</span>
+      <span class="badge bg-white text-dark"><%= high_risk_lost.size %> 人</span>
+    </div>
+    <% if high_risk_lost.empty? %>
+      <div class="text-center text-muted py-3 small">無資料</div>
+    <% else %>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
+          <thead class="table-light">
+            <tr><th>姓名</th><th>卡別</th><th>曾出席場次</th><th>電話</th><th>IG</th></tr>
+          </thead>
+          <tbody>
+            <% high_risk_lost.each do |r| %>
+              <% c = r[:customer] %>
+              <tr>
+                <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                <td><%= r[:attended_labels].join("、") %></td>
+                <td><%= c.mobile_phone.present? ? content_tag(:a, "📞 #{c.mobile_phone}", href: "tel:#{c.mobile_phone}", class: "text-decoration-none text-muted small") : "" %></td>
+                <td><%= c.instagram_account.present? ? link_to("📷 #{c.instagram_account}", "https://instagram.com/#{c.instagram_account.gsub('@','')}", target: "_blank", class: "text-decoration-none small") : "" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+(function() {
+  document.querySelectorAll('.plan-card[data-target]').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var id  = card.dataset.target;
+      var el  = document.getElementById(id);
+      if (!el) return;
+      var open = el.style.display !== 'none';
+      document.querySelectorAll('.plan-detail').forEach(function(d) { d.style.display = 'none'; });
+      document.querySelectorAll('.plan-card').forEach(function(c) { c.classList.remove('is-open'); });
+      if (!open) { el.style.display = 'block'; card.classList.add('is-open'); }
+    });
+  });
+})();
+</script>
+
+<style>
+.plan-card { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 16px 12px; text-align: center; transition: border-color .15s, box-shadow .15s; background: #fff; user-select: none; }
+.plan-card:hover { border-color: #9ca3af; box-shadow: 0 0 0 3px rgba(107,114,128,.1); }
+.plan-card.is-open { box-shadow: 0 0 0 3px rgba(0,0,0,.12); }
+.plan-iron  { border-color: #fcd34d; }
+.plan-iron.is-open  { background: #fffbeb; border-color: #d97706; }
+.plan-expire { border-color: #6ee7b7; }
+.plan-expire.is-open { background: #f0fdf4; border-color: #059669; }
+.plan-lost  { border-color: #fca5a5; }
+.plan-lost.is-open  { background: #fef2f2; border-color: #dc2626; }
+.plan-icon  { font-size: 1.4rem; margin-bottom: 4px; }
+.plan-num   { font-size: 2rem; font-weight: 800; line-height: 1; color: #111827; }
+.plan-label { font-size: 0.85rem; font-weight: 700; margin-top: 4px; color: #374151; }
+.plan-hint  { font-size: 0.7rem; color: #9ca3af; margin-top: 2px; }
+</style>

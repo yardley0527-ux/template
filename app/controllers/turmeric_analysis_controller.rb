@@ -183,12 +183,63 @@ class TurmericAnalysisController < ApplicationController
     if @black_apr10_rate < 20 && @black_jan9_rate < 20
       @insights << { type: :warning, text: "黑卡客人連續兩場出席率均低於 20%，建議檢視通知方式或提供黑卡專屬誘因。" }
     end
+
+    jan9_revenue  = turmeric_revenue(jan9)
+    feb25_revenue = turmeric_revenue(feb25)
+    apr10_revenue = turmeric_revenue(apr10)
+
+    @cross_event_stats = [
+      { label: "2026/1/9",  note: "代謝+膠原、薑黃",   buyers: @jan9_emails.size,  revenue: jan9_revenue,  aov: turmeric_aov(jan9),  return_rate: nil,              return_count: nil },
+      { label: "2026/2/25", note: "薑黃、清纖粉、代謝", buyers: @feb25_emails.size, revenue: feb25_revenue, aov: turmeric_aov(feb25), return_rate: @jan9_return_rate, return_count: @jan9_to_feb25_count },
+      { label: "2026/4/10", note: "薑黃",              buyers: @apr10_emails.size, revenue: apr10_revenue, aov: turmeric_aov(apr10), return_rate: @feb25_return_rate, return_count: @feb25_to_apr10_count },
+    ]
+    @iron_fans = @loyal_3_customers.map { |r| { customer: r[:customer], attended_count: 3 } }
+    @high_risk_lost = @missing_customers.map do |r|
+      attended = []
+      attended << "2026/1/9"  if @jan9_emails.include?(r[:customer].email)
+      attended << "2026/2/25" if @feb25_emails.include?(r[:customer].email)
+      { customer: r[:customer], attended_labels: attended }
+    end
+
+    all_buyers = (@jan9_emails | @feb25_emails | @apr10_emails).uniq
+    turmeric_last_raw = ShoplineOrder
+      .where(TURMERIC).where(email: all_buyers)
+      .order(:email, order_date: :desc)
+      .pluck(:email, :product_name, :order_date)
+
+    turmeric_last_by_email = {}
+    turmeric_last_raw.each { |e, p, d| turmeric_last_by_email[e] ||= { product_name: p, order_date: d } }
+
+    @expiring_soon = ShoplineCustomer
+      .where(email: all_buyers)
+      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
+      .filter_map do |c|
+        last = turmeric_last_by_email[c.email]
+        next unless last
+        bottles   = extract_bottles(last[:product_name])
+        last_date = last[:order_date].to_date
+        days_left = (bottles * DAYS_PER_BOTTLE) - (today - last_date).to_i
+        next unless days_left >= -7 && days_left <= 21
+        { customer: c, days_left: days_left, last_product: last[:product_name], last_date: last_date }
+      end
+      .sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
   end
 
   private
 
   def turmeric_emails(range)
     ShoplineOrder.where(TURMERIC).where(order_date: range).where.not(email: [nil, ""]).distinct.pluck(:email)
+  end
+
+  def turmeric_revenue(range)
+    ShoplineOrder.where(TURMERIC).where(order_date: range).where.not(total_amount: nil).sum(:total_amount).to_i
+  end
+
+  def turmeric_aov(range)
+    orders = ShoplineOrder.where(TURMERIC).where(order_date: range).where.not(total_amount: nil)
+    return 0 if orders.empty?
+    uniq = orders.select(:order_number).distinct.count
+    uniq.zero? ? 0 : (orders.sum(:total_amount) / uniq).round(0).to_i
   end
 
   def extract_bottles(product_name)

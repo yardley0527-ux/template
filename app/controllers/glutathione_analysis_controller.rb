@@ -29,6 +29,7 @@ class GlutathioneAnalysisController < ApplicationController
 
   def index
     @all_glut_events = GLUT_EVENTS.select { |e| e[:date] <= Date.today }
+    build_comprehensive_data
   end
 
   def export_missing
@@ -234,6 +235,74 @@ class GlutathioneAnalysisController < ApplicationController
                 r[:total_spend].to_i, r[:glut_count], c.instagram_account]
       end
     end
+  end
+
+  def build_comprehensive_data
+    return if @all_glut_events.empty?
+
+    all_event_emails = @all_glut_events.map do |ev|
+      glutathione_emails(ev[:date].beginning_of_day..(ev[:date] + 1).end_of_day)
+    end
+
+    @cross_event_stats = @all_glut_events.each_with_index.map do |ev, i|
+      emails  = all_event_emails[i]
+      prev    = i > 0 ? all_event_emails[i - 1] : []
+      overlap = (prev & emails).size
+      {
+        label:        "#{ev[:year]}/#{ev[:label]}",
+        note:         ev[:note],
+        buyers:       emails.size,
+        revenue:      ev[:revenue],
+        aov:          (emails.size > 0 && ev[:revenue] > 0) ? (ev[:revenue] / emails.size) : 0,
+        return_rate:  prev.any? ? pct(overlap, prev.size) : nil,
+        return_count: prev.any? ? overlap : nil
+      }
+    end
+
+    all_emails = all_event_emails.flatten.uniq
+    today      = Date.today
+
+    last_orders_raw = ShoplineOrder
+      .where(GLUTATHIONE).where(email: all_emails)
+      .order(:email, order_date: :desc)
+      .pluck(:email, :product_name, :order_date)
+
+    last_by_email = {}
+    last_orders_raw.each { |e, p, d| last_by_email[e] ||= { product_name: p, order_date: d } }
+
+    @expiring_soon = ShoplineCustomer
+      .where(email: all_emails)
+      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
+      .filter_map do |c|
+        last = last_by_email[c.email]
+        next unless last
+        bottles   = extract_bottles(last[:product_name])
+        last_date = last[:order_date].to_date
+        days_left = (bottles * DAYS_PER_BOTTLE) - (today - last_date).to_i
+        next unless days_left >= -7 && days_left <= 21
+        { customer: c, days_left: days_left, last_product: last[:product_name], last_date: last_date }
+      end
+      .sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
+
+    iron_emails = all_event_emails.reduce(:&)
+    @iron_fans = ShoplineCustomer
+      .where(email: iron_emails)
+      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
+      .map { |c| { customer: c, attended_count: @all_glut_events.size } }
+      .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
+
+    latest_emails = all_event_emails.last
+    lost_emails   = all_event_emails[0..-2].flatten.uniq - latest_emails
+    @high_risk_lost = ShoplineCustomer
+      .where(email: lost_emails).where(membership_level: %w[黑卡 金卡])
+      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
+      .map do |c|
+        attended = @all_glut_events[0..-2].each_with_index
+          .select { |_, i| all_event_emails[i].include?(c.email) }
+          .map { |ev, _| "#{ev[:year]}/#{ev[:label]}" }
+        { customer: c, attended_labels: attended }
+      end
+      .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
   end
 
   def glutathione_emails(range)
