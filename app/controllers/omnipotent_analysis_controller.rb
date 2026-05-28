@@ -256,15 +256,17 @@ class OmnipotentAnalysisController < ApplicationController
       prev     = i > 0 ? all_event_emails[i - 1] : []
       overlap  = (prev & emails).size
       end_date = ev[:date] + 3
-      rev      = omni_revenues[i].to_i
+      rev            = omni_revenues[i].to_i
+      single_product = ev[:note].split(/[、,+＋]/).map(&:strip).one? { |p| p.include?("全能") }
       {
-        label:        "#{ev[:year]}/#{ev[:label]}~#{end_date.month}/#{end_date.day}",
-        note:         ev[:note],
-        buyers:       emails.size,
-        revenue:      rev,
-        aov:          (emails.size > 0 && rev > 0) ? (rev / emails.size) : 0,
-        return_rate:  prev.any? ? pct(overlap, prev.size) : nil,
-        return_count: prev.any? ? overlap : nil
+        label:          "#{ev[:year]}/#{ev[:label]}~#{end_date.month}/#{end_date.day}",
+        note:           ev[:note],
+        single_product: single_product,
+        buyers:         emails.size,
+        revenue:        rev,
+        aov:            (emails.size > 0 && rev > 0) ? (rev / emails.size) : 0,
+        return_rate:    prev.any? ? pct(overlap, prev.size) : nil,
+        return_count:   prev.any? ? overlap : nil
       }
     end
 

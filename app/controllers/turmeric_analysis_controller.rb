@@ -189,9 +189,9 @@ class TurmericAnalysisController < ApplicationController
     apr10_revenue = turmeric_revenue(apr10)
 
     @cross_event_stats = [
-      { label: "2026/1/9~1/12",   note: "代謝+膠原、薑黃",   buyers: @jan9_emails.size,  revenue: jan9_revenue,  aov: turmeric_aov(jan9),  return_rate: nil,              return_count: nil },
-      { label: "2026/2/25~2/28",  note: "薑黃、清纖粉、代謝", buyers: @feb25_emails.size, revenue: feb25_revenue, aov: turmeric_aov(feb25), return_rate: @jan9_return_rate, return_count: @jan9_to_feb25_count },
-      { label: "2026/4/10~4/13",  note: "薑黃",              buyers: @apr10_emails.size, revenue: apr10_revenue, aov: turmeric_aov(apr10), return_rate: @feb25_return_rate, return_count: @feb25_to_apr10_count },
+      { label: "2026/1/9~1/12",   note: "代謝+膠原、薑黃",   single_product: false, buyers: @jan9_emails.size,  revenue: jan9_revenue,  aov: turmeric_aov(jan9),  return_rate: nil,              return_count: nil },
+      { label: "2026/2/25~2/28",  note: "薑黃、清纖粉、代謝", single_product: false, buyers: @feb25_emails.size, revenue: feb25_revenue, aov: turmeric_aov(feb25), return_rate: @jan9_return_rate, return_count: @jan9_to_feb25_count },
+      { label: "2026/4/10~4/13",  note: "薑黃",              single_product: true,  buyers: @apr10_emails.size, revenue: apr10_revenue, aov: turmeric_aov(apr10), return_rate: @feb25_return_rate, return_count: @feb25_to_apr10_count },
     ]
     @iron_fans = @loyal_3_customers.map { |r| { customer: r[:customer], attended_count: 3 } }
     @high_risk_lost = @missing_customers.map do |r|

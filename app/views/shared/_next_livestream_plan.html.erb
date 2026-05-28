@@ -33,8 +33,22 @@
             </td>
             <td class="text-start text-muted small"><%= s[:note] %></td>
             <td><%= s[:buyers] %> 人</td>
-            <td><%= s[:revenue] > 0 ? "NT$#{number_with_delimiter(s[:revenue])}" : "—" %></td>
-            <td><%= s[:aov] > 0 ? "NT$#{number_with_delimiter(s[:aov])}" : "—" %></td>
+            <td>
+              <%= s[:revenue] > 0 ? "NT$#{number_with_delimiter(s[:revenue])}" : "—" %>
+              <% if s[:revenue] > 0 %>
+                <% if s[:single_product] %>
+                  <span class="badge ms-1" style="background:#e8f5e9;color:#2e7d32;font-size:0.6rem;font-weight:600;">單品</span>
+                <% else %>
+                  <span class="badge ms-1" style="background:#fff3e0;color:#e65100;font-size:0.6rem;font-weight:600;">混場</span>
+                <% end %>
+              <% end %>
+            </td>
+            <td>
+              <%= s[:aov] > 0 ? "NT$#{number_with_delimiter(s[:aov])}" : "—" %>
+              <% if s[:aov] > 0 && !s[:single_product] %>
+                <span class="badge ms-1" style="background:#fff3e0;color:#e65100;font-size:0.6rem;font-weight:600;">混場</span>
+              <% end %>
+            </td>
             <td>
               <% if s[:return_rate] %>
                 <span class="fw-semibold <%= s[:return_rate] >= 30 ? 'text-success' : 'text-warning' %>">
