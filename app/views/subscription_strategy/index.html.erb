@@ -1,0 +1,234 @@
+<% content_for :page_title, "定期購策略分析" %>
+
+<div id="content">
+  <div class="subheader">
+    <div class="subheader-block d-lg-flex align-items-center">
+      <div class="d-inline-flex flex-column justify-content-center mr-3">
+        <span class="fw-300 fs-xs d-none d-md-block opacity-50">策略管理</span>
+        <span class="fs-xl fw-700 d-none d-md-flex align-items-center">定期購策略分析</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid pb-5">
+
+    <%# ── 一、客人購買組數分析 ── %>
+    <div class="d-flex align-items-center mb-3 mt-2">
+      <div class="border-start border-4 ps-3" style="border-color:#2563eb !important;">
+        <h5 class="fw-bold mb-0" style="color:#2563eb;">📦 客人購買幾種系列？</h5>
+        <p class="text-muted small mb-0">共 <%= number_with_delimiter(@combo_data[:total_customers]) %> 位有歷史紀錄的客人</p>
+      </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+      <% dist = @combo_data[:series_count_dist] %>
+      <% total = @combo_data[:total_customers].to_f %>
+      <% dist.each do |row| %>
+        <% n = row["n"].to_i; cnt = row["customer_count"].to_i; pct = (cnt / total * 100).round(1) %>
+        <div class="col-6 col-md-3 col-lg-2">
+          <div class="card border-0 shadow-sm text-center py-3 h-100"
+               style="border-top: 3px solid <%= n == 1 ? '#dc2626' : n <= 3 ? '#d97706' : '#16a34a' %> !important;">
+            <div style="font-size:1.7rem;font-weight:800;color:<%= n == 1 ? '#dc2626' : n <= 3 ? '#d97706' : '#16a34a' %>;">
+              <%= number_with_delimiter(cnt) %> 人
+            </div>
+            <div class="fw-semibold mt-1" style="font-size:0.9rem;">買 <%= n %> 種系列</div>
+            <div class="text-muted small"><%= pct %>%</div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%# 解讀 %>
+    <div class="card border-0 shadow-sm mb-4" style="background:#fffbeb;border-left:4px solid #d97706 !important;">
+      <div class="card-body py-3">
+        <p class="mb-1 fw-semibold" style="color:#92400e;">💡 關鍵洞察</p>
+        <% only_one = dist.find { |r| r["n"].to_i == 1 }&.dig("customer_count").to_i %>
+        <% two_plus = dist.select { |r| r["n"].to_i >= 2 }.sum { |r| r["customer_count"].to_i } %>
+        <ul class="mb-0 small" style="color:#78350f;">
+          <li><strong><%= only_one %> 人（<%= (only_one / total * 100).round %>%）只買過 1 種系列</strong>，是定期購最直接的切入點——先穩定他們的回購再做交叉推薦。</li>
+          <li><strong><%= two_plus %> 人已同時購買 2 種以上</strong>，這群人消費習慣穩定，定期購搭配方案接受度會更高。</li>
+          <li>買 3 種以上的客人共 <%= dist.select { |r| r["n"].to_i >= 3 }.sum { |r| r["customer_count"].to_i } %> 人，屬於高黏著度核心客群，可優先推「季訂 82 折」最優惠方案。</li>
+        </ul>
+      </div>
+    </div>
+
+    <%# ── 二、熱門組合搭配 ── %>
+    <div class="d-flex align-items-center mb-3 mt-4">
+      <div class="border-start border-4 ps-3" style="border-color:#7c3aed !important;">
+        <h5 class="fw-bold mb-0" style="color:#7c3aed;">🔗 最多人同時購買的產品組合</h5>
+        <p class="text-muted small mb-0">有助於決定哪些組合適合包成定期購搭配方案</p>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.875rem;">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3" style="width:40px;">#</th>
+              <th>組合</th>
+              <th class="text-center">共同購買人數</th>
+              <th class="text-center">佔有回購記錄客人比例</th>
+              <th>定期購建議</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @combo_data[:top_pairs].each_with_index do |row, i| %>
+              <% s1 = row["s1"]; s2 = row["s2"]; cnt = row["pair_count"].to_i %>
+              <% pct = (cnt / total * 100).round(1) %>
+              <% is_top3 = i < 3 %>
+              <tr <%= is_top3 ? 'style="background:#faf5ff;"' : '' %>>
+                <td class="ps-3 text-muted fw-semibold"><%= i + 1 %></td>
+                <td>
+                  <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:0.8rem;font-weight:700;padding:5px 10px;">
+                    <%= s1 %>
+                  </span>
+                  <span class="mx-1 text-muted">＋</span>
+                  <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:0.8rem;font-weight:700;padding:5px 10px;">
+                    <%= s2 %>
+                  </span>
+                  <% if is_top3 %>
+                    <span class="badge badge-warning text-dark ml-2" style="font-size:0.65rem;">熱門組合</span>
+                  <% end %>
+                </td>
+                <td class="text-center fw-bold"><%= number_with_delimiter(cnt) %> 人</td>
+                <td class="text-center">
+                  <div class="progress" style="height:8px;width:120px;margin:0 auto;">
+                    <div class="progress-bar" style="width:<%= [pct * 3, 100].min %>%;background:#7c3aed;"></div>
+                  </div>
+                  <span class="text-muted small"><%= pct %>%</span>
+                </td>
+                <td style="font-size:0.8rem;color:#6b7280;">
+                  <% combos = {
+                    ["代謝錠","薑黃"] => "⭐ 最推薦：同場直播主力，可包成「纖體雙人組」定期購",
+                    ["代謝錠","全能"] => "⭐ 很強：代謝＋體力，可主打上班族族群",
+                    ["全能","薑黃"]   => "⭐ 很強：抗發炎組合，可主打健身族",
+                    ["代謝錠","膠原蛋白"] => "搭配美容線，可推「纖體美顏組」",
+                    ["代謝錠","美白"] => "代謝加美白，適合女性客群定期購",
+                    ["全能","美白"]   => "美白＋抗氧化，女性高購買意願",
+                    ["美白","薑黃"]   => "美容抗炎組合",
+                    ["全能","膠原蛋白"] => "抗氧化＋膠原，適合熟齡女性",
+                    ["膠原蛋白","薑黃"] => "美容抗炎雙組合",
+                  }.with_indifferent_access %>
+                  <%= combos[[s1,s2].sort.join(",")] || combos[[s2,s1].sort.join(",")] || "—" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <%# ── 三、定期購策略建議 ── %>
+    <div class="d-flex align-items-center mb-3 mt-4">
+      <div class="border-start border-4 ps-3" style="border-color:#059669 !important;">
+        <h5 class="fw-bold mb-0" style="color:#059669;">🎯 定期購策略建議</h5>
+        <p class="text-muted small mb-0">根據競品研究＋我們客人購物習慣綜合分析</p>
+      </div>
+    </div>
+
+    <%# 模式選擇 %>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header text-white fw-semibold" style="background:#059669;">📋 推薦模式：輕綁約＋升等累積型</div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">參考台灣競品：三得利（累積升等）、亞尼活力（85折）、白蘭氏（固定8折）、Kamee（個人化，80%續訂率）</p>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <div class="card border h-100" style="border-color:#86efac !important;">
+              <div class="card-body text-center">
+                <div class="fw-bold mb-1" style="color:#15803d;font-size:1rem;">月訂</div>
+                <div style="font-size:2.5rem;font-weight:900;color:#15803d;">88折</div>
+                <div class="text-muted small mt-1">每 30 天補貨一次</div>
+                <hr class="my-2">
+                <div class="text-muted small">最低 3 期（3個月）</div>
+                <div class="text-muted small">滿後可隨時取消</div>
+                <div class="badge badge-success mt-2">推薦首選</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border h-100" style="border-color:#93c5fd !important;">
+              <div class="card-body text-center">
+                <div class="fw-bold mb-1" style="color:#1d4ed8;font-size:1rem;">雙月訂</div>
+                <div style="font-size:2.5rem;font-weight:900;color:#1d4ed8;">85折</div>
+                <div class="text-muted small mt-1">每 60 天補貨一次</div>
+                <hr class="my-2">
+                <div class="text-muted small">最低 3 期（6個月）</div>
+                <div class="text-muted small">適合使用量少的客人</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border h-100" style="border-color:#c4b5fd !important;">
+              <div class="card-body text-center">
+                <div class="fw-bold mb-1" style="color:#7c3aed;font-size:1rem;">季訂</div>
+                <div style="font-size:2.5rem;font-weight:900;color:#7c3aed;">82折</div>
+                <div class="text-muted small mt-1">每 90 天補貨一次</div>
+                <hr class="my-2">
+                <div class="text-muted small">最低 3 期（9個月）</div>
+                <div class="text-muted small">適合 3 種以上高黏著客</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# 推薦先打哪些產品 %>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header fw-semibold" style="background:#f8fafc;">🚀 優先推定期購的產品（根據客人回購習慣）</div>
+      <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0" style="font-size:0.875rem;">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3">產品系列</th>
+              <th class="text-center">目前有回購紀錄</th>
+              <th>定期購切入點</th>
+              <th>搭配推薦</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:#f0fdf4;">
+              <td class="ps-3 fw-bold">代謝錠</td>
+              <td class="text-center">2,300 人</td>
+              <td class="small text-muted">最大基數，先從這裡開始</td>
+              <td class="small">+ 薑黃（1340人共買）、+ 全能（1164人）</td>
+            </tr>
+            <tr>
+              <td class="ps-3 fw-bold">薑黃</td>
+              <td class="text-center">1,688 人</td>
+              <td class="small text-muted">回購頻率高，適合月訂</td>
+              <td class="small">+ 代謝錠（1340人）、+ 全能（1018人）</td>
+            </tr>
+            <tr>
+              <td class="ps-3 fw-bold">全能膠囊</td>
+              <td class="text-center">1,647 人</td>
+              <td class="small text-muted">B群補充需求穩定</td>
+              <td class="small">+ 代謝錠（1164人）、+ 薑黃（1018人）</td>
+            </tr>
+            <tr>
+              <td class="ps-3 fw-bold">穀胱甘肽</td>
+              <td class="text-center">97 人</td>
+              <td class="small text-muted">客單高，回購意願強</td>
+              <td class="small">+ 代謝錠（77人）、+ 膠原蛋白（71人）</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <%# 直播現場操作建議 %>
+    <div class="card border-0 shadow-sm mb-3" style="background:#eff6ff;border-left:4px solid #2563eb !important;">
+      <div class="card-body">
+        <p class="fw-semibold mb-2" style="color:#1d4ed8;">📡 直播現場推定期購的操作建議</p>
+        <ul class="mb-0 small" style="color:#1e40af;">
+          <li><strong>限時報名：</strong>直播進行中報名定期購可享加碼折扣（如額外送試用組），播完恢復原價。</li>
+          <li><strong>VIP 優先購：</strong>定期購客人在下次直播開播前 24 小時可以先行線上下單，不用搶直播場。</li>
+          <li><strong>搭配組合話術：</strong>推代謝錠定期購時，直接告知「跟薑黃一起訂雙月訂85折，比現在各買一次便宜 ___元」。</li>
+          <li><strong>第 3 期提醒：</strong>快到第 3 期時（已達最低期數），主動聯絡客人是否要繼續，而不是等客人主動取消。</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>

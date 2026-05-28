@@ -43,7 +43,8 @@ class SidebarEntry
         {
           group_title: "策略管理",
           children: [
-            { href: product_strategy_path,title: "產品策略報表",   icon: "fa-chart-line" }
+            { href: product_strategy_path,      title: "產品策略報表",   icon: "fa-chart-line" },
+            { href: subscription_strategy_path, title: "定期購策略分析", icon: "fa-sync-alt" }
           ]
         },
         {
