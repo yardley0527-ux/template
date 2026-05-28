@@ -120,3 +120,9 @@ table thead tr th,
   --theme-primary-800: #6e4a2e !important;
   --theme-primary-900: #4e3320 !important;
 }
+
+/* badge 粉紅色改為淺粉 */
+.badge.bg-danger {
+  background-color: #fbb6ce !important;
+  color: #6b1f38 !important;
+}
