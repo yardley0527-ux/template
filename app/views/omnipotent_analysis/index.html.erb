@@ -368,6 +368,103 @@
   </div>
 <% end %>
 
+<%# ══════════════════════════════════════════════════ %>
+<%# 美白交叉推薦名單                                    %>
+<%# ══════════════════════════════════════════════════ %>
+
+<% if @whitening_cross_buyers&.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-3 ps-3" style="border-color: #c084fc;">
+      <h5 class="fw-bold mb-0" style="color: #7e22ce;">💄 曾買全能 × 美白的黑金卡客人</h5>
+      <p class="text-muted small mb-0">曾在全能直播場次期間同時購買美白，適合推「買全能送美白」優惠</p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #6b21a8;">
+      <span class="fw-bold">美白交叉推薦名單</span>
+      <span class="badge bg-white text-dark"><%= @whitening_cross_buyers.size %> 人</span>
+    </div>
+
+    <div class="px-3 pt-2 border-bottom">
+      <ul class="nav nav-tabs" id="tabs-whitening">
+        <% %w[黑卡 金卡].each do |level| %>
+          <% next if @whitening_cross_buyers.none? { |r| r[:customer].membership_level == level } %>
+          <li class="nav-item">
+            <button class="nav-link"
+                    data-tab-prefix="whitening"
+                    data-tab-target="whitening-<%= OmnipotentAnalysisController::LEVEL_KEYS[level] %>"
+                    type="button">
+              <%= level %>
+              <span class="badge bg-secondary">
+                <%= @whitening_cross_buyers.count { |r| r[:customer].membership_level == level } %>
+              </span>
+            </button>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <div class="card-body p-0">
+      <% %w[黑卡 金卡].each do |level| %>
+        <% key  = OmnipotentAnalysisController::LEVEL_KEYS[level] %>
+        <% rows = @whitening_cross_buyers.select { |r| r[:customer].membership_level == level } %>
+        <% next if rows.empty? %>
+        <div class="invite-pane" id="pane-whitening-<%= key %>" style="display: none;">
+          <div class="table-responsive" data-paginate="true" data-page-size="20">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>姓名</th>
+                  <th>卡別</th>
+                  <th>美白購買次數</th>
+                  <th>最後買美白</th>
+                  <th>整體消費力</th>
+                  <th>電話</th>
+                  <th>IG</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.each_with_index do |r, i| %>
+                  <% c = r[:customer] %>
+                  <tr>
+                    <td>
+                      <span class="badge <%= i < 3 ? 'bg-danger' : i < 8 ? 'bg-warning text-dark' : 'bg-light text-dark' %>">
+                        #<%= i + 1 %>
+                      </span>
+                    </td>
+                    <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                    <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                    <td class="text-center"><%= r[:whitening_count] %> 次</td>
+                    <td><%= r[:last_whitening_date]&.strftime("%Y/%m/%d") || "—" %></td>
+                    <td class="fw-semibold">NT$<%= number_with_delimiter(c.total_amount.to_i) %></td>
+                    <td>
+                      <% if c.mobile_phone.present? %>
+                        <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
+                          📞 <%= c.mobile_phone %>
+                        </a>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if c.instagram_account.present? %>
+                        <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
+                          📷 <%= c.instagram_account %>
+                        </a>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
 <script>
 let currentTierFilter = 'all';
 

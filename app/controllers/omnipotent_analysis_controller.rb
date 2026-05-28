@@ -314,6 +314,31 @@ class OmnipotentAnalysisController < ApplicationController
         { customer: c, attended_labels: attended }
       end
       .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
+
+    # 曾在全能場次同時買過美白的黑金卡客人（交叉推薦名單）
+    whitening_emails_at_omni = @all_omni_events.flat_map do |ev|
+      range = ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day
+      ShoplineOrder.where("product_name LIKE '%美白%'").where(order_date: range)
+        .where.not(email: [nil, ""]).distinct.pluck(:email)
+    end.uniq
+
+    last_whitening_counts  = ShoplineOrder.where("product_name LIKE '%美白%'")
+      .where(email: whitening_emails_at_omni).group(:email).count
+    last_whitening_dates   = ShoplineOrder.where("product_name LIKE '%美白%'")
+      .where(email: whitening_emails_at_omni).group(:email).maximum(:order_date)
+
+    @whitening_cross_buyers = ShoplineCustomer
+      .where(email: whitening_emails_at_omni)
+      .where(membership_level: %w[黑卡 金卡])
+      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
+      .map do |c|
+        {
+          customer:           c,
+          whitening_count:    last_whitening_counts[c.email] || 0,
+          last_whitening_date: last_whitening_dates[c.email]&.to_date
+        }
+      end
+      .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
   end
 
   def omnipotent_emails(range)
