@@ -17,10 +17,6 @@ Rails.application.routes.draw do
   get '/omnipotent_analysis/export_event',   to: 'omnipotent_analysis#export_event',    as: :omnipotent_export_event
   get 'customers/export_inactive', to: 'customers#export_inactive', as: :export_inactive_customers
 
-  resources :subscriptions do
-    member { post :advance }
-  end
-
   resources :expiring_members, only: [:index] do
     post :confirm_renewal, on: :member
   end  

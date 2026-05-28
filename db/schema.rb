@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_28_083842) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_28_065604) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -341,28 +341,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_28_083842) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["username"], name: "index_users_on_username", unique: true
-  end
-
-  create_table "subscriptions", force: :cascade do |t|
-    t.bigint  "shopline_customer_id", null: false
-    t.string  "product_name",         null: false
-    t.string  "product_series"
-    t.integer "frequency_days",       null: false
-    t.decimal "discount_rate",        precision: 4, scale: 2, null: false
-    t.decimal "unit_price",           precision: 10, scale: 2, null: false
-    t.integer "quantity",             default: 1, null: false
-    t.string  "status",               default: "active", null: false
-    t.date    "started_on",           null: false
-    t.date    "next_due_on",          null: false
-    t.integer "completed_periods",    default: 0, null: false
-    t.integer "min_periods",          default: 3, null: false
-    t.text    "notes"
-    t.datetime "created_at",          null: false
-    t.datetime "updated_at",          null: false
-    t.index ["shopline_customer_id"], name: "index_subscriptions_on_shopline_customer_id"
-    t.index ["status"],               name: "index_subscriptions_on_status"
-    t.index ["next_due_on"],          name: "index_subscriptions_on_next_due_on"
-    t.index ["product_series"],       name: "index_subscriptions_on_product_series"
   end
 
   add_foreign_key "albums", "shopline_customers"
