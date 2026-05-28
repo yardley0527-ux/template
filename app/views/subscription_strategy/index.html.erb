@@ -37,8 +37,8 @@
             </tr>
           </thead>
           <tbody>
-            <% SERIES_ORDER = %w[代謝錠 薑黃 全能 穀胱甘肽 美白 膠原蛋白] %>
-            <% SERIES_HINT = {
+            <% series_order = %w[代謝錠 薑黃 全能 穀胱甘肽 美白 膠原蛋白] %>
+            <% series_hint = {
               "代謝錠"   => "1瓶≈30天 → 月訂最自然",
               "薑黃"     => "1瓶≈30天 → 月訂，買2瓶可推雙月訂",
               "全能"     => "1瓶≈30天 → 月訂，買2瓶推雙月訂",
@@ -46,7 +46,7 @@
               "美白"     => "依買幾瓶決定頻率",
               "膠原蛋白" => "1瓶≈30天 → 月訂為主"
             } %>
-            <% SERIES_ORDER.each do |series| %>
+            <% series_order.each do |series| %>
               <% dist = @combo_data[:qty_by_series][series] || {} %>
               <% total_orders = dist.values.sum.to_f %>
               <% next if total_orders == 0 %>
@@ -63,7 +63,7 @@
                     <% end %>
                   </td>
                 <% end %>
-                <td class="text-start pe-3 text-muted" style="font-size:0.78rem;"><%= SERIES_HINT[series] %></td>
+                <td class="text-start pe-3 text-muted" style="font-size:0.78rem;"><%= series_hint[series] %></td>
               </tr>
             <% end %>
           </tbody>
