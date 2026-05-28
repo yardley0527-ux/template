@@ -244,17 +244,25 @@ class OmnipotentAnalysisController < ApplicationController
       omnipotent_emails(ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day)
     end
 
+    # 從 DB 撈各場次全能實際業績（避免用整場活動總業績導致人均失真）
+    omni_revenues = @all_omni_events.map do |ev|
+      range = ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day
+      ShoplineOrder.where(OMNIPOTENT).where(order_date: range)
+        .sum("COALESCE(checkout_amount, total_amount)")
+    end
+
     @cross_event_stats = @all_omni_events.each_with_index.map do |ev, i|
-      emails  = all_event_emails[i]
-      prev    = i > 0 ? all_event_emails[i - 1] : []
-      overlap = (prev & emails).size
+      emails   = all_event_emails[i]
+      prev     = i > 0 ? all_event_emails[i - 1] : []
+      overlap  = (prev & emails).size
       end_date = ev[:date] + 3
+      rev      = omni_revenues[i].to_i
       {
         label:        "#{ev[:year]}/#{ev[:label]}~#{end_date.month}/#{end_date.day}",
         note:         ev[:note],
         buyers:       emails.size,
-        revenue:      ev[:revenue],
-        aov:          (emails.size > 0 && ev[:revenue].to_i > 0) ? (ev[:revenue] / emails.size) : 0,
+        revenue:      rev,
+        aov:          (emails.size > 0 && rev > 0) ? (rev / emails.size) : 0,
         return_rate:  prev.any? ? pct(overlap, prev.size) : nil,
         return_count: prev.any? ? overlap : nil
       }
