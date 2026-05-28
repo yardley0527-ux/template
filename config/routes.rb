@@ -12,6 +12,9 @@ Rails.application.routes.draw do
   get '/glutathione_analysis',                to: 'glutathione_analysis#index',          as: :glutathione_analysis
   get '/glutathione_analysis/export_missing', to: 'glutathione_analysis#export_missing',  as: :glutathione_export_missing
   get '/glutathione_analysis/export_event',   to: 'glutathione_analysis#export_event',    as: :glutathione_export_event
+  get '/omnipotent_analysis',                to: 'omnipotent_analysis#index',          as: :omnipotent_analysis
+  get '/omnipotent_analysis/export_missing', to: 'omnipotent_analysis#export_missing',  as: :omnipotent_export_missing
+  get '/omnipotent_analysis/export_event',   to: 'omnipotent_analysis#export_event',    as: :omnipotent_export_event
   get 'customers/export_inactive', to: 'customers#export_inactive', as: :export_inactive_customers
 
   resources :expiring_members, only: [:index] do
