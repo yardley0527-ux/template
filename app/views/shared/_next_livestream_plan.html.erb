@@ -31,24 +31,19 @@
                 <span class="badge ms-1" style="background-color:#4a6fa5;font-size:0.6rem;">最新</span>
               <% end %>
             </td>
-            <td class="text-start text-muted small"><%= s[:note] %></td>
-            <td><%= s[:buyers] %> 人</td>
-            <td>
-              <%= s[:revenue] > 0 ? "NT$#{number_with_delimiter(s[:revenue])}" : "—" %>
-              <% if s[:revenue] > 0 %>
+            <td class="text-start">
+              <div class="text-muted small"><%= s[:note] %></div>
+              <% if s.key?(:single_product) %>
                 <% if s[:single_product] %>
-                  <span class="badge ms-1" style="background:#e8f5e9;color:#2e7d32;font-size:0.6rem;font-weight:600;">單品</span>
+                  <span style="display:inline-block;margin-top:3px;padding:2px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;background:#d4edda;color:#155724;border:1px solid #c3e6cb;">單品業績</span>
                 <% else %>
-                  <span class="badge ms-1" style="background:#fff3e0;color:#e65100;font-size:0.6rem;font-weight:600;">混場</span>
+                  <span style="display:inline-block;margin-top:3px;padding:2px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;background:#fde8c8;color:#7d3c00;border:1px solid #f5c580;">混場 — 業績僅含本產品</span>
                 <% end %>
               <% end %>
             </td>
-            <td>
-              <%= s[:aov] > 0 ? "NT$#{number_with_delimiter(s[:aov])}" : "—" %>
-              <% if s[:aov] > 0 && !s[:single_product] %>
-                <span class="badge ms-1" style="background:#fff3e0;color:#e65100;font-size:0.6rem;font-weight:600;">混場</span>
-              <% end %>
-            </td>
+            <td><%= s[:buyers] %> 人</td>
+            <td><%= s[:revenue] > 0 ? "NT$#{number_with_delimiter(s[:revenue])}" : "—" %></td>
+            <td><%= s[:aov] > 0 ? "NT$#{number_with_delimiter(s[:aov])}" : "—" %></td>
             <td>
               <% if s[:return_rate] %>
                 <span class="fw-semibold <%= s[:return_rate] >= 30 ? 'text-success' : 'text-warning' %>">
