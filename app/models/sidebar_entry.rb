@@ -58,6 +58,13 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "定期購管理",
+          children: [
+            { href: subscriptions_path, title: "定期購訂閱管理", icon: "fa-sync-alt" },
+            { href: new_subscription_path, title: "＋ 新增定期購", icon: "fa-plus-circle" }
+          ]
+        },
+        {
           group_title: "產品分類快速檢視",
           children: [
             { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },

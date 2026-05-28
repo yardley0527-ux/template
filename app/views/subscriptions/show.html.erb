@@ -1,0 +1,151 @@
+<% content_for :page_title, "定期購詳情" %>
+
+<div id="content">
+  <div class="subheader">
+    <div class="subheader-block d-lg-flex align-items-center">
+      <div class="d-inline-flex flex-column justify-content-center mr-3">
+        <span class="fw-300 fs-xs d-none d-md-block opacity-50">定期購管理</span>
+        <span class="fs-xl fw-700 d-none d-md-flex align-items-center">訂閱詳情</span>
+      </div>
+    </div>
+    <div class="subheader-block ml-auto d-flex gap-2">
+      <%= link_to "← 返回列表", subscriptions_path, class: "btn btn-outline-secondary btn-sm" %>
+      <%= link_to "編輯", edit_subscription_path(@subscription), class: "btn btn-primary btn-sm" %>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <% if notice %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <%= notice %>
+        <button type="button" class="close" data-dismiss="alert"><span>&times;</span></button>
+      </div>
+    <% end %>
+
+    <div class="row">
+      <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold text-white" style="background:#2563eb;">👤 客戶資訊</div>
+          <div class="card-body">
+            <% c = @subscription.shopline_customer %>
+            <dl class="row mb-0" style="font-size:0.9rem;">
+              <dt class="col-5 text-muted">姓名</dt>
+              <dd class="col-7"><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold" %></dd>
+              <dt class="col-5 text-muted">卡別</dt>
+              <dd class="col-7"><span class="badge badge-secondary"><%= c.membership_level %></span></dd>
+              <dt class="col-5 text-muted">電話</dt>
+              <dd class="col-7"><%= c.mobile_phone.present? ? link_to(c.mobile_phone, "tel:#{c.mobile_phone}") : "—" %></dd>
+              <dt class="col-5 text-muted">Email</dt>
+              <dd class="col-7 text-truncate"><%= c.email.present? ? c.email : "—" %></dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold text-white" style="background:#059669;">📦 訂閱內容</div>
+          <div class="card-body">
+            <dl class="row mb-0" style="font-size:0.9rem;">
+              <dt class="col-5 text-muted">產品</dt>
+              <dd class="col-7 fw-semibold"><%= @subscription.product_name %></dd>
+              <dt class="col-5 text-muted">數量</dt>
+              <dd class="col-7"><%= @subscription.quantity %> 件</dd>
+              <dt class="col-5 text-muted">頻率</dt>
+              <dd class="col-7"><%= @subscription.frequency_label %></dd>
+              <dt class="col-5 text-muted">折扣</dt>
+              <dd class="col-7 fw-bold text-primary"><%= @subscription.discount_label %></dd>
+              <dt class="col-5 text-muted">原價</dt>
+              <dd class="col-7">NT$<%= number_with_delimiter(@subscription.unit_price) %></dd>
+              <dt class="col-5 text-muted">每期金額</dt>
+              <dd class="col-7 fw-bold">NT$<%= number_with_delimiter(@subscription.total_per_delivery) %></dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold text-white" style="background:#7c3aed;">📅 訂閱進度</div>
+          <div class="card-body">
+            <dl class="row mb-0" style="font-size:0.9rem;">
+              <dt class="col-5 text-muted">開始日期</dt>
+              <dd class="col-7"><%= @subscription.started_on.strftime("%Y/%m/%d") %></dd>
+              <dt class="col-5 text-muted">已完成期數</dt>
+              <dd class="col-7 fw-bold">
+                <%= @subscription.completed_periods %> 期
+                <% if @subscription.completed_periods >= @subscription.min_periods %>
+                  <span class="badge badge-success ml-1">已達最低期數，可取消</span>
+                <% else %>
+                  <span class="text-muted small">（最低 <%= @subscription.min_periods %> 期）</span>
+                <% end %>
+              </dd>
+              <dt class="col-5 text-muted">下次補貨日</dt>
+              <dd class="col-7">
+                <% days_until = (@subscription.next_due_on - Date.today).to_i %>
+                <span class="fw-semibold"><%= @subscription.next_due_on.strftime("%Y/%m/%d") %></span>
+                <% if @subscription.status == "active" %>
+                  <% if days_until < 0 %>
+                    <span class="badge badge-danger ml-1">逾期 <%= days_until.abs %> 天</span>
+                  <% elsif days_until <= 7 %>
+                    <span class="badge badge-warning text-dark ml-1">還有 <%= days_until %> 天</span>
+                  <% else %>
+                    <span class="text-muted small ml-1">（還有 <%= days_until %> 天）</span>
+                  <% end %>
+                <% end %>
+              </dd>
+              <dt class="col-5 text-muted">狀態</dt>
+              <dd class="col-7">
+                <span class="badge <%= @subscription.status_badge_class %>"><%= @subscription.status_label %></span>
+              </dd>
+            </dl>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header fw-semibold">備注</div>
+          <div class="card-body">
+            <p class="mb-0" style="font-size:0.9rem;">
+              <%= @subscription.notes.present? ? @subscription.notes : "（無備注）" %>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Action buttons %>
+    <% if @subscription.status == "active" %>
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header fw-semibold">操作</div>
+        <div class="card-body d-flex gap-3 flex-wrap">
+          <%= button_to "✅ 完成本期補貨（推進到下一期）", advance_subscription_path(@subscription),
+                        method: :post,
+                        class: "btn btn-success",
+                        data: { confirm: "確認完成本期補貨？系統將自動計算下次補貨日。" } %>
+          <%= link_to "⏸ 暫停訂閱", edit_subscription_path(@subscription, pause: true),
+                      class: "btn btn-warning text-dark" %>
+          <% if @subscription.cancellable? %>
+            <%= button_to "❌ 取消訂閱", subscription_path(@subscription),
+                          method: :delete,
+                          class: "btn btn-outline-danger",
+                          data: { confirm: "確認取消訂閱？" } %>
+          <% else %>
+            <span class="btn btn-outline-secondary disabled" title="未達最低期數">❌ 取消（需滿 <%= @subscription.min_periods %> 期）</span>
+          <% end %>
+        </div>
+      </div>
+    <% elsif @subscription.status == "paused" %>
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header fw-semibold">操作</div>
+        <div class="card-body">
+          <%= link_to "▶ 恢復訂閱", edit_subscription_path(@subscription), class: "btn btn-primary" %>
+        </div>
+      </div>
+    <% end %>
+
+  </div>
+</div>
