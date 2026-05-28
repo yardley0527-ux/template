@@ -12,6 +12,65 @@
 
   <div class="container-fluid pb-5">
 
+    <%# ── 零、每次買幾瓶 ── %>
+    <div class="d-flex align-items-center mb-3 mt-2">
+      <div class="border-start border-4 ps-3" style="border-color:#dc2626 !important;">
+        <h5 class="fw-bold mb-0" style="color:#dc2626;">🍾 客人每次購買幾瓶？</h5>
+        <p class="text-muted small mb-0">協助判斷定期購補貨頻率要設幾天（用量 × 天數）</p>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body p-0">
+        <table class="table table-hover align-middle mb-0 text-center" style="font-size:0.875rem;">
+          <thead class="table-light">
+            <tr>
+              <th class="text-start ps-3">系列</th>
+              <th>1 瓶</th>
+              <th>2 瓶</th>
+              <th>3 瓶</th>
+              <th>4 瓶</th>
+              <th>5 瓶</th>
+              <th>6 瓶</th>
+              <th>7瓶以上</th>
+              <th class="text-start pe-3">定期購建議頻率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% SERIES_ORDER = %w[代謝錠 薑黃 全能 穀胱甘肽 美白 膠原蛋白] %>
+            <% SERIES_HINT = {
+              "代謝錠"   => "1瓶≈30天 → 月訂最自然",
+              "薑黃"     => "1瓶≈30天 → 月訂，買2瓶可推雙月訂",
+              "全能"     => "1瓶≈30天 → 月訂，買2瓶推雙月訂",
+              "穀胱甘肽" => "1瓶≈30天 → 月訂，客單高建議先試月訂",
+              "美白"     => "依買幾瓶決定頻率",
+              "膠原蛋白" => "1瓶≈30天 → 月訂為主"
+            } %>
+            <% SERIES_ORDER.each do |series| %>
+              <% dist = @combo_data[:qty_by_series][series] || {} %>
+              <% total_orders = dist.values.sum.to_f %>
+              <% next if total_orders == 0 %>
+              <tr>
+                <td class="text-start ps-3 fw-semibold"><%= series %></td>
+                <% [1,2,3,4,5,6,99].each do |q| %>
+                  <% cnt = dist[q].to_i; pct = total_orders > 0 ? (cnt / total_orders * 100).round : 0 %>
+                  <td>
+                    <% if cnt > 0 %>
+                      <div class="fw-semibold"><%= number_with_delimiter(cnt) %></div>
+                      <div class="text-muted" style="font-size:0.72rem;"><%= pct %>%</div>
+                    <% else %>
+                      <span class="text-muted">—</span>
+                    <% end %>
+                  </td>
+                <% end %>
+                <td class="text-start pe-3 text-muted" style="font-size:0.78rem;"><%= SERIES_HINT[series] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <%# ── 一、客人購買組數分析 ── %>
     <div class="d-flex align-items-center mb-3 mt-2">
       <div class="border-start border-4 ps-3" style="border-color:#2563eb !important;">
