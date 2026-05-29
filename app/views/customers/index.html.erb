@@ -1,9 +1,12 @@
-<div class="subheader">
+<div class="subheader d-flex align-items-center justify-content-between">
   <h1 class="subheader-title">
     <i class="subheader-icon fal fa-user"></i>
     客人列表
     <small>Shopline Customers</small>
   </h1>
+  <%= link_to "📥 匯出未購 365 天名單",
+    export_inactive_customers_path(format: :csv, days: 365),
+    class: "btn btn-outline-secondary btn-sm" %>
 </div>
 
 <div class="row">
@@ -220,9 +223,6 @@
   </div>
 </div>
 
-<%= link_to "📥 匯出未購 365 天名單",
-  export_inactive_customers_path(format: :csv, days: 365),
-  class: "btn btn-success mt-2" %>
 
 <style>
 /* 針對電腦版的微調 */
