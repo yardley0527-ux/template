@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_29_090000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_29_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -324,6 +324,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_29_090000) do
     t.index ["email", "order_number"], name: "index_shopline_orders_on_email_and_order_number"
     t.index ["email"], name: "index_shopline_orders_on_email"
     t.index ["import_run_id"], name: "index_shopline_orders_on_import_run_id"
+    t.index ["order_date"], name: "index_shopline_orders_on_order_date"
     t.index ["product_name"], name: "index_shopline_orders_on_product_name_trgm", opclass: :gin_trgm_ops, using: :gin
     t.index ["shopline_customer_id"], name: "index_shopline_orders_on_shopline_customer_id"
     t.index ["source_row_hash"], name: "index_shopline_orders_on_source_row_hash", unique: true
