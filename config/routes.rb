@@ -19,7 +19,8 @@ Rails.application.routes.draw do
   get '/omnipotent_analysis/export_whitening', to: 'omnipotent_analysis#export_whitening',  as: :omnipotent_export_whitening
   get '/omnipotent_restock',        to: 'omnipotent_restock#index',  as: :omnipotent_restock
   get '/omnipotent_restock/export', to: 'omnipotent_restock#export', as: :omnipotent_restock_export
-  get 'customers/export_inactive', to: 'customers#export_inactive', as: :export_inactive_customers
+  get 'customers/export_inactive',         to: 'customers#export_inactive',         as: :export_inactive_customers
+  get 'customers/export_credits_expiring', to: 'customers#export_credits_expiring', as: :export_credits_expiring_customers
 
   resources :expiring_members, only: [:index] do
     post :confirm_renewal, on: :member

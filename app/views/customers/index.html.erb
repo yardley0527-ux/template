@@ -1,12 +1,20 @@
-<div class="subheader d-flex align-items-center justify-content-between">
+<div class="subheader d-flex align-items-center justify-content-between flex-wrap gap-2">
   <h1 class="subheader-title">
     <i class="subheader-icon fal fa-user"></i>
     客人列表
     <small>Shopline Customers</small>
   </h1>
-  <%= link_to "📥 匯出未購 365 天名單",
-    export_inactive_customers_path(format: :csv, days: 365),
-    class: "btn btn-outline-secondary btn-sm" %>
+  <div class="d-flex gap-2">
+    <% if @credits_expiring_count > 0 %>
+      <%= link_to export_credits_expiring_customers_path(format: :csv), class: "btn btn-danger btn-sm fw-semibold" do %>
+        ⚠️ 購物金即將歸 0
+        <span class="badge bg-white text-danger ms-1"><%= @credits_expiring_count %> 人</span>
+      <% end %>
+    <% end %>
+    <%= link_to "📥 匯出未購 365 天名單",
+      export_inactive_customers_path(format: :csv, days: 365),
+      class: "btn btn-outline-secondary btn-sm" %>
+  </div>
 </div>
 
 <div class="row">

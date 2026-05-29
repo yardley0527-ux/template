@@ -187,6 +187,14 @@ class CustomersController < ApplicationController
         @big_first_orders[email] = order.order_date
       end
     end
+
+    @credits_expiring_count = ShoplineOrder
+      .where.not(product_name: [nil, ""])
+      .group(:email)
+      .having("MAX(order_date::date) BETWEEN ? AND ?", Date.today - 364, Date.today - 358)
+      .joins("JOIN shopline_customers sc ON sc.email = shopline_orders.email")
+      .where("sc.current_shopping_credits > 0")
+      .count.size
   end
 
   def show
@@ -266,6 +274,47 @@ class CustomersController < ApplicationController
     else
       render :edit, status: :unprocessable_entity
     end
+  end
+
+  def export_credits_expiring
+    # 最後購買在 358~364 天前（7 天內達 365 天）且有購物金
+    window_start = Date.today - 364
+    window_end   = Date.today - 358
+
+    expiring_emails = ShoplineOrder
+      .where.not(product_name: [nil, ""])
+      .group(:email)
+      .having("MAX(order_date::date) BETWEEN ? AND ?", window_start, window_end)
+      .pluck(:email)
+
+    customers = ShoplineCustomer
+      .where(email: expiring_emails)
+      .where("current_shopping_credits > 0")
+      .order(current_shopping_credits: :desc)
+
+    last_orders = ShoplineOrder
+      .where(email: expiring_emails)
+      .where.not(product_name: [nil, ""])
+      .group(:email)
+      .maximum(:order_date)
+
+    csv_data = CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["姓名", "Email", "手機", "會員等級", "購物金", "最後購買日", "距歸零天數"]
+      customers.each do |c|
+        last_date      = last_orders[c.email]&.to_date
+        days_remaining = last_date ? 365 - (Date.today - last_date).to_i : nil
+        csv << [
+          c.full_name, c.email, c.mobile_phone, c.membership_level,
+          c.current_shopping_credits.to_i,
+          last_date&.strftime("%Y/%m/%d"),
+          days_remaining
+        ]
+      end
+    end
+
+    send_data "\xEF\xBB\xBF" + csv_data,
+      filename: "購物金即將歸零_#{Date.today}.csv",
+      type: "text/csv; charset=utf-8"
   end
 
   def export_inactive
