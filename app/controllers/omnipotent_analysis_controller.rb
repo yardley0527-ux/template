@@ -26,6 +26,7 @@ class OmnipotentAnalysisController < ApplicationController
     .freeze
 
   before_action :build_analysis_data, only: [:index, :export_missing, :export_event]
+  before_action :build_whitening_data, only: [:export_whitening]
 
   def index
     @all_omni_events = OMNI_EVENTS.select { |e| e[:date] <= Date.today }
@@ -41,6 +42,12 @@ class OmnipotentAnalysisController < ApplicationController
   def export_event
     send_data "\xEF\xBB\xBF" + event_csv,
               filename: "全能_#{@event_label}購買名單_#{Date.today}.csv",
+              type: "text/csv; charset=utf-8"
+  end
+
+  def export_whitening
+    send_data "\xEF\xBB\xBF" + whitening_csv,
+              filename: "全能×美白_交叉推薦名單_#{Date.today}.csv",
               type: "text/csv; charset=utf-8"
   end
 
@@ -220,6 +227,26 @@ class OmnipotentAnalysisController < ApplicationController
         csv << [c.full_name, c.membership_level, c.mobile_phone,
                 r[:last_date]&.strftime("%Y/%m/%d"), r[:bottles], expected_date,
                 overdue, r[:history_count], r[:history_amount].to_i, c.instagram_account]
+      end
+    end
+  end
+
+  def build_whitening_data
+    @all_omni_events = OMNI_EVENTS.select { |e| e[:date] <= Date.today }
+    build_comprehensive_data
+  end
+
+  def whitening_csv
+    require "csv"
+    CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["姓名", "卡別", "電話", "美白購買次數", "最後買美白", "整體消費力(NT$)", "IG"]
+      @whitening_cross_buyers.each do |r|
+        c = r[:customer]
+        csv << [
+          c.full_name, c.membership_level, c.mobile_phone,
+          r[:whitening_count], r[:last_whitening_date]&.strftime("%Y/%m/%d"),
+          c.total_amount.to_i, c.instagram_account
+        ]
       end
     end
   end
