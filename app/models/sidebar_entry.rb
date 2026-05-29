@@ -12,6 +12,12 @@ class SidebarEntry
     def all
       [
         {
+          group_title: "監控",
+          children: [
+            { href: monitoring_path, title: "功能使用監控", icon: "fa-chart-line" }
+          ]
+        },
+        {
           group_title: "系統管理",
           children: [
             { href: customers_path,       title: "客人資料庫總覽", icon: "fa-address-book" },

@@ -2,6 +2,7 @@ Rails.application.routes.draw do
   devise_for :users, skip: [:registrations], controllers: { sessions: 'users/sessions' }
 
   root 'welcome#index'
+  get '/monitoring', to: 'monitoring#index', as: :monitoring
   get  '/ig_dashboard',         to: 'ig_dashboard#index',   as: :ig_dashboard
   post '/ig_dashboard/refresh', to: 'ig_dashboard#refresh', as: :ig_dashboard_refresh
   get "/api/birthday_customers", to: "welcome#birthday_customers"

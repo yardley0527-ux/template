@@ -1,0 +1,165 @@
+<%# app/views/monitoring/index.html.erb %>
+<% content_for :page_title, "功能使用監控" %>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">功能使用監控</h4>
+      <p class="text-muted small mb-0">追蹤哪些功能在使用、哪些從未被開啟</p>
+    </div>
+    <div class="d-flex gap-2">
+      <%= link_to "近 7 天",  monitoring_path(days: 7),  class: "btn btn-sm #{@days == 7  ? 'btn-secondary' : 'btn-outline-secondary'}" %>
+      <%= link_to "近 30 天", monitoring_path(days: 30), class: "btn btn-sm #{@days == 30 ? 'btn-secondary' : 'btn-outline-secondary'}" %>
+      <%= link_to "近 90 天", monitoring_path(days: 90), class: "btn btn-sm #{@days == 90 ? 'btn-secondary' : 'btn-outline-secondary'}" %>
+    </div>
+  </div>
+</div>
+
+<%# 總覽卡片 %>
+<div class="row g-3 mb-5">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center py-4">
+      <div class="text-muted small mb-1">今日訪問</div>
+      <div class="fw-bold text-primary" style="font-size: 2rem; line-height: 1;"><%= @today_visits %></div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center py-4">
+      <div class="text-muted small mb-1">近 7 天</div>
+      <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #374151;"><%= @week_visits %></div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center py-4">
+      <div class="text-muted small mb-1">近 <%= @days %> 天總訪問</div>
+      <div class="fw-bold text-success" style="font-size: 2rem; line-height: 1;"><%= @total_visits %></div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm text-center py-4">
+      <div class="text-muted small mb-1">從未使用功能</div>
+      <div class="fw-bold text-danger" style="font-size: 2rem; line-height: 1;"><%= @never_visited.size %></div>
+      <div class="text-muted small mt-1">共 <%= PageView::ALL_TRACKED_PAGES.size %> 個功能</div>
+    </div>
+  </div>
+</div>
+
+<%# 每日趨勢 %>
+<% if @daily_trend.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-3 border-secondary ps-3">
+      <h5 class="fw-bold mb-0 text-secondary">每日使用趨勢</h5>
+    </div>
+  </div>
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-body">
+      <canvas id="trendChart" height="80"></canvas>
+    </div>
+  </div>
+<% end %>
+
+<%# 從未使用 %>
+<% if @never_visited.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-3 border-danger ps-3">
+      <h5 class="fw-bold mb-0 text-danger">從未使用（近 <%= @days %> 天）</h5>
+      <p class="text-muted small mb-0">可考慮簡化或移除</p>
+    </div>
+  </div>
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-body p-0">
+      <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">功能名稱</th>
+            <th>路徑鍵值</th>
+            <th class="text-center">近 <%= @days %> 天訪問</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @never_visited.each do |p| %>
+            <tr>
+              <td class="ps-3 fw-semibold text-danger"><%= p[:label] %></td>
+              <td><code class="text-muted small"><%= p[:key] %></code></td>
+              <td class="text-center"><span class="badge bg-light text-muted">0</span></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<%# 使用中功能排行 %>
+<% if @active_pages.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-3 border-success ps-3">
+      <h5 class="fw-bold mb-0 text-success">使用中功能（近 <%= @days %> 天）</h5>
+      <p class="text-muted small mb-0">訪問次數由高到低</p>
+    </div>
+  </div>
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-body p-0">
+      <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3" style="width: 40px;">#</th>
+            <th>功能名稱</th>
+            <th>路徑鍵值</th>
+            <th class="text-center">訪問次數</th>
+            <th style="min-width: 160px;">使用比例</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% max_count = @active_pages.first[:count].to_f %>
+          <% @active_pages.each_with_index do |p, i| %>
+            <tr>
+              <td class="ps-3 text-muted small">#<%= i + 1 %></td>
+              <td class="fw-semibold"><%= p[:label] %></td>
+              <td><code class="text-muted small"><%= p[:key] %></code></td>
+              <td class="text-center fw-bold text-success"><%= p[:count] %></td>
+              <td>
+                <div class="progress" style="height: 6px;">
+                  <div class="progress-bar bg-success"
+                       style="width: <%= (p[:count] / max_count * 100).round %>%">
+                  </div>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<% if @daily_trend.any? %>
+  <script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const ctx = document.getElementById('trendChart');
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: <%= raw @daily_trend.map { |d| d[:date] }.to_json %>,
+        datasets: [{
+          label: '每日訪問次數',
+          data: <%= raw @daily_trend.map { |d| d[:count] }.to_json %>,
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+          borderColor: 'rgba(59, 130, 246, 1)',
+          borderWidth: 1,
+          borderRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } },
+          x: { ticks: { maxRotation: 45 } }
+        }
+      }
+    });
+  });
+  </script>
+<% end %>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_29_100001) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_29_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -161,6 +161,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_29_100001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["kind", "file_checksum"], name: "index_import_runs_on_kind_and_file_checksum"
+  end
+
+  create_table "page_views", force: :cascade do |t|
+    t.string "controller_name", null: false
+    t.string "action_name", null: false
+    t.string "path"
+    t.integer "user_id"
+    t.datetime "visited_at", null: false
+    t.index ["controller_name", "action_name"], name: "index_page_views_on_controller_name_and_action_name"
+    t.index ["visited_at"], name: "index_page_views_on_visited_at"
   end
 
   create_table "photos", force: :cascade do |t|
