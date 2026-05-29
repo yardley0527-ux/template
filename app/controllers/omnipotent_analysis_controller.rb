@@ -256,13 +256,12 @@ class OmnipotentAnalysisController < ApplicationController
   def whitening_csv
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["姓名", "卡別", "電話", "美白購買次數", "最後買美白", "整體消費力(NT$)", "IG"]
+      csv << ["姓名", "卡別", "電話", "全能購買場次數", "整體消費力(NT$)", "IG"]
       @whitening_cross_buyers.each do |r|
         c = r[:customer]
         csv << [
           c.full_name, c.membership_level, c.mobile_phone,
-          r[:whitening_count], r[:last_whitening_date]&.strftime("%Y/%m/%d"),
-          c.total_amount.to_i, c.instagram_account
+          r[:omni_count], c.total_amount.to_i, c.instagram_account
         ]
       end
     end
@@ -369,27 +368,26 @@ class OmnipotentAnalysisController < ApplicationController
       end
       .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
 
-    # 美白交叉推薦：4 個場次查詢 → 1 個查詢
-    whitening_emails_at_omni = ShoplineOrder
+    # 曾買全能、但從未買過美白的黑金卡客人（「買全能送美白」推廣對象）
+    whitening_ever_emails = ShoplineOrder
       .where("product_name LIKE '%美白%'")
-      .where(order_date: window_start..window_end)
       .where.not(email: [nil, ""])
       .distinct.pluck(:email)
 
-    last_whitening_counts  = ShoplineOrder.where("product_name LIKE '%美白%'")
-      .where(email: whitening_emails_at_omni).group(:email).count
-    last_whitening_dates   = ShoplineOrder.where("product_name LIKE '%美白%'")
-      .where(email: whitening_emails_at_omni).group(:email).maximum(:order_date)
+    no_whitening_omni_emails = all_emails - whitening_ever_emails
+
+    omni_count_by_email = all_emails.index_with { |email|
+      all_event_emails.count { |ev_emails| ev_emails.include?(email) }
+    }
 
     @whitening_cross_buyers = ShoplineCustomer
-      .where(email: whitening_emails_at_omni)
+      .where(email: no_whitening_omni_emails)
       .where(membership_level: %w[黑卡 金卡])
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
       .map do |c|
         {
-          customer:           c,
-          whitening_count:    last_whitening_counts[c.email] || 0,
-          last_whitening_date: last_whitening_dates[c.email]&.to_date
+          customer:   c,
+          omni_count: omni_count_by_email[c.email] || 0
         }
       end
       .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }

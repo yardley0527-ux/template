@@ -369,8 +369,8 @@
 <% if @whitening_cross_buyers&.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 ps-3" style="border-color: #c084fc;">
-      <h5 class="fw-bold mb-0" style="color: #7e22ce;">💄 曾買全能 × 美白的黑金卡客人</h5>
-      <p class="text-muted small mb-0">曾在全能直播場次期間同時購買美白，適合推「買全能送美白」優惠</p>
+      <h5 class="fw-bold mb-0" style="color: #7e22ce;">💄 買全能、但還沒買過美白的黑金卡客人</h5>
+      <p class="text-muted small mb-0">曾參與全能直播、但從未購買美白，適合推「買全能送美白」優惠</p>
     </div>
   </div>
 
@@ -416,8 +416,7 @@
                   <th>#</th>
                   <th>姓名</th>
                   <th>卡別</th>
-                  <th>美白購買次數</th>
-                  <th>最後買美白</th>
+                  <th>全能參與場次</th>
                   <th>整體消費力</th>
                   <th>電話</th>
                   <th>IG</th>
@@ -434,8 +433,7 @@
                     </td>
                     <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
                     <td><span class="text-muted small"><%= c.membership_level %></span></td>
-                    <td class="text-center"><%= r[:whitening_count] %> 次</td>
-                    <td><%= r[:last_whitening_date]&.strftime("%Y/%m/%d") || "—" %></td>
+                    <td class="text-center text-muted"><%= r[:omni_count] %> 場</td>
                     <td class="fw-semibold">NT$<%= number_with_delimiter(c.total_amount.to_i) %></td>
                     <td>
                       <% if c.mobile_phone.present? %>
