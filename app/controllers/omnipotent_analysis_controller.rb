@@ -368,20 +368,29 @@ class OmnipotentAnalysisController < ApplicationController
       end
       .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
 
-    # 曾買全能、但從未買過美白的黑金卡客人（「買全能送美白」推廣對象）
-    whitening_ever_emails = ShoplineOrder
+    # 曾在全能直播同場買美白、但之後沒再回購美白的黑金卡客人
+    whitening_at_event_emails = ShoplineOrder
       .where("product_name LIKE '%美白%'")
+      .where(order_date: window_start..window_end)
       .where.not(email: [nil, ""])
       .distinct.pluck(:email)
 
-    no_whitening_omni_emails = all_emails - whitening_ever_emails
+    # 之後（最後一檔全能結束後）有再買美白的人，排除掉
+    last_event_end = (@all_omni_events.last[:date] + 3).end_of_day
+    rebought_whitening = ShoplineOrder
+      .where("product_name LIKE '%美白%'")
+      .where("order_date > ?", last_event_end)
+      .where.not(email: [nil, ""])
+      .distinct.pluck(:email)
+
+    lapsed_whitening_emails = whitening_at_event_emails - rebought_whitening
 
     omni_count_by_email = all_emails.index_with { |email|
       all_event_emails.count { |ev_emails| ev_emails.include?(email) }
     }
 
     @whitening_cross_buyers = ShoplineCustomer
-      .where(email: no_whitening_omni_emails)
+      .where(email: lapsed_whitening_emails)
       .where(membership_level: %w[黑卡 金卡])
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
       .map do |c|

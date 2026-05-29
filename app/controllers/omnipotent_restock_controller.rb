@@ -76,9 +76,9 @@ class OmnipotentRestockController < ApplicationController
       }
     end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
 
-    @overdue      = @restock_list.select { |r| r[:days_left] < 0 }
-    @restock_soon = @restock_list.select { |r| r[:days_left].between?(0, 30) }
-    @not_urgent   = @restock_list.select { |r| r[:days_left] > 30 }
+    @overdue      = @restock_list.select { |r| r[:days_left] <= 7 }
+    @restock_soon = @restock_list.select { |r| r[:days_left].between?(8, 21) }
+    @not_urgent   = @restock_list.select { |r| r[:days_left] > 21 }
   end
 
   def extract_bottles(product_name)
@@ -92,7 +92,7 @@ class OmnipotentRestockController < ApplicationController
     CSV.generate(encoding: "UTF-8") do |csv|
       csv << ["優先度", "姓名", "卡別", "電話", "IG", "上次購買", "瓶數", "預估用完日", "剩餘天數"]
       rows.each do |r|
-        priority = r[:days_left] < 0 ? "急需補貨" : r[:days_left] <= 30 ? "即將用完" : "暫不急"
+        priority = r[:days_left] <= 7 ? "急需補貨" : r[:days_left] <= 21 ? "即將用完" : "暫不急"
         csv << row_data(priority, r)
       end
     end

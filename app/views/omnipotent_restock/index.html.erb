@@ -21,21 +21,21 @@
     <div class="card border-0 shadow-sm text-center py-4" style="border-left: 4px solid #dc3545 !important;">
       <div class="text-danger fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">急需補貨</div>
       <div class="fw-bold text-danger" style="font-size: 2.2rem; line-height: 1;"><%= @overdue.size %></div>
-      <div class="text-muted small mt-1">已逾期，尚未回購</div>
+      <div class="text-muted small mt-1">已用完或剩 ≤ 7 天</div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="card border-0 shadow-sm text-center py-4" style="border-left: 4px solid #f59e0b !important;">
       <div class="fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px; color: #b45309;">即將用完</div>
       <div class="fw-bold" style="font-size: 2.2rem; line-height: 1; color: #b45309;"><%= @restock_soon.size %></div>
-      <div class="text-muted small mt-1">30 天內用完</div>
+      <div class="text-muted small mt-1">剩 8–21 天</div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="card border-0 shadow-sm text-center py-4" style="border-left: 4px solid #9ca3af !important;">
       <div class="text-muted fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">暫不急</div>
       <div class="fw-bold text-muted" style="font-size: 2.2rem; line-height: 1;"><%= @not_urgent.size %></div>
-      <div class="text-muted small mt-1">超過 30 天後才用完</div>
+      <div class="text-muted small mt-1">剩 22 天以上</div>
     </div>
   </div>
 </div>
@@ -44,8 +44,8 @@
 <% if @overdue.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-danger ps-3">
-      <h5 class="fw-bold mb-0 text-danger">逾期未補貨</h5>
-      <p class="text-muted small mb-0">已超過預計用完日，建議優先聯繫</p>
+      <h5 class="fw-bold mb-0 text-danger">緊急補貨</h5>
+      <p class="text-muted small mb-0">已用完或剩 7 天以內，建議優先聯繫</p>
     </div>
   </div>
   <div class="card border-0 shadow-sm mb-5">
@@ -63,7 +63,7 @@
 <% if @restock_soon.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 ps-3" style="border-color: #f59e0b;">
-      <h5 class="fw-bold mb-0" style="color: #b45309;">即將用完（30 天內）</h5>
+      <h5 class="fw-bold mb-0" style="color: #b45309;">即將用完（剩 8–21 天）</h5>
       <p class="text-muted small mb-0">禮拜六推廣主要名單，倒數補貨節點到了</p>
     </div>
   </div>
