@@ -1,13 +1,21 @@
 <%# app/views/omnipotent_analysis/index.html.erb %>
 <% content_for :page_title, "全能直播分析" %>
+
 <% level_keys = OmnipotentAnalysisController::LEVEL_KEYS %>
 
-<%# 標題 + 場次切換 %>
+<%= render 'shared/next_livestream_plan',
+      cross_event_stats: @cross_event_stats || [],
+      iron_fans:         @iron_fans         || [],
+      expiring_soon:     @expiring_soon     || [],
+      high_risk_lost:    @high_risk_lost    || [],
+      section_id:        'omni',
+      product_name:      '全能' %>
+
 <div class="row g-3 mb-4">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
       <h4 class="fw-bold mb-0">全能直播分析 — <%= @event_label %></h4>
-      <p class="text-muted small mb-0">本場購買情況與交叉推薦名單</p>
+      <p class="text-muted small mb-0">追蹤 <%= @event_label %> 購買情況，以及曾買過全能的各卡別客人回流狀況</p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <% @all_omni_events.each do |ev| %>
@@ -21,17 +29,28 @@
   </div>
 </div>
 
-<%# 3 個數字卡 %>
-<div class="row g-3 mb-5">
+<%# ══════════════════════════════════════════ %>
+<%# 區塊一：策略參考                           %>
+<%# ══════════════════════════════════════════ %>
+
+<div class="d-flex align-items-center mb-3">
+  <div class="border-start border-3 border-secondary ps-3">
+    <h5 class="fw-bold mb-0 text-secondary">📊 策略參考</h5>
+    <p class="text-muted small mb-0">本場數據總覽</p>
+  </div>
+</div>
+
+<%# 人數卡片 %>
+<div class="row g-3 mb-3">
   <div class="col-md-4">
     <div class="card border-0 shadow-sm text-center py-4">
-      <div class="text-muted mb-2">本場買全能人數</div>
+      <div class="text-muted mb-2"><%= @event_label %> 直播買全能人數</div>
       <div class="fw-bold text-primary" style="font-size: 2rem; line-height: 1;"><%= @event_emails.size %></div>
     </div>
   </div>
   <div class="col-md-4">
     <div class="card border-0 shadow-sm text-center py-4">
-      <div class="text-muted mb-2">曾購買過（本場前）</div>
+      <div class="text-muted mb-2">曾購買過（<%= @event_label %> 前）</div>
       <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #495057;"><%= @prev_count %></div>
     </div>
   </div>
@@ -44,12 +63,203 @@
   </div>
 </div>
 
-<%# 本場購買名單 %>
+<%# 各卡別出席率 %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header text-white" style="background-color: #4a4a4a;">各卡別出席狀況</div>
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0 text-center" style="font-size: 0.9rem;">
+      <thead class="table-light">
+        <tr>
+          <th></th>
+          <th>總人數</th>
+          <th><%= @event_label %> 出席</th>
+          <th><%= @event_label %> 出席率</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @level_stats.each do |stat| %>
+          <tr>
+            <td class="fw-bold text-start ps-3"><%= stat[:level] %></td>
+            <td><%= stat[:total] %></td>
+            <td><%= stat[:attended] %></td>
+            <td><%= stat[:rate] %>%</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%# 建議行動 %>
+<div class="card border-0 shadow-sm mb-5">
+  <div class="card-header text-white" style="background-color: #4a4a4a;">📌 建議行動</div>
+  <div class="card-body">
+    <% @insights.each do |insight| %>
+      <% bg = { info: "alert-info", warning: "alert-warning", danger: "alert-danger", success: "alert-success" }[insight[:type]] %>
+      <div class="alert <%= bg %> py-2 px-3 mb-2" style="font-size: 0.9rem;"><%= insight[:text] %></div>
+    <% end %>
+  </div>
+</div>
+
+<%# ══════════════════════════════════════════════════ %>
+<%# 曾買、本場未出現                                    %>
+<%# ══════════════════════════════════════════════════ %>
+
+<% if @missing_customers.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-3 border-danger ps-3">
+      <h5 class="fw-bold mb-0 text-danger">🚨 曾買全能、<%= @event_label %> 未回購</h5>
+      <p class="text-muted small mb-0">逾期越多越優先，建議盡快聯繫</p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #8b1a1a;">
+      <div>
+        <span class="fw-bold"><%= @event_label %> 未回購名單</span>
+        <span class="ms-2 small opacity-75">依卡級 → 逾期天數排列</span>
+      </div>
+      <span class="badge bg-white text-dark"><%= @missing_customers.size %> 人</span>
+    </div>
+
+    <div class="px-3 pt-2 border-bottom">
+      <ul class="nav nav-tabs" id="tabs-missing">
+        <% OmnipotentAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
+          <% key = level_keys[level] %>
+          <% next if @missing_customers.none? { |r| r[:customer].membership_level == level } %>
+          <li class="nav-item">
+            <button class="nav-link"
+                    data-tab-prefix="missing"
+                    data-tab-target="missing-<%= key %>"
+                    type="button">
+              <%= level %>
+              <span class="badge bg-secondary">
+                <%= @missing_customers.count { |r| r[:customer].membership_level == level } %>
+              </span>
+            </button>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+
+    <div class="card-body p-0">
+      <% OmnipotentAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
+        <% key  = level_keys[level] %>
+        <% rows = @missing_customers.select { |r| r[:customer].membership_level == level } %>
+        <% next if rows.empty? %>
+        <div class="invite-pane" id="pane-missing-<%= key %>" style="display: none;">
+          <div class="table-responsive" data-paginate="true" data-page-size="20">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>姓名</th>
+                  <th>卡別</th>
+                  <th>上次買全能</th>
+                  <th>瓶數</th>
+                  <th>預期回購</th>
+                  <th>逾期</th>
+                  <th>歷史次數</th>
+                  <th>歷史消費</th>
+                  <th>電話</th>
+                  <th>IG</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% rows.each_with_index do |r, i| %>
+                  <% c = r[:customer] %>
+                  <tr>
+                    <td>
+                      <span class="badge <%= i < 3 ? 'bg-danger' : i < 8 ? 'bg-warning text-dark' : 'bg-light text-dark' %>">
+                        #<%= i + 1 %>
+                      </span>
+                    </td>
+                    <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                    <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                    <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
+                    <td class="text-center"><%= r[:bottles] %> 瓶</td>
+                    <td><%= r[:last_date] ? (r[:last_date] + r[:expected_days]).strftime("%m/%d") : "-" %></td>
+                    <td>
+                      <% od = r[:overdue_days] %>
+                      <% if od.nil? %>
+                        <span class="text-muted">-</span>
+                      <% elsif od > 14 %>
+                        <span class="badge bg-danger">+<%= od %>天</span>
+                      <% elsif od > 0 %>
+                        <span class="badge bg-warning text-dark">+<%= od %>天</span>
+                      <% else %>
+                        <span class="badge bg-success">未到期</span>
+                      <% end %>
+                    </td>
+                    <td class="text-center"><%= r[:history_count] %> 次</td>
+                    <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
+                    <td>
+                      <% if c.mobile_phone.present? %>
+                        <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
+                          📞 <%= c.mobile_phone %>
+                        </a>
+                      <% end %>
+                    </td>
+                    <td>
+                      <% if c.instagram_account.present? %>
+                        <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
+                          📷 <%= c.instagram_account %>
+                        </a>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<%# ══════════════════════════════════════════ %>
+<%# 本場購買名單（所有卡別）                    %>
+<%# ══════════════════════════════════════════ %>
+
 <% if @event_customers.any? %>
+  <% vip_count   = @event_customers.count { |r| r[:value_tier] == "重點維護" } %>
+  <% track_count = @event_customers.count { |r| r[:value_tier] == "值得追蹤" } %>
+  <% basic_count = @event_customers.count { |r| r[:value_tier] == "一般客群" } %>
+
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-success ps-3">
-      <h5 class="fw-bold mb-0 text-success">本場購買名單</h5>
-      <p class="text-muted small mb-0"><%= @event_label %> 全能買家</p>
+      <h5 class="fw-bold mb-0 text-success">⭐ <%= @event_label %> 購買名單（所有卡別）</h5>
+      <p class="text-muted small mb-0">本場核心客群，依客戶價值分層排列</p>
+    </div>
+  </div>
+
+  <%# 價值分層統計卡片 %>
+  <div class="row g-2 mb-3">
+    <div class="col-4">
+      <div class="vt-stat-card vt-vip" data-tier-filter="重點維護">
+        <div class="vt-stat-icon">🏆</div>
+        <div class="vt-stat-num"><%= vip_count %></div>
+        <div class="vt-stat-label">重點維護</div>
+        <div class="vt-stat-hint">分數 ≥ 12</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="vt-stat-card vt-track" data-tier-filter="值得追蹤">
+        <div class="vt-stat-icon">📌</div>
+        <div class="vt-stat-num"><%= track_count %></div>
+        <div class="vt-stat-label">值得追蹤</div>
+        <div class="vt-stat-hint">分數 7–11</div>
+      </div>
+    </div>
+    <div class="col-4">
+      <div class="vt-stat-card vt-basic" data-tier-filter="一般客群">
+        <div class="vt-stat-icon">👤</div>
+        <div class="vt-stat-num"><%= basic_count %></div>
+        <div class="vt-stat-label">一般客群</div>
+        <div class="vt-stat-hint">分數 &lt; 7</div>
+      </div>
     </div>
   </div>
 
@@ -57,7 +267,16 @@
     <div class="card-header text-white d-flex justify-content-between align-items-center"
          style="background-color: #2d5a3d;">
       <span class="fw-bold">本場購買名單</span>
-      <span class="badge bg-white text-dark"><%= @event_customers.size %> 人</span>
+      <span class="badge bg-white text-dark" id="event-visible-count"><%= @event_customers.size %> 人</span>
+    </div>
+
+    <%# 價值層篩選 %>
+    <div class="px-3 pt-3 pb-2 border-bottom bg-light d-flex align-items-center gap-2 flex-wrap">
+      <span class="text-muted small fw-semibold me-1">篩選：</span>
+      <button class="vt-filter-btn is-active" data-tier="all">全部</button>
+      <button class="vt-filter-btn vt-btn-vip"   data-tier="重點維護">🏆 重點維護</button>
+      <button class="vt-filter-btn vt-btn-track"  data-tier="值得追蹤">📌 值得追蹤</button>
+      <button class="vt-filter-btn vt-btn-basic"  data-tier="一般客群">👤 一般客群</button>
     </div>
 
     <div class="px-3 pt-2 border-bottom">
@@ -90,12 +309,14 @@
             <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
               <thead class="table-light">
                 <tr>
+                  <th>客戶價值</th>
                   <th>姓名</th>
                   <th>卡別</th>
                   <th>購買品項</th>
-                  <th>瓶數</th>
+                  <th>本次瓶數</th>
                   <th>本次金額</th>
                   <th>整體消費力</th>
+                  <th>全能歷史</th>
                   <th>電話</th>
                   <th>IG</th>
                 </tr>
@@ -103,13 +324,19 @@
               <tbody>
                 <% rows.each do |r| %>
                   <% c = r[:customer] %>
-                  <tr>
+                  <tr data-tier="<%= r[:value_tier] %>">
+                    <td>
+                      <span class="vt-badge vt-badge-<%= r[:value_tier] %>">
+                        <%= r[:value_tier] == "重點維護" ? "🏆 重點維護" : r[:value_tier] == "值得追蹤" ? "📌 值得追蹤" : "👤 一般" %>
+                      </span>
+                    </td>
                     <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
                     <td><span class="text-muted small"><%= c.membership_level %></span></td>
                     <td><%= r[:last_product] || "-" %></td>
                     <td class="text-center"><%= r[:bottles] %> 瓶</td>
                     <td>NT$<%= number_with_delimiter(r[:order_amount].to_i) %></td>
                     <td class="fw-semibold">NT$<%= number_with_delimiter(r[:total_spend].to_i) %></td>
+                    <td class="text-center text-muted"><%= r[:omni_count] %> 次</td>
                     <td>
                       <% if c.mobile_phone.present? %>
                         <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
@@ -135,7 +362,10 @@
   </div>
 <% end %>
 
-<%# 美白交叉推薦名單 %>
+<%# ══════════════════════════════════════════════════ %>
+<%# 美白交叉推薦名單                                    %>
+<%# ══════════════════════════════════════════════════ %>
+
 <% if @whitening_cross_buyers&.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 ps-3" style="border-color: #c084fc;">
@@ -231,12 +461,48 @@
 <% end %>
 
 <script>
+let currentTierFilter = 'all';
+
 document.addEventListener('DOMContentLoaded', function () {
   document.querySelectorAll('[id^="tabs-"]').forEach(function (tabGroup) {
     const firstBtn = tabGroup.querySelector('.nav-link');
     if (firstBtn) activateTab(firstBtn);
   });
+
+  document.querySelectorAll('.vt-stat-card[data-tier-filter]').forEach(function (card) {
+    card.addEventListener('click', function () {
+      const tier = card.dataset.tierFilter;
+      applyTierFilter(currentTierFilter === tier ? 'all' : tier);
+    });
+  });
+
+  document.querySelectorAll('.vt-filter-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      applyTierFilter(btn.dataset.tier);
+    });
+  });
 });
+
+function applyTierFilter(tier) {
+  currentTierFilter = tier;
+
+  document.querySelectorAll('.vt-filter-btn').forEach(function (btn) {
+    btn.classList.toggle('is-active', btn.dataset.tier === tier);
+  });
+  document.querySelectorAll('.vt-stat-card[data-tier-filter]').forEach(function (card) {
+    card.classList.toggle('is-active', card.dataset.tierFilter === tier);
+  });
+
+  let visibleCount = 0;
+  document.querySelectorAll('[id^="pane-event-"] tbody tr[data-tier]').forEach(function (row) {
+    const show = tier === 'all' || row.dataset.tier === tier;
+    row.style.display = show ? '' : 'none';
+    if (show) visibleCount++;
+  });
+
+  const countBadge = document.getElementById('event-visible-count');
+  if (countBadge) countBadge.textContent = visibleCount + ' 人';
+}
 
 function activateTab(btn) {
   const prefix   = btn.dataset.tabPrefix;
@@ -252,6 +518,11 @@ function activateTab(btn) {
   const target = document.getElementById('pane-' + targetId);
   if (target) {
     target.style.display = 'block';
+    if (prefix === 'event' && currentTierFilter !== 'all') {
+      target.querySelectorAll('tbody tr[data-tier]').forEach(function (row) {
+        row.style.display = row.dataset.tier === currentTierFilter ? '' : 'none';
+      });
+    }
     target.querySelectorAll('[data-paginate="true"]').forEach(function (wrapper) {
       if (!wrapper.dataset.paginated) initPaginate(wrapper);
     });
@@ -269,45 +540,93 @@ function initPaginate(wrapper) {
   const pageSize = parseInt(wrapper.dataset.pageSize) || 20;
   const tbody    = wrapper.querySelector('tbody');
   if (!tbody) return;
+
   const allRows  = Array.from(tbody.querySelectorAll('tr'));
   if (allRows.length <= pageSize) return;
+
   const totalPages = Math.ceil(allRows.length / pageSize);
   const pane       = wrapper.closest('.invite-pane') || wrapper.parentNode;
 
   function renderPage(page) {
     allRows.forEach(function (row, i) {
-      row.style.display = (i >= (page-1)*pageSize && i < page*pageSize) ? '' : 'none';
+      row.style.display = (i >= (page - 1) * pageSize && i < page * pageSize) ? '' : 'none';
     });
+
     const old = pane.querySelector('.paginate-controls');
     if (old) old.remove();
+
     const ctrl = document.createElement('div');
     ctrl.className = 'paginate-controls d-flex justify-content-between align-items-center px-3 py-2 border-top bg-light';
     ctrl.style.fontSize = '0.85rem';
-    const info = document.createElement('span');
+
+    const info  = document.createElement('span');
     info.className = 'text-muted';
-    info.textContent = `第 ${(page-1)*pageSize+1}–${Math.min(page*pageSize,allRows.length)} 筆，共 ${allRows.length} 筆`;
+    const start = (page - 1) * pageSize + 1;
+    const end   = Math.min(page * pageSize, allRows.length);
+    info.textContent = `第 ${start}–${end} 筆，共 ${allRows.length} 筆`;
+
     const btns = document.createElement('div');
     btns.className = 'd-flex gap-1 flex-wrap';
+
     const prev = document.createElement('button');
     prev.className = 'btn btn-sm btn-outline-secondary py-0';
-    prev.textContent = '‹'; prev.disabled = page===1;
-    prev.addEventListener('click', function(){renderPage(page-1);});
+    prev.textContent = '‹';
+    prev.disabled = page === 1;
+    prev.addEventListener('click', function () { renderPage(page - 1); });
     btns.appendChild(prev);
-    const sp=Math.max(1,page-2), ep=Math.min(totalPages,sp+4);
-    for(let p=sp;p<=ep;p++){
-      const pb=document.createElement('button');
-      pb.className='btn btn-sm py-0 '+(p===page?'btn-secondary':'btn-outline-secondary');
-      pb.textContent=p; const cp=p;
-      pb.addEventListener('click',function(){renderPage(cp);});
+
+    const startPage = Math.max(1, page - 2);
+    const endPage   = Math.min(totalPages, startPage + 4);
+
+    for (let p = startPage; p <= endPage; p++) {
+      const pb = document.createElement('button');
+      pb.className = 'btn btn-sm py-0 ' + (p === page ? 'btn-secondary' : 'btn-outline-secondary');
+      pb.textContent = p;
+      const captured = p;
+      pb.addEventListener('click', function () { renderPage(captured); });
       btns.appendChild(pb);
     }
-    const next=document.createElement('button');
-    next.className='btn btn-sm btn-outline-secondary py-0';
-    next.textContent='›'; next.disabled=page===totalPages;
-    next.addEventListener('click',function(){renderPage(page+1);});
+
+    const next = document.createElement('button');
+    next.className = 'btn btn-sm btn-outline-secondary py-0';
+    next.textContent = '›';
+    next.disabled = page === totalPages;
+    next.addEventListener('click', function () { renderPage(page + 1); });
     btns.appendChild(next);
-    ctrl.appendChild(info); ctrl.appendChild(btns); pane.appendChild(ctrl);
+
+    ctrl.appendChild(info);
+    ctrl.appendChild(btns);
+    pane.appendChild(ctrl);
   }
+
   renderPage(1);
 }
 </script>
+
+<style>
+.vt-stat-card { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 14px 12px; text-align: center; cursor: pointer; transition: border-color .15s, box-shadow .15s; background: #fff; user-select: none; }
+.vt-stat-card:hover { border-color: #6b7280; box-shadow: 0 0 0 3px rgba(107,114,128,.1); }
+.vt-stat-card.is-active { box-shadow: 0 0 0 3px rgba(0,0,0,.12); }
+.vt-vip   { border-color: #fcd34d; }
+.vt-vip.is-active   { background: #fffbeb; border-color: #f59e0b; }
+.vt-track { border-color: #93c5fd; }
+.vt-track.is-active { background: #eff6ff; border-color: #3b82f6; }
+.vt-basic { border-color: #d1d5db; }
+.vt-basic.is-active { background: #f9fafb; border-color: #6b7280; }
+.vt-stat-icon { font-size: 1.3rem; margin-bottom: 4px; }
+.vt-stat-num  { font-size: 1.8rem; font-weight: 800; line-height: 1; color: #111827; }
+.vt-stat-label { font-size: 0.8rem; font-weight: 700; margin-top: 4px; color: #374151; }
+.vt-stat-hint  { font-size: 0.7rem; color: #9ca3af; margin-top: 2px; }
+
+.vt-filter-btn { padding: 4px 12px; font-size: 0.8rem; font-weight: 600; border: 1px solid #d1d5db; border-radius: 99px; background: #fff; cursor: pointer; transition: background .12s, border-color .12s; }
+.vt-filter-btn:hover { background: #f3f4f6; }
+.vt-filter-btn.is-active { background: #1f2937; color: #fff; border-color: #1f2937; }
+.vt-btn-vip.is-active   { background: #d97706; border-color: #d97706; color: #fff; }
+.vt-btn-track.is-active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.vt-btn-basic.is-active { background: #6b7280; border-color: #6b7280; color: #fff; }
+
+.vt-badge { font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 99px; white-space: nowrap; }
+.vt-badge-重點維護 { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+.vt-badge-值得追蹤 { background: #dbeafe; color: #1d4ed8; border: 1px solid #93c5fd; }
+.vt-badge-一般客群 { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
+</style>
