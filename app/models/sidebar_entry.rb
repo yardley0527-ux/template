@@ -55,8 +55,12 @@ class SidebarEntry
             { href: turmeric_analysis_path,     title: "直播分析 - 薑黃",     icon: "fa-video" },
             { href: metabolism_analysis_path,   title: "直播分析 - 代謝錠",   icon: "fa-video" },
             { href: glutathione_analysis_path,  title: "直播分析 - 穀胱甘肽", icon: "fa-video" },
-            { href: omnipotent_analysis_path,   title: "直播分析 - 全能",       icon: "fa-video" },
-            { href: omnipotent_restock_path,    title: "全能補貨提醒名單",        icon: "fa-sync-alt" }
+            { href: omnipotent_analysis_path, title: "直播分析 - 全能", icon: "fa-video",
+              children: [
+                { href: omnipotent_analysis_path, title: "全能直播分析",   icon: "fa-chart-bar" },
+                { href: omnipotent_restock_path,  title: "補貨提醒名單",   icon: "fa-sync-alt" }
+              ]
+            }
           ]
         },
         {
