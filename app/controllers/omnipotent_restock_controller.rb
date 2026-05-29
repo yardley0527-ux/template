@@ -15,18 +15,9 @@ class OmnipotentRestockController < ApplicationController
   def index; end
 
   def export
-    rows = case params[:scope]
-           when "soon"    then @restock_soon
-           when "overdue" then @overdue
-           else                @restock_list
-           end
-    label = case params[:scope]
-            when "soon"    then "即將用完"
-            when "overdue" then "逾期"
-            else                "全部"
-            end
+    rows = @overdue + @restock_soon
     send_data "\xEF\xBB\xBF" + restock_csv(rows),
-              filename: "全能補貨提醒_#{label}_#{Date.today}.csv",
+              filename: "全能補貨名單_#{Date.today}.csv",
               type: "text/csv; charset=utf-8"
   end
 
