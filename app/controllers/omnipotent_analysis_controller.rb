@@ -64,21 +64,38 @@ class OmnipotentAnalysisController < ApplicationController
 
     @event_emails = omnipotent_emails(event_range)
 
-    all_prev_emails = ShoplineOrder
-      .where(OMNIPOTENT)
-      .where("order_date < ?", event_range.first)
-      .where.not(email: [nil, ""])
-      .distinct
-      .pluck(:email)
+    # 快取這個慢查詢（全表掃描 71ms）；訂單不常變，30 分鐘 TTL 足夠
+    cache_key = "omni_prev_emails:#{@current_event[:date]}"
+    all_prev_emails = Rails.cache.fetch(cache_key, expires_in: 30.minutes) do
+      ShoplineOrder
+        .where(OMNIPOTENT)
+        .where("order_date < ?", event_range.first)
+        .where.not(email: [nil, ""])
+        .distinct
+        .pluck(:email)
+    end
 
     @prev_count          = all_prev_emails.size
     @prev_returned_count = (all_prev_emails & @event_emails).size
     @prev_return_rate    = pct(@prev_returned_count, @prev_count)
 
+    # 卡別統計：10 個獨立查詢 → 2 個 GROUP BY 查詢
+    level_counts = ShoplineCustomer
+      .where.not(shopline_id: nil)
+      .where(membership_level: TARGET_MEMBERSHIPS)
+      .group(:membership_level).count
+
+    emails_by_level = ShoplineCustomer
+      .where(membership_level: TARGET_MEMBERSHIPS)
+      .where.not(email: [nil, ""])
+      .pluck(:membership_level, :email)
+      .group_by(&:first)
+      .transform_values { |pairs| pairs.map(&:last) }
+
     @level_stats = TARGET_MEMBERSHIPS.filter_map do |level|
-      total = ShoplineCustomer.where(membership_level: level).where.not(shopline_id: nil).count
+      total = level_counts[level] || 0
       next if total.zero?
-      emails   = ShoplineCustomer.where(membership_level: level).where.not(email: [nil, ""]).pluck(:email)
+      emails   = emails_by_level[level] || []
       attended = (emails & @event_emails).size
       { level: level, total: total, attended: attended, rate: pct(attended, total) }
     end
@@ -267,15 +284,25 @@ class OmnipotentAnalysisController < ApplicationController
   def build_comprehensive_data
     return if @all_omni_events.empty?
 
+    # 全部場次的日期範圍（一次查詢撈出所有場次訂單，取代 N 個獨立查詢）
+    window_start = @all_omni_events.first[:date].beginning_of_day
+    window_end   = (@all_omni_events.last[:date] + 3).end_of_day
+
+    all_omni_rows = ShoplineOrder.where(OMNIPOTENT)
+      .where(order_date: window_start..window_end)
+      .where.not(email: [nil, ""])
+      .pluck(:email, :order_date, :checkout_amount, :total_amount)
+
     all_event_emails = @all_omni_events.map do |ev|
-      omnipotent_emails(ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day)
+      range = ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day
+      all_omni_rows.filter_map { |email, date, _, _| email if range.cover?(date) }.uniq
     end
 
-    # 從 DB 撈各場次全能實際業績（避免用整場活動總業績導致人均失真）
     omni_revenues = @all_omni_events.map do |ev|
       range = ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day
-      ShoplineOrder.where(OMNIPOTENT).where(order_date: range)
-        .sum("COALESCE(checkout_amount, total_amount)")
+      all_omni_rows
+        .select { |_, date, _, _| range.cover?(date) }
+        .sum { |_, _, checkout, total| (checkout || total).to_f }
     end
 
     @cross_event_stats = @all_omni_events.each_with_index.map do |ev, i|
@@ -342,12 +369,12 @@ class OmnipotentAnalysisController < ApplicationController
       end
       .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
 
-    # 曾在全能場次同時買過美白的黑金卡客人（交叉推薦名單）
-    whitening_emails_at_omni = @all_omni_events.flat_map do |ev|
-      range = ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day
-      ShoplineOrder.where("product_name LIKE '%美白%'").where(order_date: range)
-        .where.not(email: [nil, ""]).distinct.pluck(:email)
-    end.uniq
+    # 美白交叉推薦：4 個場次查詢 → 1 個查詢
+    whitening_emails_at_omni = ShoplineOrder
+      .where("product_name LIKE '%美白%'")
+      .where(order_date: window_start..window_end)
+      .where.not(email: [nil, ""])
+      .distinct.pluck(:email)
 
     last_whitening_counts  = ShoplineOrder.where("product_name LIKE '%美白%'")
       .where(email: whitening_emails_at_omni).group(:email).count

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_28_065604) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_29_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -284,6 +284,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_28_065604) do
     t.string "source_row_hash"
     t.index ["email"], name: "index_shopline_customers_on_email", unique: true, where: "(email IS NOT NULL)"
     t.index ["import_run_id"], name: "index_shopline_customers_on_import_run_id"
+    t.index ["membership_level"], name: "index_shopline_customers_on_membership_level"
     t.index ["shopline_id"], name: "index_shopline_customers_on_shopline_id", unique: true
     t.index ["source_row_hash"], name: "index_shopline_customers_on_source_row_hash", unique: true
   end
@@ -327,6 +328,28 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_28_065604) do
     t.index ["shopline_customer_id"], name: "index_shopline_orders_on_shopline_customer_id"
     t.index ["source_row_hash"], name: "index_shopline_orders_on_source_row_hash", unique: true
     t.index ["source_year", "source_month"], name: "index_shopline_orders_on_source_year_and_source_month"
+  end
+
+  create_table "subscriptions", force: :cascade do |t|
+    t.bigint "shopline_customer_id", null: false
+    t.string "product_name", null: false
+    t.string "product_series"
+    t.integer "frequency_days", null: false
+    t.decimal "discount_rate", precision: 4, scale: 2, null: false
+    t.decimal "unit_price", precision: 10, scale: 2, null: false
+    t.integer "quantity", default: 1, null: false
+    t.string "status", default: "active", null: false
+    t.date "started_on", null: false
+    t.date "next_due_on", null: false
+    t.integer "completed_periods", default: 0, null: false
+    t.integer "min_periods", default: 3, null: false
+    t.text "notes"
+    t.datetime "created_at", precision: nil, null: false
+    t.datetime "updated_at", precision: nil, null: false
+    t.index ["next_due_on"], name: "index_subscriptions_on_next_due_on"
+    t.index ["product_series"], name: "index_subscriptions_on_product_series"
+    t.index ["shopline_customer_id"], name: "index_subscriptions_on_shopline_customer_id"
+    t.index ["status"], name: "index_subscriptions_on_status"
   end
 
   create_table "users", force: :cascade do |t|
