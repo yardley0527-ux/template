@@ -6,8 +6,7 @@
     <div>
       <h4 class="fw-bold mb-0">全能補貨提醒名單</h4>
       <p class="text-muted small mb-0">
-        上一檔：<strong><%= @event_label %></strong>（<%= @event_date&.strftime("%Y/%m/%d") %>）．
-        依預計用完日排序，排除已回購者
+        上一檔：<strong><%= @event_label %></strong>．依預計用完日排序，排除已回購者
       </p>
     </div>
     <%= link_to "⬇ 匯出補貨名單", omnipotent_restock_export_path,
