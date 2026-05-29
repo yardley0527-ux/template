@@ -12,12 +12,6 @@ class SidebarEntry
     def all
       [
         {
-          group_title: "監控",
-          children: [
-            { href: monitoring_path, title: "功能使用監控", icon: "fa-chart-line" }
-          ]
-        },
-        {
           group_title: "系統管理",
           children: [
             { href: customers_path,       title: "客人資料庫總覽", icon: "fa-address-book" },
@@ -74,6 +68,12 @@ class SidebarEntry
           children: [
             { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" },
             *flat_product_entries
+          ]
+        },
+        {
+          group_title: "監控",
+          children: [
+            { href: monitoring_path, title: "功能使用監控", icon: "fa-chart-line" }
           ]
         },
       ]
