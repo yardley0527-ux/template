@@ -369,9 +369,15 @@ class OmnipotentAnalysisController < ApplicationController
       .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
 
     # 曾在全能直播同場買美白、但之後沒再回購美白的黑金卡客人
+    # 只取各場全能直播窗口（4天）內有買美白的 email，不是整個大範圍
+    event_windows_sql = @all_omni_events
+      .map { "(order_date BETWEEN ? AND ?)" }.join(" OR ")
+    event_windows_params = @all_omni_events
+      .flat_map { |ev| [ev[:date].beginning_of_day, (ev[:date] + 3).end_of_day] }
+
     whitening_at_event_emails = ShoplineOrder
       .where("product_name LIKE '%美白%'")
-      .where(order_date: window_start..window_end)
+      .where(event_windows_sql, *event_windows_params)
       .where.not(email: [nil, ""])
       .distinct.pluck(:email)
 
