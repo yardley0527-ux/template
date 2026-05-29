@@ -70,12 +70,6 @@ class SidebarEntry
             *flat_product_entries
           ]
         },
-        {
-          group_title: "公司 IG 帳號管理",
-          children: [
-            { href: ig_dashboard_path, title: "IG 帳號追蹤", icon: "fa-instagram" },
-          ]
-        }
       ]
     end
 
