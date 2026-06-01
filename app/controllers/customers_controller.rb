@@ -191,7 +191,7 @@ class CustomersController < ApplicationController
     @credits_expiring_count = ShoplineOrder
       .where.not(product_name: [nil, ""])
       .group(:email)
-      .having("MAX(order_date::date) BETWEEN ? AND ?", Date.today - 364, Date.today - 358)
+      .having("MAX(order_date::date) BETWEEN ? AND ?", Date.today - 358, Date.today - 355)
       .joins("JOIN shopline_customers sc ON sc.email = shopline_orders.email")
       .where("sc.current_shopping_credits > 0")
       .count.size
@@ -277,9 +277,9 @@ class CustomersController < ApplicationController
   end
 
   def export_credits_expiring
-    # 最後購買在 358~364 天前（7 天內達 365 天）且有購物金
-    window_start = Date.today - 364
-    window_end   = Date.today - 358
+    # 最後購買在 355~358 天前（距 365 天到期還有 7~10 天）且有購物金
+    window_start = Date.today - 358
+    window_end   = Date.today - 355
 
     expiring_emails = ShoplineOrder
       .where.not(product_name: [nil, ""])
