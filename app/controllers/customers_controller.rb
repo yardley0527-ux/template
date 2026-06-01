@@ -299,15 +299,17 @@ class CustomersController < ApplicationController
       .maximum(:order_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["姓名", "Email", "手機", "會員等級", "購物金", "最後購買日", "距歸零天數"]
+      csv << ["姓名", "Email", "手機", "會員等級", "購物金", "最後購買日", "距歸零天數", "IG 帳號"]
       customers.each do |c|
         last_date      = last_orders[c.email]&.to_date
         days_remaining = last_date ? 365 - (Date.today - last_date).to_i : nil
+        ig_link = c.instagram_account.present? ? "https://www.instagram.com/#{c.instagram_account.delete_prefix('@')}" : nil
         csv << [
           c.full_name, c.email, c.mobile_phone, c.membership_level,
           c.current_shopping_credits.to_i,
           last_date&.strftime("%Y/%m/%d"),
-          days_remaining
+          days_remaining,
+          ig_link
         ]
       end
     end
