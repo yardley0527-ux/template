@@ -89,7 +89,7 @@
                   <span class="hs-tier-count"><%= customers_in_tier.size %> 人</span>
                   <span class="hs-tier-hint"><%= meta[:hint] %></span>
                 </summary>
-                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier } %>
+                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier, follow_up_map: @follow_up_map } %>
               </details>
             <% else %>
               <div class="hs-tier-block hs-stat-block mb-3 <%= meta[:css] %>">
@@ -98,7 +98,7 @@
                   <span class="hs-tier-count"><%= customers_in_tier.size %> 人</span>
                   <span class="hs-tier-hint"><%= meta[:hint] %></span>
                 </div>
-                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier } %>
+                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier, follow_up_map: @follow_up_map } %>
               </div>
             <% end %>
           <% end %>
