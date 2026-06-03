@@ -24,7 +24,6 @@
         <th>首購日期</th>
         <th>首購金額</th>
         <th>距首購</th>
-        <th>第二次購買</th>
         <th>跟進記錄</th>
       </tr>
     </thead>
@@ -58,16 +57,6 @@
               <% if status[:cycle] %>
                 <div class="hs-cycle-hint">週期 <%= status[:cycle] %> 天</div>
               <% end %>
-            <% else %>
-              <span class="fp-muted">—</span>
-            <% end %>
-          </td>
-          <td>
-            <% if c.purchase_count >= 2 %>
-              <div class="hs-second-buy">
-                <span><%= c.second_series.presence || c.second_product.presence || "—" %></span>
-                <span class="hs-second-date"><%= c.second_date&.strftime("%m/%d") %></span>
-              </div>
             <% else %>
               <span class="fp-muted">—</span>
             <% end %>
