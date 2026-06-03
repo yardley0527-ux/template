@@ -89,7 +89,7 @@
                   <span class="hs-tier-count"><%= customers_in_tier.size %> 人</span>
                   <span class="hs-tier-hint"><%= meta[:hint] %></span>
                 </summary>
-                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier, follow_up_map: @follow_up_map } %>
+                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier, follow_up_map: @follow_up_map, tier_id: tier.to_s } %>
               </details>
             <% else %>
               <div class="hs-tier-block hs-stat-block mb-3 <%= meta[:css] %>">
@@ -98,7 +98,7 @@
                   <span class="hs-tier-count"><%= customers_in_tier.size %> 人</span>
                   <span class="hs-tier-hint"><%= meta[:hint] %></span>
                 </div>
-                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier, follow_up_map: @follow_up_map } %>
+                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier, follow_up_map: @follow_up_map, tier_id: tier.to_s } %>
               </div>
             <% end %>
           <% end %>
@@ -356,6 +356,14 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 .hs-bar { height: 100%; border-radius: 99px; transition: width .3s; }
 .hs-series-pct { font-size: 11px; color: #9ca3af; width: 30px; text-align: right; flex-shrink: 0; }
 
+/* 系列 tabs */
+.hs-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 14px; background: #fff; border-bottom: 1px solid #e5e7eb; }
+.hs-tab { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 1px solid #e5e7eb; border-radius: 99px; font-size: 12px; font-weight: 500; color: #6b7280; background: #f9fafb; cursor: pointer; transition: all .15s; }
+.hs-tab:hover { border-color: #886ab5; color: #886ab5; background: #faf8ff; }
+.hs-tab.active { background: #886ab5; color: #fff; border-color: #886ab5; }
+.hs-tab.active .hs-tab-count { background: rgba(255,255,255,0.3); color: #fff; }
+.hs-tab-count { font-size: 10px; font-weight: 700; background: #e5e7eb; color: #6b7280; padding: 1px 5px; border-radius: 99px; }
+
 /* 跟進記錄欄 */
 .hs-followup-cell { min-width: 180px; }
 .hs-followup-logs { margin-bottom: 6px; }
@@ -386,3 +394,23 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
   .fp-btn-primary, .fp-btn-secondary { flex: 1; text-align: center; justify-content: center; }
 }
 </style>
+
+<script>
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.hs-tab');
+  if (!btn) return;
+  var tabsEl = btn.closest('[data-tier-tabs]');
+  if (!tabsEl) return;
+  var tierId = tabsEl.dataset.tierTabs;
+  var filter = btn.dataset.filter;
+
+  tabsEl.querySelectorAll('.hs-tab').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+
+  var table = document.querySelector('table[data-tier-table="' + tierId + '"]');
+  if (!table) return;
+  table.querySelectorAll('tbody tr').forEach(function(row) {
+    row.style.display = (filter === 'all' || row.dataset.series === filter) ? '' : 'none';
+  });
+});
+</script>

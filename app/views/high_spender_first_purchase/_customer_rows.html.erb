@@ -1,5 +1,22 @@
+<% series_list = customers.map(&:first_series).compact.uniq %>
+
+<% if series_list.size > 1 %>
+  <div class="hs-tabs" data-tier-tabs="<%= tier_id %>">
+    <button class="hs-tab active" data-filter="all">
+      全部 <span class="hs-tab-count"><%= customers.size %></span>
+    </button>
+    <% series_list.each do |s| %>
+      <% count = customers.count { |c| c.first_series == s } %>
+      <button class="hs-tab" data-filter="<%= s %>">
+        <span class="hs-series-dot" style="background:<%= hs_series_color(s) %>"></span>
+        <%= s %> <span class="hs-tab-count"><%= count %></span>
+      </button>
+    <% end %>
+  </div>
+<% end %>
+
 <div class="fp-table-wrap">
-  <table class="fp-table">
+  <table class="fp-table" data-tier-table="<%= tier_id %>">
     <thead>
       <tr>
         <th>姓名</th>
@@ -15,7 +32,7 @@
       <% customers.each do |c| %>
         <% status = hs_follow_up_status(c) %>
         <% logs = follow_up_map[c.identity_key] || [] %>
-        <tr>
+        <tr data-series="<%= c.first_series %>">
           <td>
             <div class="hs-customer-cell">
               <% if c.shopline_customer_id.present? %>
@@ -56,7 +73,6 @@
             <% end %>
           </td>
           <td class="hs-followup-cell">
-            <%# 已有的跟進記錄 %>
             <% if logs.any? %>
               <div class="hs-followup-logs">
                 <% logs.first(2).each do |log| %>
@@ -70,7 +86,6 @@
                 <% end %>
               </div>
             <% end %>
-            <%# 新增跟進表單 %>
             <details class="hs-followup-form-wrap">
               <summary class="hs-followup-toggle"><%= logs.any? ? "+ 再記一筆" : "記錄跟進" %></summary>
               <%= form_with url: high_spender_follow_ups_path, method: :post, local: true, class: "hs-followup-form" do |f| %>
