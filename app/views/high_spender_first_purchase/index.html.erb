@@ -31,19 +31,19 @@
           </div>
 
           <%# ── 篩選列 ── %>
-          <div class="fp-filter-bar mb-3">
+          <div class="fp-filter-bar mb-4">
             <%= form_with url: high_spender_first_purchase_path, method: :get, local: true do %>
               <div class="fp-filter-row">
                 <div class="fp-filter-group">
                   <label class="fp-filter-label">年份</label>
                   <%= select_tag :year,
-                        options_for_select([["全部", ""]] + @year_stats.map { |y| [y[:year], y[:year]] }, @selected_year),
+                        options_for_select(@year_stats.map { |y| [y[:year], y[:year]] }, @selected_year),
                         class: "fp-select" %>
                 </div>
                 <div class="fp-filter-group">
                   <label class="fp-filter-label">首購系列</label>
                   <%= select_tag :series,
-                        options_for_select([["全部", ""]] + @series_options.map { |s| [s, s] }, @selected_series),
+                        options_for_select([["全部系列", ""]] + @series_options.map { |s| [s, s] }, @selected_series),
                         class: "fp-select" %>
                 </div>
                 <div class="fp-filter-group">
@@ -73,7 +73,95 @@
             <% end %>
           </div>
 
-          <%# ── 年度 + 系列並排 ── %>
+          <%# ── 顧客跟進名單（主要區塊）── %>
+          <div class="hs-stat-block mb-5">
+            <div class="hs-block-title d-flex align-items-center justify-content-between">
+              <span>
+                顧客跟進名單
+                <% if @selected_series.present? %>
+                  <span class="hs-title-tag" style="background:<%= hs_series_color(@selected_series) %>20;color:<%= hs_series_color(@selected_series) %>"><%= @selected_series %></span>
+                <% end %>
+              </span>
+              <span class="hs-title-meta">
+                <%= @customers.size %> 人
+                <span class="hs-title-hint">· 未回購排前，依回購週期標示急迫程度</span>
+              </span>
+            </div>
+            <div class="fp-table-wrap">
+              <table class="fp-table">
+                <thead>
+                  <tr>
+                    <th>姓名</th>
+                    <th>首購系列</th>
+                    <th>首購日期</th>
+                    <th>首購金額</th>
+                    <th>距首購</th>
+                    <th>跟進狀態</th>
+                    <th>第二次購買</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if @customers.any? %>
+                    <% @customers.each do |c| %>
+                      <% status = hs_follow_up_status(c) %>
+                      <tr class="<%= status[:urgent] ? 'hs-row-urgent' : '' %>">
+                        <td>
+                          <div class="hs-customer-cell">
+                            <% if c.shopline_customer_id.present? %>
+                              <%= link_to(c.customer_name.presence || c.email, customer_path(c.shopline_customer_id), class: "fp-customer-link") %>
+                            <% else %>
+                              <span class="fp-customer-link"><%= c.customer_name.presence || c.email %></span>
+                            <% end %>
+                            <% if c.instagram_account.present? %>
+                              <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer" class="hs-ig-link">
+                                <i class="fab fa-instagram"></i>
+                              </a>
+                            <% end %>
+                          </div>
+                        </td>
+                        <td>
+                          <span class="hs-series-dot" style="background:<%= hs_series_color(c.first_series.to_s) %>"></span>
+                          <%= c.first_series.presence || "—" %>
+                        </td>
+                        <td class="fp-muted"><%= c.first_date&.strftime("%Y-%m-%d") || "—" %></td>
+                        <td class="fp-amount">$<%= number_with_delimiter(c.first_amount.to_i) %></td>
+                        <td>
+                          <% if c.first_date %>
+                            <% days = (Date.today - c.first_date.to_date).to_i %>
+                            <span class="hs-days-num"><%= days %></span><span class="hs-days-unit"> 天</span>
+                          <% else %>
+                            <span class="fp-muted">—</span>
+                          <% end %>
+                        </td>
+                        <td>
+                          <span class="<%= status[:css] %>"><%= status[:label] %></span>
+                          <% if status[:days] && status[:cycle] %>
+                            <div class="hs-cycle-hint"><%= status[:days] %> / <%= status[:cycle] %> 天</div>
+                          <% end %>
+                        </td>
+                        <td>
+                          <% if c.purchase_count >= 2 %>
+                            <div class="hs-second-buy">
+                              <span><%= c.second_series.presence || c.second_product.presence || "—" %></span>
+                              <span class="hs-second-date"><%= c.second_date&.strftime("%m/%d") %></span>
+                            </div>
+                          <% else %>
+                            <span class="fp-muted">—</span>
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  <% else %>
+                    <tr>
+                      <td colspan="7" class="fp-muted text-center" style="padding: 24px;">查無資料</td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <%# ── 年度 + 系列統計（輔助參考）── %>
           <div class="hs-section-grid mb-4">
 
             <div class="hs-stat-block">
@@ -126,11 +214,11 @@
                       <tr>
                         <td>
                           <strong>
+                            <span class="hs-series-dot" style="background:<%= hs_series_color(row[:series]) %>"></span>
                             <%= link_to row[:series],
                                 high_spender_first_purchase_path(
-                                  view: "customers",
                                   series: row[:series],
-                                  year: @selected_year
+                                  year:   @selected_year
                                 ),
                                 class: "fp-customer-link" %>
                           </strong>
@@ -164,7 +252,7 @@
 
           </div>
 
-          <%# ── 每月趨勢（含首購商品分布）── %>
+          <%# ── 每月趨勢 ── %>
           <div class="hs-stat-block mb-4">
             <div class="hs-block-title">每月趨勢</div>
             <div class="fp-table-wrap">
@@ -215,90 +303,7 @@
               </table>
             </div>
           </div>
-          <% if @view_mode == "customers" && @selected_series.present? %>
 
-            <div class="hs-stat-block mt-4">
-              <div class="hs-block-title">
-                <%= @selected_series %>｜顧客名單（<%= number_with_delimiter(@customers.size) %> 人）
-              </div>
-
-              <div class="fp-table-wrap">
-                <table class="fp-table">
-                  <thead>
-                    <tr>
-                      <th>姓名</th>
-                      <th>IG</th>
-                      <th>首購商品</th>
-                      <th>首購日期</th>
-                      <th>首購金額</th>
-                      <th>是否回購</th>
-                      <th>第二次購買</th>
-                      <th>第二次日期</th>
-                      <th>第二次金額</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% if @customers.any? %>
-                      <% @customers.each do |c| %>
-                        <tr>
-                          <td>
-                            <% if c.shopline_customer_id.present? %>
-                              <%= link_to(c.customer_name.presence || c.email, customer_path(c.shopline_customer_id), class: "fp-customer-link") %>
-                            <% else %>
-                              <span class="fp-customer-link"><%= c.customer_name.presence || c.email %></span>
-                            <% end %>
-                          </td>
-
-                          <td>
-                            <% if c.instagram_account.present? %>
-                              <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer">
-                                <%= c.instagram_account %>
-                              </a>
-                            <% else %>
-                              <span class="fp-muted">—</span>
-                            <% end %>
-                          </td>
-
-                          <td><%= c.first_product.presence || "—" %></td>
-                          <td><%= c.first_date&.strftime("%Y-%m-%d") || "—" %></td>
-                          <td class="fp-amount">$<%= number_with_delimiter(c.first_amount.to_i) %></td>
-
-                          <td>
-                            <% if c.purchase_count >= 2 %>
-                              <span class="fp-badge-ok">有</span>
-                            <% else %>
-                              <span class="fp-badge-neutral">無</span>
-                            <% end %>
-                          </td>
-
-                          <td><%= c.second_product.presence || c.second_series.presence || "—" %></td>
-                          <td><%= c.second_date&.strftime("%Y-%m-%d") || "—" %></td>
-                          <td>
-                            <% if c.purchase_count >= 2 %>
-                              <span class="fp-amount">—</span>
-                            <% else %>
-                              <span class="fp-muted">—</span>
-                            <% end %>
-                          </td>
-                        </tr>
-                      <% end %>
-                    <% else %>
-                      <tr>
-                        <td colspan="9" class="fp-muted">查無資料</td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="mt-2">
-                <%= link_to "← 返回總覽",
-                    high_spender_first_purchase_path(year: @selected_year),
-                    class: "fp-btn-secondary" %>
-              </div>
-            </div>
-
-          <% end %>
         </div>
       </div>
     </div>
@@ -333,20 +338,36 @@
 .fp-table tbody td { padding: 8px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
 .fp-table tbody tr:last-child td { border-bottom: none; }
 .fp-table tbody tr:hover td { background: #faf9ff; }
+.hs-row-urgent td { background: #fffbf5; }
+.hs-row-urgent:hover td { background: #fff8f0 !important; }
 
 .fp-muted { color: #9ca3af; }
 .fp-amount { white-space: nowrap; color: #374151; }
 .fp-customer-link { font-weight: 600; color: #374151; text-decoration: none; }
 .fp-customer-link:hover { color: #886ab5; }
 
-.fp-badge-ok     { background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
-.fp-badge-mid    { background: #fef9c3; color: #92400e; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
-.fp-badge-warn   { background: #fef3c7; color: #b45309; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
-.fp-badge-neutral{ background: #f3f4f6; color: #6b7280; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-ok      { background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-mid     { background: #fef9c3; color: #92400e; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-warn    { background: #fef2f2; color: #dc2626; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-neutral { background: #f3f4f6; color: #6b7280; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
 
 .hs-section-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; align-items: start; }
 .hs-stat-block { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
 .hs-block-title { font-size: 14px; font-weight: 700; color: #374151; padding: 12px 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+.hs-title-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-left: 8px; }
+.hs-title-meta { font-size: 12px; font-weight: 400; color: #6b7280; }
+.hs-title-hint { color: #9ca3af; }
+
+/* 顧客名單 */
+.hs-customer-cell { display: flex; align-items: center; gap: 6px; }
+.hs-ig-link { color: #9ca3af; font-size: 13px; text-decoration: none; }
+.hs-ig-link:hover { color: #e1306c; }
+.hs-series-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; flex-shrink: 0; }
+.hs-days-num { font-weight: 700; color: #374151; }
+.hs-days-unit { font-size: 11px; color: #9ca3af; }
+.hs-cycle-hint { font-size: 10px; color: #9ca3af; margin-top: 2px; }
+.hs-second-buy { display: flex; flex-direction: column; gap: 1px; }
+.hs-second-date { font-size: 11px; color: #9ca3af; }
 
 .hs-next-buy { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-bottom: 2px; }
 .hs-next-series { font-weight: 600; color: #374151; }
@@ -356,7 +377,6 @@
 .fp-checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #374151; cursor: pointer; padding: 7px 0; white-space: nowrap; }
 .fp-checkbox { width: 15px; height: 15px; cursor: pointer; accent-color: #886ab5; }
 
-/* 每月商品分布 bar */
 .hs-series-bar-group { display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
 .hs-series-bar-row { display: flex; align-items: center; gap: 6px; }
 .hs-series-name { font-size: 11px; color: #374151; font-weight: 600; width: 44px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
