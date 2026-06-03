@@ -356,6 +356,20 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 .hs-bar { height: 100%; border-radius: 99px; transition: width .3s; }
 .hs-series-pct { font-size: 11px; color: #9ca3af; width: 30px; text-align: right; flex-shrink: 0; }
 
+/* 跟進記錄欄 */
+.hs-followup-cell { min-width: 180px; }
+.hs-followup-logs { margin-bottom: 6px; }
+.hs-followup-entry { display: flex; gap: 6px; align-items: baseline; margin-bottom: 3px; }
+.hs-followup-date { font-size: 10px; color: #9ca3af; white-space: nowrap; flex-shrink: 0; }
+.hs-followup-note { font-size: 12px; color: #374151; line-height: 1.4; }
+.hs-followup-toggle { font-size: 11px; color: #886ab5; cursor: pointer; list-style: none; font-weight: 600; }
+.hs-followup-toggle::-webkit-details-marker { display: none; }
+.hs-followup-form { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.hs-followup-input { width: 100%; border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 8px; font-size: 12px; resize: vertical; }
+.hs-followup-input:focus { outline: none; border-color: #886ab5; }
+.hs-followup-submit { align-self: flex-end; padding: 3px 12px; background: #886ab5; color: #fff; border: none; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.hs-followup-submit:hover { background: #6d52a0; }
+
 @media (max-width: 900px) {
   .hs-section-grid { grid-template-columns: 1fr; }
   .fp-stats-grid { grid-template-columns: repeat(2, 1fr); }

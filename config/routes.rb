@@ -30,7 +30,8 @@ Rails.application.routes.draw do
   get '/inactive_members',           to: 'inactive_members#index',     as: :inactive_members
   get '/product_strategy',      to: 'product_strategy#index',      as: :product_strategy
   get '/subscription_strategy', to: 'subscription_strategy#index', as: :subscription_strategy
-  get '/high_spender_first_purchase', to: 'high_spender_first_purchase#index', as: :high_spender_first_purchase
+  get  '/high_spender_first_purchase', to: 'high_spender_first_purchase#index', as: :high_spender_first_purchase
+  post '/high_spender_follow_ups',     to: 'high_spender_follow_ups#create',   as: :high_spender_follow_ups
   get '/shopping_credits',    to: 'shopping_credits#index',    as: :shopping_credits
   get '/livestream_strategy', to: 'livestream_strategy#index', as: :livestream_strategy
 

@@ -37,5 +37,8 @@ class HighSpenderFirstPurchaseController < ApplicationController
         "sc.instagram_account AS instagram_account"
       )
       .order(Arel.sql("CASE WHEN customer_purchase_summaries.purchase_count >= 2 THEN 1 ELSE 0 END, customer_purchase_summaries.first_date ASC"))
+
+    identity_keys = @customers.map(&:identity_key).compact
+    @follow_up_map = HighSpenderFollowUp.for_keys(identity_keys).group_by(&:identity_key)
   end
 end

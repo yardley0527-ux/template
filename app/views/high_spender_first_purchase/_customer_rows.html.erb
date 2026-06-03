@@ -8,11 +8,13 @@
         <th>首購金額</th>
         <th>距首購</th>
         <th>第二次購買</th>
+        <th>跟進記錄</th>
       </tr>
     </thead>
     <tbody>
       <% customers.each do |c| %>
         <% status = hs_follow_up_status(c) %>
+        <% logs = follow_up_map[c.identity_key] || [] %>
         <tr>
           <td>
             <div class="hs-customer-cell">
@@ -22,9 +24,7 @@
                 <span class="fp-customer-link"><%= c.customer_name.presence || c.email %></span>
               <% end %>
               <% if c.instagram_account.present? %>
-                <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer" class="hs-ig-link">
-                  <i class="fab fa-instagram"></i>
-                </a>
+                <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer" class="hs-ig-link">IG</a>
               <% end %>
             </div>
           </td>
@@ -54,6 +54,31 @@
             <% else %>
               <span class="fp-muted">—</span>
             <% end %>
+          </td>
+          <td class="hs-followup-cell">
+            <%# 已有的跟進記錄 %>
+            <% if logs.any? %>
+              <div class="hs-followup-logs">
+                <% logs.first(2).each do |log| %>
+                  <div class="hs-followup-entry">
+                    <span class="hs-followup-date"><%= log.followed_up_at.strftime("%m/%d") %></span>
+                    <span class="hs-followup-note"><%= log.note %></span>
+                  </div>
+                <% end %>
+                <% if logs.size > 2 %>
+                  <span class="fp-muted" style="font-size:10px;">還有 <%= logs.size - 2 %> 筆</span>
+                <% end %>
+              </div>
+            <% end %>
+            <%# 新增跟進表單 %>
+            <details class="hs-followup-form-wrap">
+              <summary class="hs-followup-toggle"><%= logs.any? ? "+ 再記一筆" : "記錄跟進" %></summary>
+              <%= form_with url: high_spender_follow_ups_path, method: :post, local: true, class: "hs-followup-form" do |f| %>
+                <%= f.hidden_field :identity_key, value: c.identity_key %>
+                <%= f.text_area :note, placeholder: "做了什麼事...", class: "hs-followup-input", rows: 2 %>
+                <%= f.submit "儲存", class: "hs-followup-submit" %>
+              <% end %>
+            </details>
           </td>
         </tr>
       <% end %>
