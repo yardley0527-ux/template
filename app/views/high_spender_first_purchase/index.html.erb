@@ -67,93 +67,45 @@
             <% end %>
           </div>
 
-          <%# ── 顧客跟進名單（主要區塊）── %>
-          <div class="hs-stat-block mb-5">
-            <div class="hs-block-title d-flex align-items-center justify-content-between">
-              <span>
-                顧客跟進名單
-                <% if @selected_series.present? %>
-                  <span class="hs-title-tag" style="background:<%= hs_series_color(@selected_series) %>20;color:<%= hs_series_color(@selected_series) %>"><%= @selected_series %></span>
-                <% end %>
-              </span>
-              <span class="hs-title-meta">
-                <%= @customers.size %> 人
-                <span class="hs-title-hint">· 未回購排前，依回購週期標示急迫程度</span>
-              </span>
-            </div>
-            <div class="fp-table-wrap">
-              <table class="fp-table">
-                <thead>
-                  <tr>
-                    <th>姓名</th>
-                    <th>首購系列</th>
-                    <th>首購日期</th>
-                    <th>首購金額</th>
-                    <th>距首購</th>
-                    <th>跟進狀態</th>
-                    <th>第二次購買</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% if @customers.any? %>
-                    <% @customers.each do |c| %>
-                      <% status = hs_follow_up_status(c) %>
-                      <tr class="<%= status[:urgent] ? 'hs-row-urgent' : '' %>">
-                        <td>
-                          <div class="hs-customer-cell">
-                            <% if c.shopline_customer_id.present? %>
-                              <%= link_to(c.customer_name.presence || c.email, customer_path(c.shopline_customer_id), class: "fp-customer-link") %>
-                            <% else %>
-                              <span class="fp-customer-link"><%= c.customer_name.presence || c.email %></span>
-                            <% end %>
-                            <% if c.instagram_account.present? %>
-                              <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer" class="hs-ig-link">
-                                <i class="fab fa-instagram"></i>
-                              </a>
-                            <% end %>
-                          </div>
-                        </td>
-                        <td>
-                          <span class="hs-series-dot" style="background:<%= hs_series_color(c.first_series.to_s) %>"></span>
-                          <%= c.first_series.presence || "—" %>
-                        </td>
-                        <td class="fp-muted"><%= c.first_date&.strftime("%Y-%m-%d") || "—" %></td>
-                        <td class="fp-amount">$<%= number_with_delimiter(c.first_amount.to_i) %></td>
-                        <td>
-                          <% if c.first_date %>
-                            <% days = (Date.today - c.first_date.to_date).to_i %>
-                            <span class="hs-days-num"><%= days %></span><span class="hs-days-unit"> 天</span>
-                          <% else %>
-                            <span class="fp-muted">—</span>
-                          <% end %>
-                        </td>
-                        <td>
-                          <span class="<%= status[:css] %>"><%= status[:label] %></span>
-                          <% if status[:days] && status[:cycle] %>
-                            <div class="hs-cycle-hint"><%= status[:days] %> / <%= status[:cycle] %> 天</div>
-                          <% end %>
-                        </td>
-                        <td>
-                          <% if c.purchase_count >= 2 %>
-                            <div class="hs-second-buy">
-                              <span><%= c.second_series.presence || c.second_product.presence || "—" %></span>
-                              <span class="hs-second-date"><%= c.second_date&.strftime("%m/%d") %></span>
-                            </div>
-                          <% else %>
-                            <span class="fp-muted">—</span>
-                          <% end %>
-                        </td>
-                      </tr>
-                    <% end %>
-                  <% else %>
-                    <tr>
-                      <td colspan="7" class="fp-muted text-center" style="padding: 24px;">查無資料</td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <%# ── 顧客跟進名單（分層）── %>
+          <%
+            tier_order = [:this_week, :urgent, :waiting, :lost, :repurchased]
+            tier_meta  = {
+              this_week:  { label: "本週跟進",   hint: "距回購週期 70–100%，現在聯繫最有效", css: "hs-tier-thisweek",  collapsible: false },
+              urgent:     { label: "緊急跟進",   hint: "已超過回購週期，但還在可挽回範圍",    css: "hs-tier-urgent",    collapsible: false },
+              waiting:    { label: "待跟進",     hint: "週期未到，暫不需要行動",              css: "hs-tier-waiting",   collapsible: false },
+              lost:       { label: "可能已流失", hint: "超過回購週期 2 倍以上",               css: "hs-tier-lost",      collapsible: true  },
+              repurchased:{ label: "已回購",     hint: "已完成第二次購買",                    css: "hs-tier-repurchased",collapsible: true  },
+            }
+            grouped = @customers.group_by { |c| hs_follow_up_status(c)[:tier] }
+          %>
+          <% tier_order.each do |tier| %>
+            <% customers_in_tier = grouped[tier] || [] %>
+            <% next if customers_in_tier.empty? %>
+            <% meta = tier_meta[tier] %>
+            <% if meta[:collapsible] %>
+              <details class="hs-tier-block hs-stat-block mb-3 <%= meta[:css] %>">
+                <summary class="hs-tier-header">
+                  <span class="hs-tier-label"><%= meta[:label] %></span>
+                  <span class="hs-tier-count"><%= customers_in_tier.size %> 人</span>
+                  <span class="hs-tier-hint"><%= meta[:hint] %></span>
+                </summary>
+                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier } %>
+              </details>
+            <% else %>
+              <div class="hs-tier-block hs-stat-block mb-3 <%= meta[:css] %>">
+                <div class="hs-tier-header">
+                  <span class="hs-tier-label"><%= meta[:label] %></span>
+                  <span class="hs-tier-count"><%= customers_in_tier.size %> 人</span>
+                  <span class="hs-tier-hint"><%= meta[:hint] %></span>
+                </div>
+                <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier } %>
+              </div>
+            <% end %>
+          <% end %>
+          <% if @customers.empty? %>
+            <div class="hs-stat-block mb-5" style="padding:24px;text-align:center;color:#9ca3af;">查無資料</div>
+          <% end %>
 
           <%# ── 年度 + 系列統計（輔助參考）── %>
           <div class="hs-section-grid mb-4">
@@ -340,10 +292,37 @@
 .fp-customer-link { font-weight: 600; color: #374151; text-decoration: none; }
 .fp-customer-link:hover { color: #886ab5; }
 
-.fp-badge-ok      { background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
-.fp-badge-mid     { background: #fef9c3; color: #92400e; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
-.fp-badge-warn    { background: #fef2f2; color: #dc2626; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
-.fp-badge-neutral { background: #f3f4f6; color: #6b7280; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-ok       { background: #f0fdf4; color: #16a34a; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-mid      { background: #fef9c3; color: #92400e; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-warn     { background: #fef2f2; color: #dc2626; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-neutral  { background: #f3f4f6; color: #6b7280; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-thisweek { background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+.fp-badge-lost     { background: #f8fafc; color: #94a3b8; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; display: inline-block; }
+
+/* 分層區塊 */
+.hs-tier-block { border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+.hs-tier-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; font-size: 14px; font-weight: 700; cursor: pointer; list-style: none; border-bottom: 1px solid #e5e7eb; }
+.hs-tier-header::-webkit-details-marker { display: none; }
+details.hs-tier-block > summary.hs-tier-header::after { content: "▸"; margin-left: auto; font-size: 11px; color: #9ca3af; }
+details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
+.hs-tier-count { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.hs-tier-hint  { font-size: 11px; font-weight: 400; color: #9ca3af; }
+
+.hs-tier-thisweek   { border: 1.5px solid #bfdbfe; background: #fff; }
+.hs-tier-thisweek   .hs-tier-header { background: #eff6ff; color: #1d4ed8; }
+.hs-tier-thisweek   .hs-tier-count  { background: #1d4ed8; color: #fff; }
+.hs-tier-urgent     { border: 1.5px solid #fecaca; background: #fff; }
+.hs-tier-urgent     .hs-tier-header { background: #fef2f2; color: #dc2626; }
+.hs-tier-urgent     .hs-tier-count  { background: #dc2626; color: #fff; }
+.hs-tier-waiting    { border: 1px solid #e5e7eb; background: #fff; }
+.hs-tier-waiting    .hs-tier-header { background: #f9fafb; color: #374151; }
+.hs-tier-waiting    .hs-tier-count  { background: #e5e7eb; color: #6b7280; }
+.hs-tier-lost       { border: 1px solid #e5e7eb; background: #fff; }
+.hs-tier-lost       .hs-tier-header { background: #f8fafc; color: #94a3b8; }
+.hs-tier-lost       .hs-tier-count  { background: #e2e8f0; color: #64748b; }
+.hs-tier-repurchased{ border: 1px solid #d1fae5; background: #fff; }
+.hs-tier-repurchased .hs-tier-header { background: #f0fdf4; color: #16a34a; }
+.hs-tier-repurchased .hs-tier-count  { background: #16a34a; color: #fff; }
 
 .hs-section-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; align-items: start; }
 .hs-stat-block { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }

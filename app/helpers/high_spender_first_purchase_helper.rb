@@ -34,17 +34,19 @@ module HighSpenderFirstPurchaseHelper
   end
 
   def hs_follow_up_status(customer)
-    return { label: "已回購", css: "fp-badge-ok", urgent: false } if customer.purchase_count >= 2
+    return { label: "已回購", css: "fp-badge-ok", tier: :repurchased, urgent: false } if customer.purchase_count >= 2
 
     days_since = (Date.today - customer.first_date.to_date).to_i
     cycle      = SERIES_CYCLE_DAYS.fetch(customer.first_series.to_s, 90)
 
-    if days_since > cycle
-      { label: "已超週期", css: "fp-badge-warn",    urgent: true,  days: days_since, cycle: cycle }
-    elsif days_since > (cycle * 0.7).to_i
-      { label: "接近週期", css: "fp-badge-mid",     urgent: true,  days: days_since, cycle: cycle }
+    if days_since >= cycle * 2
+      { label: "可能已流失", css: "fp-badge-lost",    tier: :lost,      urgent: false, days: days_since, cycle: cycle }
+    elsif days_since >= cycle
+      { label: "緊急跟進",   css: "fp-badge-warn",    tier: :urgent,    urgent: true,  days: days_since, cycle: cycle }
+    elsif days_since >= (cycle * 0.7).to_i
+      { label: "本週跟進",   css: "fp-badge-thisweek", tier: :this_week, urgent: true,  days: days_since, cycle: cycle }
     else
-      { label: "待跟進",   css: "fp-badge-neutral", urgent: false, days: days_since, cycle: cycle }
+      { label: "待跟進",     css: "fp-badge-neutral",  tier: :waiting,   urgent: false, days: days_since, cycle: cycle }
     end
   end
 end

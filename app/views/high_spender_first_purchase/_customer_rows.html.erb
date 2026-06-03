@@ -1,0 +1,62 @@
+<div class="fp-table-wrap">
+  <table class="fp-table">
+    <thead>
+      <tr>
+        <th>姓名</th>
+        <th>首購系列</th>
+        <th>首購日期</th>
+        <th>首購金額</th>
+        <th>距首購</th>
+        <th>第二次購買</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% customers.each do |c| %>
+        <% status = hs_follow_up_status(c) %>
+        <tr>
+          <td>
+            <div class="hs-customer-cell">
+              <% if c.shopline_customer_id.present? %>
+                <%= link_to(c.customer_name.presence || c.email, customer_path(c.shopline_customer_id), class: "fp-customer-link") %>
+              <% else %>
+                <span class="fp-customer-link"><%= c.customer_name.presence || c.email %></span>
+              <% end %>
+              <% if c.instagram_account.present? %>
+                <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer" class="hs-ig-link">
+                  <i class="fab fa-instagram"></i>
+                </a>
+              <% end %>
+            </div>
+          </td>
+          <td>
+            <span class="hs-series-dot" style="background:<%= hs_series_color(c.first_series.to_s) %>"></span>
+            <%= c.first_series.presence || "—" %>
+          </td>
+          <td class="fp-muted"><%= c.first_date&.strftime("%Y-%m-%d") || "—" %></td>
+          <td class="fp-amount">$<%= number_with_delimiter(c.first_amount.to_i) %></td>
+          <td>
+            <% if c.first_date %>
+              <% days = (Date.today - c.first_date.to_date).to_i %>
+              <span class="hs-days-num"><%= days %></span><span class="hs-days-unit"> 天</span>
+              <% if status[:cycle] %>
+                <div class="hs-cycle-hint">週期 <%= status[:cycle] %> 天</div>
+              <% end %>
+            <% else %>
+              <span class="fp-muted">—</span>
+            <% end %>
+          </td>
+          <td>
+            <% if c.purchase_count >= 2 %>
+              <div class="hs-second-buy">
+                <span><%= c.second_series.presence || c.second_product.presence || "—" %></span>
+                <span class="hs-second-date"><%= c.second_date&.strftime("%m/%d") %></span>
+              </div>
+            <% else %>
+              <span class="fp-muted">—</span>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
