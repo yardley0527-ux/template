@@ -15,21 +15,6 @@
       <div class="panel-container show">
         <div class="panel-content">
 
-          <%# ── KPI 卡片 ── %>
-          <div class="fp-stats-grid mb-4">
-            <% @summary_cards.each do |card| %>
-              <div class="fp-stat-card">
-                <div class="fp-stat-series"><%= card[:label] %></div>
-                <div class="fp-stat-row">
-                  <div class="fp-stat-item">
-                    <span class="fp-stat-num"><%= number_with_delimiter(card[:value]) %></span>
-                    <span class="fp-stat-label"><%= card[:note] %></span>
-                  </div>
-                </div>
-              </div>
-            <% end %>
-          </div>
-
           <%# ── 篩選列 ── %>
           <div class="fp-filter-bar mb-4">
             <%= form_with url: high_spender_first_purchase_path, method: :get, local: true do %>
@@ -62,6 +47,21 @@
                 <div class="fp-filter-actions">
                   <%= button_tag "查詢", type: "submit", class: "fp-btn-primary" %>
                   <%= link_to "清除", high_spender_first_purchase_path, class: "fp-btn-secondary" %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+
+          <%# ── KPI 卡片 ── %>
+          <div class="fp-stats-grid mb-4">
+            <% @summary_cards.each do |card| %>
+              <div class="fp-stat-card">
+                <div class="fp-stat-series"><%= card[:label] %></div>
+                <div class="fp-stat-row">
+                  <div class="fp-stat-item">
+                    <span class="fp-stat-num"><%= number_with_delimiter(card[:value]) %></span>
+                    <span class="fp-stat-label"><%= card[:note] %></span>
+                  </div>
                 </div>
               </div>
             <% end %>
