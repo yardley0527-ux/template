@@ -39,10 +39,8 @@ module HighSpenderFirstPurchaseHelper
     days_since = (Date.today - customer.first_date.to_date).to_i
     cycle      = SERIES_CYCLE_DAYS.fetch(customer.first_series.to_s, 90)
 
-    if days_since >= cycle * 2
-      { label: "可能已流失", css: "fp-badge-lost",    tier: :lost,      urgent: false, days: days_since, cycle: cycle }
-    elsif days_since >= cycle
-      { label: "緊急跟進",   css: "fp-badge-warn",    tier: :urgent,    urgent: true,  days: days_since, cycle: cycle }
+    if days_since >= cycle
+      { label: "可能已流失", css: "fp-badge-lost",     tier: :lost,      urgent: false, days: days_since, cycle: cycle }
     elsif days_since >= (cycle * 0.7).to_i
       { label: "本週跟進",   css: "fp-badge-thisweek", tier: :this_week, urgent: true,  days: days_since, cycle: cycle }
     else
