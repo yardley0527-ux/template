@@ -28,8 +28,8 @@ module SmartadminRailsSeed
     config.chat_interface = true
     config.layout_settings = true
     config.app_footer = true
-    config.copyright = "2020 © SmartAdmin on Rails by&nbsp;<a href='https://smartadmin-rails-full.herokuapp.com/' class='text-primary fw-500' title='gotbootstrap.com' target='_blank'>sildur</a>".html_safe
-    config.copyright_inverse = "2020 © SmartAdmin on Rails by&nbsp;<a href='https://smartadmin-rails-full.herokuapp.com/' class='text-white opacity-40 fw-500' title='gotbootstrap.com' target='_blank'>sildur</a>".html_safe
+    config.copyright = "2026 © 苼莛生技".html_safe
+    config.copyright_inverse = "2026 © 苼莛生技".html_safe
     config.app_name = 'SmartAdmin WebApp'
     config.bs4v = '4.3'
     config.app_shortcut_modal = true
