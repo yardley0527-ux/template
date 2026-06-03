@@ -35,12 +35,6 @@
             <%= form_with url: high_spender_first_purchase_path, method: :get, local: true do %>
               <div class="fp-filter-row">
                 <div class="fp-filter-group">
-                  <label class="fp-filter-label">年份</label>
-                  <%= select_tag :year,
-                        options_for_select(@year_stats.map { |y| [y[:year], y[:year]] }, @selected_year),
-                        class: "fp-select" %>
-                </div>
-                <div class="fp-filter-group">
                   <label class="fp-filter-label">首購系列</label>
                   <%= select_tag :series,
                         options_for_select([["全部系列", ""]] + @series_options.map { |s| [s, s] }, @selected_series),
