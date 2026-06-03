@@ -20,15 +20,15 @@ class SidebarEntry
           ]
         },
         {
-          group_title: "忠實客管理",
-          children: [
-            { href: loyal_customers_path, title: "忠實客分析", icon: "fa-heart" }
-          ]
-        },
-        {
           group_title: "破萬管理",
           children: [
             { href: high_spender_first_purchase_path, title: "破萬新客、產品分析", icon: "fa-gem" }
+          ]
+        },
+        {
+          group_title: "忠實客管理",
+          children: [
+            { href: loyal_customers_path, title: "忠實客分析", icon: "fa-heart" }
           ]
         },
         {
