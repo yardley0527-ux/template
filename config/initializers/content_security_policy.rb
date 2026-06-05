@@ -16,5 +16,6 @@ Rails.application.config.content_security_policy do |policy|
                      "https://res.cloudinary.com",
                      "https://upload-widget.cloudinary.com"
 
-  policy.frame_src   "https://upload-widget.cloudinary.com"
+  policy.frame_src   "https://upload-widget.cloudinary.com",
+                     "https://www.instagram.com"
 end
