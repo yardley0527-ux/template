@@ -1,0 +1,89 @@
+{
+  "last_updated": "2026-06-05",
+  "account_id": "3578364032458474",
+  "product": "BC葉全能膠囊",
+  "company": "苼莛國際生技",
+  "kol": "chloechao0527",
+  "campaigns": [
+    {
+      "id": "120250168505420022",
+      "name": "互動組",
+      "objective": "貼文互動",
+      "status": "ACTIVE",
+      "daily_budget": 3000,
+      "start_date": "2026-06-03",
+      "creative": {
+        "type": "VIDEO",
+        "ig_post_url": "https://www.instagram.com/p/DXMUGojD25t/",
+        "ig_embed_url": "https://www.instagram.com/p/DXMUGojD25t/embed/",
+        "label": "Chloe 頭髮保養 Reels"
+      },
+      "daily_data": [
+        {
+          "date": "2026-06-03",
+          "impressions": 10766,
+          "reach": 9930,
+          "clicks": 548,
+          "ctr": 5.09,
+          "cpm": 140,
+          "spend": 1503,
+          "video_3s": 3766,
+          "video_25": 943,
+          "video_50": 431,
+          "video_75": 244,
+          "video_100": 154,
+          "shares": 3,
+          "thruplay": 674
+        },
+        {
+          "date": "2026-06-05",
+          "impressions": 13313,
+          "reach": 12851,
+          "clicks": 681,
+          "ctr": 5.12,
+          "cpm": 132,
+          "spend": 1761,
+          "video_3s": 4865,
+          "video_25": 1116,
+          "video_50": 492,
+          "video_75": 240,
+          "video_100": 144,
+          "shares": 2,
+          "thruplay": 797
+        }
+      ]
+    },
+    {
+      "id": "120250171923130022",
+      "name": "導流組",
+      "objective": "到達連結人數",
+      "status": "ACTIVE",
+      "daily_budget": 2000,
+      "start_date": "2026-06-05",
+      "creative": {
+        "type": "VIDEO",
+        "ig_post_url": "https://www.instagram.com/p/DXMUGojD25t/",
+        "ig_embed_url": "https://www.instagram.com/p/DXMUGojD25t/embed/",
+        "label": "Chloe 頭髮保養 Reels"
+      },
+      "daily_data": [
+        {
+          "date": "2026-06-05",
+          "impressions": 1088,
+          "reach": 763,
+          "clicks": 50,
+          "ctr": 4.60,
+          "cpm": 313,
+          "spend": 340,
+          "video_3s": 219,
+          "video_25": 80,
+          "video_50": 49,
+          "video_75": 25,
+          "video_100": 18,
+          "shares": null,
+          "thruplay": 66
+        }
+      ]
+    }
+  ]
+}

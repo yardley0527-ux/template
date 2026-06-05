@@ -68,6 +68,12 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "廣告管理",
+          children: [
+            { href: ads_dashboard_path, title: "廣告成效面板", icon: "fa-ad" }
+          ]
+        },
+        {
           group_title: "監控",
           children: [
             { href: monitoring_path, title: "功能使用監控", icon: "fa-chart-line" }
