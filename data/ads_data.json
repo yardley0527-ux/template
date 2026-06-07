@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-06-05",
+  "last_updated": "2026-06-07",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -16,6 +16,7 @@
         "type": "VIDEO",
         "ig_post_url": "https://www.instagram.com/p/DXMUGojD25t/",
         "ig_embed_url": "https://www.instagram.com/p/DXMUGojD25t/embed/",
+        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/709608740_1019070563960023_1208891159859071790_n.jpg?_nc_cat=106&ccb=1-7&_nc_ohc=bDKb4LwrwX4Q7kNvwHuVwue&_nc_oc=AdrXhOfomEKaV3Fxd90KXLypxCHsZ1JlgdvIhZ-q2cHkwgHNRT-Ra8Sd0Y5ZVlXhvko&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=AgJ3v9SYYaiNmjK_naUmCA&_nc_tpa=Q5bMBQFWK077P14ftHRGfc7kuRiPmrZQOFLEGjVzDb_PrS6Po93xfWsA4rphsKeDKzEJBXa8Cws4VmL4ow&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af_O4xH8C0YOr02hhcrPtjRhOX2MrnwEBBaoymptn6DLTw&oe=6A2AB094",
         "label": "Chloe 頭髮保養 Reels"
       },
       "daily_data": [
@@ -50,6 +51,22 @@
           "video_100": 144,
           "shares": 2,
           "thruplay": 797
+        },
+        {
+          "date": "2026-06-07",
+          "impressions": 7475,
+          "reach": 7289,
+          "clicks": 426,
+          "ctr": 5.70,
+          "cpm": 167,
+          "spend": 1245,
+          "video_3s": 2824,
+          "video_25": 611,
+          "video_50": 269,
+          "video_75": 169,
+          "video_100": 105,
+          "shares": 2,
+          "thruplay": 450
         }
       ]
     },
@@ -64,6 +81,7 @@
         "type": "VIDEO",
         "ig_post_url": "https://www.instagram.com/p/DXMUGojD25t/",
         "ig_embed_url": "https://www.instagram.com/p/DXMUGojD25t/embed/",
+        "thumbnail_url": "https://scontent-sea5-1.xx.fbcdn.net/v/t15.5256-10/714699307_1509538503883734_7916193931089231374_n.jpg?_nc_cat=107&ccb=1-7&_nc_ohc=ssG69PVs30cQ7kNvwGlapHb&_nc_oc=Adp2lrAMOzw70fvYSatzc0EI4rk73_bFrZeYCKP6Aqw7aX_Zc5s3o7cESwS97Aduwac&_nc_zt=23&_nc_ht=scontent-sea5-1.xx&edm=AEZPnVgEAAAA&_nc_gid=AgJ3v9SYYaiNmjK_naUmCA&_nc_tpa=Q5bMBQGSFdhPZ3n-Nv8RfvZ2IBE_7bWGZR8dR0p6kzB58CTNr_Z0QRLqHGDx0bIt-TdXIOgguKgpKGVtsw&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af_hSZcIQSVfRkTHVphpnz-Hy_pPDE_emWr-5V7vp9rHOA&oe=6A2AE7BD",
         "label": "Chloe 頭髮保養 Reels"
       },
       "daily_data": [
@@ -82,6 +100,22 @@
           "video_100": 18,
           "shares": null,
           "thruplay": 66
+        },
+        {
+          "date": "2026-06-07",
+          "impressions": 1349,
+          "reach": 721,
+          "clicks": 38,
+          "ctr": 2.82,
+          "cpm": 349,
+          "spend": 471,
+          "video_3s": 192,
+          "video_25": 70,
+          "video_50": 50,
+          "video_75": 34,
+          "video_100": 25,
+          "shares": null,
+          "thruplay": 63
         }
       ]
     }
