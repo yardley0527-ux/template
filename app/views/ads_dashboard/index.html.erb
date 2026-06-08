@@ -64,18 +64,23 @@
 <div class="row g-3 mb-4">
   <% @campaigns.each do |c| %>
     <%
-      l = (c['daily_data'] || []).max_by { |d| d['date'] }
-      p = (c['daily_data'] || []).sort_by { |d| d['date'] }.then { |a| a.length >= 2 ? a[-2] : nil }
+      sorted_days = (c['daily_data'] || []).sort_by { |d| d['date'] }
+      l = sorted_days.last
+      p = sorted_days.length >= 2 ? sorted_days[-2] : nil
       status_class = c['status'] == 'ACTIVE' ? 'badge-success' : 'badge-secondary'
       status_label = c['status'] == 'ACTIVE' ? '投放中' : '已暫停'
+      date_range = sorted_days.any? ? (sorted_days.size == 1 ? sorted_days.first['date'][5..] : "#{sorted_days.first['date'][5..]} ~ #{sorted_days.last['date'][5..]}") : nil
     %>
-    <div class="col-md-6">
+    <div class="col-md-4">
       <div class="card border-0 shadow-sm h-100">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
               <div class="fw-bold" style="font-size:1rem"><%= c['name'] %></div>
               <div class="text-muted small"><%= c['objective'] %></div>
+              <% if date_range %>
+                <div class="text-muted" style="font-size:11px">資料區間：<%= date_range %></div>
+              <% end %>
             </div>
             <div class="text-right">
               <span class="badge <%= status_class %>"><%= status_label %></span>
