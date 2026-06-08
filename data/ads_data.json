@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-06-07",
+  "last_updated": "2026-06-08",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -16,7 +16,7 @@
         "type": "VIDEO",
         "ig_post_url": "https://www.instagram.com/p/DXMUGojD25t/",
         "ig_embed_url": "https://www.instagram.com/p/DXMUGojD25t/embed/",
-        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/709608740_1019070563960023_1208891159859071790_n.jpg?_nc_cat=106&ccb=1-7&_nc_ohc=bDKb4LwrwX4Q7kNvwHuVwue&_nc_oc=AdrXhOfomEKaV3Fxd90KXLypxCHsZ1JlgdvIhZ-q2cHkwgHNRT-Ra8Sd0Y5ZVlXhvko&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=AgJ3v9SYYaiNmjK_naUmCA&_nc_tpa=Q5bMBQFWK077P14ftHRGfc7kuRiPmrZQOFLEGjVzDb_PrS6Po93xfWsA4rphsKeDKzEJBXa8Cws4VmL4ow&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af_O4xH8C0YOr02hhcrPtjRhOX2MrnwEBBaoymptn6DLTw&oe=6A2AB094",
+        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/714003513_937772832650049_4886591695673287032_n.jpg?_nc_cat=106&ccb=1-7&_nc_ohc=6mIWDs-Teb8Q7kNvwFn7H_F&_nc_oc=AdoPFXK2tNGQz4lWC-AXGmKxvPjXCDKm-1kivZ_dXi-jMVkM0d4rWcpCf4i4NukR-QM&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=IVZIivqqgKhhh58u-hc0Cw&_nc_tpa=Q5bMBQH58Dj9DtJkV2fuqXptUvJcCoE8waRTPqH4kJN04uI3HrMMedTfMTscaiUfMAvZPPS7_tzVFY2yew&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af-iaRb4cSs1doXlJM0Qun3Hcxehrq5Myj4wtLURxyKZ9g&oe=6A2BF90B",
         "label": "Chloe 頭髮保養 Reels"
       },
       "daily_data": [
@@ -67,6 +67,22 @@
           "video_100": 105,
           "shares": 2,
           "thruplay": 450
+        },
+        {
+          "date": "2026-06-08",
+          "impressions": 5330,
+          "reach": 5029,
+          "clicks": 281,
+          "ctr": 5.27,
+          "cpm": 142,
+          "spend": 757,
+          "video_3s": 1869,
+          "video_25": 363,
+          "video_50": 147,
+          "video_75": 95,
+          "video_100": 61,
+          "shares": 4,
+          "thruplay": 259
         }
       ]
     },
@@ -74,7 +90,7 @@
       "id": "120250171923130022",
       "name": "導流組",
       "objective": "到達連結人數",
-      "status": "ACTIVE",
+      "status": "PAUSED",
       "daily_budget": 2000,
       "start_date": "2026-06-05",
       "creative": {
@@ -116,6 +132,39 @@
           "video_100": 25,
           "shares": null,
           "thruplay": 63
+        }
+      ]
+    },
+    {
+      "id": "120250491186350022",
+      "name": "Claude 導流IG",
+      "objective": "流量",
+      "status": "ACTIVE",
+      "daily_budget": 2500,
+      "start_date": "2026-06-07",
+      "creative": {
+        "type": "VIDEO",
+        "ig_post_url": "https://www.instagram.com/p/DXMUGojD25t/",
+        "ig_embed_url": "https://www.instagram.com/p/DXMUGojD25t/embed/",
+        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/719232114_1610753420027021_6722014188669120118_n.jpg?_nc_cat=101&ccb=1-7&_nc_ohc=NLvAy40emrgQ7kNvwFXrsLq&_nc_oc=Adp7J8Z_rHkvr64HUsACPvW9hrFggtmltPooyYbqHTiX-siD80pbCHF1VqYR3SQlR-Q&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=IVZIivqqgKhhh58u-hc0Cw&_nc_tpa=Q5bMBQFNq7_e2PwmCJNcMg6w04By7ZEGTeu9oILdeCHonFwTvykWBjO0bejcGORYOK2bb_4lJo_59jjysQ&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af-rhcZNOASkj0ZWFxW3liJtafeV0O2DuE3F5LsC5U8drw&oe=6A2C0BBA",
+        "label": "Chloe 頭髮保養 Reels"
+      },
+      "daily_data": [
+        {
+          "date": "2026-06-08",
+          "impressions": 6987,
+          "reach": 6354,
+          "clicks": 417,
+          "ctr": 5.97,
+          "cpm": 92,
+          "spend": 646,
+          "video_3s": 1920,
+          "video_25": 524,
+          "video_50": 267,
+          "video_75": 190,
+          "video_100": 121,
+          "shares": 2,
+          "thruplay": 411
         }
       ]
     }
