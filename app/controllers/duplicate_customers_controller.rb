@@ -24,6 +24,20 @@ class DuplicateCustomersController < ApplicationController
     @summaries = load_summaries(@pairs.flat_map { |pair| [pair[:orphan], *pair[:candidates]] })
   end
 
+  def merge
+    orphan   = ShoplineCustomer.find(params[:orphan_id])
+    official = ShoplineCustomer.find(params[:official_id])
+
+    result = CustomerMergeService.new(orphan: orphan, official: official, merged_by: current_user&.email).call
+
+    if result.success?
+      redirect_to duplicate_customers_path,
+        notice: "已將「#{official.full_name}」的孤兒記錄合併（轉移 #{result.reassigned_orders_count} 筆訂單）。消費分析快取將於背景重新整理，稍後再查看。"
+    else
+      redirect_to duplicate_customers_path, alert: "合併失敗：#{result.error}"
+    end
+  end
+
   private
 
   # 名字相同，但 email、手機都對不上 → 很可能是同一個人留了不同聯絡方式

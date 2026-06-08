@@ -68,6 +68,18 @@
                           <span class="dc-meta-value"><%= summary&.purchase_count || 0 %> 次</span>
                         </div>
                       </div>
+                      <% if c != orphan %>
+                        <div class="dc-card-actions">
+                          <%= button_to "確認為同一人並合併",
+                                merge_duplicate_customers_path(orphan_id: orphan.id, official_id: c.id),
+                                method: :post,
+                                class: "dc-merge-btn",
+                                form: { style: "display:inline" },
+                                data: {
+                                  confirm: "確定「#{orphan.full_name}」(##{orphan.id}，#{orphan.membership_level}) 跟「#{c.full_name}」(##{c.id}，#{c.membership_level}) 是同一人嗎？\n\n合併後孤兒記錄的訂單會轉移到正式記錄、孤兒記錄會被刪除，此動作無法復原。"
+                                } %>
+                        </div>
+                      <% end %>
                     </div>
                   <% end %>
                 </div>
@@ -103,6 +115,10 @@
 .dc-name-link { color: inherit; text-decoration: none; }
 .dc-name-link:hover { color: #1f2937; text-decoration: underline; }
 .dc-id { font-size: 11px; color: #9ca3af; font-weight: 400; margin-left: 4px; }
+
+.dc-card-actions { margin-top: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb; }
+.dc-merge-btn { width: 100%; padding: 7px 14px; background: #374151; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.dc-merge-btn:hover { background: #1f2937; }
 
 .dc-card-grid-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
 .dc-meta-item { display: flex; flex-direction: column; gap: 2px; }
