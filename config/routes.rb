@@ -29,6 +29,7 @@ Rails.application.routes.draw do
   get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
   get '/inactive_members',           to: 'inactive_members#index',     as: :inactive_members
+  get '/duplicate_customers',         to: 'duplicate_customers#index',  as: :duplicate_customers
   get '/product_strategy',      to: 'product_strategy#index',      as: :product_strategy
   get '/subscription_strategy', to: 'subscription_strategy#index', as: :subscription_strategy
   get  '/high_spender_first_purchase', to: 'high_spender_first_purchase#index', as: :high_spender_first_purchase

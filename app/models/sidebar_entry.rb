@@ -16,7 +16,8 @@ class SidebarEntry
             { href: expiring_members_path, title: "即將降級會員",   icon: "fa-bell" },
             { href: stats_customers_path,  title: "會員卡別統計",   icon: "fa-chart-bar" },
             { href: inactive_members_path,   title: "近期未消費名單", icon: "fa-user-times" },
-            { href: shopping_credits_path,  title: "購物金分析",     icon: "fa-credit-card" }
+            { href: shopping_credits_path,  title: "購物金分析",     icon: "fa-credit-card" },
+            { href: duplicate_customers_path, title: "重複客戶偵測",  icon: "fa-user-friends" }
           ]
         },
         {
@@ -34,8 +35,7 @@ class SidebarEntry
         {
           group_title: "首購管理",
           children: [
-            { href: first_purchase_index_path,title: "首購總覽",   icon: "fa-shopping-bag" },
-            { href: first_purchase_index_path(silent_only: 1), title: "沉默客名單", icon: "fa-user-times" }
+            { href: first_purchase_index_path,title: "首購總覽",   icon: "fa-shopping-bag" }
           ]
         },
         {

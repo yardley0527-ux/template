@@ -1,0 +1,117 @@
+<%# app/views/duplicate_customers/index.html.erb %>
+<% content_for :page_title, "重複客戶偵測" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-user-friends"></i>
+    重複客戶偵測
+    <small>找出沒有 Shopline 顧客 ID、但姓名與既有顧客相同的「孤兒記錄」，供人工複核是否為同一人</small>
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-container show">
+        <div class="panel-content">
+
+          <div class="dc-summary mb-3">
+            找到 <strong><%= @pairs.size %></strong> 組可能的重複客戶（孤兒記錄與正式顧客姓名相同，但 Email、手機都不同）
+          </div>
+
+          <% if @pairs.blank? %>
+            <div class="dc-empty">目前沒有偵測到可疑的重複客戶</div>
+          <% else %>
+            <% @pairs.each do |pair| %>
+              <% orphan = pair[:orphan] %>
+              <div class="dc-group mb-4">
+                <div class="dc-group-title"><%= orphan.full_name %></div>
+                <div class="dc-card-grid">
+                  <% [orphan, *pair[:candidates]].each do |c| %>
+                    <% summary = @summaries[identity_key_for(c)] %>
+                    <div class="dc-card <%= 'is-orphan' if c == orphan %>">
+                      <div class="dc-card-top">
+                        <span class="dc-tag <%= c == orphan ? 'is-orphan' : 'is-official' %>">
+                          <%= c == orphan ? "孤兒記錄（無 Shopline ID）" : "正式顧客記錄" %>
+                        </span>
+                        <span class="fp-level fp-level-<%= c.membership_level&.delete('卡') %>">
+                          <%= c.membership_level.presence || "—" %>
+                        </span>
+                      </div>
+                      <div class="dc-card-name">
+                        <%= link_to c.full_name, customer_path(c.id), class: "dc-name-link" %>
+                        <span class="dc-id">#<%= c.id %></span>
+                      </div>
+                      <div class="dc-card-grid-meta">
+                        <div class="dc-meta-item">
+                          <span class="dc-meta-label">Shopline ID</span>
+                          <span class="dc-meta-value"><%= c.shopline_id.presence || "—" %></span>
+                        </div>
+                        <div class="dc-meta-item">
+                          <span class="dc-meta-label">Email</span>
+                          <span class="dc-meta-value"><%= c.email.presence || "—" %></span>
+                        </div>
+                        <div class="dc-meta-item">
+                          <span class="dc-meta-label">手機</span>
+                          <span class="dc-meta-value"><%= c.mobile_phone.presence || "—" %></span>
+                        </div>
+                        <div class="dc-meta-item">
+                          <span class="dc-meta-label">建立時間</span>
+                          <span class="dc-meta-value"><%= c.created_at&.strftime("%Y/%m/%d") || "—" %></span>
+                        </div>
+                        <div class="dc-meta-item">
+                          <span class="dc-meta-label">最後消費日</span>
+                          <span class="dc-meta-value"><%= summary&.last_order_date&.strftime("%Y/%m/%d") || "從未消費" %></span>
+                        </div>
+                        <div class="dc-meta-item">
+                          <span class="dc-meta-label">消費次數</span>
+                          <span class="dc-meta-value"><%= summary&.purchase_count || 0 %> 次</span>
+                        </div>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+
+.dc-summary { font-size: 13px; color: #6b7280; }
+.dc-empty { text-align: center; color: #9ca3af; padding: 60px 20px; font-size: 14px; background: #fafafa; border: 1px dashed #e5e7eb; border-radius: 10px; }
+
+.dc-group { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; background: #fff; }
+.dc-group-title { font-size: 15px; font-weight: 700; color: #374151; margin-bottom: 12px; }
+
+.dc-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.dc-card { border: 1.5px solid #e5e7eb; border-radius: 10px; padding: 14px; background: #fafafa; }
+.dc-card.is-orphan { border-color: #f59e0b; background: #fffbeb; }
+
+.dc-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.dc-tag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.dc-tag.is-orphan { background: #fef3c7; color: #92400e; }
+.dc-tag.is-official { background: #e0e7ff; color: #3730a3; }
+
+.dc-card-name { font-size: 15px; font-weight: 700; color: #374151; margin-bottom: 10px; }
+.dc-name-link { color: inherit; text-decoration: none; }
+.dc-name-link:hover { color: #1f2937; text-decoration: underline; }
+.dc-id { font-size: 11px; color: #9ca3af; font-weight: 400; margin-left: 4px; }
+
+.dc-card-grid-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+.dc-meta-item { display: flex; flex-direction: column; gap: 2px; }
+.dc-meta-label { font-size: 10px; color: #9ca3af; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+.dc-meta-value { font-size: 13px; font-weight: 600; color: #374151; word-break: break-all; }
+
+.fp-level { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; display: inline-block; }
+.fp-level-黑 { background: #1f2937; color: #fff; }
+.fp-level-金 { background: #d97706; color: #fff; }
+.fp-level-銀 { background: #9ca3af; color: #fff; }
+.fp-level-白 { background: #f3f4f6; color: #374151; }
+</style>
