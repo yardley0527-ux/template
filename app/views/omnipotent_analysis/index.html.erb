@@ -159,10 +159,11 @@
                   <th>上次買全能</th>
                   <th>瓶數</th>
                   <th>預期回購</th>
+                  <th>上次消費</th>
+                  <th>上次品項</th>
                   <th>逾期</th>
                   <th>歷史次數</th>
                   <th>歷史消費</th>
-                  <th>上次消費</th>
                   <th>電話</th>
                   <th>IG</th>
                 </tr>
@@ -181,6 +182,8 @@
                     <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
                     <td class="text-center"><%= r[:bottles] %> 瓶</td>
                     <td><%= r[:last_date] ? (r[:last_date] + r[:expected_days]).strftime("%m/%d") : "-" %></td>
+                    <td class="text-muted small"><%= r[:last_any_date]&.strftime("%m/%d") || "-" %></td>
+                    <td class="text-muted small" style="max-width:140px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<%= r[:last_any_product] %>"><%= r[:last_any_product] || "-" %></td>
                     <td>
                       <% od = r[:overdue_days] %>
                       <% if od.nil? %>
@@ -195,7 +198,6 @@
                     </td>
                     <td class="text-center"><%= r[:history_count] %> 次</td>
                     <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
-                    <td class="text-muted small"><%= r[:last_any_date]&.strftime("%Y/%m/%d") || "-" %></td>
                     <td>
                       <% if c.mobile_phone.present? %>
                         <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
