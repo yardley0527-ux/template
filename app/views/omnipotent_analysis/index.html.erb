@@ -162,6 +162,7 @@
                   <th>逾期</th>
                   <th>歷史次數</th>
                   <th>歷史消費</th>
+                  <th>上次消費</th>
                   <th>電話</th>
                   <th>IG</th>
                 </tr>
@@ -194,6 +195,7 @@
                     </td>
                     <td class="text-center"><%= r[:history_count] %> 次</td>
                     <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
+                    <td class="text-muted small"><%= r[:last_any_date]&.strftime("%Y/%m/%d") || "-" %></td>
                     <td>
                       <% if c.mobile_phone.present? %>
                         <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">

@@ -110,6 +110,9 @@ module ProductLivestreamAnalysis
     history_counts  = ShoplineOrder.where(product_sql).where(email: missing_emails).group(:email).count
     history_amounts = ShoplineOrder.where(product_sql).where(email: missing_emails).group(:email).sum(:total_amount)
 
+    last_any_order = ShoplineOrder.where(email: missing_emails)
+      .group(:email).maximum(:order_date)
+
     customers = ShoplineCustomer
       .where(membership_level: TARGET_MEMBERSHIPS)
       .where(email: missing_emails)
@@ -127,7 +130,8 @@ module ProductLivestreamAnalysis
       next if overdue_days > 90                  # 逾期太久，已非追蹤目標
       history_count  = history_counts[c.email]  || 0
       next if history_count < 2                  # 只買過一次，不算有回購習慣
-      history_amount = history_amounts[c.email] || 0
+      history_amount    = history_amounts[c.email] || 0
+      last_any_date     = last_any_order[c.email]&.to_date
       membership_rank = MEMBERSHIP_RANK[c.membership_level] || 0
       overdue_score   = [overdue_days, 0].max / 10.0
       priority_score  = (membership_rank * 3) + overdue_score + (history_count * 0.5)
@@ -141,6 +145,7 @@ module ProductLivestreamAnalysis
         overdue_days:   overdue_days,
         history_count:  history_count,
         history_amount: history_amount,
+        last_any_date:  last_any_date,
         priority_score: priority_score.round(1)
       }
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
