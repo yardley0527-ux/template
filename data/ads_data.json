@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-06-08",
+  "last_updated": "2026-06-09",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -146,7 +146,7 @@
         "type": "VIDEO",
         "ig_post_url": "https://www.instagram.com/p/DXMUGojD25t/",
         "ig_embed_url": "https://www.instagram.com/p/DXMUGojD25t/embed/",
-        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/719232114_1610753420027021_6722014188669120118_n.jpg?_nc_cat=101&ccb=1-7&_nc_ohc=NLvAy40emrgQ7kNvwFXrsLq&_nc_oc=Adp7J8Z_rHkvr64HUsACPvW9hrFggtmltPooyYbqHTiX-siD80pbCHF1VqYR3SQlR-Q&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=IVZIivqqgKhhh58u-hc0Cw&_nc_tpa=Q5bMBQFNq7_e2PwmCJNcMg6w04By7ZEGTeu9oILdeCHonFwTvykWBjO0bejcGORYOK2bb_4lJo_59jjysQ&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af-rhcZNOASkj0ZWFxW3liJtafeV0O2DuE3F5LsC5U8drw&oe=6A2C0BBA",
+        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/719232114_1610753420027021_6722014188669120118_n.jpg?_nc_cat=101&ccb=1-7&_nc_ohc=8C6J0Ih5nS0Q7kNvwG3PKHt&_nc_oc=Adr8nAuUTDK53lULkrCUnLyLLgXxNPwBWmgpVpI_SXiNtgqXBH5idraLpCg6pDmn0U8&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=gukdmbjjKRf-Q__RZ5dWwA&_nc_tpa=Q5bMBQFgHAOYlh2n4Bz-ZK-ltMa1mtj6SEFW0pWdVEkym9unNmP3di-6Wi8iGxw4wgfmTTww2B1soyYTMA&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af_a_3zNiHjGi8g0c9H6BClAha77gUWZbnNnRN6jvPLN3w&oe=6A2D5D3A",
         "label": "Chloe 頭髮保養 Reels"
       },
       "daily_data": [
@@ -165,6 +165,22 @@
           "video_100": 121,
           "shares": 2,
           "thruplay": 411
+        },
+        {
+          "date": "2026-06-09",
+          "impressions": 16002,
+          "reach": 14117,
+          "clicks": 825,
+          "ctr": 5.16,
+          "cpm": 103,
+          "spend": 1641,
+          "video_3s": 4318,
+          "video_25": 1001,
+          "video_50": 443,
+          "video_75": 296,
+          "video_100": 185,
+          "shares": 3,
+          "thruplay": 707
         }
       ]
     }
