@@ -181,11 +181,11 @@ module ProductLivestreamAnalysis
           bottles:       bottles,
           order_amount:  order_amount,
           total_spend:   total_spend,
-          product_count: h_counts[c.email] || 0,
+          omni_count:    h_counts[c.email] || 0,
           value_score:   value_score,
           value_tier:    value_tier
         }
-      end.sort_by { |r| [-r[:value_score], -r[:total_spend]] }
+      end.sort_by { |r| [-r[:bottles], -(MEMBERSHIP_RANK[r[:customer].membership_level] || 0), -r[:total_spend]] }
 
     build_insights
   end

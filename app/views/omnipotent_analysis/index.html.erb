@@ -306,7 +306,8 @@
         <% next if rows.empty? %>
         <div class="invite-pane" id="pane-event-<%= key %>" style="display: none;">
           <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;"
+                   data-paginate="true" data-page-size="10" id="event-table-<%= key %>">
               <thead class="table-light">
                 <tr>
                   <th>客戶價值</th>
@@ -602,8 +603,8 @@ function activateTab(btn) {
         row.style.display = row.dataset.tier === currentTierFilter ? '' : 'none';
       });
     }
-    target.querySelectorAll('[data-paginate="true"]').forEach(function (wrapper) {
-      if (!wrapper.dataset.paginated) initPaginate(wrapper);
+    target.querySelectorAll('table[data-paginate="true"]').forEach(function (wrapper) {
+      if (!wrapper.dataset.initialized) { wrapper.dataset.initialized = 'true'; initPaginate(wrapper); }
     });
   }
   btn.classList.add('active');
