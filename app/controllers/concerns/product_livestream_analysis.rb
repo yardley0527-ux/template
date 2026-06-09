@@ -115,16 +115,20 @@ module ProductLivestreamAnalysis
       .where(email: missing_emails)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
-    @missing_customers = customers.map do |c|
+    active_cutoff = today - 365
+
+    @missing_customers = customers.filter_map do |c|
       last          = last_order_by_email[c.email]
-      bottles       = extract_bottles(last&.dig(:product_name))
       last_date     = last&.dig(:order_date)&.to_date
+      next if last_date.nil? || last_date < active_cutoff
+      bottles       = extract_bottles(last&.dig(:product_name))
       expected_days = bottles * DAYS_PER_BOTTLE
-      overdue_days  = last_date ? (today - last_date).to_i - expected_days : nil
+      overdue_days  = (today - last_date).to_i - expected_days
+      next if overdue_days <= 0
       history_count  = history_counts[c.email]  || 0
       history_amount = history_amounts[c.email] || 0
       membership_rank = MEMBERSHIP_RANK[c.membership_level] || 0
-      overdue_score   = overdue_days ? [overdue_days, 0].max / 10.0 : 0
+      overdue_score   = [overdue_days, 0].max / 10.0
       priority_score  = (membership_rank * 3) + overdue_score + (history_count * 0.5)
 
       {
@@ -139,7 +143,6 @@ module ProductLivestreamAnalysis
         priority_score: priority_score.round(1)
       }
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
-     .reject { |r| r[:overdue_days] && r[:overdue_days] <= 0 }
 
     event_orders_raw = ShoplineOrder
       .where(product_sql).where(email: @event_emails).where(order_date: event_range)
