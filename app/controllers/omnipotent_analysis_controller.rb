@@ -12,9 +12,42 @@ class OmnipotentAnalysisController < ApplicationController
 
   OMNI_EVENTS = product_event_list
 
+  IG_DISCOUNT_CODES = [
+    { code: "ST50",  group: "官方IG折扣碼",  name: "古怡文",             email: "evitaguu@gmail.com",          amount: 29_650, level: "黑卡",   used_at: "2026-06-05 22:00" },
+    { code: "ST50",  group: "官方IG折扣碼",  name: "鄭乃嘉",             email: "heroicshoes@hotmail.com",      amount: 18_910, level: "黑卡",   used_at: "2026-06-05 20:40" },
+    { code: "ST50",  group: "官方IG折扣碼",  name: "蕭郁璇",             email: "kina11141114@yahoo.com.tw",    amount: 20_790, level: "金卡",   used_at: "2026-06-05 22:35" },
+    { code: "ST50",  group: "官方IG折扣碼",  name: "李鈺慧",             email: "amy5237@gmail.com",            amount: 20_470, level: "金卡",   used_at: "2026-06-05 23:55" },
+    { code: "ST50",  group: "官方IG折扣碼",  name: "曾楨雯",             email: "jessica7075@gmail.com",        amount: 20_690, level: "銀卡",   used_at: "2026-06-05 23:29" },
+    { code: "ST50",  group: "官方IG折扣碼",  name: "weiyuping",          email: "weiwei801204@gmail.com",       amount:  6_250, level: "白卡",   used_at: "2026-06-04 22:05" },
+    { code: "ST50",  group: "官方IG折扣碼",  name: "黃楷婷",             email: "renee80118@gmail.com",         amount:  3_450, level: "白卡",   used_at: "2026-06-05 21:57" },
+    { code: "ST50",  group: "官方IG折扣碼",  name: "Bridget C.",         email: "bee1814@yahoo.com.tw",         amount: 14_830, level: "新客",   used_at: "2026-06-05 21:12" },
+    { code: "ST100", group: "全能IG折扣碼", name: "阿甄",               email: "seeyou78628@gmail.com",        amount: 22_620, level: "黑卡",   used_at: "2026-06-06 00:36" },
+    { code: "ST100", group: "全能IG折扣碼", name: "郭盈華",             email: "e3150009@gmail.com",            amount: 20_500, level: "黑卡",   used_at: "2026-06-06 00:01" },
+    { code: "ST100", group: "全能IG折扣碼", name: "囍兒",               email: "love05171103@yahoo.com.tw",    amount: 29_600, level: "黑卡",   used_at: "2026-06-05 23:41" },
+    { code: "ST100", group: "全能IG折扣碼", name: "Ginny",              email: "fan21963@hotmail.com",          amount: 18_860, level: "黑卡",   used_at: "2026-06-05 21:54" },
+    { code: "ST100", group: "全能IG折扣碼", name: "珮茹",               email: "karen.apr16@icloud.com",       amount: 31_240, level: "黑卡",   used_at: "2026-06-05 21:51" },
+    { code: "ST100", group: "全能IG折扣碼", name: "Shuhan Chang",       email: "angel_10263@hotmail.com",      amount: 16_860, level: "金卡",   used_at: "2026-06-07 18:35" },
+    { code: "ST100", group: "全能IG折扣碼", name: "曾齡億",             email: "a0101bebe@gmail.com",           amount: 20_740, level: "金卡",   used_at: "2026-06-07 12:52" },
+    { code: "ST100", group: "全能IG折扣碼", name: "馮嘉瑄",             email: "fcy1979@gmail.com",             amount: 26_300, level: "金卡",   used_at: "2026-06-09 12:43" },
+    { code: "ST100", group: "全能IG折扣碼", name: "江美儀",             email: "m172667@yahoo.com.tw",          amount: 29_600, level: "銀卡",   used_at: "2026-06-06 17:53" },
+    { code: "ST100", group: "全能IG折扣碼", name: "許靜宜",             email: "vivihsu0923@gmail.com",         amount: 14_980, level: "銀卡",   used_at: "2026-06-06 13:08" },
+    { code: "ST100", group: "全能IG折扣碼", name: "曾楨雯",             email: "jessica7075@gmail.com",        amount: 20_690, level: "銀卡",   used_at: "2026-06-05 23:29" },
+    { code: "ST100", group: "全能IG折扣碼", name: "謝孟庭",             email: "mtq517783@gmail.com",           amount: 20_420, level: "銀卡",   used_at: "2026-06-05 21:34" },
+    { code: "ST100", group: "全能IG折扣碼", name: "陳孟君",             email: "eleanquin@hotmail.com",         amount:  8_300, level: "白卡",   used_at: "2026-06-06 05:13" },
+    { code: "ST100", group: "全能IG折扣碼", name: "王嘉雯",             email: "a63281688@yahoo.com.tw",        amount: 20_560, level: "白卡",   used_at: "2026-06-05 23:33" },
+    { code: "ST100", group: "全能IG折扣碼", name: "YiHsuan Li",        email: "lemonrabit@gmail.com",           amount: 18_860, level: "白卡",   used_at: "2026-06-05 23:17" },
+    { code: "ST100", group: "全能IG折扣碼", name: "林育鈴",             email: "pipibetty0325@gmail.com",       amount: 14_980, level: "白卡",   used_at: "2026-06-05 23:13" },
+    { code: "ST100", group: "全能IG折扣碼", name: "楊采潔",             email: "katelovedong@gmail.com",        amount: 29_600, level: "白卡",   used_at: "2026-06-05 21:35" },
+    { code: "ST100", group: "全能IG折扣碼", name: "陳佳宜",             email: "spy2609@yahoo.com.tw",          amount:  8_300, level: "一般",   used_at: "2026-06-06 22:40" },
+    { code: "ST100", group: "全能IG折扣碼", name: "林千彙",             email: "aaron89092349@gmail.com",       amount: 29_600, level: "一般",   used_at: "2026-06-05 22:01" },
+    { code: "ST100", group: "全能IG折扣碼", name: "林于婷",             email: "in35012@yahoo.com.tw",          amount: 29_600, level: "一般",   used_at: "2026-06-05 21:39" },
+    { code: "ST100", group: "全能IG折扣碼", name: "廖珮孜",             email: "s06240824@yahoo.com.tw",        amount: 14_980, level: "一般",   used_at: "2026-06-08 14:49" },
+  ].freeze
+
   def index
     @all_omni_events = product_event_list.select { |e| e[:date] <= Date.today }
     build_comprehensive_data(@all_omni_events)
+    build_ig_discount_data
   end
 
   def export_whitening
@@ -24,6 +57,32 @@ class OmnipotentAnalysisController < ApplicationController
   end
 
   private
+
+  def build_ig_discount_data
+    emails = IG_DISCOUNT_CODES.map { |r| r[:email] }.uniq
+    history_counts = ShoplineOrder.where("product_name LIKE '%全能%'")
+      .where(email: emails).group(:email).count
+    customer_map = ShoplineCustomer.where(email: emails)
+      .index_by(&:email)
+
+    @ig_discount_rows = IG_DISCOUNT_CODES.map do |r|
+      c = customer_map[r[:email]]
+      {
+        code:          r[:code],
+        group:         r[:group],
+        name:          r[:name],
+        email:         r[:email],
+        amount:        r[:amount],
+        level:         r[:level],
+        used_at:       r[:used_at],
+        history_count: history_counts[r[:email]] || 0,
+        customer_id:   c&.id
+      }
+    end
+
+    @ig_st50  = @ig_discount_rows.select { |r| r[:code] == "ST50" }
+    @ig_st100 = @ig_discount_rows.select { |r| r[:code] == "ST100" }
+  end
 
   def build_whitening_data
     @all_omni_events = product_event_list.select { |e| e[:date] <= Date.today }

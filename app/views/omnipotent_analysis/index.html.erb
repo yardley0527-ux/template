@@ -460,6 +460,85 @@
   </div>
 <% end %>
 
+<%# ══════════════════════════════════════════════════ %>
+<%# IG 折扣碼使用名單                                   %>
+<%# ══════════════════════════════════════════════════ %>
+
+<% if @ig_st50&.any? || @ig_st100&.any? %>
+  <div class="d-flex align-items-center mb-3 mt-2">
+    <div class="border-start border-3 ps-3" style="border-color: #ec4899;">
+      <h5 class="fw-bold mb-0" style="color: #be185d;">📲 IG 折扣碼使用名單</h5>
+      <p class="text-muted small mb-0">本場透過 IG 折扣碼下單的客人，追蹤下次是否再回購</p>
+    </div>
+  </div>
+
+  <% [{ label: "官方 IG 折扣碼（ST50）", rows: @ig_st50, color: "#7c3aed" },
+      { label: "全能 IG 折扣碼（ST100）", rows: @ig_st100, color: "#be185d" }].each do |group| %>
+    <% next if group[:rows].blank? %>
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center text-white"
+           style="background-color: <%= group[:color] %>;">
+        <span class="fw-bold"><%= group[:label] %></span>
+        <span class="badge bg-white fw-bold" style="color: <%= group[:color] %>;"><%= group[:rows].size %> 人</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
+            <thead class="table-light">
+              <tr>
+                <th>#</th>
+                <th>姓名</th>
+                <th>卡別</th>
+                <th class="text-end">本次消費</th>
+                <th class="text-center">歷史買全能</th>
+                <th>使用時間</th>
+                <th>Email</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% group[:rows].each_with_index do |r, i| %>
+                <tr>
+                  <td><span class="badge bg-secondary">#<%= i + 1 %></span></td>
+                  <td>
+                    <% if r[:customer_id] %>
+                      <%= link_to r[:name], customer_path(r[:customer_id]), target: "_blank", class: "fw-semibold text-decoration-none" %>
+                    <% else %>
+                      <span class="fw-semibold"><%= r[:name] %></span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% badge_color = { "黑卡" => "dark", "金卡" => "warning", "銀卡" => "secondary", "白卡" => "light text-dark", "新客" => "info", "一般" => "light text-dark" }[r[:level]] || "light text-dark" %>
+                    <span class="badge bg-<%= badge_color %>"><%= r[:level] %></span>
+                  </td>
+                  <td class="text-end fw-semibold">NT$<%= number_with_delimiter(r[:amount]) %></td>
+                  <td class="text-center">
+                    <% if r[:history_count] >= 5 %>
+                      <span class="badge bg-danger"><%= r[:history_count] %> 次</span>
+                    <% elsif r[:history_count] >= 2 %>
+                      <span class="badge bg-warning text-dark"><%= r[:history_count] %> 次</span>
+                    <% else %>
+                      <span class="badge bg-light text-muted"><%= r[:history_count] %> 次</span>
+                    <% end %>
+                  </td>
+                  <td class="text-muted" style="font-size: 0.78rem;"><%= r[:used_at] %></td>
+                  <td class="text-muted" style="font-size: 0.78rem;"><%= r[:email] %></td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="3" class="fw-bold">合計</td>
+                <td class="text-end fw-bold">NT$<%= number_with_delimiter(group[:rows].sum { |r| r[:amount] }) %></td>
+                <td colspan="3"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
 <script>
 let currentTierFilter = 'all';
 
