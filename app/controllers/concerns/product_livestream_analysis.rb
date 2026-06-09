@@ -96,6 +96,11 @@ module ProductLivestreamAnalysis
     missing_emails = all_prev_emails - @event_emails
     today          = Date.today
 
+    # 前一場事件的買家（近一場有出現才算「應該回來」）
+    prev_event       = past_events[-2]
+    prev_event_range = prev_event ? (prev_event[:date].beginning_of_day..(prev_event[:date] + 3).end_of_day) : nil
+    prev_event_emails = prev_event_range ? product_emails(prev_event_range) : []
+
     last_orders_raw = ShoplineOrder
       .where(product_sql).where(email: missing_emails)
       .where("order_date < ?", event_range.first)
@@ -115,16 +120,16 @@ module ProductLivestreamAnalysis
       .where(email: missing_emails)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
-    active_cutoff = today - 365
-
     @missing_customers = customers.filter_map do |c|
       last          = last_order_by_email[c.email]
       last_date     = last&.dig(:order_date)&.to_date
-      next if last_date.nil? || last_date < active_cutoff
+      next if last_date.nil?
       bottles       = extract_bottles(last&.dig(:product_name))
       expected_days = bottles * DAYS_PER_BOTTLE
       overdue_days  = (today - last_date).to_i - expected_days
-      next if overdue_days <= 0
+      next if overdue_days <= 0   # 還沒到回購期
+      next if overdue_days > 90   # 逾期超過 90 天，追蹤意義低
+      next if prev_event_emails.any? && !prev_event_emails.include?(c.email)  # 前一場沒出現
       history_count  = history_counts[c.email]  || 0
       history_amount = history_amounts[c.email] || 0
       membership_rank = MEMBERSHIP_RANK[c.membership_level] || 0

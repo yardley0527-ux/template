@@ -87,6 +87,7 @@ class TurmericAnalysisController < ApplicationController
       expected_days = bottles * DAYS_PER_BOTTLE
       overdue_days  = (today - last_date).to_i - expected_days
       next if overdue_days <= 0
+      next if overdue_days > 90
 
       history_count  = history_counts[c.email] || 0
       history_amount = history_amounts[c.email] || 0
