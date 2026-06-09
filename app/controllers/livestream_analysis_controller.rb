@@ -158,6 +158,10 @@ class LivestreamAnalysisController < ApplicationController
       orders: 165, revenue: 2_263_491,
       levels: { "黑卡" => { n: 19, amt: 810_218 }, "金卡" => { n: 15, amt: 325_408 },
                 "銀卡" => { n: 15, amt: 298_669 }, "白卡" => { n: 17, amt: 351_622 }, "一般會員" => { n: 12, amt: 194_594 } } },
+    { date: Date.new(2026,  6,  5), label: "6/5",  year: 2026, note: "全能",
+      orders: 384, revenue: 3_887_274,
+      levels: { "黑卡" => { n: 42, amt: 722_650 }, "金卡" => { n: 52, amt: 638_980 },
+                "銀卡" => { n: 41, amt: 489_280 }, "白卡" => { n: 73, amt: 701_587 }, "一般會員" => { n: 176, amt: 1_334_777 } } },
   ].freeze
 
   ALL_EVENTS = (EVENTS_2024 + EVENTS_2025 + EVENTS_2026).freeze
