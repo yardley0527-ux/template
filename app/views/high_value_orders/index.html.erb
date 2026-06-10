@@ -79,6 +79,7 @@ end %>
           <th class="text-end" style="width:110px;">消費金額</th>
           <th>購買商品</th>
           <th style="width:160px;">IG</th>
+          <th>Email</th>
         </tr>
       </thead>
       <tbody>
@@ -117,11 +118,14 @@ end %>
                 <span class="text-muted small">—</span>
               <% end %>
             </td>
+            <td class="text-muted small" style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              <%= o.email_val.presence || '—' %>
+            </td>
           </tr>
         <% end %>
         <% if display_orders.empty? %>
           <tr>
-            <td colspan="7" class="text-center py-5 text-muted">
+            <td colspan="8" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
               此期間無單筆 ≥ NT$10,000 的訂單
             </td>
