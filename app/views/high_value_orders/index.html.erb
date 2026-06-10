@@ -78,7 +78,7 @@ end %>
             <td class="text-end fw-bold text-danger">
               NT$<%= number_with_delimiter(o.order_total.to_i) %>
             </td>
-            <td style="max-width:320px; word-break:break-word;"><%= o.products_list %></td>
+            <td style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><%= o.products_list %></td>
             <td>
               <% if url %>
                 <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
