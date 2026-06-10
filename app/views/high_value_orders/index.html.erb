@@ -60,7 +60,7 @@ end %>
     <% cnt = @tab_counts[lvl] || 0 %>
     <li class="nav-item">
       <%= link_to "#{lvl}（#{cnt}）",
-            high_value_orders_path(period: @period, level: lvl),
+            high_value_orders_path(period: @period, level: lvl, series_filter: @series_filter, specific_month: @specific_month),
             class: "nav-link #{@level == lvl ? 'active fw-bold' : 'text-muted'}" %>
     </li>
   <% end %>
