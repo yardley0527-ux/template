@@ -378,6 +378,11 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 .hs-followup-submit { align-self: flex-end; padding: 3px 12px; background: #886ab5; color: #fff; border: none; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
 .hs-followup-submit:hover { background: #6d52a0; }
 
+/* 展開全部按鈕 */
+.hs-expand-wrap { text-align: center; padding: 10px 0 4px; }
+.hs-expand-btn { background: none; border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 20px; font-size: 12px; color: #886ab5; font-weight: 600; cursor: pointer; }
+.hs-expand-btn:hover { background: #f5f3ff; border-color: #886ab5; }
+
 @media (max-width: 900px) {
   .hs-section-grid { grid-template-columns: 1fr; }
   .fp-stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -396,6 +401,13 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 </style>
 
 <script>
+function hsExpandRows(btn, tierId) {
+  var table = document.querySelector('table[data-tier-table="' + tierId + '"]');
+  if (!table) return;
+  table.querySelectorAll('tr.hs-row-extra').forEach(function(row) { row.style.display = ''; });
+  btn.closest('.hs-expand-wrap').style.display = 'none';
+}
+
 document.addEventListener('click', function(e) {
   var btn = e.target.closest('.hs-tab');
   if (!btn) return;
@@ -409,8 +421,12 @@ document.addEventListener('click', function(e) {
 
   var table = document.querySelector('table[data-tier-table="' + tierId + '"]');
   if (!table) return;
+  var expandWrap = document.querySelector('[data-expand-table="' + tierId + '"]');
+  var expanded = !expandWrap || expandWrap.style.display === 'none';
   table.querySelectorAll('tbody tr').forEach(function(row) {
-    row.style.display = (filter === 'all' || row.dataset.series === filter) ? '' : 'none';
+    var isExtra = row.classList.contains('hs-row-extra');
+    var matches = filter === 'all' || row.dataset.series === filter;
+    row.style.display = (matches && (expanded || !isExtra)) ? '' : 'none';
   });
 });
 </script>
