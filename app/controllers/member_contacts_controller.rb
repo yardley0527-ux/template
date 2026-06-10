@@ -2,7 +2,7 @@ require 'csv'
 
 class MemberContactsController < ApplicationController
   LEVELS       = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  INACTIVE_DAYS = 365
+  INACTIVE_DAYS = 548
 
   def index
     @stats = build_stats

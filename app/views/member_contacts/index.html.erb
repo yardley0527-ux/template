@@ -12,14 +12,14 @@
 <div class="row g-3 mb-4">
   <% [
     ["總會員數",     @total,          "text-primary",  "fa-users"],
-    ["活躍（一年內）", @total_active,  "text-success",  "fa-user-check"],
-    ["不活躍（逾一年）", @total_inactive, "text-danger", "fa-user-times"],
+    ["活躍（一年半內）", @total_active,  "text-success",  "fa-user-check"],
+    ["不活躍（逾一年半）", @total_inactive, "text-danger", "fa-user-times"],
     ["有 Email",    @total_email,    "text-secondary", "fa-envelope"],
     ["有 Line ID",  @total_line,     "text-success",   "fa-comment"],
   ].each do |label, count, color, icon| %>
     <div class="col">
       <div class="card border-0 shadow-sm text-center py-3">
-        <div class="mb-1"><i class="fas <%= icon %> <%= color %>"></i></div>
+        <div class="mb-1"><i class="fal <%= icon %> <%= color %>"></i></div>
         <div class="fw-bold <%= color %>" style="font-size: 1.8rem; line-height: 1;"><%= number_with_delimiter(count) %></div>
         <div class="text-muted small mt-1"><%= label %></div>
       </div>
@@ -31,7 +31,7 @@
 <div class="d-flex align-items-center mb-3">
   <div class="border-start border-3 border-secondary ps-3">
     <h5 class="fw-bold mb-0 text-secondary">📊 卡別分群統計</h5>
-    <p class="text-muted small mb-0">活躍 = 一年內有消費紀錄</p>
+    <p class="text-muted small mb-0">活躍 = 一年半內有消費紀錄</p>
   </div>
 </div>
 
@@ -42,8 +42,8 @@
         <tr>
           <th class="text-start ps-3">卡別</th>
           <th>總人數</th>
-          <th>活躍<span class="ms-1 small opacity-75">（一年內）</span></th>
-          <th>不活躍<span class="ms-1 small opacity-75">（逾一年）</span></th>
+          <th>活躍<span class="ms-1 small opacity-75">（一年半內）</span></th>
+          <th>不活躍<span class="ms-1 small opacity-75">（逾一年半）</span></th>
           <th>活躍率</th>
           <th>有 Email</th>
           <th>有 Line ID</th>
@@ -100,7 +100,7 @@
 <%# 說明 %>
 <div class="card border-0 bg-light mb-4">
   <div class="card-body py-2 px-3 text-muted small">
-    <strong>活躍定義：</strong>最近一年（365 天）內有消費紀錄。｜
+    <strong>活躍定義：</strong>最近一年半（548 天）內有消費紀錄。｜
     <strong>匯出欄位：</strong>姓名、卡別、Email、Line ID、手機、狀態、上次消費日。｜
     統計對象：有 Shopline ID 的正式會員（黑卡～一般會員）。
   </div>
