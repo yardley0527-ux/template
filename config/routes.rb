@@ -8,9 +8,12 @@ Rails.application.routes.draw do
   post '/ig_dashboard/refresh', to: 'ig_dashboard#refresh', as: :ig_dashboard_refresh
   get "/api/birthday_customers", to: "welcome#birthday_customers"
   get '/livestream_analysis', to: 'livestream_analysis#index', as: :livestream_analysis
-  get '/turmeric_analysis',   to: 'turmeric_analysis#index',   as: :turmeric_analysis
-  get '/metabolism_analysis',        to: 'metabolism_analysis#index',  as: :metabolism_analysis
-  get '/metabolism_analysis/export', to: 'metabolism_analysis#export', as: :metabolism_analysis_export
+  get '/turmeric_analysis',                to: 'turmeric_analysis#index',          as: :turmeric_analysis
+  get '/turmeric_analysis/export_missing', to: 'turmeric_analysis#export_missing',  as: :turmeric_export_missing
+  get '/turmeric_analysis/export_event',   to: 'turmeric_analysis#export_event',    as: :turmeric_export_event
+  get '/metabolism_analysis',                to: 'metabolism_analysis#index',          as: :metabolism_analysis
+  get '/metabolism_analysis/export_missing', to: 'metabolism_analysis#export_missing', as: :metabolism_export_missing
+  get '/metabolism_analysis/export_event',   to: 'metabolism_analysis#export_event',   as: :metabolism_export_event
   get '/glutathione_analysis',                to: 'glutathione_analysis#index',          as: :glutathione_analysis
   get '/glutathione_analysis/export_missing', to: 'glutathione_analysis#export_missing',  as: :glutathione_export_missing
   get '/glutathione_analysis/export_event',   to: 'glutathione_analysis#export_event',    as: :glutathione_export_event
