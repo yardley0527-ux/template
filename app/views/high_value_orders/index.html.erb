@@ -107,7 +107,14 @@ end %>
             <td class="text-end fw-bold text-danger">
               NT$<%= number_with_delimiter(o.order_total.to_i) %>
             </td>
-            <td style="max-width:320px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><%= o.products_list %></td>
+            <td style="max-width:360px;">
+              <div class="d-flex flex-wrap" style="gap:4px;">
+                <% (o.products_list || '').split('、').each do |item| %>
+                  <% color = hvo_series_color(item) %>
+                  <span style="display:inline-block; background:<%= color %>20; color:<%= color %>; border:1px solid <%= color %>55; border-radius:4px; padding:1px 7px; font-size:0.78rem; white-space:nowrap; font-weight:600;"><%= item %></span>
+                <% end %>
+              </div>
+            </td>
             <td>
               <% if url %>
                 <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
