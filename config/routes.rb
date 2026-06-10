@@ -3,6 +3,8 @@ Rails.application.routes.draw do
 
   root 'welcome#index'
   get '/monitoring', to: 'monitoring#index', as: :monitoring
+  get '/member_contacts',        to: 'member_contacts#index',  as: :member_contacts
+  get '/member_contacts/export', to: 'member_contacts#export', as: :member_contacts_export
   get  '/ig_dashboard',         to: 'ig_dashboard#index',   as: :ig_dashboard
   get  '/ads_dashboard',        to: 'ads_dashboard#index',  as: :ads_dashboard
   post '/ig_dashboard/refresh', to: 'ig_dashboard#refresh', as: :ig_dashboard_refresh

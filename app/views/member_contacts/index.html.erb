@@ -1,0 +1,107 @@
+<%# app/views/member_contacts/index.html.erb %>
+<% content_for :page_title, "會員聯絡名單" %>
+
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <h4 class="fw-bold mb-0">會員聯絡名單</h4>
+    <p class="text-muted small mb-0">依卡別 × 活躍度分群，可匯出 Email / Line ID</p>
+  </div>
+</div>
+
+<%# 總覽卡片 %>
+<div class="row g-3 mb-4">
+  <% [
+    ["總會員數",     @total,          "text-primary",  "fa-users"],
+    ["活躍（一年內）", @total_active,  "text-success",  "fa-user-check"],
+    ["不活躍（逾一年）", @total_inactive, "text-danger", "fa-user-times"],
+    ["有 Email",    @total_email,    "text-secondary", "fa-envelope"],
+    ["有 Line ID",  @total_line,     "text-success",   "fa-comment"],
+  ].each do |label, count, color, icon| %>
+    <div class="col">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="mb-1"><i class="fas <%= icon %> <%= color %>"></i></div>
+        <div class="fw-bold <%= color %>" style="font-size: 1.8rem; line-height: 1;"><%= number_with_delimiter(count) %></div>
+        <div class="text-muted small mt-1"><%= label %></div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<%# 卡別 × 活躍度分群表 %>
+<div class="d-flex align-items-center mb-3">
+  <div class="border-start border-3 border-secondary ps-3">
+    <h5 class="fw-bold mb-0 text-secondary">📊 卡別分群統計</h5>
+    <p class="text-muted small mb-0">活躍 = 一年內有消費紀錄</p>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-5">
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0 text-center" style="font-size: 0.9rem;">
+      <thead style="background-color: #4a4a4a; color: white;">
+        <tr>
+          <th class="text-start ps-3">卡別</th>
+          <th>總人數</th>
+          <th>活躍<span class="ms-1 small opacity-75">（一年內）</span></th>
+          <th>不活躍<span class="ms-1 small opacity-75">（逾一年）</span></th>
+          <th>活躍率</th>
+          <th>有 Email</th>
+          <th>有 Line ID</th>
+          <th>匯出（全部）</th>
+          <th>匯出（活躍）</th>
+          <th>匯出（不活躍）</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @stats.each do |s| %>
+          <% active_rate = s[:total] > 0 ? (s[:active].to_f / s[:total] * 100).round(1) : 0 %>
+          <tr>
+            <td class="fw-bold text-start ps-3"><%= s[:level] %></td>
+            <td class="fw-semibold"><%= number_with_delimiter(s[:total]) %></td>
+            <td class="text-success fw-semibold"><%= s[:active] %></td>
+            <td class="text-danger"><%= s[:inactive] %></td>
+            <td>
+              <div class="d-flex align-items-center gap-1 justify-content-center">
+                <div style="width:50px; background:#e9ecef; border-radius:4px; height:8px; overflow:hidden;">
+                  <div style="width:<%= active_rate %>%; background:#198754; height:100%;"></div>
+                </div>
+                <span class="small"><%= active_rate %>%</span>
+              </div>
+            </td>
+            <td class="text-muted"><%= s[:has_email] %></td>
+            <td class="text-muted"><%= s[:has_line] %></td>
+            <td><%= link_to "⬇ 全部", member_contacts_export_path(level: s[:level]), class: "btn btn-xs btn-outline-secondary py-0 px-2", style: "font-size:0.78rem;" %></td>
+            <td><%= link_to "⬇ 活躍", member_contacts_export_path(level: s[:level], activity: 'active'), class: "btn btn-xs btn-outline-success py-0 px-2", style: "font-size:0.78rem;" %></td>
+            <td><%= link_to "⬇ 不活躍", member_contacts_export_path(level: s[:level], activity: 'inactive'), class: "btn btn-xs btn-outline-danger py-0 px-2", style: "font-size:0.78rem;" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot style="background-color: #f8f9fa; font-weight: 700;">
+        <tr>
+          <td class="text-start ps-3">合計</td>
+          <td><%= number_with_delimiter(@total) %></td>
+          <td class="text-success"><%= number_with_delimiter(@total_active) %></td>
+          <td class="text-danger"><%= number_with_delimiter(@total_inactive) %></td>
+          <td>
+            <% total_rate = @total > 0 ? (@total_active.to_f / @total * 100).round(1) : 0 %>
+            <%= total_rate %>%
+          </td>
+          <td class="text-muted"><%= number_with_delimiter(@total_email) %></td>
+          <td class="text-muted"><%= number_with_delimiter(@total_line) %></td>
+          <td><%= link_to "⬇ 全部", member_contacts_export_path, class: "btn btn-xs btn-secondary py-0 px-2", style: "font-size:0.78rem;" %></td>
+          <td><%= link_to "⬇ 活躍", member_contacts_export_path(activity: 'active'), class: "btn btn-xs btn-success py-0 px-2", style: "font-size:0.78rem;" %></td>
+          <td><%= link_to "⬇ 不活躍", member_contacts_export_path(activity: 'inactive'), class: "btn btn-xs btn-danger py-0 px-2", style: "font-size:0.78rem;" %></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<%# 說明 %>
+<div class="card border-0 bg-light mb-4">
+  <div class="card-body py-2 px-3 text-muted small">
+    <strong>活躍定義：</strong>最近一年（365 天）內有消費紀錄。｜
+    <strong>匯出欄位：</strong>姓名、卡別、Email、Line ID、手機、狀態、上次消費日。｜
+    統計對象：有 Shopline ID 的正式會員（黑卡～一般會員）。
+  </div>
+</div>

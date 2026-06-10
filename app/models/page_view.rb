@@ -3,6 +3,7 @@ class PageView < ApplicationRecord
     welcome customers expiring_members first_purchase high_spender_first_purchase
     inactive_members loyal_customers shopping_credits products product_strategy
     subscription_strategy livestream_analysis livestream_strategy
+    member_contacts
     turmeric_analysis metabolism_analysis glutathione_analysis
     omnipotent_analysis probiotic_analysis omnipotent_restock albums photos
   ].freeze
@@ -23,6 +24,8 @@ class PageView < ApplicationRecord
     "products#show"                         => "產品詳細頁",
     "product_strategy#index"                => "產品策略報表",
     "subscription_strategy#index"           => "定期購策略分析",
+    "member_contacts#index"                 => "會員聯絡名單",
+    "member_contacts#export"                => "會員聯絡名單匯出",
     "livestream_analysis#index"             => "直播分析總覽",
     "livestream_strategy#index"             => "直播策略報表",
     "turmeric_analysis#index"               => "直播分析 - 薑黃",
