@@ -4,12 +4,12 @@ class HighValueOrdersController < ApplicationController
 
   def index
     @period = params[:period].presence || 'month'
-    @level  = params[:level].presence
+    @level  = params[:level].presence || LEVELS.first
     @levels = LEVELS
 
     scope = build_scope
     scope = apply_period(scope)
-    scope = scope.having("MAX(COALESCE(sc.membership_level, o.membership_level)) = ?", @level) if @level.present?
+    scope = scope.having("MAX(COALESCE(sc.membership_level, o.membership_level)) = ?", @level)
 
     @orders        = scope.to_a
     @grouped       = LEVELS.index_with { |lvl| @orders.select { |o| o.membership_level_col == lvl } }

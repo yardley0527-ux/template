@@ -24,13 +24,14 @@ end %>
   </div>
 </div>
 
-<%# Summary cards %>
+<%# Summary cards — computed after tabs so we can reference display_orders; use @orders here %>
+<% level_orders = @orders %>
 <div class="row g-3 mb-4">
   <div class="col-sm-4">
     <div class="card border-0 shadow-sm text-center py-3">
       <div class="mb-1"><i class="fal fa-receipt text-primary"></i></div>
       <div class="fw-bold text-primary" style="font-size:1.8rem;line-height:1;"><%= number_with_delimiter(@total_count) %></div>
-      <div class="text-muted small mt-1">筆訂單</div>
+      <div class="text-muted small mt-1"><%= @level %> 筆訂單</div>
     </div>
   </div>
   <div class="col-sm-4">
@@ -53,11 +54,6 @@ end %>
 
 <%# Level tabs %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
-  <li class="nav-item">
-    <%= link_to "全部（#{@total_count}）",
-          high_value_orders_path(period: @period),
-          class: "nav-link #{@level.blank? ? 'active fw-bold' : 'text-muted'}" %>
-  </li>
   <% @levels.each do |lvl| %>
     <% cnt = @grouped[lvl]&.size || 0 %>
     <li class="nav-item">
@@ -69,7 +65,7 @@ end %>
 </ul>
 
 <%# Table %>
-<% display_orders = @level.present? ? (@grouped[@level] || []) : @orders %>
+<% display_orders = @grouped[@level] || [] %>
 
 <div class="card border-0 shadow-sm">
   <div class="card-body p-0 table-responsive">
