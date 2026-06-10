@@ -55,7 +55,7 @@ end %>
 <%# Level tabs %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <% @levels.each do |lvl| %>
-    <% cnt = @grouped[lvl]&.size || 0 %>
+    <% cnt = @tab_counts[lvl] || 0 %>
     <li class="nav-item">
       <%= link_to "#{lvl}（#{cnt}）",
             high_value_orders_path(period: @period, level: lvl),

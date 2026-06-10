@@ -8,9 +8,27 @@ class HighValueOrdersController < ApplicationController
     @level  = params[:level].presence || LEVELS.first
     @levels = ALL_TABS
 
-    scope = build_scope
-    scope = apply_period(scope)
+    base = apply_period(build_scope)
 
+    # 各 tab 計數：只撈最精簡欄位，不帶 level filter
+    all_for_counts = apply_period(
+      ShoplineOrder
+        .from("shopline_orders o")
+        .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
+        .joins("LEFT JOIN customer_purchase_summaries cps ON cps.email = o.email")
+        .select(
+          "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
+          "MAX(cps.purchase_count) AS purchase_count_val"
+        )
+        .where("o.payment_status = '已付款'")
+        .group("o.order_number")
+        .having("COALESCE(MAX(o.checkout_amount), SUM(o.total_amount)) >= ?", THRESHOLD)
+    ).to_a
+    @tab_counts = LEVELS.index_with { |lvl| all_for_counts.count { |o| o.membership_level_col == lvl } }
+    @tab_counts['新客'] = all_for_counts.count { |o| o.purchase_count_val.to_i == 1 }
+
+    # 目前選中 tab 的完整資料
+    scope = base
     if @level == '新客'
       scope = scope.having("MAX(cps.purchase_count) = 1")
     else
