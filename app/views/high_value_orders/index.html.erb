@@ -108,7 +108,7 @@ end %>
             <td style="max-width:320px; word-break:break-word;"><%= o.products_list %></td>
             <td>
               <% if url %>
-                <%= link_to target: "_blank", href: url, class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
                   <i class="fal fa-at text-danger"></i>
                   <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
                     <%= o.ig_account&.sub(/^@/, '') %>
