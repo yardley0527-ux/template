@@ -40,10 +40,11 @@ class HighValueOrdersController < ApplicationController
 
   def apply_period(scope)
     cutoff = case @period
-             when 'today' then Date.today.beginning_of_day
-             when 'week'  then 1.week.ago.beginning_of_day
-             when 'month' then 1.month.ago.beginning_of_day
+             when 'yesterday' then Date.yesterday.beginning_of_day
+             when 'week'      then 1.week.ago.beginning_of_day
+             when 'month'     then 1.month.ago.beginning_of_day
              end
-    cutoff ? scope.where("o.order_date >= ?", cutoff) : scope
+    return scope unless cutoff
+    @period == 'yesterday' ? scope.where("o.order_date >= ? AND o.order_date < ?", cutoff, Date.today.beginning_of_day) : scope.where("o.order_date >= ?", cutoff)
   end
 end

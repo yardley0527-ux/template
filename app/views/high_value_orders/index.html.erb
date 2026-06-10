@@ -15,7 +15,7 @@ end %>
       <p class="text-muted small mb-0">單筆訂單 ≥ NT$10,000，依卡別分群</p>
     </div>
     <div class="btn-group" role="group">
-      <% [['today','今日'], ['week','本週'], ['month','本月'], ['all','全部']].each do |val, label| %>
+      <% [['yesterday','昨日'], ['week','本週'], ['month','本月'], ['all','全部']].each do |val, label| %>
         <%= link_to label,
               high_value_orders_path(period: val, level: @level),
               class: "btn btn-sm #{@period == val ? 'btn-dark' : 'btn-outline-secondary'}" %>
