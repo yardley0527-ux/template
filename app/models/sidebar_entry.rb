@@ -76,6 +76,12 @@ class SidebarEntry
             { href: monitoring_path, title: "功能使用監控", icon: "fa-chart-line" }
           ]
         },
+        {
+          group_title: "高消費管理",
+          children: [
+            { href: high_value_orders_path, title: "破萬訂單速覽", icon: "fa-fire" }
+          ]
+        },
       ]
     end
 

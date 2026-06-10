@@ -1,0 +1,140 @@
+<%# app/views/high_value_orders/index.html.erb %>
+<% content_for :page_title, "破萬訂單速覽" %>
+
+<% def ig_link_url(account)
+  return nil if account.blank?
+  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+end %>
+
+<%# Header %>
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">破萬訂單速覽</h4>
+      <p class="text-muted small mb-0">單筆訂單 ≥ NT$10,000，依卡別分群</p>
+    </div>
+    <div class="btn-group" role="group">
+      <% [['today','今日'], ['week','本週'], ['month','本月'], ['all','全部']].each do |val, label| %>
+        <%= link_to label,
+              high_value_orders_path(period: val, level: @level),
+              class: "btn btn-sm #{@period == val ? 'btn-dark' : 'btn-outline-secondary'}" %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<%# Summary cards %>
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="mb-1"><i class="fas fa-receipt text-primary"></i></div>
+      <div class="fw-bold text-primary" style="font-size:1.8rem;line-height:1;"><%= number_with_delimiter(@total_count) %></div>
+      <div class="text-muted small mt-1">筆訂單</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="mb-1"><i class="fas fa-dollar-sign text-danger"></i></div>
+      <div class="fw-bold text-danger" style="font-size:1.8rem;line-height:1;">NT$<%= number_with_delimiter(@total_revenue.to_i) %></div>
+      <div class="text-muted small mt-1">合計消費</div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="card border-0 shadow-sm text-center py-3">
+      <div class="mb-1"><i class="fas fa-chart-line text-success"></i></div>
+      <div class="fw-bold text-success" style="font-size:1.8rem;line-height:1;">
+        NT$<%= @total_count > 0 ? number_with_delimiter((@total_revenue / @total_count).to_i) : 0 %>
+      </div>
+      <div class="text-muted small mt-1">平均單筆</div>
+    </div>
+  </div>
+</div>
+
+<%# Level tabs %>
+<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+  <li class="nav-item">
+    <%= link_to "全部（#{@total_count}）",
+          high_value_orders_path(period: @period),
+          class: "nav-link #{@level.blank? ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <% @levels.each do |lvl| %>
+    <% cnt = @grouped[lvl]&.size || 0 %>
+    <li class="nav-item">
+      <%= link_to "#{lvl}（#{cnt}）",
+            high_value_orders_path(period: @period, level: lvl),
+            class: "nav-link #{@level == lvl ? 'active fw-bold' : 'text-muted'}" %>
+    </li>
+  <% end %>
+</ul>
+
+<%# Table %>
+<% display_orders = @level.present? ? (@grouped[@level] || []) : @orders %>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0" style="font-size:0.86rem;">
+      <thead style="background-color:#4a4a4a; color:white;">
+        <tr>
+          <th class="ps-3" style="width:70px;">日期</th>
+          <th>姓名</th>
+          <th style="width:70px;">卡別</th>
+          <th>訂單號碼</th>
+          <th class="text-end" style="width:110px;">消費金額</th>
+          <th>購買商品</th>
+          <th style="width:160px;">IG</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% display_orders.each do |o| %>
+          <% url = ig_link_url(o.ig_account) %>
+          <tr>
+            <td class="ps-3 text-nowrap text-muted"><%= o.ord_date&.strftime("%-m/%-d") %></td>
+            <td class="fw-semibold"><%= o.cust_name %></td>
+            <td>
+              <% badge_color = case o.membership_level_col
+                               when '黑卡' then '#222'
+                               when '金卡' then '#b8860b'
+                               when '銀卡' then '#6c757d'
+                               when '白卡' then '#868e96'
+                               else '#adb5bd'
+                               end %>
+              <span class="badge" style="background:<%= badge_color %>; font-size:0.75rem;"><%= o.membership_level_col %></span>
+            </td>
+            <td class="text-muted small"><%= o.order_num %></td>
+            <td class="text-end fw-bold text-danger">
+              NT$<%= number_with_delimiter(o.order_total.to_i) %>
+            </td>
+            <td style="max-width:320px; word-break:break-word;"><%= o.products_list %></td>
+            <td>
+              <% if url %>
+                <%= link_to target: "_blank", href: url, class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                  <i class="fab fa-instagram text-danger"></i>
+                  <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                    <%= o.ig_account&.sub(/^@/, '') %>
+                  </span>
+                <% end %>
+              <% else %>
+                <span class="text-muted small">—</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if display_orders.empty? %>
+          <tr>
+            <td colspan="7" class="text-center py-5 text-muted">
+              <i class="fas fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+              此期間無單筆 ≥ NT$10,000 的訂單
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<% if display_orders.any? %>
+  <div class="text-muted small mt-2 px-1">
+    共 <%= display_orders.size %> 筆 ｜ 合計 NT$<%= number_with_delimiter(display_orders.sum { |o| o.order_total.to_f }.to_i) %>
+  </div>
+<% end %>

@@ -2,7 +2,8 @@ Rails.application.routes.draw do
   devise_for :users, skip: [:registrations], controllers: { sessions: 'users/sessions' }
 
   root 'welcome#index'
-  get '/monitoring', to: 'monitoring#index', as: :monitoring
+  get '/monitoring',          to: 'monitoring#index',           as: :monitoring
+  get '/high_value_orders',   to: 'high_value_orders#index',    as: :high_value_orders
   get '/member_contacts',        to: 'member_contacts#index',  as: :member_contacts
   get '/member_contacts/export', to: 'member_contacts#export', as: :member_contacts_export
   get  '/ig_dashboard',         to: 'ig_dashboard#index',   as: :ig_dashboard
