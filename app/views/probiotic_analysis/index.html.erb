@@ -170,55 +170,6 @@
     <% end %>
   </div>
 
-  <%# 跨場彙總 %>
-  <div class="card border-0 shadow-sm mb-5">
-    <div class="card-header text-white fw-bold" style="background-color: #2c4a6e;">
-      跨場 SKU 彙總（所有益生菌場次加總）
-      <span class="ms-2 small opacity-75 fw-normal">NT$<%= number_with_delimiter(@sku_grand_total) %></span>
-    </div>
-    <div class="card-body p-0">
-      <table class="table align-middle mb-0 text-center" style="font-size: 0.9rem;">
-        <thead class="table-light">
-          <tr>
-            <th class="text-start ps-3">品項</th>
-            <th>盒數</th>
-            <th>總買家</th>
-            <th>總訂單</th>
-            <th>總營業額</th>
-            <th>佔全體比</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @sku_summary.each do |s| %>
-            <tr>
-              <td class="text-start ps-3 fw-semibold"><%= s[:product_name] %></td>
-              <td><span class="badge bg-secondary"><%= s[:boxes] %> 盒</span></td>
-              <td><%= s[:total_buyers] %></td>
-              <td><%= s[:total_orders] %></td>
-              <td class="fw-semibold">NT$<%= number_with_delimiter(s[:total_revenue]) %></td>
-              <td>
-                <div class="d-flex align-items-center gap-1 justify-content-center">
-                  <div style="width:60px; background:#e9ecef; border-radius:4px; height:8px; overflow:hidden;">
-                    <div style="width:<%= s[:rev_pct] %>%; background:#2c4a6e; height:100%;"></div>
-                  </div>
-                  <span class="fw-bold"><%= s[:rev_pct] %>%</span>
-                </div>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-        <tfoot class="table-light fw-bold">
-          <tr>
-            <td class="text-start ps-3" colspan="2">合計</td>
-            <td><%= @sku_summary.sum { |s| s[:total_buyers] } %></td>
-            <td><%= @sku_summary.sum { |s| s[:total_orders] } %></td>
-            <td>NT$<%= number_with_delimiter(@sku_grand_total) %></td>
-            <td>100%</td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-  </div>
 <% end %>
 
 <%# ══════════════════════════════════════════════════ %>
