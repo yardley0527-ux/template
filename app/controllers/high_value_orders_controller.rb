@@ -1,19 +1,28 @@
 class HighValueOrdersController < ApplicationController
-  THRESHOLD = 10_000
-  LEVELS    = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  ALL_TABS  = (LEVELS + ['新客']).freeze
+  THRESHOLD      = 10_000
+  LEVELS         = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
+  ALL_TABS       = (LEVELS + ['新客']).freeze
+  SERIES_OPTIONS = %w[代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣].freeze
 
   def index
-    @period = params[:period].presence || 'month'
-    @level  = params[:level].presence || LEVELS.first
-    @levels = ALL_TABS
+    @period         = params[:period].presence || 'month'
+    @level          = params[:level].presence || LEVELS.first
+    @levels         = ALL_TABS
+    @series_filter  = params[:series_filter].presence
+    @specific_month = params[:specific_month].presence
 
     base = apply_period(build_scope)
 
     # 各 tab 計數：只撈最精簡欄位，不帶 level filter
+    count_base = ShoplineOrder.from("shopline_orders o")
+    if @series_filter.present?
+      count_base = count_base.where(
+        "o.order_number IN (SELECT DISTINCT order_number FROM shopline_orders WHERE product_name LIKE ?)",
+        "%#{@series_filter}%"
+      )
+    end
     all_for_counts = apply_period(
-      ShoplineOrder
-        .from("shopline_orders o")
+      count_base
         .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
         .joins("LEFT JOIN customer_purchase_summaries cps ON cps.email = o.email")
         .select(
@@ -44,8 +53,14 @@ class HighValueOrdersController < ApplicationController
   private
 
   def build_scope
-    ShoplineOrder
-      .from("shopline_orders o")
+    scope = ShoplineOrder.from("shopline_orders o")
+    if @series_filter.present?
+      scope = scope.where(
+        "o.order_number IN (SELECT DISTINCT order_number FROM shopline_orders WHERE product_name LIKE ?)",
+        "%#{@series_filter}%"
+      )
+    end
+    scope
       .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
       .joins("LEFT JOIN customer_purchase_summaries cps ON cps.email = o.email")
       .select(
@@ -66,6 +81,14 @@ class HighValueOrdersController < ApplicationController
   end
 
   def apply_period(scope)
+    if @specific_month.present?
+      begin
+        d = Date.parse("#{@specific_month}-01")
+        return scope.where("o.order_date >= ? AND o.order_date < ?", d.beginning_of_month, d.next_month.beginning_of_month)
+      rescue ArgumentError
+        return scope
+      end
+    end
     cutoff = case @period
              when 'yesterday' then Date.yesterday.beginning_of_day
              when 'week'      then 1.week.ago.beginning_of_day
