@@ -25,7 +25,7 @@
     <div class="ps-overview-card">
       <div class="ps-ov-label">總沉默客數</div>
       <div class="ps-ov-num" style="color: #dc2626;"><%= number_with_delimiter(@overview[:total_silent]) %></div>
-      <div class="ps-ov-sub">首購後未回購</div>
+      <div class="ps-ov-sub">已沉默 + 觀察期中</div>
     </div>
     <div class="ps-overview-card">
       <div class="ps-ov-label">總鐵粉數</div>
@@ -54,7 +54,7 @@
         <tr>
           <th>首購人數</th>
           <th>回購率</th>
-          <th>沉默客</th>
+          <th>已沉默 / 觀察中</th>
           <th>平均首購金額</th>
           <th>忠實客 (3-4次)</th>
           <th>鐵粉 (5次+)</th>
@@ -82,7 +82,12 @@
                 </div>
               </div>
             </td>
-            <td class="ps-num ps-silent"><%= number_with_delimiter(r[:silent]) %></td>
+            <td class="ps-num ps-silent">
+              <%= number_with_delimiter(r[:silent]) %>
+              <% if r[:watching].to_i > 0 %>
+                <div class="ps-watching">+<%= r[:watching] %> 觀察中</div>
+              <% end %>
+            </td>
             <td class="ps-num">NT$<%= number_with_delimiter(r[:avg_first]) %></td>
             <td class="ps-num ps-loyal"><%= number_with_delimiter(r[:loyal]) %></td>
             <td class="ps-num ps-iron"><%= number_with_delimiter(r[:iron]) %></td>
@@ -124,8 +129,13 @@
             <span class="ps-card-value" style="color: <%= rate_color %>; font-size: 16px;"><%= rate %>%</span>
           </div>
           <div class="ps-card-item">
-            <span class="ps-card-label">沉默客</span>
-            <span class="ps-card-value ps-silent"><%= number_with_delimiter(r[:silent]) %></span>
+            <span class="ps-card-label">已沉默 / 觀察中</span>
+            <span class="ps-card-value ps-silent">
+              <%= number_with_delimiter(r[:silent]) %>
+              <% if r[:watching].to_i > 0 %>
+                <span class="ps-watching">+<%= r[:watching] %></span>
+              <% end %>
+            </span>
           </div>
           <div class="ps-card-item">
             <span class="ps-card-label">平均首購金額</span>
@@ -257,9 +267,10 @@
 .ps-series-cell { text-align: left !important; }
 .ps-series-name { font-weight: 700; font-size: 14px; color: #1f2937; }
 .ps-num { font-weight: 600; color: #374151; white-space: nowrap; }
-.ps-silent { color: #dc2626; }
-.ps-loyal  { color: #7c3aed; }
-.ps-iron   { color: #b45309; }
+.ps-silent   { color: #dc2626; }
+.ps-watching { font-size: 11px; color: #d97706; font-weight: 500; margin-top: 1px; }
+.ps-loyal    { color: #7c3aed; }
+.ps-iron     { color: #b45309; }
 
 .ps-rate-cell { display: inline-flex; flex-direction: column; align-items: center; padding: 4px 12px; border-radius: 8px; font-weight: 700; font-size: 14px; min-width: 80px; }
 .ps-rate-bar-wrap { width: 100%; height: 3px; background: #e5e7eb; border-radius: 99px; margin-top: 4px; }
