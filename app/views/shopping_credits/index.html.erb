@@ -180,114 +180,66 @@
 </style>
 
 <%# 高購物金名單 %>
-<div class="d-flex align-items-center justify-content-between mb-3 mt-5">
-  <div class="border-start border-3 border-warning ps-3">
-    <h5 class="fw-bold mb-0">高購物金名單</h5>
-    <p class="text-muted small mb-0">購物金 ≥ NT$10,000，依卡別分群</p>
-  </div>
-  <% if @hc_level.present? %>
-    <%= link_to "← 回總覽", shopping_credits_path, class: "btn btn-sm btn-outline-secondary" %>
-  <% end %>
+<div class="border-start border-3 border-warning ps-3 mb-4 mt-5">
+  <h5 class="fw-bold mb-0">高購物金名單</h5>
+  <p class="text-muted small mb-0">購物金 ≥ NT$10,000，依卡別分群</p>
 </div>
 
-<% if @hc_level.present? %>
-  <%# 卡別分頁詳細檢視 %>
-  <% badge_style = case @hc_level
+<% if @high_credits_grouped.values.all?(&:empty?) %>
+  <div class="text-muted text-center py-4">目前無購物金 ≥ NT$10,000 的會員</div>
+<% end %>
+
+<% ShoppingCreditsController::LEVELS.each_with_index do |level, li| %>
+  <% customers = @high_credits_grouped[level] %>
+  <% next if customers.blank? %>
+  <% badge_style = case level
                    when '黑卡' then 'background:#333; color:#fff;'
                    when '金卡' then 'background:#b8860b; color:#fff;'
                    when '銀卡' then 'background:#6c757d; color:#fff;'
                    when '白卡' then 'background:#dee2e6; color:#333;'
                    else             'background:#adb5bd; color:#333;'
                    end %>
-  <div class="mb-2 d-flex align-items-center gap-2">
-    <span class="badge" style="<%= badge_style %> font-size:0.85rem; padding:6px 12px;"><%= @hc_level %></span>
-    <span class="text-muted small">共 <%= (@high_credits_grouped[@hc_level] || []).size %> 人｜第 <%= @hc_page %> / <%= @hc_pages %> 頁</span>
-  </div>
-  <div class="d-flex flex-wrap mb-3" style="gap:16px;">
-    <% (@hc_current || []).each do |c| %>
-      <% ig = c.instagram_account&.sub(/^@/, '') %>
-      <div class="card border-0 shadow-sm" style="border-radius:10px; min-width:180px; max-width:240px;">
-        <div class="card-body py-3 px-3">
-          <div class="fw-semibold" style="font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            <%= link_to c.full_name, customer_path(c.id), class: "text-decoration-none text-dark" %>
-          </div>
-          <div class="text-danger fw-bold" style="font-size:0.9rem;">NT$<%= number_with_delimiter(c.current_shopping_credits.to_i) %></div>
-          <% if ig.present? %>
-            <div style="font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              <%= link_to "https://www.instagram.com/#{ig}/", target: "_blank", class: "text-decoration-none text-muted" do %>
-                <i class="fal fa-at text-danger"></i> <%= ig %>
-              <% end %>
+  <div class="mb-5">
+    <div class="d-flex align-items-center mb-3" style="gap:12px;">
+      <span class="badge" style="<%= badge_style %> font-size:0.85rem; padding:6px 12px;"><%= level %></span>
+      <span class="text-muted small"><%= customers.size %> 人</span>
+    </div>
+    <div class="d-flex flex-wrap" id="hc-cards-<%= li %>" style="gap:16px;">
+      <% customers.each_with_index do |c, idx| %>
+        <% ig = c.instagram_account&.sub(/^@/, '') %>
+        <div class="card border-0 shadow-sm hc-card" style="border-radius:10px; min-width:180px; max-width:240px;<%= idx >= 10 ? ' display:none;' : '' %>" data-idx="<%= idx %>">
+          <div class="card-body py-3 px-3">
+            <div class="fw-semibold" style="font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              <%= link_to c.full_name, customer_path(c.id), class: "text-decoration-none text-dark" %>
             </div>
-          <% elsif c.email.present? %>
-            <div class="text-muted" style="font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><%= c.email %></div>
-          <% end %>
+            <div class="text-danger fw-bold" style="font-size:0.9rem;">NT$<%= number_with_delimiter(c.current_shopping_credits.to_i) %></div>
+            <% if ig.present? %>
+              <div style="font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                <%= link_to "https://www.instagram.com/#{ig}/", target: "_blank", class: "text-decoration-none text-muted" do %>
+                  <i class="fal fa-at text-danger"></i> <%= ig %>
+                <% end %>
+              </div>
+            <% elsif c.email.present? %>
+              <div class="text-muted" style="font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><%= c.email %></div>
+            <% end %>
+          </div>
         </div>
+      <% end %>
+    </div>
+    <% if customers.size > 10 %>
+      <div class="mt-3">
+        <button class="btn btn-sm btn-outline-warning" onclick="hcExpandAll(this, 'hc-cards-<%= li %>', <%= customers.size %>)">
+          查看全部 <%= customers.size %> 位 ▾
+        </button>
       </div>
     <% end %>
   </div>
-  <% if @hc_pages > 1 %>
-    <div class="d-flex gap-2 align-items-center">
-      <% if @hc_page > 1 %>
-        <%= link_to "← 上一頁", shopping_credits_path(hc_level: @hc_level, hc_page: @hc_page - 1), class: "btn btn-sm btn-outline-secondary" %>
-      <% end %>
-      <% (@hc_pages).times do |i| %>
-        <% pg = i + 1 %>
-        <%= link_to pg, shopping_credits_path(hc_level: @hc_level, hc_page: pg),
-              class: "btn btn-sm #{pg == @hc_page ? 'btn-dark' : 'btn-outline-secondary'}" %>
-      <% end %>
-      <% if @hc_page < @hc_pages %>
-        <%= link_to "下一頁 →", shopping_credits_path(hc_level: @hc_level, hc_page: @hc_page + 1), class: "btn btn-sm btn-outline-secondary" %>
-      <% end %>
-    </div>
-  <% end %>
-
-<% else %>
-  <%# 總覽：各卡別前 10 名 tag 卡片 %>
-  <% if @high_credits_grouped.values.all?(&:empty?) %>
-    <div class="text-muted text-center py-4">目前無購物金 ≥ NT$10,000 的會員</div>
-  <% end %>
-  <% ShoppingCreditsController::LEVELS.each do |level| %>
-    <% customers = @high_credits_grouped[level] %>
-    <% next if customers.blank? %>
-    <% preview = customers.first(10) %>
-    <% badge_style = case level
-                     when '黑卡' then 'background:#333; color:#fff;'
-                     when '金卡' then 'background:#b8860b; color:#fff;'
-                     when '銀卡' then 'background:#6c757d; color:#fff;'
-                     when '白卡' then 'background:#dee2e6; color:#333;'
-                     else             'background:#adb5bd; color:#333;'
-                     end %>
-    <div class="mb-4">
-      <div class="d-flex align-items-center mb-2" style="gap:12px;">
-        <span class="badge" style="<%= badge_style %> font-size:0.82rem; padding:5px 10px;"><%= level %></span>
-        <span class="text-muted small"><%= customers.size %> 人</span>
-        <% if customers.size > 10 %>
-          <%= link_to "查看全部 #{customers.size} 位 →", shopping_credits_path(hc_level: level, hc_page: 1),
-                class: "btn btn-xs btn-outline-warning py-0 px-2 ms-1", style: "font-size:0.78rem;" %>
-        <% end %>
-      </div>
-      <div class="d-flex flex-wrap" style="gap:16px;">
-        <% preview.each do |c| %>
-          <% ig = c.instagram_account&.sub(/^@/, '') %>
-          <div class="card border-0 shadow-sm" style="border-radius:10px; min-width:180px; max-width:240px;">
-            <div class="card-body py-3 px-3">
-              <div class="fw-semibold" style="font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                <%= link_to c.full_name, customer_path(c.id), class: "text-decoration-none text-dark" %>
-              </div>
-              <div class="text-danger fw-bold" style="font-size:0.88rem;">NT$<%= number_with_delimiter(c.current_shopping_credits.to_i) %></div>
-              <% if ig.present? %>
-                <div style="font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                  <%= link_to "https://www.instagram.com/#{ig}/", target: "_blank", class: "text-decoration-none text-muted" do %>
-                    <i class="fal fa-at text-danger"></i> <%= ig %>
-                  <% end %>
-                </div>
-              <% elsif c.email.present? %>
-                <div class="text-muted" style="font-size:0.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><%= c.email %></div>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-      </div>
-    </div>
-  <% end %>
 <% end %>
+
+<script>
+function hcExpandAll(btn, containerId, total) {
+  var container = document.getElementById(containerId);
+  container.querySelectorAll('.hc-card').forEach(function(el) { el.style.display = ''; });
+  btn.style.display = 'none';
+}
+</script>
