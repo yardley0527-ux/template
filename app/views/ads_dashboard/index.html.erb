@@ -60,9 +60,9 @@
 </div>
 
 <%# ── 廣告組成效 ── %>
-<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">廣告組成效</p>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">廣告組成效（投放中）</p>
 <div class="row g-3 mb-4">
-  <% @campaigns.each do |c| %>
+  <% @active_campaigns.each do |c| %>
     <%
       sorted_days = (c['daily_data'] || []).sort_by { |d| d['date'] }
       l = sorted_days.last
@@ -149,6 +149,76 @@
     </div>
   <% end %>
 </div>
+
+<%# ── 已封存廣告 ── %>
+<% if @archived_campaigns.any? %>
+  <div class="mb-4">
+    <a class="text-uppercase text-muted small fw-bold letter-spacing-1 d-flex align-items-center gap-2 text-decoration-none"
+       data-bs-toggle="collapse" href="#archivedCampaigns" role="button" aria-expanded="false">
+      <span>已封存廣告（<%= @archived_campaigns.size %>）</span>
+      <span class="small">▼</span>
+    </a>
+    <div class="collapse" id="archivedCampaigns">
+      <div class="row g-3 mt-1">
+        <% @archived_campaigns.each do |c| %>
+          <%
+            sorted_days = (c['daily_data'] || []).sort_by { |d| d['date'] }
+            l = sorted_days.last
+            p = sorted_days.length >= 2 ? sorted_days[-2] : nil
+            date_range = sorted_days.any? ? (sorted_days.size == 1 ? sorted_days.first['date'][5..] : "#{sorted_days.first['date'][5..]} ~ #{sorted_days.last['date'][5..]}") : nil
+          %>
+          <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100" style="opacity:0.65">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                  <div>
+                    <div class="fw-bold" style="font-size:1rem"><%= c['name'] %></div>
+                    <div class="text-muted small"><%= c['objective'] %></div>
+                    <% if date_range %>
+                      <div class="text-muted" style="font-size:11px">資料區間：<%= date_range %></div>
+                    <% end %>
+                  </div>
+                  <div class="text-right">
+                    <span class="badge badge-secondary">已暫停</span>
+                    <div class="text-muted small mt-1">日預算 <strong>NT$<%= fmt_num(c['daily_budget']) %></strong></div>
+                  </div>
+                </div>
+                <% if l %>
+                  <%
+                    spend_rate = (l['spend'].to_f / c['daily_budget'].to_f * 100).round(0).to_i
+                    completion = (l['video_3s'].to_f > 0 && l['video_100'].to_f > 0) ? (l['video_100'].to_f / l['video_3s'].to_f * 100).round(1) : nil
+                  %>
+                  <div class="row g-2">
+                    <% [
+                        { label: '曝光次數',   value: fmt_num(l['impressions']), extra: '' },
+                        { label: 'CTR',        value: l['ctr'] ? "#{l['ctr']}%" : '—', extra: '' },
+                        { label: 'CPM',        value: l['cpm'] ? "NT$#{l['cpm'].to_i}" : '—', extra: '' },
+                        { label: '觸及人數',   value: fmt_num(l['reach']), extra: '' },
+                        { label: '花費',       value: "NT$#{fmt_num(l['spend'])}", extra: "<small class='text-muted'>預算消耗 #{spend_rate}%</small>" },
+                        { label: '影片看完率', value: completion ? "#{completion}%" : (l['video_100'] ? "#{fmt_num(l['video_100'])} 人" : '—'), extra: '' }
+                      ].each do |m| %>
+                      <div class="col-4">
+                        <div class="bg-light rounded p-2">
+                          <div class="text-muted" style="font-size:11px"><%= m[:label] %></div>
+                          <div class="fw-bold" style="font-size:1.1rem"><%= m[:value] %></div>
+                          <%= raw m[:extra] %>
+                        </div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% else %>
+                  <div class="text-center py-4 text-muted">
+                    <div class="small mt-1">無數據</div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
 
 <%# ── 趨勢分析 ── %>
 <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">趨勢分析</p>

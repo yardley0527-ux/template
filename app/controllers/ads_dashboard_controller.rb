@@ -2,17 +2,19 @@ class AdsDashboardController < ApplicationController
   def index
     json_path = Rails.root.join('data', 'ads_data.json')
     @ads_data = File.exist?(json_path) ? JSON.parse(File.read(json_path)) : default_data
-    @campaigns = @ads_data['campaigns'] || []
+    @campaigns          = @ads_data['campaigns'] || []
+    @active_campaigns   = @campaigns.select { |c| c['status'] == 'ACTIVE' }
+    @archived_campaigns = @campaigns.reject { |c| c['status'] == 'ACTIVE' }
 
-    with_data = @campaigns.map { |c| [c, latest_day(c)] }.select { |_, d| d }
+    with_data = @active_campaigns.map { |c| [c, latest_day(c)] }.select { |_, d| d }
     totals    = with_data.map(&:last)
 
     @total_spend       = totals.sum { |d| d['spend'].to_f }
-    @total_budget      = @campaigns.sum { |c| c['daily_budget'].to_f }
+    @total_budget      = @active_campaigns.sum { |c| c['daily_budget'].to_f }
     @total_impressions = totals.sum { |d| d['impressions'].to_i }
     @avg_ctr           = avg(totals.map { |d| d['ctr'].to_f }.select(&:positive?))
     @avg_cpm           = avg(totals.map { |d| d['cpm'].to_f }.select(&:positive?))
-    @suggestions       = build_suggestions(@campaigns)
+    @suggestions       = build_suggestions(@active_campaigns)
   end
 
   private
