@@ -1,6 +1,6 @@
-<% series_list    = customers.map(&:first_series).compact.uniq %>
-<% collapse_after ||= 15 %>
-<% collapsible    = customers.size > collapse_after %>
+<% series_list = customers.map(&:first_series).compact.uniq %>
+<% per_page    = 10 %>
+<% uid         = "tier-#{tier_id}" %>
 
 <% if series_list.size > 1 %>
   <div class="hs-tabs" data-tier-tabs="<%= tier_id %>">
@@ -33,7 +33,7 @@
       <% customers.each_with_index do |c, idx| %>
         <% status = hs_follow_up_status(c) %>
         <% logs = follow_up_map[c.identity_key] || [] %>
-        <tr data-series="<%= c.first_series %>"<%= (collapsible && idx >= collapse_after) ? ' class="hs-row-extra" style="display:none;"' : '' %>>
+        <tr data-series="<%= c.first_series %>"<%= idx >= per_page ? ' style="display:none;"' : '' %>>
           <td>
             <div class="hs-customer-cell">
               <% if c.shopline_customer_id.present? %>
@@ -91,10 +91,6 @@
     </tbody>
   </table>
 </div>
-<% if collapsible %>
-  <div class="hs-expand-wrap" data-expand-table="<%= tier_id %>">
-    <button class="hs-expand-btn" onclick="hsExpandRows(this, '<%= tier_id %>')">
-      顯示全部 <%= customers.size %> 人 ▾
-    </button>
-  </div>
+<% if customers.size > per_page %>
+  <div class="hs-pager" data-pager="<%= tier_id %>" data-per-page="<%= per_page %>" data-total="<%= customers.size %>"></div>
 <% end %>

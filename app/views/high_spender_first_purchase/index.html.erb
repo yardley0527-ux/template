@@ -378,10 +378,12 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 .hs-followup-submit { align-self: flex-end; padding: 3px 12px; background: #886ab5; color: #fff; border: none; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
 .hs-followup-submit:hover { background: #6d52a0; }
 
-/* 展開全部按鈕 */
-.hs-expand-wrap { text-align: center; padding: 10px 0 4px; }
-.hs-expand-btn { background: none; border: 1px solid #e5e7eb; border-radius: 6px; padding: 5px 20px; font-size: 12px; color: #886ab5; font-weight: 600; cursor: pointer; }
-.hs-expand-btn:hover { background: #f5f3ff; border-color: #886ab5; }
+/* 分頁 */
+.hs-pager { display: flex; align-items: center; gap: 4px; padding: 10px 14px 8px; flex-wrap: wrap; }
+.hs-pager-btn { min-width: 30px; height: 28px; padding: 0 8px; border: 1px solid #e5e7eb; border-radius: 5px; background: #fff; font-size: 12px; color: #6b7280; cursor: pointer; font-weight: 500; }
+.hs-pager-btn:hover { border-color: #886ab5; color: #886ab5; }
+.hs-pager-btn.active { background: #886ab5; color: #fff; border-color: #886ab5; font-weight: 700; }
+.hs-pager-info { font-size: 11px; color: #9ca3af; margin-right: 6px; }
 
 @media (max-width: 900px) {
   .hs-section-grid { grid-template-columns: 1fr; }
@@ -401,12 +403,39 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 </style>
 
 <script>
-function hsExpandRows(btn, tierId) {
+var _hsPagerState = {};
+
+function hsPaginate(tierId, page, filter) {
   var table = document.querySelector('table[data-tier-table="' + tierId + '"]');
+  var pager = document.querySelector('.hs-pager[data-pager="' + tierId + '"]');
   if (!table) return;
-  table.querySelectorAll('tr.hs-row-extra').forEach(function(row) { row.style.display = ''; });
-  btn.closest('.hs-expand-wrap').style.display = 'none';
+  var perPage = pager ? parseInt(pager.dataset.perPage) : 10;
+  filter = filter !== undefined ? filter : ((_hsPagerState[tierId] || {}).filter || 'all');
+  _hsPagerState[tierId] = { page: page, filter: filter };
+  var rows     = Array.from(table.querySelectorAll('tbody tr'));
+  var filtered = filter === 'all' ? rows : rows.filter(function(r) { return r.dataset.series === filter; });
+  var start    = (page - 1) * perPage;
+  rows.forEach(function(r) { r.style.display = 'none'; });
+  filtered.slice(start, start + perPage).forEach(function(r) { r.style.display = ''; });
+  if (pager) {
+    var totalPages = Math.ceil(filtered.length / perPage);
+    if (totalPages <= 1) { pager.innerHTML = ''; return; }
+    var safe = filter.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var html = '<span class="hs-pager-info">' + filtered.length + ' 人</span>';
+    if (page > 1) html += '<button class="hs-pager-btn" onclick="hsPaginate(\'' + tierId + '\',' + (page-1) + ',\'' + safe + '\')">←</button>';
+    for (var i = 1; i <= totalPages; i++) {
+      html += '<button class="hs-pager-btn' + (i===page?' active':'') + '" onclick="hsPaginate(\'' + tierId + '\',' + i + ',\'' + safe + '\')">' + i + '</button>';
+    }
+    if (page < totalPages) html += '<button class="hs-pager-btn" onclick="hsPaginate(\'' + tierId + '\',' + (page+1) + ',\'' + safe + '\')">→</button>';
+    pager.innerHTML = html;
+  }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.hs-pager[data-pager]').forEach(function(p) {
+    hsPaginate(p.dataset.pager, 1, 'all');
+  });
+});
 
 document.addEventListener('click', function(e) {
   var btn = e.target.closest('.hs-tab');
@@ -415,18 +444,8 @@ document.addEventListener('click', function(e) {
   if (!tabsEl) return;
   var tierId = tabsEl.dataset.tierTabs;
   var filter = btn.dataset.filter;
-
   tabsEl.querySelectorAll('.hs-tab').forEach(function(b) { b.classList.remove('active'); });
   btn.classList.add('active');
-
-  var table = document.querySelector('table[data-tier-table="' + tierId + '"]');
-  if (!table) return;
-  var expandWrap = document.querySelector('[data-expand-table="' + tierId + '"]');
-  var expanded = !expandWrap || expandWrap.style.display === 'none';
-  table.querySelectorAll('tbody tr').forEach(function(row) {
-    var isExtra = row.classList.contains('hs-row-extra');
-    var matches = filter === 'all' || row.dataset.series === filter;
-    row.style.display = (matches && (expanded || !isExtra)) ? '' : 'none';
-  });
+  hsPaginate(tierId, 1, filter);
 });
 </script>

@@ -24,33 +24,6 @@ end %>
   </div>
 </div>
 
-<%# Summary cards — computed after tabs so we can reference display_orders; use @orders here %>
-<% level_orders = @orders %>
-<div class="row g-3 mb-4">
-  <div class="col-sm-4">
-    <div class="card border-0 shadow-sm text-center py-3">
-      <div class="mb-1"><i class="fal fa-receipt text-primary"></i></div>
-      <div class="fw-bold text-primary" style="font-size:1.8rem;line-height:1;"><%= number_with_delimiter(@total_count) %></div>
-      <div class="text-muted small mt-1"><%= @level %> 筆訂單</div>
-    </div>
-  </div>
-  <div class="col-sm-4">
-    <div class="card border-0 shadow-sm text-center py-3">
-      <div class="mb-1"><i class="fal fa-dollar-sign text-danger"></i></div>
-      <div class="fw-bold text-danger" style="font-size:1.8rem;line-height:1;">NT$<%= number_with_delimiter(@total_revenue.to_i) %></div>
-      <div class="text-muted small mt-1">合計消費</div>
-    </div>
-  </div>
-  <div class="col-sm-4">
-    <div class="card border-0 shadow-sm text-center py-3">
-      <div class="mb-1"><i class="fal fa-chart-line text-success"></i></div>
-      <div class="fw-bold text-success" style="font-size:1.8rem;line-height:1;">
-        NT$<%= @total_count > 0 ? number_with_delimiter((@total_revenue / @total_count).to_i) : 0 %>
-      </div>
-      <div class="text-muted small mt-1">平均單筆</div>
-    </div>
-  </div>
-</div>
 
 <%# Level tabs %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
