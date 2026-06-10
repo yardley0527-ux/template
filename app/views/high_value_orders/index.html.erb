@@ -89,14 +89,14 @@ end %>
             <td class="ps-3 text-nowrap text-muted"><%= o.ord_date&.strftime("%-m/%-d") %></td>
             <td class="fw-semibold"><%= o.cust_name %></td>
             <td>
-              <% badge_color = case o.membership_level_col
-                               when '黑卡' then '#222'
-                               when '金卡' then '#b8860b'
-                               when '銀卡' then '#6c757d'
-                               when '白卡' then '#868e96'
-                               else '#adb5bd'
-                               end %>
-              <span class="badge" style="background:<%= badge_color %>; font-size:0.75rem;"><%= o.membership_level_col %></span>
+              <% badge_bg, badge_fg = case o.membership_level_col
+                                    when '黑卡' then ['#333', '#fff']
+                                    when '金卡' then ['#b8860b', '#fff']
+                                    when '銀卡' then ['#6c757d', '#fff']
+                                    when '白卡' then ['#dee2e6', '#333']
+                                    else             ['#adb5bd', '#333']
+                                    end %>
+              <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= o.membership_level_col %></span>
               <% if @level == '新客' %>
                 <span class="badge bg-warning text-dark ms-1" style="font-size:0.72rem;">首購</span>
               <% end %>
