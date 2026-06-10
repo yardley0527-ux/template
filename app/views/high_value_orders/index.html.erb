@@ -96,6 +96,9 @@ end %>
                                else '#adb5bd'
                                end %>
               <span class="badge" style="background:<%= badge_color %>; font-size:0.75rem;"><%= o.membership_level_col %></span>
+              <% if @level == '新客' %>
+                <span class="badge bg-warning text-dark ms-1" style="font-size:0.72rem;">首購</span>
+              <% end %>
             </td>
             <td class="text-muted small"><%= o.order_num %></td>
             <td class="text-end fw-bold text-danger">
