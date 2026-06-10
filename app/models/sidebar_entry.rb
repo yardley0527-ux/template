@@ -10,58 +10,45 @@ class SidebarEntry
     def all
       [
         {
-          group_title: "系統管理",
+          group_title: "會員管理",
           children: [
-            { href: customers_path,       title: "客人資料庫總覽", icon: "fa-address-book" },
-            { href: expiring_members_path, title: "即將降級會員",   icon: "fa-bell" },
-            { href: stats_customers_path,  title: "會員卡別統計",   icon: "fa-chart-bar" },
+            { href: customers_path,          title: "客人資料庫",     icon: "fa-address-book" },
             { href: inactive_members_path,   title: "近期未消費名單", icon: "fa-user-times" },
+            { href: member_contacts_path,    title: "會員分群",       icon: "fa-address-card" },
+            { href: expiring_members_path,   title: "即將降級會員",   icon: "fa-bell" },
+            { href: stats_customers_path,    title: "會員卡別統計",   icon: "fa-chart-bar" },
             { href: shopping_credits_path,   title: "購物金分析",     icon: "fa-credit-card" },
-            { href: member_contacts_path,    title: "會員分群",   icon: "fa-address-card" },
             # { href: duplicate_customers_path, title: "重複客戶偵測",  icon: "fa-user-friends" }
           ]
         },
         {
-          group_title: "破萬管理",
+          group_title: "高消費分析",
           children: [
-            { href: high_spender_first_purchase_path, title: "破萬新客、產品分析", icon: "fa-gem" }
-          ]
-        },
-        {
-          group_title: "忠實客管理",
-          children: [
-            { href: loyal_customers_path, title: "忠實客分析", icon: "fa-heart" }
-          ]
-        },
-        {
-          group_title: "首購管理",
-          children: [
-            { href: first_purchase_index_path,title: "首購總覽",   icon: "fa-shopping-bag" }
-          ]
-        },
-        {
-          group_title: "策略管理",
-          children: [
-            { href: product_strategy_path,      title: "產品策略報表",   icon: "fa-chart-line" },
-            { href: subscription_strategy_path, title: "定期購策略分析", icon: "fa-sync-alt" }
+            { href: high_spender_first_purchase_path, title: "破萬新客分析",   icon: "fa-gem" },
+            { href: high_value_orders_path,           title: "破萬訂單速覽",   icon: "fa-fire" },
+            { href: first_purchase_index_path,        title: "首購總覽",       icon: "fa-shopping-bag" },
+            { href: loyal_customers_path,             title: "忠實客分析",     icon: "fa-heart" },
           ]
         },
         {
           group_title: "直播管理",
           children: [
-            { href: livestream_strategy_path,   title: "直播策略報表",               icon: "fa-chart-line" },
-            { href: livestream_analysis_path,   title: "直播分析 - 品牌之夜場次總覽", icon: "fa-video" },
-            { href: turmeric_analysis_path,     title: "直播分析 - 薑黃",     icon: "fa-video" },
-            { href: metabolism_analysis_path,   title: "直播分析 - 代謝錠",   icon: "fa-video" },
-            { href: glutathione_analysis_path,  title: "直播分析 - 穀胱甘肽", icon: "fa-video" },
-            { href: omnipotent_analysis_path,   title: "直播分析 - 全能",   icon: "fa-video" },
-            { href: probiotic_analysis_path,    title: "直播分析 - 益生菌", icon: "fa-video" }
+            { href: omnipotent_analysis_path,   title: "直播分析 - 全能",         icon: "fa-video" },
+            { href: probiotic_analysis_path,    title: "直播分析 - 益生菌",       icon: "fa-video" },
+            { href: livestream_analysis_path,   title: "直播分析 - 品牌之夜總覽", icon: "fa-video" },
+            { href: turmeric_analysis_path,     title: "直播分析 - 薑黃",         icon: "fa-video" },
+            { href: metabolism_analysis_path,   title: "直播分析 - 代謝錠",       icon: "fa-video" },
+            { href: glutathione_analysis_path,  title: "直播分析 - 穀胱甘肽",     icon: "fa-video" },
+            { href: omnipotent_restock_path,    title: "全能補貨提醒名單",         icon: "fa-box" },
+            { href: livestream_strategy_path,   title: "直播策略報表",             icon: "fa-chart-line" },
           ]
         },
         {
-          group_title: "產品分類快速檢視",
+          group_title: "產品 & 策略",
           children: [
-            { href: products_path, title: "年度 Top 產品排行", icon: "fa-trophy" }
+            { href: product_strategy_path,      title: "產品策略報表",   icon: "fa-chart-line" },
+            { href: products_path,              title: "年度 Top 產品排行", icon: "fa-trophy" },
+            { href: subscription_strategy_path, title: "定期購策略分析", icon: "fa-sync-alt" },
           ]
         },
         {
@@ -71,15 +58,9 @@ class SidebarEntry
           ]
         },
         {
-          group_title: "監控",
+          group_title: "系統",
           children: [
             { href: monitoring_path, title: "功能使用監控", icon: "fa-chart-line" }
-          ]
-        },
-        {
-          group_title: "高消費管理",
-          children: [
-            { href: high_value_orders_path, title: "破萬訂單速覽", icon: "fa-fire" }
           ]
         },
       ]
