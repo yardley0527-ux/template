@@ -81,7 +81,7 @@ class HighSpenderFirstPurchaseAnalytics
         avg_first_amount: avg_first_amount.to_f.round,
         repurchase_rate:  total.zero? ? 0 : ((repurchased.to_f / total) * 100).round(1)
       }
-    end.sort_by { |h| h[:month] }
+    end.sort_by { |h| h[:month] }.reverse
   end
 
   def monthly_series_breakdown
