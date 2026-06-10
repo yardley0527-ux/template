@@ -203,11 +203,11 @@
     <span class="badge" style="<%= badge_style %> font-size:0.85rem; padding:6px 12px;"><%= @hc_level %></span>
     <span class="text-muted small">共 <%= (@high_credits_grouped[@hc_level] || []).size %> 人｜第 <%= @hc_page %> / <%= @hc_pages %> 頁</span>
   </div>
-  <div class="d-flex flex-wrap gap-2 mb-3">
+  <div class="d-flex flex-wrap gap-3 mb-3">
     <% (@hc_current || []).each do |c| %>
       <% ig = c.instagram_account&.sub(/^@/, '') %>
-      <div class="card border-0 shadow-sm" style="border-radius:10px; min-width:160px; max-width:220px;">
-        <div class="card-body py-2 px-3">
+      <div class="card border-0 shadow-sm" style="border-radius:10px; min-width:180px; max-width:240px;">
+        <div class="card-body py-3 px-3">
           <div class="fw-semibold" style="font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             <%= link_to c.full_name, customer_path(c.id), class: "text-decoration-none text-dark" %>
           </div>
@@ -266,11 +266,11 @@
                 class: "btn btn-xs btn-outline-warning py-0 px-2 ms-1", style: "font-size:0.78rem;" %>
         <% end %>
       </div>
-      <div class="d-flex flex-wrap gap-2">
+      <div class="d-flex flex-wrap gap-3">
         <% preview.each do |c| %>
           <% ig = c.instagram_account&.sub(/^@/, '') %>
-          <div class="card border-0 shadow-sm" style="border-radius:10px; min-width:150px; max-width:200px;">
-            <div class="card-body py-2 px-3">
+          <div class="card border-0 shadow-sm" style="border-radius:10px; min-width:180px; max-width:240px;">
+            <div class="card-body py-3 px-3">
               <div class="fw-semibold" style="font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                 <%= link_to c.full_name, customer_path(c.id), class: "text-decoration-none text-dark" %>
               </div>
