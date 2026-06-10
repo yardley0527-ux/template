@@ -172,7 +172,7 @@
       "name": "Claude 導流IG",
       "objective": "流量",
       "status": "ACTIVE",
-      "daily_budget": 2500,
+      "daily_budget": 5000,
       "start_date": "2026-06-07",
       "creative": {
         "type": "VIDEO",
