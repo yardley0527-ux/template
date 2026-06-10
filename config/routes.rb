@@ -14,6 +14,9 @@ Rails.application.routes.draw do
   get '/glutathione_analysis',                to: 'glutathione_analysis#index',          as: :glutathione_analysis
   get '/glutathione_analysis/export_missing', to: 'glutathione_analysis#export_missing',  as: :glutathione_export_missing
   get '/glutathione_analysis/export_event',   to: 'glutathione_analysis#export_event',    as: :glutathione_export_event
+  get '/probiotic_analysis',                to: 'probiotic_analysis#index',          as: :probiotic_analysis
+  get '/probiotic_analysis/export_missing', to: 'probiotic_analysis#export_missing',  as: :probiotic_export_missing
+  get '/probiotic_analysis/export_event',   to: 'probiotic_analysis#export_event',    as: :probiotic_export_event
   get '/omnipotent_analysis',                to: 'omnipotent_analysis#index',          as: :omnipotent_analysis
   get '/omnipotent_analysis/export_missing',    to: 'omnipotent_analysis#export_missing',    as: :omnipotent_export_missing
   get '/omnipotent_analysis/export_event',     to: 'omnipotent_analysis#export_event',      as: :omnipotent_export_event

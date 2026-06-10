@@ -4,7 +4,7 @@ class PageView < ApplicationRecord
     inactive_members loyal_customers shopping_credits products product_strategy
     subscription_strategy livestream_analysis livestream_strategy
     turmeric_analysis metabolism_analysis glutathione_analysis
-    omnipotent_analysis omnipotent_restock albums photos
+    omnipotent_analysis probiotic_analysis omnipotent_restock albums photos
   ].freeze
 
   # 所有應追蹤的頁面（controller#action），用來計算「從未被造訪」
@@ -33,6 +33,9 @@ class PageView < ApplicationRecord
     "glutathione_analysis#export_event"     => "穀胱甘肽本場匯出",
     "omnipotent_analysis#index"             => "直播分析 - 全能",
     "omnipotent_analysis#export_whitening"  => "全能美白名單匯出",
+    "probiotic_analysis#index"              => "直播分析 - 益生菌",
+    "probiotic_analysis#export_missing"     => "益生菌未回購匯出",
+    "probiotic_analysis#export_event"       => "益生菌本場匯出",
     "omnipotent_restock#index"              => "全能補貨提醒名單",
     "omnipotent_restock#export"             => "補貨名單匯出",
     "albums#index"                          => "相冊列表",
