@@ -2,6 +2,7 @@
 
 class ShoppingCreditsController < ApplicationController
   LEVELS = %w[黑卡 金卡 銀卡 白卡].freeze
+  HC_PER_PAGE = 10
 
   def index
     base = ShoplineCustomer
@@ -28,7 +29,6 @@ class ShoppingCreditsController < ApplicationController
     end
 
     # 高購物金名單（超過 1 萬），依卡別分群 + 分頁
-    HC_PER_PAGE = 10
     high_credits = ShoplineCustomer
       .where("current_shopping_credits >= 10000")
       .where(membership_level: LEVELS)
