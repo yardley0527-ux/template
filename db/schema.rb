@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_29_110000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_10_063920) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -29,6 +29,30 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_29_110000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["shopline_customer_id"], name: "index_albums_on_shopline_customer_id"
+  end
+
+  create_table "customer_edit_logs", force: :cascade do |t|
+    t.bigint "customer_id"
+    t.bigint "user_id"
+    t.string "customer_name"
+    t.string "section"
+    t.jsonb "changes_json"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_customer_edit_logs_on_created_at"
+    t.index ["customer_id"], name: "index_customer_edit_logs_on_customer_id"
+  end
+
+  create_table "customer_merge_logs", force: :cascade do |t|
+    t.bigint "orphan_customer_id", null: false
+    t.bigint "official_customer_id", null: false
+    t.jsonb "orphan_snapshot", default: {}, null: false
+    t.integer "reassigned_orders_count", default: 0, null: false
+    t.string "merged_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["official_customer_id"], name: "index_customer_merge_logs_on_official_customer_id"
+    t.index ["orphan_customer_id"], name: "index_customer_merge_logs_on_orphan_customer_id"
   end
 
   create_table "customer_profiles", force: :cascade do |t|
@@ -106,6 +130,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_29_110000) do
     t.index ["shopline_customer_health_assessment_id"], name: "idx_on_shopline_customer_health_assessment_id_6907628e29"
   end
 
+  create_table "high_spender_follow_ups", force: :cascade do |t|
+    t.string "identity_key", null: false
+    t.text "note", null: false
+    t.datetime "followed_up_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["identity_key"], name: "index_high_spender_follow_ups_on_identity_key"
+  end
+
   create_table "ig_posts", force: :cascade do |t|
     t.bigint "ig_profile_id", null: false
     t.string "shortcode", null: false
@@ -161,6 +194,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_29_110000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["kind", "file_checksum"], name: "index_import_runs_on_kind_and_file_checksum"
+  end
+
+  create_table "live_events", id: :serial, force: :cascade do |t|
+    t.date "event_date", null: false
+    t.integer "year", null: false
+    t.integer "month", null: false
+    t.string "event_name", limit: 100, null: false
+    t.text "featured_products"
+    t.integer "order_count"
+    t.decimal "revenue", precision: 12
+    t.text "notes"
+    t.datetime "created_at", precision: nil, default: -> { "now()" }
+    t.datetime "updated_at", precision: nil, default: -> { "now()" }
   end
 
   create_table "page_views", force: :cascade do |t|

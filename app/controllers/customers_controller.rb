@@ -270,6 +270,7 @@ class CustomersController < ApplicationController
     end
 
     if @profile.update(profile_params)
+      log_customer_edit(@customer, @profile, @edit_section)
       redirect_to customer_path(@customer), notice: "已儲存"
     else
       render :edit, status: :unprocessable_entity
@@ -372,6 +373,19 @@ class CustomersController < ApplicationController
   end
 
   private
+
+  def log_customer_edit(customer, profile, section)
+    changes = profile.previous_changes.except("updated_at", "created_at", "id", "shopline_customer_id")
+    return if changes.empty?
+    CustomerEditLog.create!(
+      customer_id:   customer.id,
+      user_id:       current_user&.id,
+      customer_name: customer.full_name,
+      section:       section,
+      changes_json:  changes
+    )
+  rescue StandardError
+  end
 
   def profile_params
     params.require(:customer_profile).permit(

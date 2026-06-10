@@ -29,5 +29,10 @@ class MonitoringController < ApplicationController
     # 本日 / 本週
     @today_visits = PageView.where("visited_at >= ?", Date.today.beginning_of_day).count
     @week_visits  = PageView.where("visited_at >= ?", 7.days.ago).count
+
+    # 客戶編輯軌跡
+    @edit_logs = CustomerEditLog
+      .order(created_at: :desc)
+      .limit(100)
   end
 end
