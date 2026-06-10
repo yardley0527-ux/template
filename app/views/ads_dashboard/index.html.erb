@@ -152,15 +152,10 @@
 
 <%# ── 已封存廣告 ── %>
 <% if @archived_campaigns.any? %>
+  <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">已封存廣告（<%= @archived_campaigns.size %>）</p>
   <div class="mb-4">
-    <a class="text-uppercase text-muted small fw-bold letter-spacing-1 d-flex align-items-center gap-2 text-decoration-none"
-       data-toggle="collapse" href="#archivedCampaigns" role="button" aria-expanded="false">
-      <span>已封存廣告（<%= @archived_campaigns.size %>）</span>
-      <span class="small">▼</span>
-    </a>
-    <div class="collapse" id="archivedCampaigns">
-      <div class="row g-3 mt-1">
-        <% @archived_campaigns.each do |c| %>
+    <div class="row g-3">
+      <% @archived_campaigns.each do |c| %>
           <%
             sorted_days = (c['daily_data'] || []).sort_by { |d| d['date'] }
             l = sorted_days.last
@@ -214,8 +209,7 @@
               </div>
             </div>
           </div>
-        <% end %>
-      </div>
+      <% end %>
     </div>
   </div>
 <% end %>
