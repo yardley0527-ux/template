@@ -1,12 +1,9 @@
 <%# Infocard %>
-<div class="info-card">
-  <%= image_tag "smartadmin/demo/avatars/#{Rails.configuration.avatar}", class: 'profile-image rounded-circle', alt: Rails.configuration.user %>
-  <div class="info-card-text">
-    <%= link_to '#', class: 'd-flex align-items-center text-white' do %>
-			<span class="text-truncate text-truncate-sm d-inline-block">
-				<%= current_user.username %>
-			</span>
-    <% end %>
+<div class="info-card" style="background-image:none; background-color:#ede5d8; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px 8px;">
+  <%= image_tag "smartadmin/demo/avatars/#{Rails.configuration.avatar}", class: 'profile-image rounded-circle', alt: Rails.configuration.user, style: "margin:0 auto;" %>
+  <div class="info-card-text text-center mt-2">
+    <span class="text-truncate d-block" style="color:#2c1a0e; font-weight:600;">
+      <%= current_user.username %>
+    </span>
   </div>
-  <%= image_tag 'smartadmin/card-backgrounds/cover-2-lg.png', class: 'cover', alt: 'cover' %>
 </div>

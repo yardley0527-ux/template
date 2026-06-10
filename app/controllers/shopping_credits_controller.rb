@@ -27,12 +27,22 @@ class ShoppingCreditsController < ApplicationController
       { month: month, credits: credits, total: credits.values.sum }
     end
 
-    # 高購物金名單（超過 1 萬），依卡別分群
+    # 高購物金名單（超過 1 萬），依卡別分群 + 分頁
+    HC_PER_PAGE = 10
     high_credits = ShoplineCustomer
       .where("current_shopping_credits >= 10000")
       .where(membership_level: LEVELS)
       .select(:id, :full_name, :email, :membership_level, :current_shopping_credits, :membership_expiry_date, :instagram_account)
-      .order(membership_level: :asc, current_shopping_credits: :desc)
+      .order(current_shopping_credits: :desc)
     @high_credits_grouped = LEVELS.index_with { |lv| high_credits.select { |c| c.membership_level == lv } }
+
+    @hc_level = params[:hc_level].presence
+    @hc_page  = [params[:hc_page].to_i, 1].max
+    if @hc_level
+      all = @high_credits_grouped[@hc_level] || []
+      @hc_pages      = (all.size / HC_PER_PAGE.to_f).ceil.clamp(1, Float::INFINITY)
+      @hc_page       = @hc_page.clamp(1, @hc_pages)
+      @hc_current    = all.each_slice(HC_PER_PAGE).to_a[@hc_page - 1] || []
+    end
   end
 end
