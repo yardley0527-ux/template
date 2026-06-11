@@ -65,14 +65,12 @@
             <% end %>
           </td>
           <td class="hs-line-cell">
-            <label class="hs-line-label">
-              <input type="checkbox"
-                     class="hs-line-checkbox"
-                     <%= c.line_bound? ? "checked" : "" %>
-                     data-identity-key="<%= c.identity_key %>"
-                     data-update-url="<%= high_spender_first_purchase_update_field_path %>">
-              <span class="hs-line-text"><%= c.line_bound? ? "已綁定" : "未綁定" %></span>
-            </label>
+            <select class="hs-line-select <%= c.line_bound? ? 'hs-line-bound' : '' %>"
+                    data-identity-key="<%= c.identity_key %>"
+                    data-update-url="<%= high_spender_first_purchase_update_field_path %>">
+              <option value="0" <%= c.line_bound? ? "" : "selected" %>>✗ 未綁定</option>
+              <option value="1" <%= c.line_bound? ? "selected" : "" %>>✓ 已綁定</option>
+            </select>
           </td>
           <td class="hs-product-cell">
             <select class="hs-product-select"

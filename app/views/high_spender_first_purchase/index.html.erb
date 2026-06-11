@@ -387,10 +387,8 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 
 /* LINE 綁定欄 */
 .hs-line-cell { white-space: nowrap; }
-.hs-line-label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12px; }
-.hs-line-checkbox { accent-color: #06c755; width: 14px; height: 14px; cursor: pointer; }
-.hs-line-text { color: #6b7280; }
-.hs-line-checkbox:checked + .hs-line-text { color: #06c755; font-weight: 600; }
+.hs-line-select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 8px; font-size: 12px; color: #6b7280; background: #fff; cursor: pointer; }
+.hs-line-select.hs-line-bound { color: #06c755; font-weight: 600; border-color: #86efac; background: #f0fdf4; }
 
 /* 催單產品欄 */
 .hs-product-cell { min-width: 130px; }
@@ -472,11 +470,9 @@ document.addEventListener('change', function(e) {
   var url = el.dataset.updateUrl;
   if (!key || !url) return;
 
-  if (el.classList.contains('hs-line-checkbox')) {
-    var label = el.closest('label');
-    var span  = label && label.querySelector('.hs-line-text');
-    hsUpdateField(key, 'line_bound', el.checked ? '1' : '0', url);
-    if (span) span.textContent = el.checked ? '已綁定' : '未綁定';
+  if (el.classList.contains('hs-line-select')) {
+    hsUpdateField(key, 'line_bound', el.value, url);
+    el.classList.toggle('hs-line-bound', el.value === '1');
   }
 
   if (el.classList.contains('hs-product-select')) {
