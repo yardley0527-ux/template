@@ -38,14 +38,25 @@ class HighSpenderFirstPurchaseController < ApplicationController
       )
       .order(Arel.sql("CASE WHEN customer_purchase_summaries.purchase_count >= 2 THEN 1 ELSE 0 END, customer_purchase_summaries.first_date ASC"))
 
-    identity_keys = @customers.map(&:identity_key).compact
-    @follow_up_map = HighSpenderFollowUp.for_keys(identity_keys).group_by(&:identity_key)
-
     @last_snapshot_week = CustomerPurchaseSummary.where.not(follow_up_week: nil).maximum(:follow_up_week)
   end
 
   def snapshot
     monday = WeeklyFollowUpSnapshotService.call
     redirect_to high_spender_first_purchase_path, notice: "本週跟進名單已更新（#{monday.strftime('%Y-%m-%d')} 起）"
+  end
+
+  def update_field
+    record = CustomerPurchaseSummary.find_by!(identity_key: params[:identity_key])
+    field  = params[:field]
+
+    case field
+    when "line_bound"
+      record.update!(line_bound: params[:value] == "1")
+    when "follow_up_product"
+      record.update!(follow_up_product: params[:value].presence)
+    end
+
+    head :ok
   end
 end

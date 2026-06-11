@@ -1,6 +1,7 @@
-<% series_list = customers.map(&:first_series).compact.uniq %>
+<% series_list  = customers.map(&:first_series).compact.uniq %>
 <% per_page    = 10 %>
 <% uid         = "tier-#{tier_id}" %>
+<% all_series  = HighSpenderFirstPurchaseHelper::SERIES_COLORS.keys %>
 
 <% if series_list.size > 1 %>
   <div class="hs-tabs" data-tier-tabs="<%= tier_id %>">
@@ -26,13 +27,13 @@
         <th>首購日期</th>
         <th>首購金額</th>
         <th>距首購</th>
-        <th>跟進記錄</th>
+        <th>LINE 綁定</th>
+        <th>催單產品</th>
       </tr>
     </thead>
     <tbody>
       <% customers.each_with_index do |c, idx| %>
         <% status = hs_follow_up_status(c) %>
-        <% logs = follow_up_map[c.identity_key] || [] %>
         <tr data-series="<%= c.first_series %>"<%= idx >= per_page ? ' style="display:none;"' : '' %>>
           <td>
             <div class="hs-customer-cell">
@@ -63,28 +64,25 @@
               <span class="fp-muted">—</span>
             <% end %>
           </td>
-          <td class="hs-followup-cell">
-            <% if logs.any? %>
-              <div class="hs-followup-logs">
-                <% logs.first(2).each do |log| %>
-                  <div class="hs-followup-entry">
-                    <span class="hs-followup-date"><%= log.followed_up_at.strftime("%m/%d") %></span>
-                    <span class="hs-followup-note"><%= log.note %></span>
-                  </div>
-                <% end %>
-                <% if logs.size > 2 %>
-                  <span class="fp-muted" style="font-size:10px;">還有 <%= logs.size - 2 %> 筆</span>
-                <% end %>
-              </div>
-            <% end %>
-            <details class="hs-followup-form-wrap">
-              <summary class="hs-followup-toggle"><%= logs.any? ? "+ 再記一筆" : "記錄跟進" %></summary>
-              <%= form_with url: high_spender_follow_ups_path, method: :post, local: true, class: "hs-followup-form" do |f| %>
-                <%= f.hidden_field :identity_key, value: c.identity_key %>
-                <%= f.text_area :note, placeholder: "做了什麼事...", class: "hs-followup-input", rows: 2 %>
-                <%= f.submit "儲存", class: "hs-followup-submit" %>
+          <td class="hs-line-cell">
+            <label class="hs-line-label">
+              <input type="checkbox"
+                     class="hs-line-checkbox"
+                     <%= c.line_bound? ? "checked" : "" %>
+                     data-identity-key="<%= c.identity_key %>"
+                     data-update-url="<%= high_spender_first_purchase_update_field_path %>">
+              <span class="hs-line-text"><%= c.line_bound? ? "已綁定" : "未綁定" %></span>
+            </label>
+          </td>
+          <td class="hs-product-cell">
+            <select class="hs-product-select"
+                    data-identity-key="<%= c.identity_key %>"
+                    data-update-url="<%= high_spender_first_purchase_update_field_path %>">
+              <option value="">— 選擇催單產品 —</option>
+              <% all_series.each do |s| %>
+                <option value="<%= s %>" <%= c.follow_up_product == s ? "selected" : "" %>><%= s %></option>
               <% end %>
-            </details>
+            </select>
           </td>
         </tr>
       <% end %>
