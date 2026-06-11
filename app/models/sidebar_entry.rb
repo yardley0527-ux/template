@@ -33,6 +33,7 @@ class SidebarEntry
         {
           group_title: "直播管理",
           children: [
+            { href: livestreams_path,           title: "直播歷史",                icon: "fa-film" },
             { href: omnipotent_analysis_path,   title: "直播分析 - 全能",         icon: "fa-video" },
             { href: probiotic_analysis_path,    title: "直播分析 - 益生菌",       icon: "fa-video" },
             { href: livestream_analysis_path,   title: "直播分析 - 品牌之夜總覽", icon: "fa-video" },
