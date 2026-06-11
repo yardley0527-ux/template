@@ -8,6 +8,7 @@ class ThreadsScraperService
   KEYWORDS = %w[
     益生菌 膠原蛋白 保健食品 美白 抗老化
     魚油 薑黃 代謝 腸道健康 穀胱甘肽 蔓越莓 眼睛保健
+    probiotics collagen supplement
   ].freeze
 
   def self.run
@@ -74,11 +75,9 @@ class ThreadsScraperService
     response = http.request(request)
     body = JSON.parse(response.body)
 
-    unless response.code == "200" && body["posts"]
-      Rails.logger.warn("[ThreadsScraperService] keyword=#{keyword} status=#{response.code} body=#{response.body.to_s.first(300)}")
-    end
-
-    body["posts"] || []
+    posts = body["posts"] || []
+    Rails.logger.info("[ThreadsScraperService] keyword=#{keyword} status=#{response.code} posts=#{posts.size} raw=#{response.body.to_s.first(200)}")
+    posts
   rescue => e
     Rails.logger.warn("[ThreadsScraperService] keyword=#{keyword} error: #{e.message}")
     []
