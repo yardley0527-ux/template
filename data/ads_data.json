@@ -178,7 +178,7 @@
         "type": "VIDEO",
         "ig_post_url": "https://www.instagram.com/p/DXMUGojD25t/",
         "ig_embed_url": "https://www.instagram.com/p/DXMUGojD25t/embed/",
-        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/719232114_1610753420027021_6722014188669120118_n.jpg?_nc_cat=101&ccb=1-7&_nc_ohc=8C6J0Ih5nS0Q7kNvwHzZGK0&_nc_oc=AdqoL4dU8BPgwKFkS94mLrecmnhispSn04aPi0l5_muaAmlfwwS-6g_e6ry_BqmSam0&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=KMuNVxjpEmkwMuqetQmnUA&_nc_tpa=Q5bMBQFp4iCrQKEARf32IMx7-ZNumAct6x2RUtuchHvcbaZgyHZjKSFqYCWcFDszrDGWgokzEDWJaX-wQg&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af9TceWhTLSumHvvj0za_d3r_eZURMw5NDyv5QzkIAzDKw&oe=6A30003A",
+        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/719232114_1610753420027021_6722014188669120118_n.jpg?_nc_cat=101&ccb=1-7&_nc_ohc=8C6J0Ih5nS0Q7kNvwGEAWKK&_nc_oc=AdrUlkxyWtj8Rix-aU1LjIIjBB75fmZwdmCjccIs4j278njF6zoLi8EVBsfEV8jrS1E&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=2f-QaM3hzMfQNsBJGE8Y0Q&_nc_tpa=Q5bMBQHMtKyB7umUrVQfE0ta6HRzVV9hh6WvZ_Fz8GsYkB3HSGh-HqCT3BHuiCB3ZiCetq-uScbugSKhvw&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af_300lQm6-4F-tJT4tbJvGcx5o7r8R1Dv5zubQw7zr3CQ&oe=6A30003A",
         "label": "Chloe 頭髮保養 Reels"
       },
       "daily_data": [
@@ -248,19 +248,19 @@
         },
         {
           "date": "2026-06-11",
-          "impressions": 12099,
-          "reach": 11415,
-          "clicks": 572,
-          "ctr": 4.73,
+          "impressions": 13340,
+          "reach": 12385,
+          "clicks": 621,
+          "ctr": 4.66,
           "cpm": 101,
-          "spend": 1226,
-          "video_3s": 3796,
-          "video_25": 869,
-          "video_50": 322,
-          "video_75": 211,
-          "video_100": 131,
+          "spend": 1354,
+          "video_3s": 4139,
+          "video_25": 935,
+          "video_50": 344,
+          "video_75": 228,
+          "video_100": 139,
           "shares": 4,
-          "thruplay": 586
+          "thruplay": 635
         }
       ]
     }
