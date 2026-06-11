@@ -58,6 +58,13 @@
 .page-logo {
   box-shadow: none !important;
   border-bottom: 1px solid #e8ddd0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+.page-logo a {
+  justify-content: center !important;
 }
 
 /* Logo 文字 */
