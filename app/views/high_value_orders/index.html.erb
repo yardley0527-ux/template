@@ -82,6 +82,11 @@ end %>
           <th>購買商品</th>
           <th style="width:160px;">IG</th>
           <th>Email</th>
+          <% if @level == '新客' %>
+            <th style="width:90px;" class="text-center">贈品已送</th>
+          <% else %>
+            <th style="width:150px;">贈品紀錄</th>
+          <% end %>
         </tr>
       </thead>
       <tbody>
@@ -130,11 +135,32 @@ end %>
             <td class="text-muted small" style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
               <%= o.email_val.presence || '—' %>
             </td>
+            <% gift = @gift_records[o.order_num] %>
+            <% if @level == '新客' %>
+              <td class="text-center">
+                <input type="checkbox"
+                  class="gift-sent-checkbox"
+                  data-order="<%= o.order_num %>"
+                  data-url="<%= upsert_order_gift_record_path %>"
+                  <%= gift&.gift_sent? ? 'checked' : '' %>
+                  style="width:18px; height:18px; cursor:pointer; accent-color:#c00;">
+              </td>
+            <% else %>
+              <td>
+                <input type="text"
+                  class="form-control form-control-sm gift-note-input"
+                  data-order="<%= o.order_num %>"
+                  data-url="<%= upsert_order_gift_record_path %>"
+                  value="<%= gift&.gift_note.to_s %>"
+                  placeholder="填寫贈品"
+                  style="font-size:0.8rem;">
+              </td>
+            <% end %>
           </tr>
         <% end %>
         <% if display_orders.empty? %>
           <tr>
-            <td colspan="8" class="text-center py-5 text-muted">
+            <td colspan="9" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
               此期間無單筆 ≥ NT$10,000 的訂單
             </td>
@@ -149,4 +175,40 @@ end %>
   <div class="text-muted small mt-2 px-1">
     共 <%= display_orders.size %> 筆 ｜ 合計 NT$<%= number_with_delimiter(display_orders.sum { |o| o.order_total.to_f }.to_i) %>
   </div>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  function upsert(orderNum, url, data) {
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ order_number: orderNum, order_gift_record: data })
+    });
+  }
+
+  // 新客：checkbox 打勾
+  document.querySelectorAll('.gift-sent-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      upsert(cb.dataset.order, cb.dataset.url, { gift_sent: cb.checked });
+      cb.closest('tr').style.background = cb.checked ? '#f0fff4' : '';
+    });
+    // 初始已勾選的列著色
+    if (cb.checked) cb.closest('tr').style.background = '#f0fff4';
+  });
+
+  // 舊客：text input blur 存檔
+  document.querySelectorAll('.gift-note-input').forEach(function(input) {
+    input.addEventListener('blur', function() {
+      upsert(input.dataset.order, input.dataset.url, { gift_note: input.value });
+      input.style.borderColor = input.value.trim() ? '#28a745' : '';
+    });
+    // 初始已有值的顯示綠框
+    if (input.value.trim()) input.style.borderColor = '#28a745';
+  });
+})();
+</script>
 <% end %>

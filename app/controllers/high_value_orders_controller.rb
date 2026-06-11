@@ -48,6 +48,9 @@ class HighValueOrdersController < ApplicationController
     @grouped       = ALL_TABS.index_with { |lvl| @orders.select { |o| lvl == '新客' ? true : o.membership_level_col == lvl } }
     @total_revenue = @orders.sum { |o| o.order_total.to_f }
     @total_count   = @orders.size
+
+    order_nums = @orders.map(&:order_num)
+    @gift_records = OrderGiftRecord.where(order_number: order_nums).index_by(&:order_number)
   end
 
   private

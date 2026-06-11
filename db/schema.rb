@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_11_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_11_122556) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -245,6 +245,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_11_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["date"], name: "index_livestreams_on_date", unique: true
+  end
+
+  create_table "order_gift_records", force: :cascade do |t|
+    t.string "order_number"
+    t.boolean "gift_sent", default: false, null: false
+    t.string "gift_note"
+    t.string "updated_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_number"], name: "index_order_gift_records_on_order_number", unique: true
   end
 
   create_table "page_views", force: :cascade do |t|

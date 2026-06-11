@@ -9,7 +9,8 @@ Rails.application.routes.draw do
     resources :livestream_gifts, only: [:create, :update, :destroy]
   end
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
-  get '/high_value_orders',   to: 'high_value_orders#index',    as: :high_value_orders
+  get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
+  post '/order_gift_records/upsert', to: 'order_gift_records#upsert',  as: :upsert_order_gift_record
   get '/member_contacts',        to: 'member_contacts#index',  as: :member_contacts
   get '/member_contacts/export', to: 'member_contacts#export', as: :member_contacts_export
   get  '/ig_dashboard',             to: 'ig_dashboard#index',         as: :ig_dashboard
