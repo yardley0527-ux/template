@@ -24,7 +24,7 @@ class HighValueOrdersController < ApplicationController
     all_for_counts = apply_period(
       count_base
         .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
-        .joins("LEFT JOIN customer_purchase_summaries cps ON cps.email = o.email")
+        .joins("LEFT JOIN (SELECT email, MAX(purchase_count) AS purchase_count FROM customer_purchase_summaries GROUP BY email) cps ON cps.email = o.email")
         .select(
           "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
           "MAX(cps.purchase_count) AS purchase_count_val"
@@ -62,14 +62,14 @@ class HighValueOrdersController < ApplicationController
     end
     scope
       .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
-      .joins("LEFT JOIN customer_purchase_summaries cps ON cps.email = o.email")
+      .joins("LEFT JOIN (SELECT email, MAX(purchase_count) AS purchase_count FROM customer_purchase_summaries GROUP BY email) cps ON cps.email = o.email")
       .select(
         "o.order_number AS order_num",
         "MAX(o.customer_name) AS cust_name",
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
         "MAX(o.order_date) AS ord_date",
         "MAX(o.total_amount) AS order_total",
-        "STRING_AGG(o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name) AS products_list",
+        "STRING_AGG(DISTINCT o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name || ' ×' || o.quantity::text) AS products_list",
         "MAX(COALESCE(sc.instagram_account, o.instagram_account)) AS ig_account",
         "MAX(COALESCE(sc.email, o.email)) AS email_val",
         "MAX(cps.purchase_count) AS purchase_count_val"
