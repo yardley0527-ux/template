@@ -12,9 +12,11 @@ Rails.application.routes.draw do
   get '/high_value_orders',   to: 'high_value_orders#index',    as: :high_value_orders
   get '/member_contacts',        to: 'member_contacts#index',  as: :member_contacts
   get '/member_contacts/export', to: 'member_contacts#export', as: :member_contacts_export
-  get  '/ig_dashboard',         to: 'ig_dashboard#index',   as: :ig_dashboard
-  get  '/ads_dashboard',        to: 'ads_dashboard#index',  as: :ads_dashboard
-  post '/ig_dashboard/refresh', to: 'ig_dashboard#refresh', as: :ig_dashboard_refresh
+  get  '/ig_dashboard',             to: 'ig_dashboard#index',         as: :ig_dashboard
+  get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
+  post '/ig_dashboard/refresh',     to: 'ig_dashboard#refresh',       as: :ig_dashboard_refresh
+  get  '/threads_dashboard',        to: 'threads_dashboard#index',    as: :threads_dashboard
+  post '/threads_dashboard/refresh',to: 'threads_dashboard#refresh',  as: :threads_dashboard_refresh
   get "/api/birthday_customers", to: "welcome#birthday_customers"
   get '/livestream_analysis', to: 'livestream_analysis#index', as: :livestream_analysis
   get '/turmeric_analysis',                to: 'turmeric_analysis#index',          as: :turmeric_analysis

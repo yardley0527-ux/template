@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_11_090419) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_11_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -459,6 +459,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_11_090419) do
     t.text "customer_orders"
   end
 
+  create_table "storage_transactions", force: :cascade do |t|
+    t.integer "storage_id"
+    t.string "transaction_type"
+    t.integer "qty"
+    t.string "note"
+    t.string "whodunnit"
+    t.date "arrived_at"
+    t.string "batch_number"
+    t.text "qty_partial_before"
+    t.text "qty_partial_after"
+    t.integer "qty_before"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
   create_table "storages", force: :cascade do |t|
     t.string "seq"
     t.string "itemno"
@@ -474,6 +489,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_11_090419) do
     t.text "made_in"
     t.string "material_size"
     t.text "customer_orders"
+    t.integer "qty_full", default: 0
+    t.text "qty_partial"
   end
 
   create_table "subscriptions", force: :cascade do |t|
@@ -496,6 +513,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_11_090419) do
     t.index ["product_series"], name: "index_subscriptions_on_product_series"
     t.index ["shopline_customer_id"], name: "index_subscriptions_on_shopline_customer_id"
     t.index ["status"], name: "index_subscriptions_on_status"
+  end
+
+  create_table "threads_posts", force: :cascade do |t|
+    t.string "post_id", null: false
+    t.string "username"
+    t.string "full_name"
+    t.text "text_content"
+    t.integer "like_count", default: 0
+    t.integer "reply_count", default: 0
+    t.integer "repost_count", default: 0
+    t.string "post_url"
+    t.string "keyword"
+    t.datetime "posted_at"
+    t.date "fetched_on"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fetched_on"], name: "index_threads_posts_on_fetched_on"
+    t.index ["keyword"], name: "index_threads_posts_on_keyword"
+    t.index ["post_id"], name: "index_threads_posts_on_post_id", unique: true
   end
 
   create_table "users", force: :cascade do |t|
