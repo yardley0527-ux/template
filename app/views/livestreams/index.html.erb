@@ -18,10 +18,10 @@
   </div>
 <% else %>
   <div style="overflow-x: auto;">
-    <table class="table table-bordered text-center align-top" style="min-width: <%= [@livestreams.size * 180, 600].max %>px; table-layout: fixed;">
+    <table class="table table-bordered text-center align-top" style="min-width: <%= [@livestreams.size * 160, 600].max %>px; table-layout: fixed;">
       <colgroup>
         <% @livestreams.each do %>
-          <col style="width: 180px;">
+          <col style="width: 160px;">
         <% end %>
       </colgroup>
       <thead class="thead-light">
@@ -47,7 +47,7 @@
           <% @livestreams.each do |ls| %>
             <td class="p-1" style="background:#fafafa;">
               <% ls.livestream_images.each do |img| %>
-                <img src="<%= img.url %>" style="width:100%; border-radius:4px; margin-bottom:2px;" loading="lazy">
+                <img src="<%= img.url %>" style="width:100%; max-height:80px; object-fit:cover; border-radius:4px; margin-bottom:2px;" loading="lazy">
               <% end %>
             </td>
           <% end %>
