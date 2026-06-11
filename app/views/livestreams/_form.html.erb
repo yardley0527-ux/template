@@ -1,0 +1,160 @@
+<%= form_with model: livestream, local: true do |f| %>
+  <% if livestream.errors.any? %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% livestream.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="card mb-4">
+    <div class="card-header"><strong>基本資訊</strong></div>
+    <div class="card-body">
+      <div class="form-group">
+        <%= f.label :date, "直播日期" %>
+        <%= f.date_field :date, class: "form-control", style: "max-width:200px;" %>
+      </div>
+      <div class="form-group">
+        <%= f.label :notes, "備註" %>
+        <%= f.text_area :notes, class: "form-control", rows: 2 %>
+      </div>
+    </div>
+  </div>
+
+  <% if livestream.persisted? %>
+    <%# Images section %>
+    <div class="card mb-4">
+      <div class="card-header d-flex align-items-center">
+        <strong>Banner 圖片</strong>
+        <button type="button" id="upload_banner_btn" class="btn btn-sm btn-outline-primary ml-auto">
+          <i class="fal fa-upload mr-1"></i> 上傳圖片
+        </button>
+      </div>
+      <div class="card-body">
+        <div id="banner-images-container" class="d-flex flex-wrap" style="gap:12px;">
+          <% livestream.livestream_images.each do |img| %>
+            <div id="banner-img-<%= img.id %>" class="position-relative" style="width:160px;">
+              <img src="<%= img.url %>" style="width:100%; border-radius:6px;">
+              <button type="button"
+                class="btn btn-xs btn-danger position-absolute"
+                style="top:4px;right:4px;"
+                data-delete-image-url="<%= livestream_livestream_image_path(livestream, img) %>">
+                <i class="fal fa-times"></i>
+              </button>
+            </div>
+          <% end %>
+        </div>
+        <p class="text-muted small mt-2 mb-0" id="no-images-msg" <%= livestream.livestream_images.any? ? 'style="display:none;"' : '' %>>尚無圖片</p>
+      </div>
+    </div>
+
+    <%# Products section %>
+    <div class="card mb-4">
+      <div class="card-header"><strong>販售商品</strong></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" id="products-table">
+          <thead class="thead-light">
+            <tr>
+              <th>商品名稱</th>
+              <th style="width:120px;">價格（元）</th>
+              <th style="width:60px;"></th>
+            </tr>
+          </thead>
+          <tbody id="products-tbody">
+            <% livestream.livestream_products.each do |p| %>
+              <tr id="product-row-<%= p.id %>">
+                <td>
+                  <input type="text" class="form-control form-control-sm product-name"
+                    value="<%= p.name %>"
+                    data-product-id="<%= p.id %>"
+                    data-update-url="<%= livestream_livestream_product_path(livestream, p) %>">
+                </td>
+                <td>
+                  <input type="number" class="form-control form-control-sm product-price"
+                    value="<%= p.price %>"
+                    data-product-id="<%= p.id %>"
+                    data-update-url="<%= livestream_livestream_product_path(livestream, p) %>">
+                </td>
+                <td>
+                  <button type="button" class="btn btn-xs btn-outline-danger delete-product-btn"
+                    data-url="<%= livestream_livestream_product_path(livestream, p) %>"
+                    data-row-id="product-row-<%= p.id %>">
+                    <i class="fal fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+        <div class="p-3 border-top d-flex" style="gap:8px;">
+          <input type="text" id="new-product-name" class="form-control form-control-sm" placeholder="商品名稱（e.g. 全能（1盒））" style="flex:1;">
+          <input type="number" id="new-product-price" class="form-control form-control-sm" placeholder="價格" style="width:100px;">
+          <button type="button" id="add-product-btn" class="btn btn-sm btn-primary"
+            data-url="<%= livestream_livestream_products_path(livestream) %>">
+            新增
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <%# Gifts section %>
+    <div class="card mb-4">
+      <div class="card-header"><strong>贈品 / 優惠條件</strong></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" id="gifts-table">
+          <thead class="thead-light">
+            <tr>
+              <th>說明</th>
+              <th style="width:80px;" class="text-center">粗體紅字</th>
+              <th style="width:60px;"></th>
+            </tr>
+          </thead>
+          <tbody id="gifts-tbody">
+            <% livestream.livestream_gifts.each do |g| %>
+              <tr id="gift-row-<%= g.id %>">
+                <td>
+                  <input type="text" class="form-control form-control-sm gift-description"
+                    value="<%= g.description %>"
+                    data-gift-id="<%= g.id %>"
+                    data-update-url="<%= livestream_livestream_gift_path(livestream, g) %>">
+                </td>
+                <td class="text-center">
+                  <input type="checkbox" class="gift-highlight"
+                    <%= g.highlight? ? 'checked' : '' %>
+                    data-gift-id="<%= g.id %>"
+                    data-update-url="<%= livestream_livestream_gift_path(livestream, g) %>">
+                </td>
+                <td>
+                  <button type="button" class="btn btn-xs btn-outline-danger delete-gift-btn"
+                    data-url="<%= livestream_livestream_gift_path(livestream, g) %>"
+                    data-row-id="gift-row-<%= g.id %>">
+                    <i class="fal fa-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+        <div class="p-3 border-top d-flex align-items-center" style="gap:8px;">
+          <input type="text" id="new-gift-description" class="form-control form-control-sm" placeholder="贈品說明（e.g. 直播下單送眼部按摩棒）" style="flex:1;">
+          <label class="mb-0 d-flex align-items-center" style="gap:4px; white-space:nowrap;">
+            <input type="checkbox" id="new-gift-highlight"> 粗體紅字
+          </label>
+          <button type="button" id="add-gift-btn" class="btn btn-sm btn-primary"
+            data-url="<%= livestream_livestream_gifts_path(livestream) %>">
+            新增
+          </button>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <p class="text-muted small">儲存後即可新增圖片、商品、贈品。</p>
+  <% end %>
+
+  <div class="d-flex" style="gap:8px;">
+    <%= f.submit "儲存", class: "btn btn-primary" %>
+    <%= link_to "取消", livestreams_path, class: "btn btn-secondary" %>
+  </div>
+<% end %>

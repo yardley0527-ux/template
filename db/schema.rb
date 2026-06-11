@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_10_063920) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_11_090419) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -209,6 +209,44 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_10_063920) do
     t.datetime "updated_at", precision: nil, default: -> { "now()" }
   end
 
+  create_table "livestream_gifts", force: :cascade do |t|
+    t.bigint "livestream_id", null: false
+    t.string "description", null: false
+    t.boolean "highlight", default: false, null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["livestream_id"], name: "index_livestream_gifts_on_livestream_id"
+  end
+
+  create_table "livestream_images", force: :cascade do |t|
+    t.bigint "livestream_id", null: false
+    t.string "cloudinary_public_id", null: false
+    t.string "url", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["livestream_id"], name: "index_livestream_images_on_livestream_id"
+  end
+
+  create_table "livestream_products", force: :cascade do |t|
+    t.bigint "livestream_id", null: false
+    t.string "name", null: false
+    t.integer "price", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["livestream_id"], name: "index_livestream_products_on_livestream_id"
+  end
+
+  create_table "livestreams", force: :cascade do |t|
+    t.date "date", null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["date"], name: "index_livestreams_on_date", unique: true
+  end
+
   create_table "page_views", force: :cascade do |t|
     t.string "controller_name", null: false
     t.string "action_name", null: false
@@ -387,6 +425,57 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_10_063920) do
     t.index ["source_year", "source_month"], name: "index_shopline_orders_on_source_year_and_source_month"
   end
 
+  create_table "storage_cn_transactions", force: :cascade do |t|
+    t.integer "storage_cn_id"
+    t.string "transaction_type"
+    t.integer "qty"
+    t.string "note"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.string "whodunnit"
+    t.date "arrived_at"
+    t.string "batch_number"
+    t.text "qty_partial_before"
+    t.text "qty_partial_after"
+    t.integer "qty_before"
+  end
+
+  create_table "storage_cns", force: :cascade do |t|
+    t.integer "seq"
+    t.string "item_no"
+    t.string "place"
+    t.string "qty"
+    t.text "remark"
+    t.boolean "notice"
+    t.integer "warn"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "part_number"
+    t.text "estimated_arrival_date"
+    t.integer "qty_full", default: 0
+    t.text "qty_partial"
+    t.text "made_in"
+    t.string "material_size"
+    t.text "customer_orders"
+  end
+
+  create_table "storages", force: :cascade do |t|
+    t.string "seq"
+    t.string "itemno"
+    t.string "place"
+    t.string "qty"
+    t.text "remark"
+    t.boolean "notice"
+    t.integer "warn"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "part_number"
+    t.text "estimated_arrival_date"
+    t.text "made_in"
+    t.string "material_size"
+    t.text "customer_orders"
+  end
+
   create_table "subscriptions", force: :cascade do |t|
     t.bigint "shopline_customer_id", null: false
     t.string "product_name", null: false
@@ -423,11 +512,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_10_063920) do
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
+  create_table "versions", force: :cascade do |t|
+    t.string "item_type", null: false
+    t.bigint "item_id", null: false
+    t.string "event", null: false
+    t.string "whodunnit"
+    t.text "object"
+    t.datetime "created_at", precision: nil
+    t.text "object_changes"
+    t.index ["item_type", "item_id"], name: "index_versions_on_item_type_and_item_id"
+  end
+
   add_foreign_key "albums", "shopline_customers"
   add_foreign_key "health_assessment_products", "products"
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"
   add_foreign_key "ig_posts", "ig_profiles"
   add_foreign_key "ig_snapshots", "ig_profiles"
+  add_foreign_key "livestream_gifts", "livestreams"
+  add_foreign_key "livestream_images", "livestreams"
+  add_foreign_key "livestream_products", "livestreams"
   add_foreign_key "photos", "albums"
   add_foreign_key "shopline_customer_health_assessments", "shopline_customers"
   add_foreign_key "shopline_customer_health_questionnaires", "shopline_customers"

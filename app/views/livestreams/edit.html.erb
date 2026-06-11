@@ -1,0 +1,219 @@
+<% content_for :page_title, "編輯直播 #{@livestream.date.strftime('%m/%d')}" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-edit mr-2"></i> 編輯直播 &mdash; <%= @livestream.date.strftime("%-m/%-d") %>
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <%= render "form", livestream: @livestream %>
+  </div>
+</div>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  // ── Cloudinary upload ──────────────────────────────────────────────────────
+  var uploadBtn = document.getElementById('upload_banner_btn');
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', function() {
+      loadCloudinary().then(function(cloudinary) {
+        var widget = cloudinary.createUploadWidget(
+          {
+            cloudName: '<%= ENV["CLOUDINARY_CLOUD_NAME"] %>',
+            uploadPreset: 'ml_default',
+            multiple: true,
+            maxFiles: 2,
+            resourceType: 'image'
+          },
+          function(error, result) {
+            if (!error && result && result.event === 'success') {
+              var info = result.info;
+              fetch('<%= livestream_livestream_images_path(@livestream) %>', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+                body: JSON.stringify({ livestream_image: { cloudinary_public_id: info.public_id, url: info.secure_url, position: 0 } })
+              })
+              .then(function(r) { return r.json(); })
+              .then(function(data) {
+                var container = document.getElementById('banner-images-container');
+                var div = document.createElement('div');
+                div.id = 'banner-img-' + data.id;
+                div.className = 'position-relative';
+                div.style.width = '160px';
+                div.innerHTML = '<img src="' + data.url + '" style="width:100%;border-radius:6px;">' +
+                  '<button type="button" class="btn btn-xs btn-danger position-absolute" style="top:4px;right:4px;" data-delete-image-url="<%= livestreams_path %>/' + '<%= @livestream.id %>/livestream_images/' + data.id + '"><i class="fal fa-times"></i></button>';
+                container.appendChild(div);
+                document.getElementById('no-images-msg').style.display = 'none';
+                bindDeleteImage(div.querySelector('button'));
+              });
+            }
+          }
+        );
+        widget.open();
+      });
+    });
+  }
+
+  // ── Delete image ───────────────────────────────────────────────────────────
+  function bindDeleteImage(btn) {
+    btn.addEventListener('click', function() {
+      if (!confirm('確定刪除這張圖片？')) return;
+      var url = btn.getAttribute('data-delete-image-url');
+      fetch(url, { method: 'DELETE', headers: { 'X-CSRF-Token': CSRF_TOKEN } })
+        .then(function() {
+          var wrapper = btn.closest('[id^="banner-img-"]');
+          wrapper.remove();
+          if (!document.querySelector('[id^="banner-img-"]')) {
+            document.getElementById('no-images-msg').style.display = '';
+          }
+        });
+    });
+  }
+  document.querySelectorAll('[data-delete-image-url]').forEach(bindDeleteImage);
+
+  // ── Add product ────────────────────────────────────────────────────────────
+  document.getElementById('add-product-btn').addEventListener('click', function() {
+    var name = document.getElementById('new-product-name').value.trim();
+    var price = document.getElementById('new-product-price').value.trim();
+    if (!name || !price) { alert('請填寫商品名稱和價格'); return; }
+    var url = this.getAttribute('data-url');
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+      body: JSON.stringify({ livestream_product: { name: name, price: parseInt(price) } })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.errors) { alert(data.errors.join('\n')); return; }
+      appendProductRow(data);
+      document.getElementById('new-product-name').value = '';
+      document.getElementById('new-product-price').value = '';
+    });
+  });
+
+  function appendProductRow(p) {
+    var tbody = document.getElementById('products-tbody');
+    var updateUrl = '<%= livestreams_path %>/<%= @livestream.id %>/livestream_products/' + p.id;
+    var tr = document.createElement('tr');
+    tr.id = 'product-row-' + p.id;
+    tr.innerHTML =
+      '<td><input type="text" class="form-control form-control-sm product-name" value="' + escHtml(p.name) + '" data-product-id="' + p.id + '" data-update-url="' + updateUrl + '"></td>' +
+      '<td><input type="number" class="form-control form-control-sm product-price" value="' + p.price + '" data-product-id="' + p.id + '" data-update-url="' + updateUrl + '"></td>' +
+      '<td><button type="button" class="btn btn-xs btn-outline-danger delete-product-btn" data-url="' + updateUrl + '" data-row-id="product-row-' + p.id + '"><i class="fal fa-trash"></i></button></td>';
+    tbody.appendChild(tr);
+    bindProductEvents(tr);
+  }
+
+  function bindProductEvents(row) {
+    row.querySelectorAll('.product-name, .product-price').forEach(function(input) {
+      input.addEventListener('blur', function() {
+        var nameInput = row.querySelector('.product-name');
+        var priceInput = row.querySelector('.product-price');
+        fetch(input.getAttribute('data-update-url'), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ livestream_product: { name: nameInput.value, price: parseInt(priceInput.value) } })
+        });
+      });
+    });
+    row.querySelectorAll('.delete-product-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (!confirm('確定刪除？')) return;
+        fetch(btn.getAttribute('data-url'), { method: 'DELETE', headers: { 'X-CSRF-Token': CSRF_TOKEN } })
+          .then(function() { document.getElementById(btn.getAttribute('data-row-id')).remove(); });
+      });
+    });
+  }
+  document.querySelectorAll('#products-tbody tr').forEach(bindProductEvents);
+
+  // ── Add gift ───────────────────────────────────────────────────────────────
+  document.getElementById('add-gift-btn').addEventListener('click', function() {
+    var description = document.getElementById('new-gift-description').value.trim();
+    var highlight = document.getElementById('new-gift-highlight').checked;
+    if (!description) { alert('請填寫贈品說明'); return; }
+    var url = this.getAttribute('data-url');
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+      body: JSON.stringify({ livestream_gift: { description: description, highlight: highlight } })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.errors) { alert(data.errors.join('\n')); return; }
+      appendGiftRow(data);
+      document.getElementById('new-gift-description').value = '';
+      document.getElementById('new-gift-highlight').checked = false;
+    });
+  });
+
+  function appendGiftRow(g) {
+    var tbody = document.getElementById('gifts-tbody');
+    var updateUrl = '<%= livestreams_path %>/<%= @livestream.id %>/livestream_gifts/' + g.id;
+    var tr = document.createElement('tr');
+    tr.id = 'gift-row-' + g.id;
+    tr.innerHTML =
+      '<td><input type="text" class="form-control form-control-sm gift-description" value="' + escHtml(g.description) + '" data-gift-id="' + g.id + '" data-update-url="' + updateUrl + '"></td>' +
+      '<td class="text-center"><input type="checkbox" class="gift-highlight" ' + (g.highlight ? 'checked' : '') + ' data-gift-id="' + g.id + '" data-update-url="' + updateUrl + '"></td>' +
+      '<td><button type="button" class="btn btn-xs btn-outline-danger delete-gift-btn" data-url="' + updateUrl + '" data-row-id="gift-row-' + g.id + '"><i class="fal fa-trash"></i></button></td>';
+    tbody.appendChild(tr);
+    bindGiftEvents(tr);
+  }
+
+  function bindGiftEvents(row) {
+    row.querySelectorAll('.gift-description').forEach(function(input) {
+      input.addEventListener('blur', function() {
+        var highlight = row.querySelector('.gift-highlight').checked;
+        fetch(input.getAttribute('data-update-url'), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ livestream_gift: { description: input.value, highlight: highlight } })
+        });
+      });
+    });
+    row.querySelectorAll('.gift-highlight').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var description = row.querySelector('.gift-description').value;
+        fetch(cb.getAttribute('data-update-url'), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+          body: JSON.stringify({ livestream_gift: { description: description, highlight: cb.checked } })
+        });
+      });
+    });
+    row.querySelectorAll('.delete-gift-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (!confirm('確定刪除？')) return;
+        fetch(btn.getAttribute('data-url'), { method: 'DELETE', headers: { 'X-CSRF-Token': CSRF_TOKEN } })
+          .then(function() { document.getElementById(btn.getAttribute('data-row-id')).remove(); });
+      });
+    });
+  }
+  document.querySelectorAll('#gifts-tbody tr').forEach(bindGiftEvents);
+
+  // ── Cloudinary loader (same pattern as albums) ─────────────────────────────
+  var cloudinaryPromise = null;
+  function loadCloudinary() {
+    if (window.cloudinary) return Promise.resolve(window.cloudinary);
+    if (cloudinaryPromise) return cloudinaryPromise;
+    cloudinaryPromise = new Promise(function(resolve, reject) {
+      var script = document.createElement('script');
+      script.src = 'https://upload-widget.cloudinary.com/global/all.js';
+      script.setAttribute('data-cloudinary-widget', 'true');
+      script.onload = function() { resolve(window.cloudinary); };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    return cloudinaryPromise;
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
+</script>
+<% end %>

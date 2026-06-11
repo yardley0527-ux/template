@@ -1,0 +1,89 @@
+<% content_for :page_title, "直播歷史" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-video mr-2 text-danger"></i> 直播歷史
+  </h1>
+  <div class="ml-auto">
+    <%= link_to new_livestream_path, class: "btn btn-primary btn-sm" do %>
+      <i class="fal fa-plus mr-1"></i> 新增直播
+    <% end %>
+  </div>
+</div>
+
+<% if @livestreams.empty? %>
+  <div class="text-center py-5 text-muted">
+    <i class="fal fa-video fa-3x mb-3 d-block opacity-25"></i>
+    尚無直播紀錄，<%= link_to "新增第一場", new_livestream_path %>
+  </div>
+<% else %>
+  <div style="overflow-x: auto;">
+    <table class="table table-bordered text-center align-top" style="min-width: <%= [@livestreams.size * 180, 600].max %>px; table-layout: fixed;">
+      <colgroup>
+        <% @livestreams.each do %>
+          <col style="width: 180px;">
+        <% end %>
+      </colgroup>
+      <thead class="thead-light">
+        <tr>
+          <% @livestreams.each do |ls| %>
+            <th class="p-2">
+              <div class="font-weight-bold"><%= ls.date.strftime("%-m/%-d") %></div>
+              <div class="mt-1" style="white-space:nowrap;">
+                <%= link_to edit_livestream_path(ls), class: "btn btn-xs btn-outline-secondary mr-1" do %>
+                  <i class="fal fa-edit"></i>
+                <% end %>
+                <%= link_to livestream_path(ls), method: :delete, data: { confirm: "確定刪除 #{ls.date.strftime('%m/%d')} 的直播？" }, class: "btn btn-xs btn-outline-danger" do %>
+                  <i class="fal fa-trash"></i>
+                <% end %>
+              </div>
+            </th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <%# Banner images row %>
+        <tr>
+          <% @livestreams.each do |ls| %>
+            <td class="p-1" style="background:#fafafa;">
+              <% ls.livestream_images.each do |img| %>
+                <img src="<%= img.url %>" style="width:100%; border-radius:4px; margin-bottom:2px;" loading="lazy">
+              <% end %>
+            </td>
+          <% end %>
+        </tr>
+
+        <%# Products rows - find max product count %>
+        <% max_products = @livestreams.map { |ls| ls.livestream_products.size }.max || 0 %>
+        <% max_products.times do |i| %>
+          <tr>
+            <% @livestreams.each do |ls| %>
+              <td class="p-2 small">
+                <% p = ls.livestream_products[i] %>
+                <% if p %>
+                  <span class="font-weight-bold"><%= p.name %></span>
+                  <span class="text-danger ml-1"><%= number_with_delimiter(p.price) %> 元</span>
+                <% end %>
+              </td>
+            <% end %>
+          </tr>
+        <% end %>
+
+        <%# Gifts rows - find max gift count %>
+        <% max_gifts = @livestreams.map { |ls| ls.livestream_gifts.size }.max || 0 %>
+        <% max_gifts.times do |i| %>
+          <tr style="background:#fffbe6;">
+            <% @livestreams.each do |ls| %>
+              <td class="p-2 small">
+                <% g = ls.livestream_gifts[i] %>
+                <% if g %>
+                  <span class="<%= g.highlight? ? 'font-weight-bold text-danger' : '' %>"><%= g.description %></span>
+                <% end %>
+              </td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

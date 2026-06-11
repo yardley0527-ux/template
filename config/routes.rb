@@ -2,6 +2,12 @@ Rails.application.routes.draw do
   devise_for :users, skip: [:registrations], controllers: { sessions: 'users/sessions' }
 
   root 'welcome#index'
+
+  resources :livestreams, only: [:index, :new, :create, :edit, :update, :destroy] do
+    resources :livestream_images, only: [:create, :destroy]
+    resources :livestream_products, only: [:create, :update, :destroy]
+    resources :livestream_gifts, only: [:create, :update, :destroy]
+  end
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
   get '/high_value_orders',   to: 'high_value_orders#index',    as: :high_value_orders
   get '/member_contacts',        to: 'member_contacts#index',  as: :member_contacts
