@@ -147,15 +147,23 @@ end %>
               </td>
             <% else %>
               <td>
-                <select class="form-control form-control-sm gift-note-input"
-                  data-order="<%= o.order_num %>"
-                  data-url="<%= upsert_order_gift_record_path %>"
-                  style="font-size:0.8rem;">
-                  <option value="">— 選擇贈品 —</option>
-                  <% HighValueOrdersController::SERIES_OPTIONS.each do |s| %>
-                    <option value="<%= s %>" <%= gift&.gift_note == s ? 'selected' : '' %>><%= s %></option>
-                  <% end %>
-                </select>
+                <div class="d-flex align-items-center" style="gap:4px;">
+                  <select class="form-control form-control-sm gift-note-input"
+                    data-order="<%= o.order_num %>"
+                    data-url="<%= upsert_order_gift_record_path %>"
+                    style="font-size:0.8rem;">
+                    <option value="">— 選擇贈品 —</option>
+                    <% HighValueOrdersController::SERIES_OPTIONS.each do |s| %>
+                      <option value="<%= s %>" <%= gift&.gift_note == s ? 'selected' : '' %>><%= s %></option>
+                    <% end %>
+                  </select>
+                  <button type="button" class="btn btn-sm gift-save-btn"
+                    data-order="<%= o.order_num %>"
+                    data-url="<%= upsert_order_gift_record_path %>"
+                    style="background:#c8a882; color:#fff; white-space:nowrap; font-size:0.78rem; padding:3px 8px;">
+                    更新
+                  </button>
+                </div>
               </td>
             <% end %>
           </tr>
@@ -215,10 +223,18 @@ end %>
   // 舊客：select change 存檔
   document.querySelectorAll('.gift-note-input').forEach(function(sel) {
     sel.addEventListener('change', function() {
-      upsert(sel.dataset.order, sel.dataset.url, { gift_note: sel.value }, sel.closest('td'));
       sel.style.borderColor = sel.value ? '#28a745' : '';
     });
     if (sel.value) sel.style.borderColor = '#28a745';
+  });
+
+  // 更新按鈕
+  document.querySelectorAll('.gift-save-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var td = btn.closest('td');
+      var sel = td.querySelector('.gift-note-input');
+      upsert(btn.dataset.order, btn.dataset.url, { gift_note: sel.value }, td);
+    });
   });
 })();
 </script>
