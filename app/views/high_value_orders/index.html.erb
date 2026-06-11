@@ -237,10 +237,10 @@ end %>
     if (cb.checked) cb.closest('tr').style.background = '#f0fff4';
   });
 
-  // 舊客：select change 存檔
+  // 舊客：select change 只改邊框顏色，不存檔
   document.querySelectorAll('.gift-note-input').forEach(function(sel) {
     sel.addEventListener('change', function() {
-      sel.style.borderColor = sel.value ? '#28a745' : '';
+      sel.style.borderColor = '#f0ad4e';
     });
     if (sel.value) sel.style.borderColor = '#28a745';
   });
