@@ -162,7 +162,14 @@
 
   <%# === 訂單歷史 === %>
   <section class="section" id="orders-section">
-    <h2 class="section-title">📋 歷史訂單（<%= @orders_total %> 筆）</h2>
+    <h2 class="section-title">
+      📋 歷史訂單（<%= @orders_total %> 筆）
+      <% if @unpurchased_series.any? %>
+        <span class="unpurchased-label">尚未購買：<%= @unpurchased_series.join("、") %></span>
+      <% else %>
+        <span class="unpurchased-label all-bought">✅ 12 個系列全買過</span>
+      <% end %>
+    </h2>
 
     <% if @orders_total == 0 %>
       <p class="empty-state">尚無訂單紀錄</p>

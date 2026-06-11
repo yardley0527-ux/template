@@ -212,6 +212,11 @@ class CustomersController < ApplicationController
     all_orders = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
     @product_analysis = analyze_products(all_orders)
 
+    purchased_series = all_orders.pluck(:product_name).compact.flat_map do |name|
+      SERIES_OPTIONS.select { |s| name.include?(s) || (s == "益生菌" && name.include?("益生箘")) }
+    end.uniq
+    @unpurchased_series = SERIES_OPTIONS - purchased_series
+
     @life_path     = @customer.birthdate.present? ? life_path_number(@customer.birthdate) : nil
     @personal_year = @customer.birthdate.present? ? personal_year_number(@customer.birthdate) : nil
     @zodiac_sign   = @customer.birthdate.present? ? zodiac_sign(@customer.birthdate) : nil
