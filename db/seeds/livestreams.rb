@@ -4,7 +4,7 @@ Livestream.destroy_all
 def p(name_with_price)
   # parse "全能（1盒）1699 元" → { name: "全能（1盒）", price: 1699 }
   name_with_price = name_with_price.strip.gsub(/\n/, ' ')
-  if (m = name_with_price.match(/^(.+?)\s+(\d+)\s*元\s*$/))
+  if (m = name_with_price.match(/^(.+?)(\d+)\s*元\s*$/))
     { name: m[1].strip, price: m[2].to_i }
   else
     { name: name_with_price, price: 0 }
