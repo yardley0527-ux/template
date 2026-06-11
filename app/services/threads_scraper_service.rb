@@ -2,8 +2,8 @@ require 'net/http'
 require 'json'
 
 class ThreadsScraperService
-  ACTOR_ID    = "automation-lab~threads-scraper"
-  APIFY_TOKEN = ENV['APIFY_TOKEN']
+  API_BASE = "https://api.scrapecreators.com/v1/threads/search"
+  API_KEY  = ENV['SCRAPECREATORS_API_KEY']
 
   KEYWORDS = %w[
     益生菌 膠原蛋白 保健食品 美白 抗老化
@@ -15,29 +15,34 @@ class ThreadsScraperService
   end
 
   def call
-    items = fetch_from_apify
-    return false if items.empty?
-
     today = Date.today
     saved = 0
 
-    items.each do |item|
-      post_id = item["postId"].presence || item["code"].presence
-      next if post_id.blank?
+    KEYWORDS.each do |keyword|
+      posts = fetch_keyword(keyword)
+      posts.each do |item|
+        post_id = item["pk"].to_s.presence || item["id"].to_s.presence
+        next if post_id.blank?
 
-      ThreadsPost.find_or_initialize_by(post_id: post_id).tap do |p|
-        p.username     = item["username"]
-        p.full_name    = item["fullName"]
-        p.text_content = item["text"].to_s.slice(0, 500)
-        p.like_count   = item["likeCount"].to_i
-        p.reply_count  = item["replyCount"].to_i
-        p.repost_count = item["repostCount"].to_i
-        p.post_url     = item["url"]
-        p.keyword      = detect_keyword(item["text"].to_s)
-        p.posted_at    = parse_time(item["timestamp"] || item["date"])
-        p.fetched_on   = today
-        p.save!
-        saved += 1
+        username = item.dig("user", "username")
+        code     = item["code"]
+
+        ThreadsPost.find_or_initialize_by(post_id: post_id).tap do |p|
+          p.username     = username
+          p.full_name    = item.dig("user", "full_name").to_s.presence || username
+          p.text_content = item.dig("caption", "text").to_s.slice(0, 500)
+          p.like_count   = item["like_count"].to_i
+          p.reply_count  = item.dig("text_post_app_info", "direct_reply_count").to_i
+          p.repost_count = item.dig("text_post_app_info", "repost_count").to_i
+          p.post_url     = code.present? && username.present? ? "https://www.threads.net/@#{username}/post/#{code}" : nil
+          p.keyword      = keyword
+          p.posted_at    = parse_time(item["taken_at"])
+          p.fetched_on   = today
+          p.save!
+          saved += 1
+        end
+      rescue => e
+        Rails.logger.warn("[ThreadsScraperService] skip post: #{e.message}")
       end
     end
 
@@ -50,33 +55,28 @@ class ThreadsScraperService
 
   private
 
-  def fetch_from_apify
-    uri = URI("https://api.apify.com/v2/acts/#{ACTOR_ID}/run-sync-get-dataset-items")
-    uri.query = URI.encode_www_form(token: APIFY_TOKEN, timeout: 180)
+  def fetch_keyword(keyword)
+    uri = URI(API_BASE)
+    uri.query = URI.encode_www_form(query: keyword)
 
     http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl    = true
-    http.read_timeout = 210
+    http.use_ssl      = true
+    http.read_timeout = 30
 
-    request = Net::HTTP::Post.new(uri)
-    request["Content-Type"] = "application/json"
-    request.body = {
-      mode: "search",
-      searchQueries: KEYWORDS,
-      maxPosts: 15
-    }.to_json
+    request = Net::HTTP::Get.new(uri)
+    request["x-api-key"] = API_KEY
 
     response = http.request(request)
-    JSON.parse(response.body)
-  end
-
-  def detect_keyword(text)
-    KEYWORDS.find { |kw| text.include?(kw) } || KEYWORDS.first
+    body = JSON.parse(response.body)
+    body["posts"] || []
+  rescue => e
+    Rails.logger.warn("[ThreadsScraperService] keyword=#{keyword} error: #{e.message}")
+    []
   end
 
   def parse_time(raw)
     return nil if raw.blank?
-    Time.parse(raw.to_s)
+    raw.is_a?(Integer) ? Time.at(raw) : Time.parse(raw.to_s)
   rescue
     nil
   end
