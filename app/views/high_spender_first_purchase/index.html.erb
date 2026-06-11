@@ -385,6 +385,12 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 .hs-tab.active .hs-tab-count { background: rgba(255,255,255,0.3); color: #fff; }
 .hs-tab-count { font-size: 10px; font-weight: 700; background: #e5e7eb; color: #6b7280; padding: 1px 5px; border-radius: 99px; }
 
+/* Toast 提示 */
+.hs-toast { position: fixed; bottom: 24px; right: 24px; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; opacity: 0; transform: translateY(8px); transition: opacity .25s, transform .25s; z-index: 9999; pointer-events: none; }
+.hs-toast-show { opacity: 1; transform: translateY(0); }
+.hs-toast-ok  { background: #16a34a; color: #fff; }
+.hs-toast-err { background: #dc2626; color: #fff; }
+
 /* LINE 綁定欄 */
 .hs-line-cell { white-space: nowrap; }
 .hs-line-select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 8px; font-size: 12px; color: #6b7280; background: #fff; cursor: pointer; }
@@ -454,6 +460,15 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+function hsShowToast(msg, ok) {
+  var t = document.createElement('div');
+  t.className = 'hs-toast' + (ok ? ' hs-toast-ok' : ' hs-toast-err');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.classList.add('hs-toast-show'); }, 10);
+  setTimeout(function() { t.classList.remove('hs-toast-show'); setTimeout(function() { t.remove(); }, 300); }, 2000);
+}
+
 function hsUpdateField(identityKey, field, value, url) {
   var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
   var body  = new URLSearchParams({ identity_key: identityKey, field: field, value: value });
@@ -461,7 +476,10 @@ function hsUpdateField(identityKey, field, value, url) {
     method: 'PATCH',
     headers: { 'X-CSRF-Token': token, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString()
-  });
+  }).then(function(r) {
+    if (r.ok) { hsShowToast('已儲存 ✓', true); }
+    else       { hsShowToast('儲存失敗，請重試', false); }
+  }).catch(function() { hsShowToast('儲存失敗，請重試', false); });
 }
 
 document.addEventListener('change', function(e) {
