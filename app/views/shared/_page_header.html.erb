@@ -31,23 +31,7 @@
     <% end %>
   </div>
 
-  <div class="search">
-    <%= form_tag pages_page_search_path, method: 'get', class: 'app-forms hidden-xs-down', role: 'search', autocomplete: 'off' do %>
-      <%= text_field_tag '', '', id: 'search-field', placeholder: 'Search for anything', class: 'form-control', tabindex: 1 %>
-      <%= link_to '#', onclick: 'return false;', class: 'btn-danger btn-search-close js-waves-off d-none', data: {action: 'toggle', class: 'mobile-search-on'} do %>
-        <i class="fal fa-times"></i>
-      <% end %>
-    <% end %>
-  </div>
-
   <div class="ml-auto d-flex">
-
-    <!-- activate app search icon (mobile) -->
-    <div class="hidden-sm-up">
-      <a href="#" class="header-icon" data-action="toggle" data-class="mobile-search-on" data-focus="search-field" title="Search">
-        <i class="fal fa-search"></i>
-      </a>
-    </div>
 
     <!-- app user menu -->
     <div>
