@@ -203,11 +203,11 @@ class CustomersController < ApplicationController
 
     @orders_page  = [params[:orders_page].to_i, 1].max
     @orders_total = ShoplineOrder.where(email: @customer.email).count
-    @orders_pages = (@orders_total.to_f / 30).ceil
+    @orders_pages = (@orders_total.to_f / 10).ceil
     @orders       = ShoplineOrder.where(email: @customer.email)
                       .order(order_date: :desc)
-                      .offset((@orders_page - 1) * 30)
-                      .limit(30)
+                      .offset((@orders_page - 1) * 10)
+                      .limit(10)
 
     all_orders = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
     @product_analysis = analyze_products(all_orders)
