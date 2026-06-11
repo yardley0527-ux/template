@@ -8,7 +8,6 @@ class ThreadsScraperService
   KEYWORDS = %w[
     益生菌 膠原蛋白 保健食品 美白 抗老化
     魚油 薑黃 代謝 腸道健康 穀胱甘肽 蔓越莓 眼睛保健
-    probiotics collagen supplement
   ].freeze
 
   def self.run
