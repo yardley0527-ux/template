@@ -16,8 +16,9 @@ Rails.application.routes.draw do
   get  '/ig_dashboard',             to: 'ig_dashboard#index',         as: :ig_dashboard
   get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
   post '/ig_dashboard/refresh',     to: 'ig_dashboard#refresh',       as: :ig_dashboard_refresh
-  get  '/threads_dashboard',        to: 'threads_dashboard#index',    as: :threads_dashboard
-  post '/threads_dashboard/refresh',to: 'threads_dashboard#refresh',  as: :threads_dashboard_refresh
+  get  '/threads_dashboard',          to: 'threads_dashboard#index',    as: :threads_dashboard
+  post '/threads_dashboard/refresh',  to: 'threads_dashboard#refresh',  as: :threads_dashboard_refresh
+  get  '/threads_dashboard/test_api', to: 'threads_dashboard#test_api', as: :threads_dashboard_test_api
   get "/api/birthday_customers", to: "welcome#birthday_customers"
   get '/livestream_analysis', to: 'livestream_analysis#index', as: :livestream_analysis
   get '/turmeric_analysis',                to: 'turmeric_analysis#index',          as: :turmeric_analysis
