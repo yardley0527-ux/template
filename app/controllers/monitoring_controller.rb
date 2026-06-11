@@ -33,6 +33,6 @@ class MonitoringController < ApplicationController
     # 客戶編輯軌跡
     @edit_logs = CustomerEditLog
       .order(created_at: :desc)
-      .limit(100)
+      .limit(20)
   end
 end

@@ -10,6 +10,7 @@ Bundler.require(*Rails.groups)
 module SmartadminRailsSeed
   class Application < Rails::Application
     config.load_defaults 7.1
+    config.time_zone = 'Taipei'
     config.app = 'SmartAdmin'
     config.version = '4.0.3'
     config.app_sidebar = true
