@@ -17,75 +17,80 @@
     尚無直播紀錄，<%= link_to "新增第一場", new_livestream_path %>
   </div>
 <% else %>
-  <div style="overflow-x: auto;">
-    <table class="table table-bordered text-center align-top" style="min-width: <%= [@livestreams.size * 160, 600].max %>px; table-layout: fixed;">
-      <colgroup>
-        <% @livestreams.each do %>
-          <col style="width: 160px;">
-        <% end %>
-      </colgroup>
-      <thead class="thead-light">
-        <tr>
-          <% @livestreams.each do |ls| %>
-            <th class="p-2">
-              <div class="font-weight-bold"><%= ls.date.strftime("%-m/%-d") %></div>
-              <div class="mt-1" style="white-space:nowrap;">
-                <%= link_to edit_livestream_path(ls), class: "btn btn-xs btn-outline-secondary mr-1" do %>
-                  <i class="fal fa-edit"></i>
-                <% end %>
-                <%= link_to livestream_path(ls), method: :delete, data: { confirm: "確定刪除 #{ls.date.strftime('%m/%d')} 的直播？" }, class: "btn btn-xs btn-outline-danger" do %>
-                  <i class="fal fa-trash"></i>
-                <% end %>
-              </div>
-            </th>
+  <% @livestreams.group_by { |ls| ls.date.year }.sort_by { |year, _| -year }.each do |year, group| %>
+    <h4 class="mt-4 mb-2 font-weight-bold" style="border-left:4px solid #c00; padding-left:10px;">
+      <%= year %> 年
+    </h4>
+    <div style="overflow-x: auto; margin-bottom: 2rem;">
+      <table class="table table-bordered text-center align-top" style="min-width: <%= [group.size * 160, 400].max %>px; table-layout: fixed;">
+        <colgroup>
+          <% group.each do %>
+            <col style="width: 160px;">
           <% end %>
-        </tr>
-      </thead>
-      <tbody>
-        <%# Banner images row %>
-        <tr>
-          <% @livestreams.each do |ls| %>
-            <td class="p-1" style="background:#fafafa;">
-              <div class="d-flex flex-wrap">
-              <% ls.livestream_images.each do |img| %>
-                <img src="<%= img.url %>" style="width:<%= ls.livestream_images.size > 1 ? '50%' : '100%' %>; object-fit:cover; border-radius:4px;" loading="lazy">
-              <% end %>
-            </div>
-            </td>
-          <% end %>
-        </tr>
-
-        <%# Products rows - find max product count %>
-        <% max_products = @livestreams.map { |ls| ls.livestream_products.size }.max || 0 %>
-        <% max_products.times do |i| %>
+        </colgroup>
+        <thead class="thead-light">
           <tr>
-            <% @livestreams.each do |ls| %>
-              <td class="p-2 small">
-                <% p = ls.livestream_products[i] %>
-                <% if p %>
-                  <span class="font-weight-bold"><%= p.name %></span>
-                  <span class="text-danger ml-1"><%= number_with_delimiter(p.price) %> 元</span>
-                <% end %>
+            <% group.each do |ls| %>
+              <th class="p-2">
+                <div class="font-weight-bold"><%= ls.date.strftime("%-m/%-d") %></div>
+                <div class="mt-1" style="white-space:nowrap;">
+                  <%= link_to edit_livestream_path(ls), class: "btn btn-xs btn-outline-secondary mr-1" do %>
+                    <i class="fal fa-edit"></i>
+                  <% end %>
+                  <%= link_to livestream_path(ls), method: :delete, data: { confirm: "確定刪除 #{ls.date.strftime('%m/%d')} 的直播？" }, class: "btn btn-xs btn-outline-danger" do %>
+                    <i class="fal fa-trash"></i>
+                  <% end %>
+                </div>
+              </th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <%# Banner images %>
+          <tr>
+            <% group.each do |ls| %>
+              <td class="p-1" style="background:#fafafa;">
+                <div class="d-flex flex-wrap">
+                  <% ls.livestream_images.each do |img| %>
+                    <img src="<%= img.url %>" style="width:<%= ls.livestream_images.size > 1 ? '50%' : '100%' %>; object-fit:cover; border-radius:4px;" loading="lazy">
+                  <% end %>
+                </div>
               </td>
             <% end %>
           </tr>
-        <% end %>
 
-        <%# Gifts rows - find max gift count %>
-        <% max_gifts = @livestreams.map { |ls| ls.livestream_gifts.size }.max || 0 %>
-        <% max_gifts.times do |i| %>
-          <tr style="background:#fffbe6;">
-            <% @livestreams.each do |ls| %>
-              <td class="p-2 small">
-                <% g = ls.livestream_gifts[i] %>
-                <% if g %>
-                  <span class="<%= g.highlight? ? 'font-weight-bold text-danger' : '' %>"><%= g.description %></span>
-                <% end %>
-              </td>
-            <% end %>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  </div>
+          <%# Products %>
+          <% max_products = group.map { |ls| ls.livestream_products.size }.max || 0 %>
+          <% max_products.times do |i| %>
+            <tr>
+              <% group.each do |ls| %>
+                <td class="p-2 small">
+                  <% prod = ls.livestream_products[i] %>
+                  <% if prod %>
+                    <span class="font-weight-bold"><%= prod.name %></span>
+                    <span class="text-danger ml-1"><%= number_with_delimiter(prod.price) %> 元</span>
+                  <% end %>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+
+          <%# Gifts %>
+          <% max_gifts = group.map { |ls| ls.livestream_gifts.size }.max || 0 %>
+          <% max_gifts.times do |i| %>
+            <tr style="background:#fffbe6;">
+              <% group.each do |ls| %>
+                <td class="p-2 small">
+                  <% g = ls.livestream_gifts[i] %>
+                  <% if g %>
+                    <span class="<%= g.highlight? ? 'font-weight-bold text-danger' : '' %>"><%= g.description %></span>
+                  <% end %>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
 <% end %>
