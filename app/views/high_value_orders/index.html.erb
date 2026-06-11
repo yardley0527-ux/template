@@ -147,13 +147,15 @@ end %>
               </td>
             <% else %>
               <td>
-                <input type="text"
-                  class="form-control form-control-sm gift-note-input"
+                <select class="form-control form-control-sm gift-note-input"
                   data-order="<%= o.order_num %>"
                   data-url="<%= upsert_order_gift_record_path %>"
-                  value="<%= gift&.gift_note.to_s %>"
-                  placeholder="填寫贈品"
                   style="font-size:0.8rem;">
+                  <option value="">— 選擇贈品 —</option>
+                  <% HighValueOrdersController::SERIES_OPTIONS.each do |s| %>
+                    <option value="<%= s %>" <%= gift&.gift_note == s ? 'selected' : '' %>><%= s %></option>
+                  <% end %>
+                </select>
               </td>
             <% end %>
           </tr>
@@ -200,14 +202,13 @@ end %>
     if (cb.checked) cb.closest('tr').style.background = '#f0fff4';
   });
 
-  // 舊客：text input blur 存檔
-  document.querySelectorAll('.gift-note-input').forEach(function(input) {
-    input.addEventListener('blur', function() {
-      upsert(input.dataset.order, input.dataset.url, { gift_note: input.value });
-      input.style.borderColor = input.value.trim() ? '#28a745' : '';
+  // 舊客：select change 存檔
+  document.querySelectorAll('.gift-note-input').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      upsert(sel.dataset.order, sel.dataset.url, { gift_note: sel.value });
+      sel.style.borderColor = sel.value ? '#28a745' : '';
     });
-    // 初始已有值的顯示綠框
-    if (input.value.trim()) input.style.borderColor = '#28a745';
+    if (sel.value) sel.style.borderColor = '#28a745';
   });
 })();
 </script>
