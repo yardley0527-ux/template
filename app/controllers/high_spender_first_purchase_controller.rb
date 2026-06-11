@@ -40,5 +40,12 @@ class HighSpenderFirstPurchaseController < ApplicationController
 
     identity_keys = @customers.map(&:identity_key).compact
     @follow_up_map = HighSpenderFollowUp.for_keys(identity_keys).group_by(&:identity_key)
+
+    @last_snapshot_week = CustomerPurchaseSummary.where.not(follow_up_week: nil).maximum(:follow_up_week)
+  end
+
+  def snapshot
+    monday = WeeklyFollowUpSnapshotService.call
+    redirect_to high_spender_first_purchase_path, notice: "本週跟進名單已更新（#{monday.strftime('%Y-%m-%d')} 起）"
   end
 end

@@ -38,10 +38,11 @@ module HighSpenderFirstPurchaseHelper
 
     days_since = (Date.today - customer.first_date.to_date).to_i
     cycle      = SERIES_CYCLE_DAYS.fetch(customer.first_series.to_s, 90)
+    this_monday = Date.today.beginning_of_week(:monday)
 
     if days_since >= cycle
       { label: "可能已流失", css: "fp-badge-lost",     tier: :lost,      urgent: false, days: days_since, cycle: cycle }
-    elsif days_since >= (cycle * 0.7).to_i
+    elsif customer.follow_up_week == this_monday
       { label: "本週跟進",   css: "fp-badge-thisweek", tier: :this_week, urgent: true,  days: days_since, cycle: cycle }
     else
       { label: "待跟進",     css: "fp-badge-neutral",  tier: :waiting,   urgent: false, days: days_since, cycle: cycle }

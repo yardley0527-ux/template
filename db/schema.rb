@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_11_122556) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_11_123353) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -93,6 +93,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_11_122556) do
     t.integer "silent_days_threshold", default: 30, null: false
     t.string "mobile_phone"
     t.string "identity_key", null: false
+    t.date "follow_up_week"
     t.index ["email"], name: "index_customer_purchase_summaries_on_email"
     t.index ["first_date"], name: "index_customer_purchase_summaries_on_first_date"
     t.index ["first_order_number"], name: "index_customer_purchase_summaries_on_first_order_number"
