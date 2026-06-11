@@ -58,12 +58,16 @@
 .page-logo {
   box-shadow: none !important;
   border-bottom: 1px solid #e8ddd0 !important;
+}
+
+/* sidebar 內的 logo 置中（不影響 top nav 的 logo） */
+.page-sidebar .page-logo {
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
 }
 
-.page-logo a {
+.page-sidebar .page-logo a {
   justify-content: center !important;
 }
 
