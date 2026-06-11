@@ -15,6 +15,11 @@ class ThreadsScraperService
   end
 
   def call
+    if API_KEY.blank?
+      Rails.logger.error("[ThreadsScraperService] SCRAPECREATORS_API_KEY 未設定")
+      return false
+    end
+
     today = Date.today
     saved = 0
 
