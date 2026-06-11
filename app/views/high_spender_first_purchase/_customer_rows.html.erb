@@ -29,6 +29,7 @@
         <th>距首購</th>
         <th>LINE 綁定</th>
         <th>催單產品</th>
+        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -81,6 +82,13 @@
                 <option value="<%= s %>" <%= c.follow_up_product == s ? "selected" : "" %>><%= s %></option>
               <% end %>
             </select>
+          </td>
+          <td class="hs-update-cell">
+            <button class="hs-update-btn"
+                    data-identity-key="<%= c.identity_key %>"
+                    data-update-url="<%= high_spender_first_purchase_update_field_path %>">
+              更新
+            </button>
           </td>
         </tr>
       <% end %>

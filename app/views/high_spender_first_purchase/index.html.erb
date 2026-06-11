@@ -401,6 +401,11 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 .hs-product-select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 8px; font-size: 12px; color: #374151; background: #fff; width: 100%; max-width: 150px; cursor: pointer; }
 .hs-product-select:focus { outline: none; border-color: #886ab5; }
 
+/* 更新按鈕 */
+.hs-update-cell { white-space: nowrap; }
+.hs-update-btn { padding: 4px 14px; background: #886ab5; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.hs-update-btn:hover { background: #6d52a0; }
+
 /* 分頁 */
 .hs-pager { display: flex; align-items: center; gap: 4px; padding: 10px 14px 8px; flex-wrap: wrap; }
 .hs-pager-btn { min-width: 30px; height: 28px; padding: 0 8px; border: 1px solid #e5e7eb; border-radius: 5px; background: #fff; font-size: 12px; color: #6b7280; cursor: pointer; font-weight: 500; }
@@ -499,6 +504,25 @@ document.addEventListener('change', function(e) {
 });
 
 document.addEventListener('click', function(e) {
+  var updateBtn = e.target.closest('.hs-update-btn');
+  if (updateBtn) {
+    var key = updateBtn.dataset.identityKey;
+    var url = updateBtn.dataset.updateUrl;
+    var row = updateBtn.closest('tr');
+    var lineSelect    = row.querySelector('.hs-line-select');
+    var productSelect = row.querySelector('.hs-product-select');
+    var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    Promise.all([
+      fetch(url, { method: 'PATCH', headers: { 'X-CSRF-Token': token, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ identity_key: key, field: 'line_bound',      value: lineSelect    ? lineSelect.value    : '0' }).toString() }),
+      fetch(url, { method: 'PATCH', headers: { 'X-CSRF-Token': token, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ identity_key: key, field: 'follow_up_product', value: productSelect ? productSelect.value : ''  }).toString() })
+    ]).then(function(rs) {
+      if (rs.every(function(r) { return r.ok; })) { hsShowToast('已儲存 ✓', true); }
+      else                                          { hsShowToast('儲存失敗，請重試', false); }
+    }).catch(function() { hsShowToast('儲存失敗，請重試', false); });
+    return;
+  }
+
   var btn = e.target.closest('.hs-tab');
   if (!btn) return;
   var tabsEl = btn.closest('[data-tier-tabs]');
