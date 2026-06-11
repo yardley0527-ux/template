@@ -184,28 +184,38 @@ end %>
 (function() {
   var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-  function upsert(orderNum, url, data) {
+  function upsert(orderNum, url, data, el) {
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
       body: JSON.stringify({ order_number: orderNum, order_gift_record: data })
+    }).then(function(r) {
+      if (r.ok && el) showSaved(el);
     });
+  }
+
+  function showSaved(el) {
+    var tip = document.createElement('span');
+    tip.textContent = '✓ 已儲存';
+    tip.style.cssText = 'position:absolute; background:#28a745; color:#fff; font-size:0.72rem; padding:2px 7px; border-radius:4px; pointer-events:none; white-space:nowrap; z-index:999;';
+    el.style.position = 'relative';
+    el.appendChild(tip);
+    setTimeout(function() { tip.remove(); }, 1500);
   }
 
   // 新客：checkbox 打勾
   document.querySelectorAll('.gift-sent-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
-      upsert(cb.dataset.order, cb.dataset.url, { gift_sent: cb.checked });
+      upsert(cb.dataset.order, cb.dataset.url, { gift_sent: cb.checked }, cb.closest('td'));
       cb.closest('tr').style.background = cb.checked ? '#f0fff4' : '';
     });
-    // 初始已勾選的列著色
     if (cb.checked) cb.closest('tr').style.background = '#f0fff4';
   });
 
   // 舊客：select change 存檔
   document.querySelectorAll('.gift-note-input').forEach(function(sel) {
     sel.addEventListener('change', function() {
-      upsert(sel.dataset.order, sel.dataset.url, { gift_note: sel.value });
+      upsert(sel.dataset.order, sel.dataset.url, { gift_note: sel.value }, sel.closest('td'));
       sel.style.borderColor = sel.value ? '#28a745' : '';
     });
     if (sel.value) sel.style.borderColor = '#28a745';
