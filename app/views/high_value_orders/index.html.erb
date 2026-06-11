@@ -147,11 +147,11 @@ end %>
               </td>
             <% else %>
               <td>
-                <div class="d-flex align-items-center" style="gap:4px;">
+                <div class="d-flex align-items-center" style="gap:8px;">
                   <select class="form-control form-control-sm gift-note-input"
                     data-order="<%= o.order_num %>"
                     data-url="<%= upsert_order_gift_record_path %>"
-                    style="font-size:0.8rem;">
+                    style="font-size:0.8rem; flex:1; min-width:0;">
                     <option value="">— 選擇贈品 —</option>
                     <% HighValueOrdersController::SERIES_OPTIONS.each do |s| %>
                       <option value="<%= s %>" <%= gift&.gift_note == s ? 'selected' : '' %>><%= s %></option>
@@ -160,7 +160,7 @@ end %>
                   <button type="button" class="btn btn-sm gift-save-btn"
                     data-order="<%= o.order_num %>"
                     data-url="<%= upsert_order_gift_record_path %>"
-                    style="background:#c8a882; color:#fff; white-space:nowrap; font-size:0.78rem; padding:3px 8px;">
+                    style="background:#c8a882; color:#fff; white-space:nowrap; font-size:0.78rem; padding:3px 10px; flex-shrink:0;">
                     更新
                   </button>
                 </div>
