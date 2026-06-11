@@ -202,20 +202,37 @@ end %>
     });
   }
 
-  function showSaved(el) {
-    var tip = document.createElement('span');
-    tip.textContent = '✓ 已儲存';
-    tip.style.cssText = 'position:absolute; background:#28a745; color:#fff; font-size:0.72rem; padding:2px 7px; border-radius:4px; pointer-events:none; white-space:nowrap; z-index:999;';
-    el.style.position = 'relative';
-    el.appendChild(tip);
-    setTimeout(function() { tip.remove(); }, 1500);
+  function showSaved(td) {
+    var btn = td.querySelector('.gift-save-btn');
+    if (btn) {
+      var orig = btn.textContent;
+      var origBg = btn.style.background;
+      btn.textContent = '✓ 已儲存';
+      btn.style.background = '#28a745';
+      btn.disabled = true;
+      setTimeout(function() {
+        btn.textContent = orig;
+        btn.style.background = origBg;
+        btn.disabled = false;
+      }, 2000);
+    }
   }
 
   // 新客：checkbox 打勾
   document.querySelectorAll('.gift-sent-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
-      upsert(cb.dataset.order, cb.dataset.url, { gift_sent: cb.checked }, cb.closest('td'));
+      var td = cb.closest('td');
+      upsert(cb.dataset.order, cb.dataset.url, { gift_sent: cb.checked }, td);
       cb.closest('tr').style.background = cb.checked ? '#f0fff4' : '';
+      // 在 checkbox 旁顯示提示文字
+      var old = td.querySelector('.cb-saved-tip');
+      if (old) old.remove();
+      var tip = document.createElement('div');
+      tip.className = 'cb-saved-tip';
+      tip.textContent = cb.checked ? '✓ 已送出' : '已取消';
+      tip.style.cssText = 'font-size:0.72rem; color:' + (cb.checked ? '#28a745' : '#999') + '; margin-top:2px; font-weight:600;';
+      td.appendChild(tip);
+      setTimeout(function() { tip.remove(); }, 2000);
     });
     if (cb.checked) cb.closest('tr').style.background = '#f0fff4';
   });
