@@ -73,6 +73,11 @@ class ThreadsScraperService
 
     response = http.request(request)
     body = JSON.parse(response.body)
+
+    unless response.code == "200" && body["posts"]
+      Rails.logger.warn("[ThreadsScraperService] keyword=#{keyword} status=#{response.code} body=#{response.body.to_s.first(300)}")
+    end
+
     body["posts"] || []
   rescue => e
     Rails.logger.warn("[ThreadsScraperService] keyword=#{keyword} error: #{e.message}")
