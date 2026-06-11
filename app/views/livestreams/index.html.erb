@@ -46,9 +46,11 @@
         <tr>
           <% @livestreams.each do |ls| %>
             <td class="p-1" style="background:#fafafa;">
+              <div class="d-flex flex-wrap">
               <% ls.livestream_images.each do |img| %>
-                <img src="<%= img.url %>" style="width:100%; max-height:80px; object-fit:cover; border-radius:4px; margin-bottom:2px;" loading="lazy">
+                <img src="<%= img.url %>" style="width:<%= ls.livestream_images.size > 1 ? '50%' : '100%' %>; object-fit:cover; border-radius:4px;" loading="lazy">
               <% end %>
+            </div>
             </td>
           <% end %>
         </tr>
