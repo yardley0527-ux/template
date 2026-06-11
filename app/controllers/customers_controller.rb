@@ -212,10 +212,23 @@ class CustomersController < ApplicationController
     all_orders = ShoplineOrder.where(email: @customer.email).order(order_date: :desc)
     @product_analysis = analyze_products(all_orders)
 
-    purchased_series = all_orders.pluck(:product_name).compact.flat_map do |name|
-      SERIES_OPTIONS.select { |s| name.include?(s) || (s == "益生菌" && name.include?("益生箘")) }
-    end.uniq
+    # 各系列最後購買日
+    series_last_date = Hash.new
+    all_orders.each do |o|
+      next if o.product_name.blank?
+      matched = SERIES_OPTIONS.select { |s| o.product_name.include?(s) || (s == "益生菌" && o.product_name.include?("益生箘")) }
+      matched.each do |s|
+        d = o.order_date&.to_date
+        series_last_date[s] = d if d && (series_last_date[s].nil? || d > series_last_date[s])
+      end
+    end
+
+    purchased_series    = series_last_date.keys
     @unpurchased_series = SERIES_OPTIONS - purchased_series
+
+    today = Date.today
+    @no_repurchase_3m = series_last_date.select { |_, d| (today - d).to_i > 90  }.keys
+    @no_repurchase_6m = series_last_date.select { |_, d| (today - d).to_i > 180 }.keys
 
     @life_path     = @customer.birthdate.present? ? life_path_number(@customer.birthdate) : nil
     @personal_year = @customer.birthdate.present? ? personal_year_number(@customer.birthdate) : nil

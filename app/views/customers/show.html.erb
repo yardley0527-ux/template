@@ -169,6 +169,12 @@
       <% else %>
         <span class="unpurchased-label all-bought">✅ 12 個系列全買過</span>
       <% end %>
+      <% if @no_repurchase_3m.any? %>
+        <span class="unpurchased-label repurchase-3m">3 個月未回購：<%= @no_repurchase_3m.join("、") %></span>
+      <% end %>
+      <% if @no_repurchase_6m.any? %>
+        <span class="unpurchased-label repurchase-6m">6 個月未回購：<%= @no_repurchase_6m.join("、") %></span>
+      <% end %>
     </h2>
 
     <% if @orders_total == 0 %>
