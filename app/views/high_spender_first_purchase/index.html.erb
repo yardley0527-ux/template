@@ -112,6 +112,9 @@
                   <span class="hs-tier-label"><%= meta[:label] %></span>
                   <span class="hs-tier-count"><%= customers_in_tier.size %> 人</span>
                   <span class="hs-tier-hint"><%= meta[:hint] %></span>
+                  <% if tier == :this_week %>
+                    <a href="https://app.omnichat.ai/conversation.html" target="_blank" rel="noopener noreferrer" class="hs-omnichat-btn">omnichat 後台</a>
+                  <% end %>
                 </div>
                 <%= render partial: "high_spender_first_purchase/customer_rows", locals: { customers: customers_in_tier, tier_id: tier.to_s } %>
               </div>
@@ -330,6 +333,8 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 
 .hs-tier-thisweek   { border: 1.5px solid #bfdbfe; background: #fff; }
 .hs-tier-thisweek   .hs-tier-header { background: #eff6ff; color: #1d4ed8; }
+.hs-omnichat-btn { margin-left: auto; padding: 4px 12px; background: #2563eb; color: #fff; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.hs-omnichat-btn:hover { background: #1d4ed8; color: #fff; text-decoration: none; }
 .hs-tier-thisweek   .hs-tier-count  { background: #1d4ed8; color: #fff; }
 .hs-tier-urgent     { border: 1.5px solid #fecaca; background: #fff; }
 .hs-tier-urgent     .hs-tier-header { background: #fef2f2; color: #dc2626; }
