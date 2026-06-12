@@ -32,10 +32,13 @@ class ThreadsScraperService
         username = item.dig("user", "username")
         code     = item["code"]
 
+        text = item.dig("caption", "text").to_s
+        next unless text.include?(keyword)
+
         ThreadsPost.find_or_initialize_by(post_id: post_id).tap do |p|
           p.username     = username
           p.full_name    = item.dig("user", "full_name").to_s.presence || username
-          p.text_content = item.dig("caption", "text").to_s.slice(0, 500)
+          p.text_content = text.slice(0, 500)
           p.like_count   = item["like_count"].to_i
           p.reply_count  = item.dig("text_post_app_info", "direct_reply_count").to_i
           p.repost_count = item.dig("text_post_app_info", "repost_count").to_i
