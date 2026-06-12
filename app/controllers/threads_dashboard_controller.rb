@@ -2,7 +2,7 @@ class ThreadsDashboardController < ApplicationController
   def index
     scope = ThreadsPost.recent
       .where(keyword: ThreadsScraperService::KEYWORDS)
-      .where("like_count + reply_count + repost_count > 0")
+      .where("like_count + reply_count + repost_count >= 10")
       .order(Arel.sql("like_count + reply_count * 2 + repost_count DESC"))
 
     if params[:keyword].present?
