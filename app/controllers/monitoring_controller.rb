@@ -30,6 +30,23 @@ class MonitoringController < ApplicationController
     @today_visits = PageView.where("visited_at >= ?", Date.today.beginning_of_day).count
     @week_visits  = PageView.where("visited_at >= ?", 7.days.ago).count
 
+    # 各用戶頁面使用統計
+    raw_user_stats = PageView.where("visited_at >= ?", since)
+      .where.not(user_id: nil)
+      .group(:user_id, :controller_name, :action_name)
+      .count
+
+    user_ids = raw_user_stats.keys.map(&:first).uniq
+    users    = User.where(id: user_ids).index_by(&:id)
+
+    @user_page_stats = raw_user_stats.map do |(user_id, ctrl, act), count|
+      user      = users[user_id]
+      user_label = user&.username || user&.email&.split("@")&.first || "—"
+      page_key  = "#{ctrl}##{act}"
+      page_label = PageView::ALL_TRACKED_PAGES[page_key] || page_key
+      { user: user_label, page: page_label, key: page_key, count: count }
+    end.sort_by { |r| [r[:user], -r[:count]] }
+
     # 客戶編輯軌跡
     @edit_logs = CustomerEditLog
       .order(created_at: :desc)

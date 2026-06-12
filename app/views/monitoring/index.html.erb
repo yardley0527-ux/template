@@ -164,6 +164,42 @@
   </script>
 <% end %>
 
+<%# 各用戶頁面使用紀錄 %>
+<% if @user_page_stats.any? %>
+  <div class="d-flex align-items-center mb-3 mt-5">
+    <div class="border-start border-3 border-info ps-3">
+      <h5 class="fw-bold mb-0 text-info">各員工使用頁面明細（近 <%= @days %> 天）</h5>
+      <p class="text-muted small mb-0">哪位員工造訪了哪些功能、各幾次</p>
+    </div>
+  </div>
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-body p-0 table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3" style="width: 100px;">員工</th>
+            <th>功能頁面</th>
+            <th><code class="text-muted small">controller#action</code></th>
+            <th class="text-center" style="width: 80px;">次數</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% prev_user = nil %>
+          <% @user_page_stats.each do |r| %>
+            <tr class="<%= r[:user] != prev_user && prev_user ? 'border-top border-2' : '' %>">
+              <td class="ps-3 fw-semibold"><%= r[:user] != prev_user ? r[:user] : '' %></td>
+              <td><%= r[:page] %></td>
+              <td><code class="text-muted small"><%= r[:key] %></code></td>
+              <td class="text-center fw-bold text-info"><%= r[:count] %></td>
+            </tr>
+            <% prev_user = r[:user] %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
 <%# 客戶編輯軌跡 %>
 <div class="d-flex align-items-center mb-3 mt-5">
   <div class="border-start border-3 border-warning ps-3">
