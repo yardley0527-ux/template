@@ -1,13 +1,15 @@
 class ThreadsDashboardController < ApplicationController
   def index
-    scope = ThreadsPost.recent.order(Arel.sql("like_count + reply_count * 2 + repost_count DESC"))
+    scope = ThreadsPost.recent
+      .where(keyword: ThreadsScraperService::KEYWORDS)
+      .order(Arel.sql("like_count + reply_count * 2 + repost_count DESC"))
 
     if params[:keyword].present?
       scope = scope.where(keyword: params[:keyword])
     end
 
     @posts         = scope.limit(60)
-    @keywords      = ThreadsPost.recent.distinct.pluck(:keyword).compact.sort
+    @keywords      = ThreadsScraperService::KEYWORDS.sort
     @active_keyword = params[:keyword]
     @last_fetched  = ThreadsPost.maximum(:updated_at)
     @today_count   = ThreadsPost.today.count
