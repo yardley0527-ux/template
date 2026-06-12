@@ -2,7 +2,7 @@ class HighValueOrdersController < ApplicationController
   THRESHOLD      = 10_000
   LEVELS         = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
   ALL_TABS       = (LEVELS + ['新客']).freeze
-  SERIES_OPTIONS = %w[代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣].freeze
+  SERIES_OPTIONS = %w[代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣 面膜].freeze
 
   def index
     @period         = params[:period].presence || 'month'
