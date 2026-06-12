@@ -355,6 +355,8 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 .hs-customer-cell { display: flex; align-items: center; gap: 6px; }
 .hs-ig-link { color: #9ca3af; font-size: 13px; text-decoration: none; }
 .hs-ig-link:hover { color: #e1306c; }
+.hs-sl-link { color: #9ca3af; font-size: 13px; text-decoration: none; }
+.hs-sl-link:hover { color: #886ab5; }
 .hs-series-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; flex-shrink: 0; }
 .hs-days-num { font-weight: 700; color: #374151; }
 .hs-days-unit { font-size: 11px; color: #9ca3af; }
@@ -400,14 +402,6 @@ details[open].hs-tier-block > summary.hs-tier-header::after { content: "▾"; }
 .hs-product-cell { min-width: 130px; }
 .hs-product-select { border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 8px; font-size: 12px; color: #374151; background: #fff; width: 100%; max-width: 150px; cursor: pointer; }
 .hs-product-select:focus { outline: none; border-color: #886ab5; }
-
-/* 更新按鈕 */
-.hs-update-cell { white-space: nowrap; }
-.hs-update-btn { padding: 4px 14px; background: #886ab5; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .2s, transform .1s; min-width: 60px; }
-.hs-update-btn:hover:not(:disabled) { background: #6d52a0; }
-.hs-update-btn:disabled { cursor: default; }
-.hs-update-btn-ok  { background: #16a34a !important; }
-.hs-update-btn-err { background: #dc2626 !important; }
 
 /* 分頁 */
 .hs-pager { display: flex; align-items: center; gap: 4px; padding: 10px 14px 8px; flex-wrap: wrap; }
@@ -507,51 +501,6 @@ document.addEventListener('change', function(e) {
 });
 
 document.addEventListener('click', function(e) {
-  var updateBtn = e.target.closest('.hs-update-btn');
-  if (updateBtn) {
-    var key = updateBtn.dataset.identityKey;
-    var url = updateBtn.dataset.updateUrl;
-    var row = updateBtn.closest('tr');
-    var lineSelect    = row.querySelector('.hs-line-select');
-    var productSelect = row.querySelector('.hs-product-select');
-    var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-    updateBtn.disabled = true;
-    updateBtn.textContent = '儲存中...';
-
-    Promise.all([
-      fetch(url, { method: 'PATCH', headers: { 'X-CSRF-Token': token, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ identity_key: key, field: 'line_bound',      value: lineSelect    ? lineSelect.value    : '0' }).toString() }),
-      fetch(url, { method: 'PATCH', headers: { 'X-CSRF-Token': token, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ identity_key: key, field: 'follow_up_product', value: productSelect ? productSelect.value : ''  }).toString() })
-    ]).then(function(rs) {
-      if (rs.every(function(r) { return r.ok; })) {
-        updateBtn.textContent = '✓ 已儲存';
-        updateBtn.classList.add('hs-update-btn-ok');
-        setTimeout(function() {
-          updateBtn.textContent = '更新';
-          updateBtn.classList.remove('hs-update-btn-ok');
-          updateBtn.disabled = false;
-        }, 2000);
-      } else {
-        updateBtn.textContent = '✗ 失敗，重試';
-        updateBtn.classList.add('hs-update-btn-err');
-        setTimeout(function() {
-          updateBtn.textContent = '更新';
-          updateBtn.classList.remove('hs-update-btn-err');
-          updateBtn.disabled = false;
-        }, 2000);
-      }
-    }).catch(function() {
-      updateBtn.textContent = '✗ 失敗，重試';
-      updateBtn.classList.add('hs-update-btn-err');
-      setTimeout(function() {
-        updateBtn.textContent = '更新';
-        updateBtn.classList.remove('hs-update-btn-err');
-        updateBtn.disabled = false;
-      }, 2000);
-    });
-    return;
-  }
-
   var btn = e.target.closest('.hs-tab');
   if (!btn) return;
   var tabsEl = btn.closest('[data-tier-tabs]');

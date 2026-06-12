@@ -23,13 +23,13 @@
     <thead>
       <tr>
         <th>姓名</th>
+        <th>SL 後台</th>
         <th>首購系列</th>
         <th>首購日期</th>
         <th>首購金額</th>
         <th>距首購</th>
         <th>LINE 綁定</th>
         <th>催單產品</th>
-        <th></th>
       </tr>
     </thead>
     <tbody>
@@ -47,6 +47,13 @@
                 <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer" class="hs-ig-link">IG</a>
               <% end %>
             </div>
+          </td>
+          <td>
+            <% if c.shopline_customer_id.present? %>
+              <a href="https://admin.shoplineapp.com/admin/yardley/users/<%= c.shopline_customer_id %>" target="_blank" rel="noopener noreferrer" class="hs-sl-link">SL</a>
+            <% else %>
+              <span class="fp-muted">—</span>
+            <% end %>
           </td>
           <td>
             <span class="hs-series-dot" style="background:<%= hs_series_color(c.first_series.to_s) %>"></span>
@@ -82,13 +89,6 @@
                 <option value="<%= s %>" <%= c.follow_up_product == s ? "selected" : "" %>><%= s %></option>
               <% end %>
             </select>
-          </td>
-          <td class="hs-update-cell">
-            <button class="hs-update-btn"
-                    data-identity-key="<%= c.identity_key %>"
-                    data-update-url="<%= high_spender_first_purchase_update_field_path %>">
-              更新
-            </button>
           </td>
         </tr>
       <% end %>
