@@ -2,10 +2,11 @@ class PageView < ApplicationRecord
   TRACKED_CONTROLLERS = %w[
     welcome customers expiring_members first_purchase high_spender_first_purchase high_value_orders
     inactive_members loyal_customers shopping_credits products product_strategy
-    subscription_strategy livestream_analysis livestream_strategy
+    subscription_strategy livestream_analysis livestream_strategy livestreams
     member_contacts
     turmeric_analysis metabolism_analysis glutathione_analysis
     omnipotent_analysis probiotic_analysis omnipotent_restock albums photos
+    ads_dashboard duplicate_customers ig_dashboard threads_dashboard
   ].freeze
 
   # 所有應追蹤的頁面（controller#action），用來計算「從未被造訪」
@@ -47,5 +48,10 @@ class PageView < ApplicationRecord
     "omnipotent_restock#export"             => "補貨名單匯出",
     "albums#index"                          => "相冊列表",
     "albums#show"                           => "相冊詳細頁",
+    "ads_dashboard#index"                   => "廣告面板",
+    "duplicate_customers#index"             => "重複客人合併",
+    "ig_dashboard#index"                    => "IG 面板",
+    "livestreams#index"                     => "直播列表",
+    "threads_dashboard#index"               => "Threads 面板",
   }.freeze
 end
