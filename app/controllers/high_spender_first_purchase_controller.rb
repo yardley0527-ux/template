@@ -29,7 +29,26 @@ class HighSpenderFirstPurchaseController < ApplicationController
     scope = scope.where("purchase_count >= 2") if @repurchase_only
 
     @customers = scope
-      .joins("LEFT JOIN shopline_customers sc ON LOWER(TRIM(sc.email)) = LOWER(TRIM(customer_purchase_summaries.email))")
+      .joins(<<~SQL)
+        LEFT JOIN LATERAL (
+          SELECT id, shopline_id, full_name, instagram_account
+          FROM shopline_customers sc
+          WHERE LOWER(TRIM(sc.email)) = LOWER(TRIM(customer_purchase_summaries.email))
+             OR (
+               customer_purchase_summaries.mobile_phone IS NOT NULL
+               AND customer_purchase_summaries.mobile_phone <> ''
+               AND sc.mobile_phone = customer_purchase_summaries.mobile_phone
+             )
+          ORDER BY
+            CASE
+              WHEN LOWER(TRIM(sc.email)) = LOWER(TRIM(customer_purchase_summaries.email)) AND sc.shopline_id IS NOT NULL THEN 0
+              WHEN sc.shopline_id IS NOT NULL THEN 1
+              WHEN LOWER(TRIM(sc.email)) = LOWER(TRIM(customer_purchase_summaries.email)) THEN 2
+              ELSE 3
+            END
+          LIMIT 1
+        ) sc ON true
+      SQL
       .select(
         "customer_purchase_summaries.*",
         "sc.id AS shopline_customer_id",
