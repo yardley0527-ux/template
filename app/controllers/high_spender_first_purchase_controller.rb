@@ -33,6 +33,7 @@ class HighSpenderFirstPurchaseController < ApplicationController
       .select(
         "customer_purchase_summaries.*",
         "sc.id AS shopline_customer_id",
+        "sc.shopline_id AS shopline_sl_id",
         "sc.full_name AS customer_name",
         "sc.instagram_account AS instagram_account"
       )

@@ -49,8 +49,8 @@
             </div>
           </td>
           <td>
-            <% if c.shopline_customer_id.present? %>
-              <a href="https://admin.shoplineapp.com/admin/yardley/users/<%= c.shopline_customer_id %>" target="_blank" rel="noopener noreferrer" class="hs-sl-link">SL</a>
+            <% if c.shopline_sl_id.present? %>
+              <a href="https://admin.shoplineapp.com/admin/yardley/users/<%= c.shopline_sl_id %>" target="_blank" rel="noopener noreferrer" class="hs-sl-link">SL</a>
             <% else %>
               <span class="fp-muted">—</span>
             <% end %>
