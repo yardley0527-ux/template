@@ -1,10 +1,43 @@
 {
-  "last_updated": "2026-06-11",
+  "last_updated": "2026-06-12",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
   "kol": "chloechao0527",
   "campaigns": [
+    {
+      "id": "120250849158390022",
+      "name": "小黃瓜廣告",
+      "objective": "流量",
+      "status": "ACTIVE",
+      "daily_budget": null,
+      "start_date": null,
+      "creative": {
+        "type": "VIDEO",
+        "ig_post_url": null,
+        "ig_embed_url": null,
+        "thumbnail_url": null,
+        "label": "🥒纖活小黃瓜搖搖盒"
+      },
+      "daily_data": [
+        {
+          "date": "2026-06-12",
+          "impressions": 10720,
+          "reach": 10014,
+          "clicks": 756,
+          "ctr": 7.05,
+          "cpm": 189,
+          "spend": 2025,
+          "video_3s": 4188,
+          "video_25": 1218,
+          "video_50": 1023,
+          "video_75": 934,
+          "video_100": 668,
+          "shares": 28,
+          "thruplay": 1351
+        }
+      ]
+    },
     {
       "id": "120250168505420022",
       "name": "互動組",
@@ -171,7 +204,7 @@
       "id": "120250491186350022",
       "name": "Claude 導流IG",
       "objective": "流量",
-      "status": "ACTIVE",
+      "status": "PAUSED",
       "daily_budget": 5000,
       "start_date": "2026-06-07",
       "creative": {
