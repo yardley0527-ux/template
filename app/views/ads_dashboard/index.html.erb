@@ -90,7 +90,7 @@
 
           <% if l %>
             <%
-              spend_rate = (l['spend'].to_f / c['daily_budget'].to_f * 100).round(0).to_i
+              spend_rate = c['daily_budget'].to_f > 0 ? (l['spend'].to_f / c['daily_budget'].to_f * 100).round(0).to_i : nil
               completion = (l['video_3s'].to_f > 0 && l['video_100'].to_f > 0) ? (l['video_100'].to_f / l['video_3s'].to_f * 100).round(1) : nil
 
               def change_badge(cur, prev, lower_better: false)
@@ -109,7 +109,7 @@
                   { label: 'CTR',        value: l['ctr'] ? "#{l['ctr']}%" : '—', extra: change_badge(l['ctr'], p&.dig('ctr')) },
                   { label: 'CPM',        value: l['cpm'] ? "NT$#{l['cpm'].to_i}" : '—', extra: change_badge(l['cpm'], p&.dig('cpm'), lower_better: true) },
                   { label: '觸及人數',   value: fmt_num(l['reach']), extra: '' },
-                  { label: '花費',       value: "NT$#{fmt_num(l['spend'])}", extra: "<small class='text-muted'>預算消耗 #{spend_rate}%</small>" },
+                  { label: '花費',       value: "NT$#{fmt_num(l['spend'])}", extra: spend_rate ? "<small class='text-muted'>預算消耗 #{spend_rate}%</small>" : '' },
                   { label: '影片看完率', value: completion ? "#{completion}%" : (l['video_100'] ? "#{fmt_num(l['video_100'])} 人" : '—'), extra: '' }
                 ].each do |m| %>
                 <div class="col-4">
@@ -180,7 +180,7 @@
                 </div>
                 <% if l %>
                   <%
-                    spend_rate = (l['spend'].to_f / c['daily_budget'].to_f * 100).round(0).to_i
+                    spend_rate = c['daily_budget'].to_f > 0 ? (l['spend'].to_f / c['daily_budget'].to_f * 100).round(0).to_i : nil
                     completion = (l['video_3s'].to_f > 0 && l['video_100'].to_f > 0) ? (l['video_100'].to_f / l['video_3s'].to_f * 100).round(1) : nil
                   %>
                   <div class="row g-2">
@@ -189,7 +189,7 @@
                         { label: 'CTR',        value: l['ctr'] ? "#{l['ctr']}%" : '—', extra: '' },
                         { label: 'CPM',        value: l['cpm'] ? "NT$#{l['cpm'].to_i}" : '—', extra: '' },
                         { label: '觸及人數',   value: fmt_num(l['reach']), extra: '' },
-                        { label: '花費',       value: "NT$#{fmt_num(l['spend'])}", extra: "<small class='text-muted'>預算消耗 #{spend_rate}%</small>" },
+                        { label: '花費',       value: "NT$#{fmt_num(l['spend'])}", extra: spend_rate ? "<small class='text-muted'>預算消耗 #{spend_rate}%</small>" : '' },
                         { label: '影片看完率', value: completion ? "#{completion}%" : (l['video_100'] ? "#{fmt_num(l['video_100'])} 人" : '—'), extra: '' }
                       ].each do |m| %>
                       <div class="col-4">
