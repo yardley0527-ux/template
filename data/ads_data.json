@@ -34,7 +34,8 @@
           "video_75": 548,
           "video_100": 289,
           "shares": 5,
-          "thruplay": 4565
+          "thruplay": 4565,
+          "ig_followers_gained": 131
         }
       ]
     },
@@ -67,7 +68,8 @@
           "video_75": 934,
           "video_100": 668,
           "shares": 28,
-          "thruplay": 1351
+          "thruplay": 1351,
+          "ig_followers_gained": 2
         }
       ]
     },
@@ -100,7 +102,8 @@
           "video_75": 244,
           "video_100": 154,
           "shares": 3,
-          "thruplay": 674
+          "thruplay": 674,
+          "ig_followers_gained": null
         },
         {
           "date": "2026-06-04",
@@ -116,7 +119,8 @@
           "video_75": 456,
           "video_100": 281,
           "shares": 8,
-          "thruplay": 1371
+          "thruplay": 1371,
+          "ig_followers_gained": null
         },
         {
           "date": "2026-06-05",
@@ -132,7 +136,8 @@
           "video_75": 386,
           "video_100": 238,
           "shares": 3,
-          "thruplay": 1263
+          "thruplay": 1263,
+          "ig_followers_gained": -2
         },
         {
           "date": "2026-06-06",
@@ -148,7 +153,8 @@
           "video_75": 273,
           "video_100": 200,
           "shares": 3,
-          "thruplay": 863
+          "thruplay": 863,
+          "ig_followers_gained": null
         },
         {
           "date": "2026-06-07",
@@ -164,7 +170,8 @@
           "video_75": 361,
           "video_100": 250,
           "shares": 3,
-          "thruplay": 961
+          "thruplay": 961,
+          "ig_followers_gained": null
         },
         {
           "date": "2026-06-08",
@@ -180,7 +187,8 @@
           "video_75": 135,
           "video_100": 92,
           "shares": 4,
-          "thruplay": 379
+          "thruplay": 379,
+          "ig_followers_gained": -44
         }
       ]
     },
@@ -204,7 +212,7 @@
           "impressions": 1088,
           "reach": 763,
           "clicks": 50,
-          "ctr": 4.60,
+          "ctr": 4.6,
           "cpm": 313,
           "spend": 340,
           "video_3s": 219,
@@ -213,7 +221,8 @@
           "video_75": 25,
           "video_100": 18,
           "shares": null,
-          "thruplay": 66
+          "thruplay": 66,
+          "ig_followers_gained": -2
         },
         {
           "date": "2026-06-07",
@@ -229,7 +238,8 @@
           "video_75": 34,
           "video_100": 25,
           "shares": null,
-          "thruplay": 63
+          "thruplay": 63,
+          "ig_followers_gained": null
         }
       ]
     },
@@ -262,7 +272,8 @@
           "video_75": 437,
           "video_100": 281,
           "shares": 5,
-          "thruplay": 974
+          "thruplay": 974,
+          "ig_followers_gained": null
         },
         {
           "date": "2026-06-08",
@@ -278,7 +289,8 @@
           "video_75": 879,
           "video_100": 565,
           "shares": 22,
-          "thruplay": 2003
+          "thruplay": 2003,
+          "ig_followers_gained": -44
         },
         {
           "date": "2026-06-09",
@@ -294,7 +306,8 @@
           "video_75": 784,
           "video_100": 473,
           "shares": 10,
-          "thruplay": 1996
+          "thruplay": 1996,
+          "ig_followers_gained": 15
         },
         {
           "date": "2026-06-10",
@@ -310,7 +323,8 @@
           "video_75": 263,
           "video_100": 174,
           "shares": 7,
-          "thruplay": 746
+          "thruplay": 746,
+          "ig_followers_gained": 13
         },
         {
           "date": "2026-06-11",
@@ -326,7 +340,8 @@
           "video_75": 228,
           "video_100": 139,
           "shares": 4,
-          "thruplay": 635
+          "thruplay": 635,
+          "ig_followers_gained": -5
         }
       ]
     }
