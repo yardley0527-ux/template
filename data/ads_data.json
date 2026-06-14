@@ -1,15 +1,48 @@
 {
-  "last_updated": "2026-06-12",
+  "last_updated": "2026-06-14",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
   "kol": "chloechao0527",
   "campaigns": [
     {
+      "id": "120250889608820022",
+      "name": "Chloe 狀態",
+      "objective": "流量",
+      "status": "ACTIVE",
+      "daily_budget": null,
+      "start_date": null,
+      "creative": {
+        "type": "VIDEO",
+        "ig_post_url": null,
+        "ig_embed_url": null,
+        "thumbnail_url": "https://scontent-sea5-1.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=kIDW97LDYpEQ7kNvwFM7_0b&_nc_oc=Ado7GFtEzsVQ0igftJxz8_35OXpWtUZYZQLUlRaDmmUvh8-csi8h7qGpScVX1SMmdhs&_nc_zt=23&_nc_ht=scontent-sea5-1.xx&edm=AEZPnVgEAAAA&_nc_gid=QMxiz4qOWVL6elvWh1c8mg&_nc_tpa=Q5bMBQGX9DNh8GaeXFG6j_KcoXOW9V_XIUvcJQOVvL0dy8ZlXrvqKw5-_jwUxheoFNQQBjfDzJ9rMCCSqA&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af_iwHrheaAe88EKhCpLy3tte2bqmBvkGzxDkI-tr_sarQ&oe=6A3440EA",
+        "label": "Chloe 狀態廣告"
+      },
+      "daily_data": [
+        {
+          "date": "2026-06-14",
+          "impressions": 26511,
+          "reach": 24286,
+          "clicks": 2576,
+          "ctr": 9.72,
+          "cpm": 125,
+          "spend": 3321,
+          "video_3s": 13230,
+          "video_25": 2531,
+          "video_50": 857,
+          "video_75": 548,
+          "video_100": 289,
+          "shares": 5,
+          "thruplay": 4565
+        }
+      ]
+    },
+    {
       "id": "120250849158390022",
       "name": "小黃瓜廣告",
       "objective": "流量",
-      "status": "ACTIVE",
+      "status": "PAUSED",
       "daily_budget": null,
       "start_date": null,
       "creative": {
