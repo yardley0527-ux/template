@@ -14,6 +14,12 @@ class ImportCustomersJob < ApplicationJob
     ).call
 
     Rails.logger.info "[ImportCustomersJob] done run_id=#{run.id} processed=#{run.processed_rows} upserted=#{run.upserted_rows} errors=#{run.error_rows}"
+
+    CustomerPurchaseSummaryRefreshService.call
+    Rails.logger.info "[ImportCustomersJob] purchase summary refreshed"
+
+    CustomerSeriesLoyaltyRefreshService.call
+    Rails.logger.info "[ImportCustomersJob] series loyalty refreshed"
   rescue => e
     Rails.logger.error "[ImportCustomersJob] FAILED #{e.class} - #{e.message}"
     Rails.logger.error e.backtrace.first(10).join("\n")

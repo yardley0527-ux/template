@@ -53,6 +53,10 @@ namespace :import do
 
     puts "[task] refreshing purchase summary cache..."
     CustomerPurchaseSummaryRefreshService.call
-    puts "[task] cache refresh done."
+    puts "[task] purchase summary done."
+
+    puts "[task] refreshing series loyalty cache..."
+    CustomerSeriesLoyaltyRefreshService.call
+    puts "[task] series loyalty done."
   end
 end
