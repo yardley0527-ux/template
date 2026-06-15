@@ -342,29 +342,23 @@ class CustomersController < ApplicationController
     threshold_days = (params[:days] || 365).to_i
     cutoff_date = Date.today - threshold_days
 
-    inactive_emails = ShoplineOrder
-      .where.not(product_name: [nil, ""])
-      .group(:email)
-      .having("MAX(order_date) < ?", cutoff_date)
-      .pluck(:email)
-
+    # 用 customer_purchase_summaries 判斷：已處理 mobile_phone 身份合併、只計算已付款訂單
     customers = ShoplineCustomer
-      .where(email: inactive_emails)
-      .where("current_shopping_credits > 0")  # ← 加這個條件
-      .order(current_shopping_credits: :desc)
-
-    last_orders = ShoplineOrder
-      .where(email: inactive_emails)
-      .where.not(product_name: [nil, ""])
-      .group(:email)
-      .maximum(:order_date)
+      .joins(<<~SQL)
+        JOIN customer_purchase_summaries cps
+          ON cps.identity_key = COALESCE(NULLIF(TRIM(shopline_customers.mobile_phone), ''), LOWER(TRIM(shopline_customers.email)))
+      SQL
+      .where("cps.last_order_date < ?", cutoff_date)
+      .where("shopline_customers.current_shopping_credits > 0")
+      .select("shopline_customers.*, cps.last_order_date AS cps_last_order_date")
+      .order("shopline_customers.current_shopping_credits DESC")
 
     respond_to do |format|
       format.csv do
         csv_data = CSV.generate(encoding: "UTF-8") do |csv|
           csv << ["客戶ID", "Shopline連結", "姓名", "Email", "手機", "城市", "會員等級", "累積消費", "訂單數", "購物金", "最後購買日", "未購天數"]
           customers.each do |c|
-            last_date = last_orders[c.email]&.to_date
+            last_date = c.cps_last_order_date&.to_date
             days = last_date ? (Date.today - last_date).to_i : nil
             csv << [
               c.shopline_id,
@@ -376,7 +370,7 @@ class CustomersController < ApplicationController
               c.membership_level,
               c.total_amount,
               c.order_count,
-              c.current_shopping_credits,  # ← 也順便加進欄位
+              c.current_shopping_credits,
               last_date&.strftime("%Y/%m/%d"),
               days
             ]

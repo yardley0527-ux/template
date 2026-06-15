@@ -11,6 +11,28 @@ class MemberContactsController < ApplicationController
     @total_inactive = @stats.sum { |s| s[:inactive] }
     @total_email    = @stats.sum { |s| s[:has_email] }
     @total_line     = @stats.sum { |s| s[:has_line] }
+
+    @today_stat   = DailyMemberStat.find_or_initialize_by(stat_date: Date.today)
+    @recent_stats = DailyMemberStat.recent(30).to_a
+  end
+
+  def refresh_line
+    stat = DailyMemberStat.fetch_and_upsert_line!
+    if stat
+      redirect_to member_contacts_path, notice: "LINE 數據已更新（好友數：#{stat.line_friends}）"
+    else
+      redirect_to member_contacts_path, alert: "LINE API 回傳資料尚未就緒，請稍後再試"
+    end
+  end
+
+  def update_sl
+    stat = DailyMemberStat.find_or_initialize_by(stat_date: Date.today)
+    stat.assign_attributes(sl_params)
+    if stat.save
+      redirect_to member_contacts_path, notice: "Shopline 數據已儲存"
+    else
+      redirect_to member_contacts_path, alert: "儲存失敗：#{stat.errors.full_messages.join(', ')}"
+    end
   end
 
   def export
@@ -87,5 +109,12 @@ class MemberContactsController < ApplicationController
 
   def inactive_cutoff
     INACTIVE_DAYS.days.ago
+  end
+
+  def sl_params
+    params.require(:daily_member_stat).permit(
+      :sl_total_members, :sl_purchased_members,
+      :line_bound_members, :line_and_sl_members, :unbound_purchased
+    )
   end
 end

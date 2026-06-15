@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_15_120001) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_15_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -122,6 +122,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_15_120001) do
     t.index ["email", "series"], name: "index_customer_series_loyalties_on_email_and_series", unique: true
     t.index ["series"], name: "index_customer_series_loyalties_on_series"
     t.index ["tier"], name: "index_customer_series_loyalties_on_tier"
+  end
+
+  create_table "daily_member_stats", force: :cascade do |t|
+    t.date "stat_date", null: false
+    t.integer "line_friends", comment: "targetedReaches 好友數"
+    t.integer "line_followers", comment: "曾加入好友總計"
+    t.integer "line_blocks", comment: "封鎖數"
+    t.integer "sl_total_members"
+    t.integer "sl_purchased_members"
+    t.integer "line_bound_members", comment: "行動會員卡綁定人數"
+    t.integer "line_and_sl_members", comment: "官方好友+是網站會員"
+    t.integer "unbound_purchased", comment: "手機未綁定但已消費"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["stat_date"], name: "index_daily_member_stats_on_stat_date", unique: true
   end
 
   create_table "health_assessment_products", force: :cascade do |t|

@@ -11,8 +11,10 @@ Rails.application.routes.draw do
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
   post '/order_gift_records/upsert', to: 'order_gift_records#upsert',  as: :upsert_order_gift_record
-  get '/member_contacts',        to: 'member_contacts#index',  as: :member_contacts
-  get '/member_contacts/export', to: 'member_contacts#export', as: :member_contacts_export
+  get  '/member_contacts',                to: 'member_contacts#index',          as: :member_contacts
+  get  '/member_contacts/export',        to: 'member_contacts#export',         as: :member_contacts_export
+  post '/member_contacts/refresh_line',  to: 'member_contacts#refresh_line',   as: :member_contacts_refresh_line
+  post '/member_contacts/update_sl',     to: 'member_contacts#update_sl',      as: :member_contacts_update_sl
   get  '/manychat_audience',        to: 'manychat_audience#index',  as: :manychat_audience
   post '/manychat_audience/upload', to: 'manychat_audience#upload', as: :manychat_audience_upload
   get  '/manychat_audience/export', to: 'manychat_audience#export', as: :manychat_audience_export
