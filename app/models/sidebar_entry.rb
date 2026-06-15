@@ -56,9 +56,7 @@ class SidebarEntry
           group_title: "社群 & 廣告",
           children: [
             { href: ads_dashboard_path,       title: "廣告成效面板",   icon: "fa-chart-bar" },
-            { href: ig_dashboard_path,        title: "IG 帳號追蹤",    icon: "fab fa-instagram" },
             { href: threads_dashboard_path,   title: "Threads 分析",   icon: "fa-comment-alt" },
-            { href: manychat_audience_path,   title: "受眾比對",        icon: "fa-users" },
           ]
         },
         {
