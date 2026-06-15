@@ -3,6 +3,7 @@
 class ShoppingCreditsController < ApplicationController
   LEVELS = %w[黑卡 金卡 銀卡 白卡].freeze
   HC_PER_PAGE = 10
+  SERIES_KEYWORDS = %w[穀胱甘肽 代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 維DK鈣].freeze
 
   def index
     base = ShoplineCustomer
@@ -35,6 +36,20 @@ class ShoppingCreditsController < ApplicationController
       .select(:id, :full_name, :email, :membership_level, :current_shopping_credits, :membership_expiry_date, :instagram_account)
       .order(current_shopping_credits: :desc)
     @high_credits_grouped = LEVELS.index_with { |lv| high_credits.select { |c| c.membership_level == lv } }
+
+    high_emails = @high_credits_grouped.values.flatten.map(&:email).compact.uniq
+    if high_emails.any?
+      orders_raw = ShoplineOrder.where(email: high_emails).pluck(:email, :product_name, :total_amount)
+      totals = Hash.new { |h, k| h[k] = Hash.new(0.0) }
+      orders_raw.each do |email, pname, amount|
+        next if pname.nil?
+        series = SERIES_KEYWORDS.find { |kw| pname.include?(kw) }
+        totals[email][series] += amount.to_f if series
+      end
+      @top_series_by_email = totals.transform_values { |s| s.max_by { |_, v| v }&.first }
+    else
+      @top_series_by_email = {}
+    end
 
     @hc_level = params[:hc_level].presence
     @hc_page  = [params[:hc_page].to_i, 1].max

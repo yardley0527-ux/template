@@ -213,6 +213,10 @@
               <%= link_to c.full_name, customer_path(c.id), class: "text-decoration-none text-dark" %>
             </div>
             <div class="text-danger fw-bold" style="font-size:0.9rem;">NT$<%= number_with_delimiter(c.current_shopping_credits.to_i) %></div>
+            <% top_series = @top_series_by_email&.dig(c.email) %>
+            <% if top_series.present? %>
+              <div style="font-size:0.75rem; color:#6b7280; margin-top:2px;">🏆 <%= top_series %></div>
+            <% end %>
             <% if ig.present? %>
               <div style="font-size:0.78rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                 <%= link_to "https://www.instagram.com/#{ig}/", target: "_blank", class: "text-decoration-none text-muted" do %>
