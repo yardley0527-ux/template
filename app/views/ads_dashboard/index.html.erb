@@ -144,7 +144,13 @@
                           style="display:block;width:100%;min-height:460px;border:none"></iframe>
                 <% elsif c['creative']['thumbnail_url'].present? %>
                   <img src="<%= c['creative']['thumbnail_url'].gsub(/&stp=[^&]+/, '') %>" alt="廣告縮圖"
-                       style="display:block;width:100%;object-fit:cover;max-height:460px">
+                       referrerpolicy="no-referrer" crossorigin="anonymous"
+                       style="display:block;width:100%;object-fit:cover;max-height:460px"
+                       onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                  <div style="display:none;align-items:center;justify-content:center;min-height:120px;flex-direction:column;" class="text-muted">
+                    <div style="font-size:2rem">🎬</div>
+                    <div class="small mt-1">縮圖無法載入</div>
+                  </div>
                 <% else %>
                   <div class="text-center text-muted py-5" style="min-height:120px">
                     <div style="font-size:2rem">🎬</div>
