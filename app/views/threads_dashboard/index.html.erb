@@ -174,33 +174,36 @@
 <%# ── 關鍵字 filter tabs（按類別分組）── %>
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-body py-2 px-3">
-    <div class="d-flex align-items-center flex-wrap" style="gap:4px 0; row-gap:6px;">
+    <% category_colors = {
+         "代謝瘦身" => "#dc3545", "腸道排便" => "#28a745", "美白抗老" => "#9c27b0",
+         "私密保養" => "#e91e8c", "眼睛保健" => "#2196f3", "肝臟護肝" => "#ff9800",
+         "魚油心血管" => "#00bcd4", "睡眠疲勞" => "#3f51b5", "皮膚保養" => "#e91e63",
+         "骨骼保健" => "#795548",
+       } %>
+
+    <%# 全部按鈕 %>
+    <div class="mb-2">
       <%= link_to "全部", threads_dashboard_path,
-            class: "btn btn-sm mr-2 mb-1 #{@active_keyword.blank? ? 'btn-dark' : 'btn-outline-dark'}" %>
-      <% category_colors = {
-           "代謝瘦身" => "#dc3545",
-           "腸道排便" => "#28a745",
-           "美白抗老" => "#9c27b0",
-           "私密保養" => "#e91e8c",
-           "眼睛保健" => "#2196f3",
-           "肝臟護肝" => "#ff9800",
-           "魚油心血管" => "#00bcd4",
-           "睡眠疲勞"  => "#3f51b5",
-           "皮膚保養"  => "#f06292",
-           "骨骼保健"  => "#795548",
-         } %>
-      <% @keyword_categories.each do |category, kws| %>
-        <% color = category_colors[category] || "#6c757d" %>
-        <span class="mr-2 mb-1 d-inline-flex align-items-center">
-          <span class="badge mr-1" style="background:<%= color %>; font-size:0.7rem; padding:3px 6px;"><%= category %></span>
-          <% kws.each do |kw| %>
-            <%= link_to kw, threads_dashboard_path(keyword: kw),
-                  class: "btn btn-xs mr-1 #{@active_keyword == kw ? 'btn-secondary' : 'btn-outline-secondary'}",
-                  style: @active_keyword == kw ? "background:#{color}; border-color:#{color}; color:#fff;" : "border-color:#{color}; color:#{color};" %>
-          <% end %>
-        </span>
-      <% end %>
+            class: "btn btn-sm #{@active_keyword.blank? ? 'btn-dark' : 'btn-outline-secondary'}" %>
     </div>
+
+    <%# 各類別一行 %>
+    <% @keyword_categories.each do |category, kws| %>
+      <% color = category_colors[category] || "#6c757d" %>
+      <div class="d-flex align-items-center flex-wrap mb-1" style="gap:4px;">
+        <span class="badge" style="background:<%= color %>; font-size:0.7rem; min-width:60px; text-align:center;">
+          <%= category %>
+        </span>
+        <% kws.each do |kw| %>
+          <% active = @active_keyword == kw %>
+          <%= link_to kw, threads_dashboard_path(keyword: kw),
+                class: "btn btn-xs",
+                style: active ?
+                  "background:#{color}; border:1px solid #{color}; color:#fff; border-radius:4px; padding:1px 8px; font-size:0.8rem;" :
+                  "background:#fff; border:1px solid #ced4da; color:#495057; border-radius:4px; padding:1px 8px; font-size:0.8rem;" %>
+        <% end %>
+      </div>
+    <% end %>
   </div>
 </div>
 
