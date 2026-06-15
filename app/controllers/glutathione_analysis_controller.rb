@@ -17,10 +17,13 @@ class GlutathioneAnalysisController < ApplicationController
   def extract_bottles(product_name)
     return 1 if product_name.nil?
     m = product_name.match(product_regex)
-    return m[1].to_i if m
-    m = product_name.match(/[（(](\d+)[瓶盒]/)
-    return m[1].to_i if m
-    return 6 if product_name.include?("家庭號")
-    1
+    base = if m
+      m[1].to_i
+    elsif (m2 = product_name.match(/[（(](\d+)[瓶盒]/))
+      m2[1].to_i
+    else
+      1
+    end
+    base + (product_name.match(/送(\d+)/)&.[](1).to_i || 0)
   end
 end
