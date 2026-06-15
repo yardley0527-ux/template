@@ -1,3 +1,5 @@
 class ThreadsAnalysis < ApplicationRecord
-  scope :latest_record, -> { order(fetched_on: :desc).first }
+  def self.latest_record
+    order(fetched_on: :desc).first
+  end
 end
