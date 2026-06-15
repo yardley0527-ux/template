@@ -12,6 +12,7 @@ class MemberContactsController < ApplicationController
     @total_email    = @stats.sum { |s| s[:has_email] }
     @total_line     = @stats.sum { |s| s[:has_line] }
 
+    @last_import_at = ImportRun.where(kind: "customers_report").order(started_at: :desc).pick(:started_at)
     @today_stat     = DailyMemberStat.find_or_initialize_by(stat_date: Date.today)
     @yesterday_stat = DailyMemberStat.find_by(stat_date: Date.yesterday)
     @recent_stats   = DailyMemberStat.recent(30).to_a
