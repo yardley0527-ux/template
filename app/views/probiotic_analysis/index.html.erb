@@ -11,6 +11,80 @@
       section_id:        'probiotic',
       product_name:      '益生菌' %>
 
+<%# ══════════════════════════════════════════════════════ %>
+<%# 全歷史買家快用完名單                                    %>
+<%# ══════════════════════════════════════════════════════ %>
+
+<% if @all_expiring_soon&.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-4 ps-3" style="border-color: #d97706 !important;">
+      <h5 class="fw-bold mb-0" style="color: #d97706;">⏰ 全部益生菌買家 — 近期快用完</h5>
+      <p class="text-muted small mb-0">涵蓋所有曾購買益生菌的客人（不限直播場次），剩餘 -7 到 +30 天</p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #92400e;">
+      <span class="fw-bold">補貨時機名單</span>
+      <span class="badge bg-white text-dark"><%= @all_expiring_soon.size %> 人</span>
+    </div>
+
+    <%# 摘要統計 %>
+    <div class="px-3 pt-3 pb-2 border-bottom d-flex gap-3 flex-wrap">
+      <% overdue  = @all_expiring_soon.count { |r| r[:days_left] < 0 } %>
+      <% week     = @all_expiring_soon.count { |r| r[:days_left] >= 0 && r[:days_left] <= 7 } %>
+      <% later    = @all_expiring_soon.count { |r| r[:days_left] > 7 } %>
+      <span class="badge bg-danger fs-6 fw-semibold px-3 py-2">已用完 <%= overdue %> 人</span>
+      <span class="badge bg-warning text-dark fs-6 fw-semibold px-3 py-2">7天內 <%= week %> 人</span>
+      <span class="badge bg-info text-dark fs-6 fw-semibold px-3 py-2">8–30天 <%= later %> 人</span>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+        <thead class="table-light">
+          <tr>
+            <th>姓名</th>
+            <th>卡別</th>
+            <th>剩餘天數</th>
+            <th>上次購買</th>
+            <th>購買品項</th>
+            <th>電話</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @all_expiring_soon.each do |r| %>
+            <% c  = r[:customer] %>
+            <% dl = r[:days_left] %>
+            <tr>
+              <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+              <td><span class="text-muted small"><%= c.membership_level %></span></td>
+              <td class="text-center">
+                <% if dl < 0 %>
+                  <span class="badge bg-danger">已用完 <%= dl.abs %> 天</span>
+                <% elsif dl <= 7 %>
+                  <span class="badge bg-warning text-dark">剩 <%= dl %> 天</span>
+                <% else %>
+                  <span class="badge bg-info text-dark">剩 <%= dl %> 天</span>
+                <% end %>
+              </td>
+              <td><%= r[:last_date]&.strftime("%m/%d") || "—" %></td>
+              <td class="text-muted small"><%= r[:last_product] || "—" %></td>
+              <td>
+                <% if c.mobile_phone.present? %>
+                  <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
+                    📞 <%= c.mobile_phone %>
+                  </a>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
 <div class="row g-3 mb-4">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>

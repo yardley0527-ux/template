@@ -13,6 +13,7 @@ class ProbioticAnalysisController < ApplicationController
     @all_probiotic_events = product_event_list.select { |e| e[:date] <= Date.today }
     build_comprehensive_data(@all_probiotic_events)
     build_sku_data(@all_probiotic_events)
+    build_all_buyers_expiring
   end
 
   private
@@ -58,6 +59,34 @@ class ProbioticAnalysisController < ApplicationController
         rev_pct:       pct(rev, grand_total) }
     end
     @sku_grand_total = grand_total
+  end
+
+  def build_all_buyers_expiring
+    today = Date.today
+
+    last_orders_raw = ShoplineOrder
+      .where(product_sql)
+      .where.not(email: [nil, ""])
+      .order(:email, order_date: :desc)
+      .pluck(:email, :product_name, :order_date)
+
+    last_by_email = {}
+    last_orders_raw.each { |e, p, d| last_by_email[e] ||= { product_name: p, order_date: d } }
+
+    customers = ShoplineCustomer
+      .where(email: last_by_email.keys)
+      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
+
+    @all_expiring_soon = customers.filter_map do |c|
+      last      = last_by_email[c.email]
+      next unless last
+      bottles   = extract_bottles(last[:product_name])
+      last_date = last[:order_date].to_date
+      days_left = (bottles * DAYS_PER_BOTTLE) - (today - last_date).to_i
+      next unless days_left >= -7 && days_left <= 30
+      { customer: c, days_left: days_left, last_product: last[:product_name],
+        last_date: last_date, bottles: bottles }
+    end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
   end
 
   def extract_bottles(product_name)
