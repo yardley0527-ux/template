@@ -1,0 +1,3 @@
+<% if local_assigns[:updated_at]&.present? %>
+  <p class="text-muted small mb-0 mt-1">資料更新：<strong><%= updated_at.in_time_zone("Taipei").strftime("%Y/%m/%d %H:%M") %></strong></p>
+<% end %>

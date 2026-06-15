@@ -7,7 +7,7 @@
       <h4 class="ps-title">📊 產品策略報表</h4>
       <p class="ps-subtitle">各系列首購、回購、忠實客全覽，供產品方向決策參考</p>
     </div>
-    <div class="ps-updated">資料每小時更新</div>
+    <div class="ps-updated"><%= purchase_summary_updated_at ? "資料更新：#{purchase_summary_updated_at.in_time_zone('Taipei').strftime('%Y/%m/%d %H:%M')}" : "資料更新：—" %></div>
   </div>
 
   <%# 整體概覽 %>
