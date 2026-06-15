@@ -66,11 +66,14 @@
   <%# AI 摘要 %>
   <div class="col-lg-5">
     <div class="card border-0 shadow-sm h-100">
-      <div class="card-header bg-white border-bottom-0 pb-0 pt-3 px-3">
-        <span class="fw-semibold" style="font-size:0.9rem;">🤖 AI 分析摘要</span>
-        <span class="text-muted small ms-2">
-          (<%= @analysis.fetched_on.strftime("%m/%d") %>)
-        </span>
+      <div class="card-header bg-white border-bottom-0 pb-0 pt-3 px-3 d-flex justify-content-between align-items-center">
+        <div>
+          <span class="fw-semibold" style="font-size:0.9rem;">🤖 AI 分析摘要</span>
+          <span class="text-muted small ml-1">(<%= @analysis.fetched_on.strftime("%m/%d") %>)</span>
+        </div>
+        <%= button_to "重新產生", threads_dashboard_reanalyze_path, method: :post,
+              class: "btn btn-outline-secondary btn-sm",
+              style: "font-size:0.75rem; padding:2px 8px;" %>
       </div>
       <div class="card-body pt-2 px-3 pb-3">
         <% paragraphs = @analysis.ai_summary.to_s.split(/\n+/).reject(&:blank?) %>

@@ -28,6 +28,21 @@ class ThreadsDashboardController < ApplicationController
     end
   end
 
+  def reanalyze
+    api_key = ENV['ANTHROPIC_API_KEY']
+    if api_key.blank?
+      redirect_to threads_dashboard_path, alert: "ANTHROPIC_API_KEY 未設定，請先在 Render Environment Variables 加入"
+      return
+    end
+
+    success = ThreadsAnalysisService.run(Date.today)
+    if success
+      redirect_to threads_dashboard_path, notice: "AI 分析重新產生完成"
+    else
+      redirect_to threads_dashboard_path, alert: "AI 分析失敗，請查看 Render logs"
+    end
+  end
+
   def test_api
     require 'net/http'
     require 'json'
