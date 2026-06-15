@@ -108,7 +108,7 @@
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
           <thead class="table-light">
-            <tr><th>姓名</th><th>卡別</th><th>出席場數</th><th>電話</th><th>IG</th></tr>
+            <tr><th>姓名</th><th>卡別</th><th>出席場數</th><th>IG</th><th>Email</th></tr>
           </thead>
           <tbody>
             <% iron_fans.each do |r| %>
@@ -117,8 +117,8 @@
                 <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
                 <td><span class="text-muted small"><%= c.membership_level %></span></td>
                 <td class="text-center fw-bold text-warning"><%= r[:attended_count] %> 場</td>
-                <td><%= c.mobile_phone.present? ? content_tag(:a, "📞 #{c.mobile_phone}", href: "tel:#{c.mobile_phone}", class: "text-decoration-none text-muted small") : "" %></td>
                 <td><%= c.instagram_account.present? ? link_to("📷 #{c.instagram_account}", "https://instagram.com/#{c.instagram_account.gsub('@','')}", target: "_blank", class: "text-decoration-none small") : "" %></td>
+                <td class="text-muted small"><%= c.email %></td>
               </tr>
             <% end %>
           </tbody>
@@ -141,7 +141,7 @@
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
           <thead class="table-light">
-            <tr><th>姓名</th><th>卡別</th><th>剩餘天數</th><th>上次購買</th><th>品項</th><th>電話</th></tr>
+            <tr><th>姓名</th><th>卡別</th><th>剩餘天數</th><th>上次購買</th><th>品項</th><th>IG</th><th>Email</th></tr>
           </thead>
           <tbody>
             <% expiring_soon.each do |r| %>
@@ -161,7 +161,8 @@
                 </td>
                 <td><%= r[:last_date]&.strftime("%m/%d") || "—" %></td>
                 <td class="text-muted small"><%= r[:last_product] || "—" %></td>
-                <td><%= c.mobile_phone.present? ? content_tag(:a, "📞 #{c.mobile_phone}", href: "tel:#{c.mobile_phone}", class: "text-decoration-none text-muted small") : "" %></td>
+                <td><%= c.instagram_account.present? ? link_to("📷 #{c.instagram_account}", "https://instagram.com/#{c.instagram_account.gsub('@','')}", target: "_blank", class: "text-decoration-none small") : "" %></td>
+                <td class="text-muted small"><%= c.email %></td>
               </tr>
             <% end %>
           </tbody>

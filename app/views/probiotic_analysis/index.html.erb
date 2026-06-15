@@ -49,7 +49,8 @@
             <th>剩餘天數</th>
             <th>上次購買</th>
             <th>購買品項</th>
-            <th>電話</th>
+            <th>IG</th>
+            <th>Email</th>
           </tr>
         </thead>
         <tbody>
@@ -70,13 +71,8 @@
               </td>
               <td><%= r[:last_date]&.strftime("%m/%d") || "—" %></td>
               <td class="text-muted small"><%= r[:last_product] || "—" %></td>
-              <td>
-                <% if c.mobile_phone.present? %>
-                  <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
-                    📞 <%= c.mobile_phone %>
-                  </a>
-                <% end %>
-              </td>
+              <td><%= c.instagram_account.present? ? link_to("📷 #{c.instagram_account}", "https://instagram.com/#{c.instagram_account.gsub('@','')}", target: "_blank", class: "text-decoration-none small") : "" %></td>
+              <td class="text-muted small"><%= c.email %></td>
             </tr>
           <% end %>
         </tbody>
