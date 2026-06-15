@@ -60,15 +60,16 @@ module Importing
 
       flush = lambda do
         if shopline_batch.any?
-          # ✅ 新增：先把 email 已存在但 shopline_id 為 nil 的舊記錄補上 shopline_id
-          # 這樣 upsert_all 就能找到這筆記錄，不會建立重複
+          # 先把 email 已存在但 shopline_id 為 nil 的舊記錄補上 shopline_id
           shopline_batch.each do |r|
             next if r[:email].blank? || r[:shopline_id].blank?
             ShoplineCustomer.where(email: r[:email], shopline_id: nil)
                             .update_all(shopline_id: r[:shopline_id])
           end
 
-          batch_without_email = shopline_batch.map { |r| r.except(:email) }
+          # 同一批次可能有重複 shopline_id（CSV 重複列），保留最後一筆
+          deduped = shopline_batch.each_with_object({}) { |r, h| h[r[:shopline_id]] = r }.values
+          batch_without_email = deduped.map { |r| r.except(:email) }
           ShoplineCustomer.upsert_all(
             batch_without_email,
             unique_by: :shopline_id,
@@ -96,8 +97,9 @@ module Importing
 
       flush_email = lambda do
         if email_batch.any?
+          deduped_email = email_batch.each_with_object({}) { |r, h| h[r[:email]] = r }.values
           ShoplineCustomer.upsert_all(
-            email_batch,
+            deduped_email,
             unique_by: :email,
             update_only: upsertable_columns
           )
