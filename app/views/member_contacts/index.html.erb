@@ -111,8 +111,9 @@
 
 <%# ── 本次匯入升降卡異動 ──────────────────────────── %>
 <% if @level_changes.any? %>
-  <% upgrades   = @level_changes.select { |c| c.direction == "upgrade" } %>
-  <% downgrades = @level_changes.select { |c| c.direction == "downgrade" } %>
+  <% rank = MembershipLevelChange::LEVEL_RANK %>
+  <% upgrades   = @level_changes.select { |c| c.direction == "upgrade" }.sort_by   { |c| -rank.fetch(c.to_level,   0) } %>
+  <% downgrades = @level_changes.select { |c| c.direction == "downgrade" }.sort_by { |c| -rank.fetch(c.from_level, 0) } %>
 
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-warning ps-3">
