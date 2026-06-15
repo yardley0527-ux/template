@@ -138,9 +138,19 @@
                 <a href="<%= c['creative']['ig_post_url'] %>" target="_blank" class="btn btn-outline-primary btn-xs" style="font-size:11px;padding:2px 8px">開啟 IG →</a>
               </div>
               <div class="rounded overflow-hidden border">
-                <iframe src="<%= c['creative']['ig_embed_url'] %>" scrolling="no"
-                        allowtransparency="true" loading="lazy"
-                        style="display:block;width:100%;min-height:460px;border:none"></iframe>
+                <% if c['creative']['ig_embed_url'].present? %>
+                  <iframe src="<%= c['creative']['ig_embed_url'] %>" scrolling="no"
+                          allowtransparency="true" loading="lazy"
+                          style="display:block;width:100%;min-height:460px;border:none"></iframe>
+                <% elsif c['creative']['thumbnail_url'].present? %>
+                  <img src="<%= c['creative']['thumbnail_url'] %>" alt="廣告縮圖"
+                       style="display:block;width:100%;object-fit:cover;max-height:460px">
+                <% else %>
+                  <div class="text-center text-muted py-5" style="min-height:120px">
+                    <div style="font-size:2rem">🎬</div>
+                    <div class="small mt-1">縮圖載入中</div>
+                  </div>
+                <% end %>
               </div>
             </div>
           <% end %>
