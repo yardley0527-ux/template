@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_15_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_15_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -248,6 +248,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_15_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["date"], name: "index_livestreams_on_date", unique: true
+  end
+
+  create_table "manychat_iguids", force: :cascade do |t|
+    t.bigint "manychat_snapshot_id", null: false
+    t.string "iguid", null: false
+    t.index ["iguid"], name: "index_manychat_iguids_on_iguid"
+    t.index ["manychat_snapshot_id"], name: "index_manychat_iguids_on_manychat_snapshot_id"
+  end
+
+  create_table "manychat_snapshots", force: :cascade do |t|
+    t.string "account_type", null: false
+    t.integer "iguid_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "order_gift_records", force: :cascade do |t|
@@ -589,6 +603,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_15_120000) do
   add_foreign_key "livestream_gifts", "livestreams"
   add_foreign_key "livestream_images", "livestreams"
   add_foreign_key "livestream_products", "livestreams"
+  add_foreign_key "manychat_iguids", "manychat_snapshots"
   add_foreign_key "photos", "albums"
   add_foreign_key "shopline_customer_health_assessments", "shopline_customers"
   add_foreign_key "shopline_customer_health_questionnaires", "shopline_customers"

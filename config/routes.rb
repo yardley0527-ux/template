@@ -13,6 +13,10 @@ Rails.application.routes.draw do
   post '/order_gift_records/upsert', to: 'order_gift_records#upsert',  as: :upsert_order_gift_record
   get '/member_contacts',        to: 'member_contacts#index',  as: :member_contacts
   get '/member_contacts/export', to: 'member_contacts#export', as: :member_contacts_export
+  get  '/manychat_audience',        to: 'manychat_audience#index',  as: :manychat_audience
+  post '/manychat_audience/upload', to: 'manychat_audience#upload', as: :manychat_audience_upload
+  get  '/manychat_audience/export', to: 'manychat_audience#export', as: :manychat_audience_export
+
   get  '/ig_dashboard',             to: 'ig_dashboard#index',         as: :ig_dashboard
   get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
   post '/ig_dashboard/refresh',     to: 'ig_dashboard#refresh',       as: :ig_dashboard_refresh
