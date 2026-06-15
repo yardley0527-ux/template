@@ -1,7 +1,8 @@
 <li class="<%= 'disabled' if sub_entry[:disabled] %><%= class_if_current_page(entry: sub_entry) %>">
   <a href="<%= sub_entry[:href] %>" title="<%= sub_entry[:title] %>" data-filter-tags="<%= filter_tags_from_title(parents: parents, sub_entry: sub_entry) %>">
     <% if sub_entry[:icon].present? %>
-      <i class="fal <%= sub_entry[:icon] %>"></i>
+      <% icon_class = sub_entry[:icon].include?(' ') ? sub_entry[:icon] : "fal #{sub_entry[:icon]}" %>
+      <i class="<%= icon_class %>"></i>
     <% end %>
     <span class="nav-link-text" data-i18n="<%= i18n_from_title(prefix: 'nav.', title: (parents + [sub_entry]).collect {|item| item[:title]}.join(' ')) %>"><%= sub_entry[:title] %></span>
     <% if sub_entry[:subtitle].present? %>
