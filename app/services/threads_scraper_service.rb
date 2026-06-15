@@ -5,10 +5,20 @@ class ThreadsScraperService
   API_BASE = "https://api.scrapecreators.com/v1/threads/search"
   API_KEY  = ENV['SCRAPECREATORS_API_KEY']
 
-  KEYWORDS = %w[
-    益生菌 膠原蛋白 保健食品 美白 抗老化
-    魚油 薑黃 代謝 腸道健康 穀胱甘肽 蔓越莓 眼睛保健
-  ].freeze
+  KEYWORD_CATEGORIES = {
+    "代謝瘦身" => %w[代謝 減肥 瘦身 燃脂 體脂 減脂],
+    "腸道排便" => %w[益生菌 腸道健康 便秘 排便 脹氣],
+    "美白抗老" => %w[美白 穀胱甘肽 抗老化 膠原蛋白 NMN 白藜蘆醇],
+    "私密保養" => %w[蔓越莓 私密處 泌尿道],
+    "眼睛保健" => %w[眼睛保健 蝦紅素 花青素],
+    "肝臟護肝" => %w[薑黃 護肝 宿醉],
+    "魚油心血管" => %w[魚油],
+    "睡眠疲勞" => %w[失眠 疲勞 B群],
+    "皮膚保養" => %w[痘痘 敏感肌 暗沉 面膜],
+    "骨骼保健" => %w[骨質疏鬆 鈣],
+  }.freeze
+
+  KEYWORDS = KEYWORD_CATEGORIES.values.flatten.freeze
 
   def self.run
     new.call

@@ -42,3 +42,7 @@ yarn-debug.log*
 vendor/bundle
 
 /config/credentials/production.key
+
+# Local environment variables (never commit)
+.env
+.env.local

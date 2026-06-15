@@ -9,17 +9,20 @@ class ThreadsDashboardController < ApplicationController
       scope = scope.where(keyword: params[:keyword])
     end
 
-    @posts         = scope.limit(60)
-    @keywords      = ThreadsScraperService::KEYWORDS.sort
-    @active_keyword = params[:keyword]
-    @last_fetched  = ThreadsPost.maximum(:updated_at)
-    @today_count   = ThreadsPost.today.count
+    @posts             = scope.limit(60)
+    @keyword_categories = ThreadsScraperService::KEYWORD_CATEGORIES
+    @keywords           = ThreadsScraperService::KEYWORDS
+    @active_keyword     = params[:keyword]
+    @last_fetched       = ThreadsPost.maximum(:updated_at)
+    @today_count        = ThreadsPost.today.count
+    @analysis           = ThreadsAnalysis.latest_record
   end
 
   def refresh
-    success = ThreadsScraperService.run
-    if success
-      redirect_to threads_dashboard_path, notice: "資料已更新，共抓取 #{ThreadsPost.today.count} 則貼文"
+    scrape_success = ThreadsScraperService.run
+    if scrape_success
+      ThreadsAnalysisService.run(Date.today)
+      redirect_to threads_dashboard_path, notice: "資料已更新，共抓取 #{ThreadsPost.today.count} 則貼文，AI 分析已產生"
     else
       redirect_to threads_dashboard_path, alert: "爬蟲失敗，請確認 SCRAPECREATORS_API_KEY 設定是否正確"
     end

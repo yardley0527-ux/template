@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_11_130025) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_15_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -526,6 +526,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_11_130025) do
     t.index ["product_series"], name: "index_subscriptions_on_product_series"
     t.index ["shopline_customer_id"], name: "index_subscriptions_on_shopline_customer_id"
     t.index ["status"], name: "index_subscriptions_on_status"
+  end
+
+  create_table "threads_analyses", force: :cascade do |t|
+    t.date "fetched_on", null: false
+    t.text "ai_summary"
+    t.jsonb "stats_json", default: []
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fetched_on"], name: "index_threads_analyses_on_fetched_on", unique: true
   end
 
   create_table "threads_posts", force: :cascade do |t|
