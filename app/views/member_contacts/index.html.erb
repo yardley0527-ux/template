@@ -111,56 +111,77 @@
 </div>
 
 <%# ── 每日數據追蹤 ────────────────────────────────── %>
-<div class="d-flex align-items-center mb-3">
+<div class="d-flex align-items-center justify-content-between mb-3">
   <div class="border-start border-3 border-success ps-3">
     <h5 class="fw-bold mb-0 text-success">📈 每日數據追蹤</h5>
     <p class="text-muted small mb-0">今日：<%= Date.today.strftime("%Y/%m/%d") %></p>
   </div>
+  <%= button_to "🔄 更新 LINE 好友數", member_contacts_refresh_line_path,
+        method: :post, class: "btn btn-sm btn-outline-success" %>
 </div>
 
-<%# 今日數字卡片 + 輸入 %>
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-body">
-    <div class="row g-3 mb-3">
-      <%# LINE 自動欄位 %>
-      <% [
-        ["LINE 好友數", @today_stat.line_friends, "text-success"],
-        ["曾加入好友", @today_stat.line_followers, "text-secondary"],
-        ["封鎖數",     @today_stat.line_blocks,    "text-danger"],
-      ].each do |label, val, color| %>
-        <div class="col-auto">
-          <div class="card border-0 bg-light text-center px-4 py-2">
-            <div class="fw-bold <%= color %>" style="font-size:1.5rem;"><%= val ? number_with_delimiter(val) : "—" %></div>
-            <div class="text-muted small"><%= label %></div>
-          </div>
-        </div>
-      <% end %>
-      <div class="col-auto d-flex align-items-center">
-        <%= button_to "🔄 更新 LINE", member_contacts_refresh_line_path,
-              method: :post, class: "btn btn-sm btn-outline-success" %>
-      </div>
-    </div>
+<% def delta_badge(today, yesterday)
+     return "" unless today && yesterday
+     diff = today - yesterday
+     return "" if diff == 0
+     color = diff > 0 ? "success" : "danger"
+     sign  = diff > 0 ? "+" : ""
+     "<span class='badge bg-#{color} ms-1' style='font-size:0.7rem;'>#{sign}#{diff}</span>"
+   end %>
 
-    <%# Shopline 手動輸入 %>
-    <hr class="my-3">
-    <p class="text-muted small mb-2 fw-semibold">Shopline 數據（手動輸入）</p>
-    <%= form_with url: member_contacts_update_sl_path, method: :post, class: "row g-2 align-items-end" do |f| %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-0">
+    <%# 每日報告格式輸入表 %>
+    <%= form_with url: member_contacts_update_sl_path, method: :post do |f| %>
       <%= f.fields_for :daily_member_stat, @today_stat do |ff| %>
-        <% [
-          ["SL 會員總數",         :sl_total_members],
-          ["有消費人數",           :sl_purchased_members],
-          ["LINE+是網站會員",      :line_and_sl_members],
-          ["行動會員卡綁定",       :line_bound_members],
-          ["未綁定但已消費",       :unbound_purchased],
-        ].each do |label, field| %>
-          <div class="col-auto">
-            <label class="form-label text-muted small mb-0"><%= label %></label>
-            <%= ff.number_field field, value: @today_stat.send(field),
-                  class: "form-control form-control-sm", style: "width:110px;", placeholder: "—" %>
-          </div>
-        <% end %>
-        <div class="col-auto">
-          <%= button_tag "儲存", type: "submit", class: "btn btn-sm btn-primary" %>
+        <table class="table align-middle mb-0" style="font-size:0.9rem;">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-3" style="width:40%;">項目</th>
+              <th class="text-center text-muted" style="width:20%;">昨日</th>
+              <th class="text-center" style="width:20%;">今日</th>
+              <th class="text-center" style="width:20%;">變化</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%# LINE 自動 %>
+            <tr class="table-success bg-opacity-25">
+              <td class="ps-3 fw-semibold">LINE 官方好友數 <span class="badge bg-success ms-1" style="font-size:0.65rem;">自動</span></td>
+              <td class="text-center text-muted"><%= @yesterday_stat&.line_friends ? number_with_delimiter(@yesterday_stat.line_friends) : "—" %></td>
+              <td class="text-center fw-bold text-success"><%= @today_stat.line_friends ? number_with_delimiter(@today_stat.line_friends) : "—" %></td>
+              <td class="text-center"><%= delta_badge(@today_stat.line_friends, @yesterday_stat&.line_friends).html_safe %></td>
+            </tr>
+            <%# Shopline 手動 %>
+            <% [
+              ["官方好友＋是網站會員",       :line_and_sl_members],
+              ["行動會員卡綁定人數",          :line_bound_members],
+              ["手機未綁定但已消費",          :unbound_purchased],
+              ["SL 會員總人數",              :sl_total_members],
+              ["有消費過的人數",             :sl_purchased_members],
+            ].each do |label, field|
+              yesterday_val = @yesterday_stat&.send(field)
+              today_val     = @today_stat.send(field)
+            %>
+              <tr>
+                <td class="ps-3"><%= label %></td>
+                <td class="text-center text-muted"><%= yesterday_val ? number_with_delimiter(yesterday_val) : "—" %></td>
+                <td class="text-center">
+                  <%= ff.number_field field, value: today_val,
+                        class: "form-control form-control-sm text-center",
+                        style: "width:100px; margin:0 auto;",
+                        placeholder: "輸入",
+                        "data-yesterday": yesterday_val,
+                        "data-delta-target": "delta_#{field}" %>
+                </td>
+                <td class="text-center" id="delta_<%= field %>">
+                  <%= delta_badge(today_val, yesterday_val).html_safe %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+        <div class="px-3 py-2 text-end border-top">
+          <%= button_tag "儲存今日數據", type: "submit", class: "btn btn-sm btn-primary" %>
         </div>
       <% end %>
     <% end %>
@@ -168,7 +189,7 @@
 </div>
 
 <%# 近 30 天趨勢表 %>
-<% if @recent_stats.any? %>
+<% if @recent_stats.size > 1 %>
   <div class="card border-0 shadow-sm mb-5">
     <div class="card-header bg-white fw-semibold text-secondary py-2">近期每日紀錄</div>
     <div class="card-body p-0 table-responsive">
@@ -177,31 +198,51 @@
           <tr>
             <th class="text-start ps-3">日期</th>
             <th>LINE 好友</th>
-            <th>曾加入</th>
-            <th>封鎖</th>
-            <th>SL 會員</th>
-            <th>有消費</th>
-            <th>LINE+會員</th>
+            <th>好友＋會員</th>
             <th>行動會員卡</th>
             <th>未綁定已消費</th>
+            <th>SL 會員</th>
+            <th>有消費</th>
           </tr>
         </thead>
         <tbody>
-          <% @recent_stats.each do |s| %>
+          <% @recent_stats.each_with_index do |s, i| %>
+            <% prev = @recent_stats[i + 1] %>
             <tr>
               <td class="text-start ps-3 fw-semibold"><%= s.stat_date.strftime("%m/%d") %></td>
-              <td class="text-success"><%= s.line_friends ? number_with_delimiter(s.line_friends) : "—" %></td>
-              <td class="text-muted"><%= s.line_followers ? number_with_delimiter(s.line_followers) : "—" %></td>
-              <td class="text-danger"><%= s.line_blocks ? number_with_delimiter(s.line_blocks) : "—" %></td>
-              <td><%= s.sl_total_members ? number_with_delimiter(s.sl_total_members) : "—" %></td>
-              <td><%= s.sl_purchased_members ? number_with_delimiter(s.sl_purchased_members) : "—" %></td>
-              <td><%= s.line_and_sl_members ? number_with_delimiter(s.line_and_sl_members) : "—" %></td>
-              <td><%= s.line_bound_members ? number_with_delimiter(s.line_bound_members) : "—" %></td>
-              <td><%= s.unbound_purchased ? number_with_delimiter(s.unbound_purchased) : "—" %></td>
+              <td class="text-success">
+                <%= s.line_friends ? number_with_delimiter(s.line_friends) : "—" %>
+                <%= delta_badge(s.line_friends, prev&.line_friends).html_safe %>
+              </td>
+              <td><%= s.line_and_sl_members ? number_with_delimiter(s.line_and_sl_members) : "—" %><%= delta_badge(s.line_and_sl_members, prev&.line_and_sl_members).html_safe %></td>
+              <td><%= s.line_bound_members ? number_with_delimiter(s.line_bound_members) : "—" %><%= delta_badge(s.line_bound_members, prev&.line_bound_members).html_safe %></td>
+              <td><%= s.unbound_purchased ? number_with_delimiter(s.unbound_purchased) : "—" %><%= delta_badge(s.unbound_purchased, prev&.unbound_purchased).html_safe %></td>
+              <td><%= s.sl_total_members ? number_with_delimiter(s.sl_total_members) : "—" %><%= delta_badge(s.sl_total_members, prev&.sl_total_members).html_safe %></td>
+              <td><%= s.sl_purchased_members ? number_with_delimiter(s.sl_purchased_members) : "—" %><%= delta_badge(s.sl_purchased_members, prev&.sl_purchased_members).html_safe %></td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
   </div>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+document.querySelectorAll('input[data-yesterday]').forEach(function(input) {
+  var targetId = input.dataset.deltaTarget;
+  input.addEventListener('input', function() {
+    var today = parseInt(this.value);
+    var yesterday = parseInt(this.dataset.yesterday);
+    var cell = document.getElementById(targetId);
+    if (!cell) return;
+    if (isNaN(today) || isNaN(yesterday)) { cell.innerHTML = ''; return; }
+    var diff = today - yesterday;
+    if (diff === 0) { cell.innerHTML = ''; return; }
+    var color = diff > 0 ? 'success' : 'danger';
+    var sign  = diff > 0 ? '+' : '';
+    cell.innerHTML = '<span class="badge bg-' + color + '" style="font-size:0.7rem;">' + sign + diff + '</span>';
+  });
+});
+</script>
 <% end %>
