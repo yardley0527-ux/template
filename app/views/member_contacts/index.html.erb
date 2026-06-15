@@ -109,6 +109,50 @@
   </div>
 </div>
 
+<%# ── 本次匯入升降卡異動 ──────────────────────────── %>
+<% if @level_changes.any? %>
+  <% upgrades   = @level_changes.select { |c| c.direction == "upgrade" } %>
+  <% downgrades = @level_changes.select { |c| c.direction == "downgrade" } %>
+
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-3 border-warning ps-3">
+      <h5 class="fw-bold mb-0" style="color:#856404;">🔄 本次匯入卡別異動</h5>
+      <p class="text-muted small mb-0">共 <%= @level_changes.size %> 筆（升級 <%= upgrades.size %>、降級 <%= downgrades.size %>）</p>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <% { "升級" => [upgrades, "success", "⬆️"], "降級" => [downgrades, "danger", "⬇️"] }.each do |title, (list, color, icon)| %>
+      <% next if list.empty? %>
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white fw-semibold py-2 text-<%= color %>"><%= icon %> <%= title %> <%= list.size %> 人</div>
+          <div class="card-body p-0 table-responsive" style="max-height:260px;overflow-y:auto;">
+            <table class="table table-sm align-middle mb-0" style="font-size:0.83rem;">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th class="ps-3">姓名</th>
+                  <th>原卡別</th>
+                  <th>新卡別</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% list.each do |c| %>
+                  <tr>
+                    <td class="ps-3"><%= c.full_name %></td>
+                    <td class="text-muted"><%= c.from_level %></td>
+                    <td class="fw-semibold text-<%= color %>"><%= c.to_level %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
 <%# ── 每日數據追蹤 ────────────────────────────────── %>
 <div class="d-flex align-items-center justify-content-between mb-3">
   <div class="border-start border-3 border-success ps-3">

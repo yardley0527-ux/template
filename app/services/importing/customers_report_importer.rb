@@ -30,6 +30,15 @@ module Importing
       )
 
       log "[import] created ImportRun id=#{run.id}"
+
+      # 匯入前快照所有會員卡別
+      before_snapshot = ShoplineCustomer
+        .where.not(shopline_id: nil)
+        .where.not(membership_level: nil)
+        .pluck(:shopline_id, :full_name, :email, :membership_level)
+        .each_with_object({}) { |(sid, name, email, lvl), h| h[sid] = { level: lvl, name: name, email: email } }
+      log "[import] before_snapshot size=#{before_snapshot.size}"
+
       log "[import] opening xls/xlsx..."
 
       book = Roo::Spreadsheet.open(@file_path)
@@ -168,6 +177,9 @@ module Importing
 
       flush.call
       flush_email.call
+
+      changed_count = MembershipLevelChange.detect_and_record!(run, before_snapshot)
+      log "[import] membership_level_changes=#{changed_count}"
 
       run.update!(
         processed_rows: processed,

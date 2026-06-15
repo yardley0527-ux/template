@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_15_160000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_15_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -279,6 +279,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_15_160000) do
     t.integer "iguid_count", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "membership_level_changes", force: :cascade do |t|
+    t.bigint "import_run_id", null: false
+    t.string "shopline_id"
+    t.string "full_name"
+    t.string "email"
+    t.string "from_level", null: false
+    t.string "to_level", null: false
+    t.string "direction", null: false
+    t.datetime "changed_at", null: false
+    t.index ["changed_at"], name: "index_membership_level_changes_on_changed_at"
+    t.index ["direction"], name: "index_membership_level_changes_on_direction"
+    t.index ["import_run_id"], name: "index_membership_level_changes_on_import_run_id"
+    t.index ["shopline_id"], name: "index_membership_level_changes_on_shopline_id"
   end
 
   create_table "order_gift_records", force: :cascade do |t|
@@ -621,6 +636,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_15_160000) do
   add_foreign_key "livestream_images", "livestreams"
   add_foreign_key "livestream_products", "livestreams"
   add_foreign_key "manychat_iguids", "manychat_snapshots"
+  add_foreign_key "membership_level_changes", "import_runs"
   add_foreign_key "photos", "albums"
   add_foreign_key "shopline_customer_health_assessments", "shopline_customers"
   add_foreign_key "shopline_customer_health_questionnaires", "shopline_customers"
