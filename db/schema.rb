@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_15_150000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_15_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -136,6 +136,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_15_150000) do
     t.integer "unbound_purchased", comment: "手機未綁定但已消費"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "api_push"
+    t.integer "api_reply"
     t.index ["stat_date"], name: "index_daily_member_stats_on_stat_date", unique: true
   end
 

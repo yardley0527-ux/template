@@ -15,6 +15,9 @@ class MemberContactsController < ApplicationController
     @today_stat     = DailyMemberStat.find_or_initialize_by(stat_date: Date.today)
     @yesterday_stat = DailyMemberStat.find_by(stat_date: Date.yesterday)
     @recent_stats   = DailyMemberStat.recent(30).to_a
+    @demographic    = Rails.cache.fetch("line_demographic", expires_in: 12.hours) do
+      DailyMemberStat.fetch_demographic rescue nil
+    end
   end
 
   def refresh_line
