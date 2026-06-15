@@ -58,7 +58,7 @@ class ThreadsAnalysisService
   end
 
   def generate_ai_summary(posts, stats)
-    api_key = ENV['ANTHROPIC_API_KEY']
+    api_key = ENV['ANTHROPIC_API_KEY'].to_s.strip
     if api_key.blank?
       Rails.logger.warn("[ThreadsAnalysisService] ANTHROPIC_API_KEY 未設定，跳過 AI 分析")
       return "（未設定 ANTHROPIC_API_KEY，跳過 AI 分析）"
