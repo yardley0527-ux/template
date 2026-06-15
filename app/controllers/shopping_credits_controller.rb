@@ -38,18 +38,7 @@ class ShoppingCreditsController < ApplicationController
     @high_credits_grouped = LEVELS.index_with { |lv| high_credits.select { |c| c.membership_level == lv } }
 
     high_emails = @high_credits_grouped.values.flatten.map(&:email).compact.uniq
-    if high_emails.any?
-      orders_raw = ShoplineOrder.where(email: high_emails).pluck(:email, :product_name, :total_amount)
-      totals = Hash.new { |h, k| h[k] = Hash.new(0.0) }
-      orders_raw.each do |email, pname, amount|
-        next if pname.nil?
-        series = SERIES_KEYWORDS.find { |kw| pname.include?(kw) }
-        totals[email][series] += amount.to_f if series
-      end
-      @top_series_by_email = totals.transform_values { |s| s.max_by { |_, v| v }&.first }
-    else
-      @top_series_by_email = {}
-    end
+    @top_series_by_email = high_emails.any? ? top_series_sql(high_emails) : {}
 
     @hc_level = params[:hc_level].presence
     @hc_page  = [params[:hc_page].to_i, 1].max
@@ -60,4 +49,32 @@ class ShoppingCreditsController < ApplicationController
       @hc_current    = all.each_slice(HC_PER_PAGE).to_a[@hc_page - 1] || []
     end
   end
+
+  private
+
+  def top_series_sql(emails)
+    series_case = SERIES_KEYWORDS.map { |kw|
+      "WHEN product_name LIKE #{ActiveRecord::Base.connection.quote("%#{kw}%")} THEN #{ActiveRecord::Base.connection.quote(kw)}"
+    }.join(" ")
+
+    sql = <<~SQL
+      SELECT DISTINCT ON (email) email, series
+      FROM (
+        SELECT email,
+               CASE #{series_case} END AS series,
+               SUM(total_amount)       AS total
+        FROM   shopline_orders
+        WHERE  email = ANY(ARRAY[#{emails.map { |e| ActiveRecord::Base.connection.quote(e) }.join(",")}])
+          AND  product_name IS NOT NULL
+        GROUP  BY email, (CASE #{series_case} END)
+        HAVING (CASE #{series_case} END) IS NOT NULL
+      ) sub
+      ORDER  BY email, total DESC
+    SQL
+
+    ActiveRecord::Base.connection.execute(sql)
+      .to_a
+      .to_h { |r| [r["email"], r["series"]] }
+  end
+
 end
