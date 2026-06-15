@@ -14,7 +14,9 @@ class MemberContactsController < ApplicationController
 
     last_run        = ImportRun.where(kind: "customers_report").order(started_at: :desc).first
     @last_import_at = last_run&.started_at
-    @level_changes  = last_run ? MembershipLevelChange.where(import_run: last_run).recent : MembershipLevelChange.none
+    @level_changes  = last_run ? MembershipLevelChange.where(import_run: last_run)
+                                                       .where("from_level IN (?) OR to_level IN (?)", %w[黑卡 金卡], %w[黑卡 金卡])
+                                                       .recent : MembershipLevelChange.none
     @today_stat     = DailyMemberStat.find_or_initialize_by(stat_date: Date.today)
     @yesterday_stat = DailyMemberStat.find_by(stat_date: Date.yesterday)
     @recent_stats   = DailyMemberStat.recent(30).to_a
