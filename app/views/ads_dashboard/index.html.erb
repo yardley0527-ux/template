@@ -143,7 +143,7 @@
                           allowtransparency="true" loading="lazy"
                           style="display:block;width:100%;min-height:460px;border:none"></iframe>
                 <% elsif c['creative']['thumbnail_url'].present? %>
-                  <img src="<%= c['creative']['thumbnail_url'].gsub(/p\d+x\d+/, 'p480x480') %>" alt="廣告縮圖"
+                  <img src="<%= c['creative']['thumbnail_url'].gsub(/&stp=[^&]+/, '') %>" alt="廣告縮圖"
                        style="display:block;width:100%;object-fit:cover;max-height:460px">
                 <% else %>
                   <div class="text-center text-muted py-5" style="min-height:120px">
