@@ -249,47 +249,68 @@
 
       <%# 首購星期幾 %>
       <div class="col-md-4">
-        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">首購星期幾</p>
-        <% max_fw = (@first_by_weekday.map { |r| r[:revenue] }.max || 1).to_f %>
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">
+          首購星期幾
+          <span class="fw-normal text-muted" style="font-size:10px">（週五為直播日，供參考）</span>
+        </p>
+        <%
+          # 找「非週五」的最高值，做為真正的 best
+          non_fri = @first_by_weekday.reject { |r| r[:dow] == 5 }
+          max_fw_real = (non_fri.map { |r| r[:revenue] }.max || 0).to_f
+          max_fw_all  = (@first_by_weekday.map { |r| r[:revenue] }.max || 1).to_f
+        %>
         <table class="table table-sm mb-0">
           <tbody>
             <% @first_by_weekday.each do |r| %>
-              <% is_best = r[:revenue] == max_fw %>
-              <tr class="<%= is_best ? 'table-warning' : '' %>">
-                <td class="px-0 fw-bold small" style="width:50px"><%= wday_names[r[:dow]] %></td>
+              <% is_fri  = r[:dow] == 5 %>
+              <% is_best = !is_fri && r[:revenue] == max_fw_real && max_fw_real > 0 %>
+              <tr class="<%= is_best ? 'table-success' : '' %>" style="<%= is_fri ? 'opacity:0.5' : '' %>">
+                <td class="px-0 fw-bold small" style="width:50px">
+                  <%= wday_names[r[:dow]] %>
+                  <% if is_fri %><span class="text-muted" style="font-size:9px">🎥</span><% end %>
+                </td>
                 <td>
                   <div style="background:#f0f0f0;border-radius:3px;height:7px;overflow:hidden;">
-                    <div style="width:<%= max_fw > 0 ? (r[:revenue]/max_fw*100).round : 0 %>%;background:#e74c3c;height:7px;"></div>
+                    <div style="width:<%= max_fw_all > 0 ? (r[:revenue]/max_fw_all*100).round : 0 %>%;background:<%= is_fri ? '#adb5bd' : (is_best ? '#28a745' : '#e74c3c') %>;height:7px;"></div>
                   </div>
                 </td>
                 <td class="text-right small text-muted" style="width:40px"><%= r[:order_count] %>筆</td>
-                <td class="small" style="width:16px"><%= "🏆" if is_best %></td>
+                <td class="small" style="width:20px">
+                  <% if is_best %>🏆<% elsif is_fri %><span style="font-size:9px;color:#aaa">直播</span><% end %>
+                </td>
               </tr>
             <% end %>
           </tbody>
         </table>
+        <p class="text-muted mb-0 mt-1" style="font-size:10px">🏆 = 非直播日最高</p>
       </div>
 
       <%# 首購時段 %>
       <div class="col-md-4">
-        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">首購時段</p>
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">
+          首購時段
+          <span class="fw-normal text-muted" style="font-size:10px">（凌晨已排除）</span>
+        </p>
         <%
-          fp_slotted = hour_slots.map do |s|
-            rows = @first_by_hour.select { |r| s[:hours].include?(r[:hour]) }
-            next nil if rows.empty?
-            { label: s[:label], orders: rows.sum { |r| r[:order_count] }, revenue: rows.sum { |r| r[:revenue] } }
-          end.compact
+          # 排除凌晨 0-5（批次匯入的假時間戳）
+          fp_slotted = hour_slots
+            .reject { |s| s[:hours] == (0..5) }
+            .map do |s|
+              rows = @first_by_hour.select { |r| s[:hours].include?(r[:hour]) }
+              next nil if rows.empty?
+              { label: s[:label], orders: rows.sum { |r| r[:order_count] }, revenue: rows.sum { |r| r[:revenue] } }
+            end.compact
           max_fh = (fp_slotted.map { |s| s[:revenue] }.max || 1).to_f
         %>
         <table class="table table-sm mb-0">
           <tbody>
             <% fp_slotted.each do |s| %>
               <% is_best = s[:revenue] == max_fh %>
-              <tr class="<%= is_best ? 'table-warning' : '' %>">
+              <tr class="<%= is_best ? 'table-success' : '' %>">
                 <td class="px-0 fw-bold small" style="width:90px"><%= s[:label] %></td>
                 <td>
                   <div style="background:#f0f0f0;border-radius:3px;height:7px;overflow:hidden;">
-                    <div style="width:<%= max_fh > 0 ? (s[:revenue]/max_fh*100).round : 0 %>%;background:#e74c3c;height:7px;"></div>
+                    <div style="width:<%= max_fh > 0 ? (s[:revenue]/max_fh*100).round : 0 %>%;background:<%= is_best ? '#28a745' : '#e74c3c' %>;height:7px;"></div>
                   </div>
                 </td>
                 <td class="text-right small text-muted" style="width:40px"><%= s[:orders] %>筆</td>
@@ -298,6 +319,7 @@
             <% end %>
           </tbody>
         </table>
+        <p class="text-muted mb-0 mt-1" style="font-size:10px">＊凌晨 0–5 為系統匯入時間戳，已排除</p>
       </div>
 
       <%# 首購月份 %>
