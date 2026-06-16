@@ -158,6 +158,48 @@ class IgAudienceController < ApplicationController
         }
         .sort_by { |r| r[:hour] }
 
+      # ── 購買軌跡（完整序列） ──────────────────────────────────
+      traj_sql = <<~SQL
+        SELECT email, order_date, product_name, total_amount,
+               ROW_NUMBER() OVER (PARTITION BY email ORDER BY order_date) AS purchase_no
+        FROM shopline_orders
+        WHERE email = ANY(ARRAY[#{@emails.map { |e| "'#{e.gsub("'", "''")}'" }.join(",")}])
+          AND payment_status = '已付款'
+          AND product_name IS NOT NULL AND product_name != ''
+          AND order_date IS NOT NULL
+        ORDER BY email, order_date
+      SQL
+      traj_rows = ActiveRecord::Base.connection.execute(traj_sql).to_a
+      traj_by_person = traj_rows.group_by { |r| r["email"] }
+
+      @repurchase_count = traj_by_person.count { |_, os| os.size >= 2 }
+      @repurchase_rate  = traj_by_person.size > 0 ?
+        (@repurchase_count.to_f / traj_by_person.size * 100).round(1) : 0
+
+      gaps = []
+      traj_by_person.each do |_, os|
+        dates = os.map { |r| Date.parse(r["order_date"].to_s[0..9]) rescue nil }.compact
+        dates.each_cons(2) { |a, b| gaps << (b - a).to_i }
+      end
+      @median_gap_days = gaps.any? ? gaps.sort[gaps.size / 2] : nil
+
+      @avg_spend_per_customer = traj_by_person.size > 0 ?
+        (traj_rows.sum { |r| r["total_amount"].to_f } / traj_by_person.size).round(0) : 0
+
+      @seq_first  = rank_seq(traj_rows.select { |r| r["purchase_no"].to_i == 1 })
+      @seq_second = rank_seq(traj_rows.select { |r| r["purchase_no"].to_i == 2 })
+      @seq_third  = rank_seq(traj_rows.select { |r| r["purchase_no"].to_i == 3 })
+
+      buyer_map = @buyers.index_by { |b| b["email"] }
+      @customer_sequences = traj_by_person.map do |email, os|
+        buyer = buyer_map[email]
+        { name:     buyer&.dig("name") || email,
+          email:    email,
+          count:    os.size,
+          total:    os.sum { |r| r["total_amount"].to_f },
+          products: os.map { |r| r["product_name"] } }
+      end.sort_by { |c| -c[:total] }
+
       # ── 月份趨勢 ─────────────────────────────────────────────
       @monthly = orders
         .where.not(order_date: nil)
@@ -191,11 +233,15 @@ class IgAudienceController < ApplicationController
         )
         .order("hour")
     else
-      @top_products      = []
+      @top_products       = []
       @first_top_products = []
-      @first_by_weekday  = []
-      @first_by_hour     = []
+      @first_by_weekday   = []
+      @first_by_hour      = []
+      @first_by_month     = []
       @monthly = @by_weekday = @by_hour = []
+      @repurchase_count = @repurchase_rate = @median_gap_days = @avg_spend_per_customer = nil
+      @seq_first = @seq_second = @seq_third = []
+      @customer_sequences = []
     end
   end
 
@@ -225,5 +271,12 @@ class IgAudienceController < ApplicationController
 
   def load_data
     File.exist?(DATA_PATH) ? JSON.parse(File.read(DATA_PATH)) : nil
+  end
+
+  def rank_seq(rows, limit = 5)
+    rows.group_by { |r| r["product_name"] }
+        .map { |name, rs| { name: name, count: rs.size } }
+        .sort_by { |p| -p[:count] }
+        .first(limit)
   end
 end

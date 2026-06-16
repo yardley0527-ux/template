@@ -219,6 +219,135 @@
   </div>
 </div>
 
+<%# ── 購買軌跡總覽（老闆報告） ── %>
+<% if @repurchase_rate %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header text-white fw-bold" style="background:#1a252f;">
+    📊 購買軌跡分析 — 給老闆的報告
+  </div>
+  <div class="card-body">
+
+    <%# 4 個關鍵指標 %>
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="text-center p-3 rounded" style="background:#eaf4fb;">
+          <div class="text-muted small mb-1">總人數</div>
+          <div class="fw-bold" style="font-size:1.8rem;color:#2980b9;"><%= @count %></div>
+          <div class="text-muted small">人</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="text-center p-3 rounded" style="background:#eafaf1;">
+          <div class="text-muted small mb-1">回購率</div>
+          <div class="fw-bold" style="font-size:1.8rem;color:#27ae60;"><%= @repurchase_rate %>%</div>
+          <div class="text-muted small"><%= @repurchase_count %> 人購買 ≥ 2 次</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="text-center p-3 rounded" style="background:#fef9e7;">
+          <div class="text-muted small mb-1">中位數回購間隔</div>
+          <div class="fw-bold" style="font-size:1.8rem;color:#e67e22;"><%= @median_gap_days || '—' %></div>
+          <div class="text-muted small">天</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="text-center p-3 rounded" style="background:#fdf2f8;">
+          <div class="text-muted small mb-1">人均消費</div>
+          <div class="fw-bold" style="font-size:1.8rem;color:#8e44ad;">NT$<%= number_with_delimiter(@avg_spend_per_customer.to_i) %></div>
+          <div class="text-muted small">含所有訂單</div>
+        </div>
+      </div>
+    </div>
+
+    <%# 購買路徑：首購 → 二購 → 三購 %>
+    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">購買路徑：首購 → 二購 → 三購</p>
+    <div class="row g-2 mb-4">
+      <% [["🥇 首購", @seq_first, "#e74c3c"], ["🥈 二購", @seq_second, "#e67e22"], ["🥉 三購", @seq_third, "#27ae60"]].each do |label, seq, color| %>
+        <div class="col-md-4">
+          <div class="card border-0 h-100" style="background:#f9f9f9;">
+            <div class="card-body p-3">
+              <div class="fw-bold mb-2" style="color:<%= color %>"><%= label %></div>
+              <% if seq.any? %>
+                <% seq.each_with_index do |p, i| %>
+                  <div class="d-flex justify-content-between align-items-center py-1 <%= i < seq.size-1 ? 'border-bottom' : '' %>">
+                    <span class="small fw-bold"><%= p[:name].to_s.truncate(14) %></span>
+                    <span class="badge badge-pill text-white small" style="background:<%= color %>"><%= p[:count] %>人</span>
+                  </div>
+                <% end %>
+              <% else %>
+                <span class="text-muted small">無資料</span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%# 月份趨勢 %>
+    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">每月購買筆數趨勢（所有訂單）</p>
+    <% if @monthly.any? %>
+      <% max_m = @monthly.map { |m| m.order_count.to_i }.max.to_f %>
+      <div class="d-flex flex-wrap align-items-end gap-1 mb-1" style="min-height:80px;">
+        <% @monthly.each do |m| %>
+          <% bar_h = max_m > 0 ? (m.order_count.to_i / max_m * 64).round : 4 %>
+          <% is_peak = m.order_count.to_i == max_m.to_i %>
+          <div class="text-center" style="min-width:44px; flex:1; max-width:70px;">
+            <div class="small fw-bold mb-1" style="color:<%= is_peak ? '#e74c3c' : '#888' %>; font-size:10px;"><%= m.order_count %></div>
+            <div style="height:<%= bar_h %>px; background:<%= is_peak ? '#e74c3c' : '#5bc0de' %>; border-radius:3px 3px 0 0;"></div>
+            <div class="text-muted mt-1" style="font-size:9px;"><%= m.ym.to_s.sub(/^\d{4}-0?/, '') %>月<br/><span style="color:#bbb"><%= m.ym.to_s[0..3] %></span></div>
+          </div>
+        <% end %>
+      </div>
+      <% peak_month = @monthly.max_by { |m| m.order_count.to_i } %>
+      <p class="text-muted small mb-0">峰值：<strong><%= peak_month&.ym %></strong>（<%= peak_month&.order_count %> 筆，NT$<%= number_with_delimiter(peak_month&.revenue.to_i) %>）</p>
+    <% end %>
+
+    <%# 最佳購買星期（排除直播） %>
+    <% if @by_weekday.any? %>
+      <% wday_zh = %w[週日 週一 週二 週三 週四 週五 週六] %>
+      <% non_fri = @by_weekday.reject { |r| r.dow.to_i == 5 } %>
+      <% best_nat = non_fri.max_by { |r| r.revenue.to_f } %>
+      <p class="small text-muted mt-2 mb-0">
+        ⭐ 排除直播日（週五）後，<strong><%= wday_zh[best_nat.dow.to_i] %></strong>是自然購買力最高的日子
+        （NT$<%= number_with_delimiter(best_nat.revenue.to_i) %>）
+      </p>
+    <% end %>
+
+    <%# 個人購買序列 %>
+    <hr class="my-3"/>
+    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">每位顧客購買序列</p>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0 align-middle">
+        <thead class="thead-light">
+          <tr>
+            <th>姓名</th>
+            <th class="text-center">訂單數</th>
+            <th class="text-right">總消費</th>
+            <th>購買路徑</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @customer_sequences.each do |c| %>
+            <tr>
+              <td class="fw-bold small"><%= c[:name] %></td>
+              <td class="text-center small text-muted"><%= c[:count] %> 筆</td>
+              <td class="text-right fw-bold small text-success">NT$<%= number_with_delimiter(c[:total].to_i) %></td>
+              <td class="small text-muted">
+                <% c[:products].each_with_index do |p, i| %>
+                  <span class="badge badge-light border mr-1 mb-1" style="font-size:10px; font-weight:normal;"><%= p.to_s.truncate(12) %></span>
+                  <% if i < c[:products].size - 1 %><span class="text-muted" style="font-size:10px;">→</span><% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+<% end %>
+
 <%# ── 首次購買分析 ── %>
 <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #e74c3c !important;">
   <div class="card-header">
