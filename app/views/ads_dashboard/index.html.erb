@@ -104,18 +104,24 @@
               end
             %>
             <div class="row g-2">
+              <%
+                ig_gained = l['ig_followers_gained']
+                ig_val = ig_gained.nil? ? '—' : (ig_gained >= 0 ? "+#{ig_gained}" : ig_gained.to_s)
+                ig_color = ig_gained.nil? ? '' : (ig_gained > 0 ? 'text-success' : ig_gained < 0 ? 'text-danger' : '')
+              %>
               <% [
                   { label: '曝光次數',   value: fmt_num(l['impressions']), extra: change_badge(l['impressions'], p&.dig('impressions')) },
                   { label: 'CTR',        value: l['ctr'] ? "#{l['ctr']}%" : '—', extra: change_badge(l['ctr'], p&.dig('ctr')) },
                   { label: 'CPM',        value: l['cpm'] ? "NT$#{l['cpm'].to_i}" : '—', extra: change_badge(l['cpm'], p&.dig('cpm'), lower_better: true) },
                   { label: '觸及人數',   value: fmt_num(l['reach']), extra: '' },
                   { label: '花費',       value: "NT$#{fmt_num(l['spend'])}", extra: spend_rate ? "<small class='text-muted'>預算消耗 #{spend_rate}%</small>" : '' },
-                  { label: '影片看完率', value: completion ? "#{completion}%" : (l['video_100'] ? "#{fmt_num(l['video_100'])} 人" : '—'), extra: '' }
+                  { label: '影片看完率', value: completion ? "#{completion}%" : (l['video_100'] ? "#{fmt_num(l['video_100'])} 人" : '—'), extra: '' },
+                  { label: 'IG 增粉',    value: ig_val, extra: '', color: ig_color }
                 ].each do |m| %>
                 <div class="col-4">
                   <div class="bg-light rounded p-2">
                     <div class="text-muted" style="font-size:11px"><%= m[:label] %></div>
-                    <div class="fw-bold" style="font-size:1.1rem"><%= m[:value] %></div>
+                    <div class="fw-bold <%= m[:color] %>" style="font-size:1.1rem"><%= m[:value] %></div>
                     <%= raw m[:extra] %>
                   </div>
                 </div>
