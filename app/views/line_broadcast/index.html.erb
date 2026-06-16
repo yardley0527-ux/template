@@ -4,7 +4,7 @@
 <%
   def fmt_n(n); number_with_delimiter(n.to_i); end
   def fmt_money(n); "NT$#{number_with_delimiter(n.to_i)}"; end
-  def fmt_pct(n); n ? "#{n.round(2)}%" : "—"; end
+  def fmt_pct(n); n && n > 0 ? "#{n.round(2)}%" : "—"; end
 %>
 
 <%# ── Header ── %>
@@ -14,12 +14,67 @@
       <h4 class="fw-bold mb-0">LINE 推播分析</h4>
       <p class="text-muted small mb-0"><%= @data['product'] %> · <%= @data['channel'] %></p>
     </div>
-    <span class="text-muted small">共 <%= fmt_n(@total_broadcasts) %> 筆推播紀錄</span>
+    <span class="text-muted small">最後更新：<%= @data['last_updated'] %></span>
   </div>
 </div>
 
-<%# ── 總覽 ── %>
-<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">總覽</p>
+<%# ── 跨年度比較 ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">年度比較</p>
+<div class="row g-3 mb-4">
+  <% @year_summary.each do |ys| %>
+    <div class="col-md-<%= 12 / [@year_summary.size, 4].min %> col-6">
+      <a href="<%= line_broadcast_path(year: ys[:year]) %>" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 <%= @selected_year == ys[:year] ? 'border-primary' : '' %>"
+             style="<%= @selected_year == ys[:year] ? 'border-left: 4px solid #4a6fa5 !important;' : '' %>">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <div class="fw-bold" style="font-size:1.1rem"><%= ys[:year] %> 年</div>
+              <% if @selected_year == ys[:year] %>
+                <span class="badge badge-primary" style="background:#4a6fa5">目前</span>
+              <% end %>
+            </div>
+            <div class="row g-2 text-center">
+              <div class="col-6">
+                <div class="text-muted" style="font-size:11px">推播次數</div>
+                <div class="fw-bold"><%= fmt_n(ys[:count]) %></div>
+              </div>
+              <div class="col-6">
+                <div class="text-muted" style="font-size:11px">訂單數</div>
+                <div class="fw-bold"><%= fmt_n(ys[:orders]) %></div>
+              </div>
+              <div class="col-12">
+                <div class="text-muted" style="font-size:11px">總營業額</div>
+                <div class="fw-bold text-success"><%= fmt_money(ys[:revenue]) %></div>
+              </div>
+              <div class="col-6">
+                <div class="text-muted" style="font-size:11px">平均 CTR</div>
+                <div class="fw-bold <%= ys[:avg_ctr].to_f >= 3 ? 'text-success' : '' %>"><%= fmt_pct(ys[:avg_ctr]) %></div>
+              </div>
+              <div class="col-6">
+                <div class="text-muted" style="font-size:11px">平均已讀率</div>
+                <div class="fw-bold"><%= fmt_pct(ys[:avg_read_rate]) %></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+  <% end %>
+</div>
+
+<%# ── 年度切換 Tab ── %>
+<div class="d-flex align-items-center gap-3 mb-3 border-bottom pb-2">
+  <% @years.each do |y| %>
+    <a href="<%= line_broadcast_path(year: y) %>"
+       class="fw-bold text-decoration-none pb-1 <%= @selected_year == y ? 'text-primary border-bottom border-primary' : 'text-muted' %>"
+       style="font-size:1rem;<%= @selected_year == y ? 'border-bottom-width:2px!important' : '' %>">
+      <%= y %> 年
+    </a>
+  <% end %>
+</div>
+
+<%# ── 年度 KPI ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2"><%= @selected_year %> 年總覽</p>
 <div class="row g-3 mb-4">
   <div class="col-md-2 col-6">
     <div class="card border-0 shadow-sm">
@@ -41,7 +96,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <div class="text-muted small mb-1">總營業額</div>
-        <div class="fw-bold text-success" style="font-size:1.4rem;line-height:1"><%= fmt_money(@total_revenue) %></div>
+        <div class="fw-bold text-success" style="font-size:1.3rem;line-height:1"><%= fmt_money(@total_revenue) %></div>
       </div>
     </div>
   </div>
@@ -57,7 +112,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <div class="text-muted small mb-1">平均 CTR</div>
-        <div class="fw-bold <%= @avg_ctr && @avg_ctr >= 3 ? 'text-success' : '' %>" style="font-size:1.6rem;line-height:1"><%= fmt_pct(@avg_ctr) %></div>
+        <div class="fw-bold <%= @avg_ctr.to_f >= 3 ? 'text-success' : '' %>" style="font-size:1.6rem;line-height:1"><%= fmt_pct(@avg_ctr) %></div>
       </div>
     </div>
   </div>
@@ -65,19 +120,19 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <div class="text-muted small mb-1">平均退訂率</div>
-        <div class="fw-bold <%= @avg_unsub_rate && @avg_unsub_rate > 0.3 ? 'text-danger' : '' %>" style="font-size:1.6rem;line-height:1"><%= fmt_pct(@avg_unsub_rate) %></div>
+        <div class="fw-bold <%= @avg_unsub_rate.to_f > 0.3 ? 'text-danger' : '' %>" style="font-size:1.6rem;line-height:1"><%= fmt_pct(@avg_unsub_rate) %></div>
       </div>
     </div>
   </div>
 </div>
 
 <%# ── 月度趨勢 ── %>
-<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">月度趨勢</p>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2"><%= @selected_year %> 年月度趨勢</p>
 <div class="row g-3 mb-4">
   <div class="col-md-8">
     <div class="card border-0 shadow-sm">
       <div class="card-body">
-        <div class="fw-bold mb-3">每月營業額與推播次數</div>
+        <div class="fw-bold mb-3">每月營業額 & 推播次數</div>
         <canvas id="monthlyRevenueChart" height="100"></canvas>
       </div>
     </div>
@@ -85,14 +140,48 @@
   <div class="col-md-4">
     <div class="card border-0 shadow-sm">
       <div class="card-body">
-        <div class="fw-bold mb-3">每月平均 CTR / 已讀率</div>
+        <div class="fw-bold mb-3">每月 CTR / 已讀率</div>
         <canvas id="monthlyRateChart" height="160"></canvas>
       </div>
     </div>
   </div>
 </div>
 
+<%# ── 月度明細表 ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2"><%= @selected_year %> 年月度摘要</p>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead>
+          <tr>
+            <th>月份</th>
+            <th class="text-end">推播次數</th>
+            <th class="text-end">訂單數</th>
+            <th class="text-end">營業額</th>
+            <th class="text-end">平均 CTR</th>
+            <th class="text-end">平均已讀率</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @monthly.each do |m| %>
+            <tr>
+              <td class="fw-bold"><%= m[:month] %> 月</td>
+              <td class="text-end"><%= fmt_n(m[:broadcasts]) %></td>
+              <td class="text-end"><%= fmt_n(m[:orders]) %></td>
+              <td class="text-end text-success fw-bold"><%= fmt_money(m[:revenue]) %></td>
+              <td class="text-end <%= m[:avg_ctr].to_f >= 3 ? 'text-success fw-bold' : '' %>"><%= fmt_pct(m[:avg_ctr]) %></td>
+              <td class="text-end"><%= fmt_pct(m[:avg_read_rate]) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <%# ── 排行榜 ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">排行榜</p>
 <div class="row g-3 mb-4">
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100">
@@ -100,11 +189,11 @@
         <div class="fw-bold mb-3">🏆 營業額 Top 10</div>
         <div class="table-responsive">
           <table class="table table-sm mb-0">
-            <thead><tr><th>主題</th><th class="text-end">訂單數</th><th class="text-end">營業額</th></tr></thead>
+            <thead><tr><th>主題</th><th class="text-end">訂單</th><th class="text-end">營業額</th></tr></thead>
             <tbody>
               <% @top_revenue.each do |b| %>
                 <tr>
-                  <td style="max-width:260px" class="text-truncate"><%= b['topic'] %></td>
+                  <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<%= b['topic'] %>"><%= b['topic'] %></td>
                   <td class="text-end"><%= fmt_n(b['orders']) %></td>
                   <td class="text-end fw-bold text-success"><%= fmt_money(b['revenue']) %></td>
                 </tr>
@@ -125,7 +214,7 @@
             <tbody>
               <% @top_ctr.each do |b| %>
                 <tr>
-                  <td style="max-width:260px" class="text-truncate"><%= b['topic'] %></td>
+                  <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="<%= b['topic'] %>"><%= b['topic'] %></td>
                   <td class="text-end"><%= fmt_n(b['clicks']) %></td>
                   <td class="text-end fw-bold text-primary"><%= fmt_pct(b['ctr']) %></td>
                 </tr>
@@ -139,38 +228,40 @@
 </div>
 
 <%# ── 完整明細 ── %>
-<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">完整明細（<%= fmt_n(@total_broadcasts) %> 筆）</p>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">
+  <%= @selected_year %> 年完整明細（<%= fmt_n(@total_broadcasts) %> 筆）
+</p>
 <div class="card border-0 shadow-sm mb-4">
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
       <input type="text" id="broadcastSearch" class="form-control form-control-sm" style="max-width:280px" placeholder="搜尋推播主題…">
       <span class="text-muted small">點擊欄位標題可排序</span>
     </div>
-    <div class="table-responsive" style="max-height:640px;overflow-y:auto">
+    <div class="table-responsive" style="max-height:600px;overflow-y:auto">
       <table class="table table-sm table-hover mb-0" id="broadcastTable">
         <thead class="sticky-top bg-white">
           <tr>
-            <th data-sort="topic" style="cursor:pointer;min-width:240px">主題 ⇅</th>
+            <th data-sort="topic" style="cursor:pointer;min-width:220px">主題 ⇅</th>
             <th data-sort="push_time" style="cursor:pointer">推播時間 ⇅</th>
-            <th data-sort="message_success" style="cursor:pointer" class="text-end">成功數 ⇅</th>
-            <th data-sort="read_rate" style="cursor:pointer" class="text-end">已讀率 ⇅</th>
-            <th data-sort="ctr" style="cursor:pointer" class="text-end">CTR ⇅</th>
-            <th data-sort="response_24h_rate" style="cursor:pointer" class="text-end">24h 回應率 ⇅</th>
-            <th data-sort="unsubscribe_rate" style="cursor:pointer" class="text-end">退訂率 ⇅</th>
-            <th data-sort="orders" style="cursor:pointer" class="text-end">訂單數 ⇅</th>
-            <th data-sort="revenue" style="cursor:pointer" class="text-end">營業額 ⇅</th>
+            <th data-sort="message_success" class="text-end" style="cursor:pointer">成功數 ⇅</th>
+            <th data-sort="read_rate" class="text-end" style="cursor:pointer">已讀率 ⇅</th>
+            <th data-sort="ctr" class="text-end" style="cursor:pointer">CTR ⇅</th>
+            <th data-sort="response_24h_rate" class="text-end" style="cursor:pointer">24h 回應率 ⇅</th>
+            <th data-sort="unsubscribe_rate" class="text-end" style="cursor:pointer">退訂率 ⇅</th>
+            <th data-sort="orders" class="text-end" style="cursor:pointer">訂單數 ⇅</th>
+            <th data-sort="revenue" class="text-end" style="cursor:pointer">營業額 ⇅</th>
           </tr>
         </thead>
         <tbody>
           <% @broadcasts.each do |b| %>
             <tr>
-              <td><%= b['topic'] %></td>
+              <td title="<%= b['topic'] %>"><%= b['topic'] %></td>
               <td class="text-nowrap"><%= b['push_time'].to_s[0, 16] %></td>
               <td class="text-end"><%= fmt_n(b['message_success']) %></td>
               <td class="text-end"><%= fmt_pct(b['read_rate']) %></td>
               <td class="text-end"><%= fmt_pct(b['ctr']) %></td>
               <td class="text-end"><%= fmt_pct(b['response_24h_rate']) %></td>
-              <td class="text-end"><%= fmt_pct(b['unsubscribe_rate']) %></td>
+              <td class="text-end <%= b['unsubscribe_rate'].to_f > 0.3 ? 'text-danger' : '' %>"><%= fmt_pct(b['unsubscribe_rate']) %></td>
               <td class="text-end"><%= fmt_n(b['orders']) %></td>
               <td class="text-end fw-bold text-success"><%= fmt_money(b['revenue']) %></td>
             </tr>
@@ -186,74 +277,62 @@
 document.addEventListener('DOMContentLoaded', function() {
   const monthly = <%= raw @monthly.to_json %>;
 
-  const revCtx = document.getElementById('monthlyRevenueChart');
-  if (revCtx && monthly.length) {
-    new Chart(revCtx, {
-      type: 'bar',
-      data: {
-        labels: monthly.map(m => m.month),
-        datasets: [
-          { type: 'bar', label: '營業額', data: monthly.map(m => m.revenue), backgroundColor: 'rgba(40,167,69,0.6)', yAxisID: 'y' },
-          { type: 'line', label: '推播次數', data: monthly.map(m => m.broadcasts), borderColor: '#1877F2', backgroundColor: 'transparent', yAxisID: 'y1', tension: 0.3, pointRadius: 4 }
-        ]
+  new Chart(document.getElementById('monthlyRevenueChart'), {
+    type: 'bar',
+    data: {
+      labels: monthly.map(m => m.month + '月'),
+      datasets: [
+        { type: 'bar',  label: '營業額',   data: monthly.map(m => m.revenue),    backgroundColor: 'rgba(40,167,69,0.55)', yAxisID: 'y' },
+        { type: 'line', label: '推播次數', data: monthly.map(m => m.broadcasts), borderColor: '#4a6fa5', backgroundColor: 'transparent', yAxisID: 'y1', tension: 0.3, pointRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        y:  { type: 'linear', position: 'left',  title: { display: true, text: '營業額 (NT$)' } },
+        y1: { type: 'linear', position: 'right', title: { display: true, text: '推播次數' }, grid: { drawOnChartArea: false } }
       },
-      options: {
-        responsive: true,
-        interaction: { mode: 'index', intersect: false },
-        scales: {
-          y:  { type: 'linear', position: 'left',  title: { display: true, text: '營業額 (NT$)' } },
-          y1: { type: 'linear', position: 'right', title: { display: true, text: '推播次數' }, grid: { drawOnChartArea: false } }
-        },
-        plugins: { legend: { position: 'bottom' } }
-      }
-    });
-  }
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
 
-  const rateCtx = document.getElementById('monthlyRateChart');
-  if (rateCtx && monthly.length) {
-    new Chart(rateCtx, {
-      type: 'line',
-      data: {
-        labels: monthly.map(m => m.month),
-        datasets: [
-          { label: 'CTR (%)', data: monthly.map(m => m.avg_ctr), borderColor: '#f5a623', backgroundColor: 'transparent', tension: 0.3, pointRadius: 4 },
-          { label: '已讀率 (%)', data: monthly.map(m => m.avg_read_rate), borderColor: '#6c5ce7', backgroundColor: 'transparent', tension: 0.3, pointRadius: 4 }
-        ]
-      },
-      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-    });
-  }
+  new Chart(document.getElementById('monthlyRateChart'), {
+    type: 'line',
+    data: {
+      labels: monthly.map(m => m.month + '月'),
+      datasets: [
+        { label: 'CTR (%)',    data: monthly.map(m => m.avg_ctr),       borderColor: '#f5a623', backgroundColor: 'transparent', tension: 0.3, pointRadius: 4 },
+        { label: '已讀率 (%)', data: monthly.map(m => m.avg_read_rate), borderColor: '#6c5ce7', backgroundColor: 'transparent', tension: 0.3, pointRadius: 4 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+  });
 
-  // ── Search ──
+  // Search
   const searchInput = document.getElementById('broadcastSearch');
   const tbody = document.querySelector('#broadcastTable tbody');
   const rows = Array.from(tbody.querySelectorAll('tr'));
   searchInput.addEventListener('input', function() {
     const q = this.value.trim().toLowerCase();
-    rows.forEach(row => {
-      const topic = row.children[0].textContent.toLowerCase();
-      row.style.display = topic.includes(q) ? '' : 'none';
-    });
+    rows.forEach(r => r.style.display = r.children[0].textContent.toLowerCase().includes(q) ? '' : 'none');
   });
 
-  // ── Sort ──
-  const headers = document.querySelectorAll('#broadcastTable th[data-sort]');
-  const colIndex = {};
-  headers.forEach((h, i) => colIndex[h.dataset.sort] = i);
+  // Sort
   let sortState = {};
-  headers.forEach(h => {
+  document.querySelectorAll('#broadcastTable th[data-sort]').forEach((h, i) => {
     h.addEventListener('click', function() {
       const key = this.dataset.sort;
-      const idx = colIndex[key];
       sortState[key] = !sortState[key];
       const asc = sortState[key];
       const sorted = rows.slice().sort((a, b) => {
-        let av = a.children[idx].textContent.replace(/[^\d.\-]/g, '');
-        let bv = b.children[idx].textContent.replace(/[^\d.\-]/g, '');
+        const av = a.children[i].textContent.replace(/[^\d.\-]/g, '');
+        const bv = b.children[i].textContent.replace(/[^\d.\-]/g, '');
         const an = parseFloat(av), bn = parseFloat(bv);
         if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
-        av = a.children[idx].textContent; bv = b.children[idx].textContent;
-        return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+        return asc
+          ? a.children[i].textContent.localeCompare(b.children[i].textContent)
+          : b.children[i].textContent.localeCompare(a.children[i].textContent);
       });
       sorted.forEach(r => tbody.appendChild(r));
     });
