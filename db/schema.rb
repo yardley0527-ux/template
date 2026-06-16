@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_15_170000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_16_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -440,6 +440,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_15_170000) do
     t.index ["membership_level"], name: "index_shopline_customers_on_membership_level"
     t.index ["shopline_id"], name: "index_shopline_customers_on_shopline_id", unique: true
     t.index ["source_row_hash"], name: "index_shopline_customers_on_source_row_hash", unique: true
+    t.index ["total_amount"], name: "index_shopline_customers_on_total_amount"
   end
 
   create_table "shopline_orders", force: :cascade do |t|
