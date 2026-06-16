@@ -10,7 +10,7 @@
       "name": "Chloe 狀態",
       "objective": "流量",
       "status": "ACTIVE",
-      "daily_budget": null,
+      "daily_budget": 6000,
       "start_date": null,
       "creative": {
         "type": "VIDEO",
