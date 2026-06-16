@@ -70,10 +70,11 @@
   best_wday    = @weekday_stats.max_by { |w| w[:avg_revenue] }
   best_hour    = @hour_stats.max_by { |h| h[:avg_revenue] }
 
-  # 月度趨勢：後半段 vs 前半段平均營收
-  half = (@monthly.size / 2.0).ceil
-  first_half_avg  = @monthly.first(half).map { |m| m[:revenue] }.then { |r| r.empty? ? 0 : r.sum / r.size }
-  second_half_avg = @monthly.last(@monthly.size - half).map { |m| m[:revenue] }.then { |r| r.empty? ? 0 : r.sum / r.size }
+  # 月度趨勢：後半段 vs 前半段平均營收（@monthly 已反序，需先還原時序）
+  _sorted_monthly = @monthly.reverse
+  half = (_sorted_monthly.size / 2.0).ceil
+  first_half_avg  = _sorted_monthly.first(half).map { |m| m[:revenue] }.then { |r| r.empty? ? 0 : r.sum / r.size }
+  second_half_avg = _sorted_monthly.last(_sorted_monthly.size - half).map { |m| m[:revenue] }.then { |r| r.empty? ? 0 : r.sum / r.size }
   trend_up = second_half_avg > first_half_avg
 %>
 <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2"><%= @selected_year %> 年分析摘要</p>

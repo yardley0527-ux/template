@@ -39,7 +39,7 @@ class LineBroadcastController < ApplicationController
                                          .max_by { |b| b["unsubscribe_rate"].to_f }
 
     # ── 月份成效表 ────────────────────────────────────────────────
-    @monthly = @broadcasts.group_by { |b| b["push_time"].to_s[0..6] }.sort.map do |ym, rows|
+    @monthly = @broadcasts.group_by { |b| b["push_time"].to_s[0..6] }.sort.reverse.map do |ym, rows|
       near_rows = rows.select { |b| b["near_days"] }
       {
         month:              ym[5..],
