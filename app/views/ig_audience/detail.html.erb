@@ -36,6 +36,189 @@
   <div class="alert alert-warning">此分群沒有可比對的客戶資料。</div>
 <% else %>
 
+<%# ── 行銷結論 ── %>
+<%
+  top3_products   = @first_top_products.first(3).map { |p| p[:product_name] }
+  best_wday_row   = @first_by_weekday.max_by { |r| r[:revenue] }
+  best_wday_label = best_wday_row ? wday_names[best_wday_row[:dow]] : nil
+
+  fp_slotted_for_conclusion = hour_slots.map do |s|
+    rows = @first_by_hour.select { |r| s[:hours].include?(r[:hour]) }
+    next nil if rows.empty?
+    { label: s[:label], revenue: rows.sum { |r| r[:revenue] } }
+  end.compact
+  best_slot = fp_slotted_for_conclusion.max_by { |s| s[:revenue] }
+%>
+
+<div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #2c3e50 !important;">
+  <div class="card-header" style="background:#2c3e50;">
+    <span class="fw-bold text-white">📋 行銷結論</span>
+    <span class="text-white-50 small ml-2">— 給老闆 & 社群同事</span>
+  </div>
+  <div class="card-body">
+
+    <% if @tab == "chloe_only" %>
+    <%# ── chloe_only 結論 ── %>
+    <div class="row g-3">
+      <div class="col-12">
+        <p class="fw-bold mb-1" style="font-size:1rem">
+          這 <%= fmt_n(@count) %> 人是「因為 Chloe 而買」的族群——他們追蹤 @chloechao0527、有實際購買，但沒有追蹤品牌帳號 @shengting_official。
+        </p>
+        <p class="text-muted small mb-0">這是數量最大的買家群（佔所有有購買 IG 客戶的 <%= (@count.to_f / @count * 100).round(0) %>%），代表 Chloe 個人內容是目前最強的購買驅動力。</p>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#fef9e7;">
+          <div class="fw-bold mb-2">🎯 Chloe 內容策略建議</div>
+          <% if top3_products.any? %>
+            <p class="small mb-1">
+              這群人首次購買最常買的是
+              <strong><%= top3_products.join("、") %></strong>。
+              Chloe 的貼文、Reels、限時動態應該持續以這幾個產品為主軸，這是她的受眾最容易被轉換的切入點。
+            </p>
+          <% end %>
+          <% if best_wday_label && best_slot %>
+            <p class="small mb-0">
+              首購最常發生在 <strong><%= best_wday_label %></strong>、<strong><%= best_slot[:label] %></strong>，
+              建議 Chloe 在這個時段發佈促購內容（限時折扣、體驗分享）效果最好。
+            </p>
+          <% end %>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#eaf4fb;">
+          <div class="fw-bold mb-2">📣 品牌帳號成長機會</div>
+          <p class="small mb-1">
+            這 <%= fmt_n(@count) %> 人已經是真實買家，卻沒有追蹤品牌帳號——這是一個可以直接轉換的受眾。
+          </p>
+          <p class="small mb-0">
+            建議：Chloe 在貼文中加入「記得追蹤 @shengting_official 搶先看新品」的 CTA，
+            或在品牌帳號發起互動（如標記 Chloe 的轉發活動），讓這群忠實消費者也成為品牌粉絲。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <% elsif @tab == "both" %>
+    <%# ── both 結論 ── %>
+    <div class="row g-3">
+      <div class="col-12">
+        <p class="fw-bold mb-1" style="font-size:1rem">
+          這 <%= fmt_n(@count) %> 人同時追蹤 Chloe 與品牌、且有購買——是品牌最核心的忠實受眾。
+        </p>
+        <p class="text-muted small mb-0">他們對兩個帳號都有黏著度，接觸品牌的路徑最完整，也最容易響應新品與活動。</p>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#eafaf1;">
+          <div class="fw-bold mb-2">🏆 高優先再行銷名單</div>
+          <% if top3_products.any? %>
+            <p class="small mb-1">
+              這群人最初被
+              <strong><%= top3_products.join("、") %></strong>
+              打動而進場，代表這幾個品項是品牌的「入門主力商品」。
+            </p>
+          <% end %>
+          <p class="small mb-0">
+            對這群人投放新品體驗、會員限定優惠、或是組合包推薦的廣告，
+            轉換率會明顯高於冷受眾。可優先建立 META 自訂受眾名單（上傳 Email 清單）鎖定。
+          </p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#fef9e7;">
+          <div class="fw-bold mb-2">📅 最佳互動時機</div>
+          <% if best_wday_label && best_slot %>
+            <p class="small mb-1">
+              首購集中在 <strong><%= best_wday_label %></strong>、<strong><%= best_slot[:label] %></strong>。
+              這群人對品牌已有信任基礎，在此時段推送限量/新品通知效果最佳。
+            </p>
+          <% end %>
+          <p class="small mb-0">
+            LINE 推播、EDM 或品牌帳號限時動態，都應優先排在這個時間窗口。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <% elsif @tab == "neither" %>
+    <%# ── neither 結論 ── %>
+    <div class="row g-3">
+      <div class="col-12">
+        <p class="fw-bold mb-1" style="font-size:1rem">
+          這 <%= fmt_n(@count) %> 人有購買、但兩個 IG 帳號都沒追蹤——他們透過其他管道找到品牌。
+        </p>
+        <p class="text-muted small mb-0">可能來源：搜尋引擎、LINE 朋友分享、直播連結、Google 廣告等。IG 對他們目前幾乎沒有觸及能力。</p>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#fdf2f8;">
+          <div class="fw-bold mb-2">⚠️ IG 廣告觸及不到這群人</div>
+          <% if top3_products.any? %>
+            <p class="small mb-1">
+              他們首次購買以 <strong><%= top3_products.join("、") %></strong> 為主，
+              但沒有透過 IG 管道進場。
+            </p>
+          <% end %>
+          <p class="small mb-0">
+            這群人的維繫要靠 <strong>LINE 官方帳號、EDM、簡訊</strong>。
+            建議確認他們是否有加 LINE 好友，若有，應列為 LINE 推播的優先受眾。
+          </p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#eaf4fb;">
+          <div class="fw-bold mb-2">🔍 值得追蹤的問題</div>
+          <p class="small mb-0">
+            這群買家完全不在 IG 的觸及圈內，卻仍然購買——說明品牌在 IG 以外的管道（直播、LINE、SEO、口碑）有一定的轉換力。
+            建議在下次問卷或客服對話中，詢問「你是怎麼知道我們的？」來確認主要來源，作為非 IG 廣告預算的依據。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <% elsif @tab == "target" %>
+    <%# ── target 結論 ── %>
+    <div class="row g-3">
+      <div class="col-12">
+        <p class="fw-bold mb-1" style="font-size:1rem">
+          這 <%= fmt_n(@count) %> 人追蹤品牌帳號、有購買，但沒有追蹤 Chloe 個人帳號。
+        </p>
+        <p class="text-muted small mb-0">
+          這是純粹被品牌內容本身吸引而購買的族群，數量雖少，但具有參考意義——代表 @shengting_official 帳號本身也有一定的獨立帶購能力。
+        </p>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#fef9e7;">
+          <div class="fw-bold mb-2">💡 品牌帳號獨立帶購的切入點</div>
+          <% if top3_products.any? %>
+            <p class="small mb-1">
+              這群人首購以 <strong><%= top3_products.join("、") %></strong> 為主。
+              這些商品在品牌帳號的原生內容（產品介紹、衛教知識、開箱）中效果最好，
+              不一定需要依賴 Chloe 的個人魅力來帶動。
+            </p>
+          <% end %>
+          <% if best_wday_label && best_slot %>
+            <p class="small mb-0">
+              首購時機集中在 <strong><%= best_wday_label %></strong> <strong><%= best_slot[:label] %></strong>，
+              可以在這個時段安排品牌帳號的知識型貼文或促銷通知。
+            </p>
+          <% end %>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#eafaf1;">
+          <div class="fw-bold mb-2">📊 樣本數說明</div>
+          <p class="small mb-0">
+            目前只有 <%= @count %> 人，樣本偏小，結論僅供參考方向。
+            隨著更多客戶填寫 IG 帳號、品牌帳號持續經營，這個分群的數據會更有代表性。
+            建議持續觀察這個數字是否成長。
+          </p>
+        </div>
+      </div>
+    </div>
+    <% end %>
+
+  </div>
+</div>
+
 <%# ── 首次購買分析 ── %>
 <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #e74c3c !important;">
   <div class="card-header">
