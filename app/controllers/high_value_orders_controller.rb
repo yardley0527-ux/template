@@ -45,11 +45,16 @@ class HighValueOrdersController < ApplicationController
     end
 
     @orders        = scope.to_a
-    @grouped       = ALL_TABS.index_with { |lvl| @orders.select { |o| lvl == '新客' ? true : o.membership_level_col == lvl } }
     @total_revenue = @orders.sum { |o| o.order_total.to_f }
     @total_count   = @orders.size
 
-    order_nums = @orders.map(&:order_num)
+    @per_page    = 10
+    @page        = [[params[:page].to_i, 1].max, 1].max
+    @total_pages = [(@total_count / @per_page.to_f).ceil, 1].max
+    @page        = [@page, @total_pages].min
+    @paged_orders = @orders[(@page - 1) * @per_page, @per_page] || []
+
+    order_nums = @paged_orders.map(&:order_num)
     @gift_records = OrderGiftRecord.where(order_number: order_nums).index_by(&:order_number)
   end
 

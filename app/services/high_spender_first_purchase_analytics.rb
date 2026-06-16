@@ -144,6 +144,45 @@ class HighSpenderFirstPurchaseAnalytics
     end
   end
 
+  def anomaly_alerts
+    breakdown = monthly_series_breakdown
+    return [] if breakdown.size < 2
+
+    sorted_months = breakdown.keys.sort.reverse
+    current_month = sorted_months.first
+    historical_months = sorted_months[1..3]
+    return [] if historical_months.empty?
+
+    current_counts = (breakdown[current_month] || []).index_by { |s| s[:series] }
+
+    series_history = Hash.new { |h, k| h[k] = [] }
+    historical_months.each do |m|
+      (breakdown[m] || []).each { |s| series_history[s[:series]] << s[:count] }
+    end
+
+    alerts = []
+    series_history.each do |series, counts|
+      next if counts.size < 2
+      hist_avg = counts.sum.to_f / counts.size
+      next if hist_avg < 3
+
+      current_count = current_counts[series]&.dig(:count) || 0
+      drop_pct = hist_avg > 0 ? ((hist_avg - current_count) / hist_avg * 100).round(1) : 0
+
+      if drop_pct >= 50
+        alerts << {
+          series:        series,
+          current_count: current_count,
+          hist_avg:      hist_avg.round(1),
+          drop_pct:      drop_pct,
+          month:         current_month
+        }
+      end
+    end
+
+    alerts.sort_by { |a| -a[:drop_pct] }
+  end
+
   def series_options
     CustomerPurchaseSummary
       .where("first_amount >= ?", @threshold)

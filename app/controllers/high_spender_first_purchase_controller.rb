@@ -20,6 +20,7 @@ class HighSpenderFirstPurchaseController < ApplicationController
     @series_stats        = analytics.series_stats
     @second_purchase_map = analytics.second_purchase_map
     @series_options      = analytics.series_options
+    @anomaly_alerts      = analytics.anomaly_alerts
 
     scope = CustomerPurchaseSummary
       .where("first_amount >= ?", THRESHOLD)

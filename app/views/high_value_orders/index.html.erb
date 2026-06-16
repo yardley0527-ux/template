@@ -67,7 +67,7 @@ end %>
 </ul>
 
 <%# Table %>
-<% display_orders = @grouped[@level] || [] %>
+<% display_orders = @paged_orders %>
 
 <div class="card border-0 shadow-sm">
   <div class="card-body p-0 table-responsive">
@@ -168,7 +168,7 @@ end %>
             <% end %>
           </tr>
         <% end %>
-        <% if display_orders.empty? %>
+        <% if @orders.empty? %>
           <tr>
             <td colspan="9" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
@@ -181,9 +181,38 @@ end %>
   </div>
 </div>
 
-<% if display_orders.any? %>
-  <div class="text-muted small mt-2 px-1">
-    共 <%= display_orders.size %> 筆 ｜ 合計 NT$<%= number_with_delimiter(display_orders.sum { |o| o.order_total.to_f }.to_i) %>
+<% if @total_count > 0 %>
+  <div class="d-flex align-items-center justify-content-between flex-wrap mt-2 px-1" style="gap:8px;">
+    <div class="text-muted small">
+      共 <%= @total_count %> 筆 ｜ 合計 NT$<%= number_with_delimiter(@total_revenue.to_i) %>
+      ｜ 第 <%= @page %> / <%= @total_pages %> 頁
+    </div>
+    <% if @total_pages > 1 %>
+      <%
+        window = ([@page - 2, 1].max)...([@page + 3, @total_pages + 1].min)
+        page_nums = ([1] + window.to_a + [@total_pages]).uniq
+      %>
+      <nav>
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item <%= @page == 1 ? 'disabled' : '' %>">
+            <%= link_to "«".html_safe, high_value_orders_path(period: @period, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: @page - 1), class: "page-link" %>
+          </li>
+          <% prev_p = nil %>
+          <% page_nums.each do |p| %>
+            <% if prev_p && p > prev_p + 1 %>
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            <% end %>
+            <li class="page-item <%= p == @page ? 'active' : '' %>">
+              <%= link_to p, high_value_orders_path(period: @period, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: p), class: "page-link" %>
+            </li>
+            <% prev_p = p %>
+          <% end %>
+          <li class="page-item <%= @page == @total_pages ? 'disabled' : '' %>">
+            <%= link_to "»".html_safe, high_value_orders_path(period: @period, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: @page + 1), class: "page-link" %>
+          </li>
+        </ul>
+      </nav>
+    <% end %>
   </div>
 <% end %>
 

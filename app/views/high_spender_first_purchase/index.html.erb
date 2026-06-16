@@ -215,6 +215,39 @@
 
           </div>
 
+          <%# ── 異常警示 ── %>
+          <% if @anomaly_alerts.any? %>
+            <div class="hs-anomaly-banner mb-4">
+              <div class="hs-anomaly-header">
+                <span class="hs-anomaly-icon">⚠️</span>
+                <span class="hs-anomaly-title">本月數據異常偵測</span>
+                <span class="hs-anomaly-subtitle"><%= @anomaly_alerts.first[:month] %> 相較過去 3 個月平均出現顯著下滑</span>
+              </div>
+              <div class="hs-anomaly-list">
+                <% @anomaly_alerts.each do |alert| %>
+                  <div class="hs-anomaly-item">
+                    <div class="hs-anomaly-series-name"><%= alert[:series] %></div>
+                    <div class="hs-anomaly-stats">
+                      <span class="hs-anomaly-current">本月 <strong><%= alert[:current_count] %> 人</strong></span>
+                      <span class="hs-anomaly-arrow">→</span>
+                      <span class="hs-anomaly-hist">歷史均值 <strong><%= alert[:hist_avg] %> 人</strong></span>
+                      <span class="hs-anomaly-badge">↓ <%= alert[:drop_pct] %>%</span>
+                    </div>
+                    <div class="hs-anomaly-hint">
+                      <% if alert[:current_count] == 0 %>
+                        本月尚無該系列首購新客，請確認廣告素材與導購流量是否正常。
+                      <% elsif alert[:drop_pct] >= 70 %>
+                        跌幅超過 70%，建議立即檢查廣告投放與商品曝光狀況。
+                      <% else %>
+                        跌幅逾半，可能受節慶、廣告預算調整或競品影響，建議追蹤後續。
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
           <%# ── 每月趨勢 ── %>
           <div class="hs-stat-block mb-4">
             <div class="hs-block-title">每月趨勢</div>
@@ -275,6 +308,24 @@
 
 <style>
 *, *::before, *::after { box-sizing: border-box; }
+
+.hs-anomaly-banner { background: #fffbeb; border: 1.5px solid #fbbf24; border-radius: 10px; overflow: hidden; }
+.hs-anomaly-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: #fef3c7; border-bottom: 1px solid #fde68a; }
+.hs-anomaly-icon { font-size: 18px; }
+.hs-anomaly-title { font-weight: 700; font-size: 14px; color: #92400e; }
+.hs-anomaly-subtitle { font-size: 12px; color: #b45309; margin-left: auto; }
+.hs-anomaly-list { padding: 8px 0; }
+.hs-anomaly-item { padding: 10px 16px; border-bottom: 1px solid #fde68a; }
+.hs-anomaly-item:last-child { border-bottom: none; }
+.hs-anomaly-series-name { font-weight: 700; font-size: 14px; color: #111827; margin-bottom: 4px; }
+.hs-anomaly-stats { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.hs-anomaly-current { font-size: 13px; color: #6b7280; }
+.hs-anomaly-current strong { color: #374151; }
+.hs-anomaly-arrow { color: #9ca3af; font-size: 12px; }
+.hs-anomaly-hist { font-size: 13px; color: #6b7280; }
+.hs-anomaly-hist strong { color: #374151; }
+.hs-anomaly-badge { display: inline-block; padding: 2px 8px; background: #fee2e2; color: #b91c1c; font-size: 12px; font-weight: 700; border-radius: 4px; }
+.hs-anomaly-hint { font-size: 12px; color: #92400e; background: #fef9ee; border-left: 3px solid #fbbf24; padding: 4px 8px; border-radius: 0 4px 4px 0; margin-top: 4px; }
 
 .hs-snapshot-bar { display: flex; align-items: center; justify-content: space-between; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 14px; }
 .hs-snapshot-hint { font-size: 13px; color: #374151; }
