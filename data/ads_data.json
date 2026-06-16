@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-06-15",
+  "last_updated": "2026-06-16",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -16,7 +16,7 @@
         "type": "VIDEO",
         "ig_post_url": null,
         "ig_embed_url": null,
-        "thumbnail_url": "https://scontent-sea5-1.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=5W4qCd8bLNgQ7kNvwEIz_oQ&_nc_oc=AdrVnBa6eZlCRY7vPyKe0dta7rTvuL5KULOve_I3jCbKEJ1uMJXJiyMYzbsyqjxGJvg&_nc_zt=23&_nc_ht=scontent-sea5-1.xx&edm=AEZPnVgEAAAA&_nc_gid=Mf6MzEhQV5BvGRqARPsvkg&_nc_tpa=Q5bMBQEUriWsr0lwI82bY5CCgouYsq8LbI73mxNge0d2s9QJo72ke-FAk-voR2JVh8xf4c8NtOJPsjRMZQ&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af9KaClTCUi_vrEe1JGVwO45Ae7f7DA7Hunax_NamshdAA&oe=6A3521EA",
+        "thumbnail_url": "https://scontent-sea5-1.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=5W4qCd8bLNgQ7kNvwHnktCk&_nc_oc=AdqKohzpQKibtgiJdsawvQTxxd-Sw66wiVkYF-ubJH_bzIT5XN1BACA9GmAtuQx3btI&_nc_zt=23&_nc_ht=scontent-sea5-1.xx&edm=AEZPnVgEAAAA&_nc_gid=GNDtZpLr7JdfIijpAwf3fA&_nc_tpa=Q5bMBQHF1JhwsfBmkqsPP0nNCvO3gfcePU2tS2qUAJfXybOAStejBoZRxgimK7gBUE-oplq0PnbZNKb-pw&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af9-rHU6tTH8L67_psfzV-mrRCAsQ3CQIpQwR72nH3LhDw&oe=6A36736A",
         "label": "Chloe 狀態廣告"
       },
       "daily_data": [
@@ -52,6 +52,23 @@
           "video_100": 133,
           "shares": 4,
           "thruplay": 2284,
+          "ig_followers_gained": null
+        },
+        {
+          "date": "2026-06-16",
+          "impressions": 9959,
+          "reach": 9453,
+          "clicks": 867,
+          "ctr": 8.71,
+          "cpm": 126,
+          "spend": 1256,
+          "video_3s": 5014,
+          "video_25": 805,
+          "video_50": 285,
+          "video_75": 186,
+          "video_100": 85,
+          "shares": 2,
+          "thruplay": 1637,
           "ig_followers_gained": null
         }
       ]
