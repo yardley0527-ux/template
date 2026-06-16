@@ -1,0 +1,255 @@
+<%# app/views/ig_audience/detail.html.erb %>
+<% content_for :page_title, "IG 受眾分析 — #{@meta[:label]}" %>
+
+<%
+  def fmt_n(n);     number_with_delimiter(n.to_i); end
+  def fmt_money(n); "NT$#{number_with_delimiter(n.to_i)}"; end
+  wday_names = %w[週日 週一 週二 週三 週四 週五 週六]
+%>
+
+<%# ── Header ── %>
+<div class="d-flex align-items-center mb-4 gap-3 flex-wrap">
+  <%= link_to ig_audience_path, class: "btn btn-sm btn-outline-secondary" do %>
+    ← 返回總覽
+  <% end %>
+  <div>
+    <h4 class="fw-bold mb-0"><%= @meta[:label] %></h4>
+    <p class="text-muted small mb-0"><%= @count %> 人的購買行為分析</p>
+  </div>
+  <%= link_to ig_audience_export_path(tab: @tab), class: "btn btn-sm btn-outline-secondary ml-auto" do %>
+    <i class="fa fa-download mr-1"></i> 下載名單 CSV
+  <% end %>
+</div>
+
+<% if @emails.empty? %>
+  <div class="alert alert-warning">此分群沒有可比對的客戶資料。</div>
+<% else %>
+
+<%# ── 商品排行 ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">購買商品排行（前 20 名，依營收）</p>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 align-middle">
+        <thead class="thead-light">
+          <tr>
+            <th class="px-3" style="width:36px">#</th>
+            <th>商品名稱</th>
+            <th class="text-right">購買人數</th>
+            <th class="text-right">總數量</th>
+            <th class="text-right">總營收</th>
+            <th style="width:160px">佔比</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% total_rev = @top_products.sum { |p| p.total_revenue.to_f } %>
+          <% @top_products.each_with_index do |p, i| %>
+            <%
+              pct = total_rev > 0 ? (p.total_revenue.to_f / total_rev * 100).round(1) : 0
+              bar_color = i == 0 ? "#f0ad4e" : i < 3 ? "#5cb85c" : "#adb5bd"
+            %>
+            <tr>
+              <td class="px-3 text-muted small"><%= i + 1 %></td>
+              <td class="fw-bold"><%= p.product_name %></td>
+              <td class="text-right"><%= fmt_n(p.buyer_count) %> 人</td>
+              <td class="text-right text-muted"><%= fmt_n(p.total_qty) %></td>
+              <td class="text-right text-success fw-bold"><%= fmt_money(p.total_revenue) %></td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div style="flex:1; background:#f0f0f0; border-radius:4px; height:8px; overflow:hidden;">
+                    <div style="width:<%= pct %>%; background:<%= bar_color %>; height:8px;"></div>
+                  </div>
+                  <span class="text-muted small" style="min-width:36px"><%= pct %>%</span>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<%# ── 時間分析（星期 & 時段 並排） ── %>
+<div class="row g-3 mb-4">
+
+  <%# 星期幾 %>
+  <div class="col-md-6">
+    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">星期幾下單最多</p>
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body p-0">
+        <% max_wday_rev = @by_weekday.map { |r| r.revenue.to_f }.max.to_f %>
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="thead-light">
+            <tr>
+              <th class="px-3">星期</th>
+              <th class="text-right">訂單數</th>
+              <th class="text-right">總營收</th>
+              <th style="width:120px">佔比</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @by_weekday.each do |r| %>
+              <%
+                pct = max_wday_rev > 0 ? (r.revenue.to_f / max_wday_rev * 100).round : 0
+                is_best = r.revenue.to_f == max_wday_rev
+              %>
+              <tr class="<%= is_best ? 'table-warning' : '' %>">
+                <td class="px-3 fw-bold"><%= wday_names[r.dow.to_i] %><%= " 🏆" if is_best %></td>
+                <td class="text-right text-muted"><%= fmt_n(r.order_count) %></td>
+                <td class="text-right fw-bold"><%= fmt_money(r.revenue) %></td>
+                <td>
+                  <div style="background:#f0f0f0; border-radius:4px; height:8px; overflow:hidden;">
+                    <div style="width:<%= pct %>%; background:#5bc0de; height:8px;"></div>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%# 時段 %>
+  <div class="col-md-6">
+    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">幾點下單最多</p>
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body p-0">
+        <%
+          hour_slots = [
+            { label: "凌晨 0–5",   hours: (0..5) },
+            { label: "早上 6–9",   hours: (6..9) },
+            { label: "上午 10–12", hours: (10..11) },
+            { label: "中午 12–14", hours: (12..13) },
+            { label: "下午 14–18", hours: (14..17) },
+            { label: "晚上 18–22", hours: (18..21) },
+            { label: "深夜 22–24", hours: (22..23) },
+          ]
+          by_hour_map = @by_hour.index_by { |r| r.hour.to_i }
+          slotted = hour_slots.map do |s|
+            rows = s[:hours].map { |h| by_hour_map[h] }.compact
+            next nil if rows.empty?
+            { label: s[:label],
+              orders: rows.sum { |r| r.order_count.to_i },
+              revenue: rows.sum { |r| r.revenue.to_f } }
+          end.compact
+          max_slot_rev = slotted.map { |s| s[:revenue] }.max.to_f
+        %>
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="thead-light">
+            <tr>
+              <th class="px-3">時段</th>
+              <th class="text-right">訂單數</th>
+              <th class="text-right">總營收</th>
+              <th style="width:120px">佔比</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% slotted.each do |s| %>
+              <%
+                pct = max_slot_rev > 0 ? (s[:revenue] / max_slot_rev * 100).round : 0
+                is_best = s[:revenue] == max_slot_rev
+              %>
+              <tr class="<%= is_best ? 'table-warning' : '' %>">
+                <td class="px-3 fw-bold"><%= s[:label] %><%= " 🏆" if is_best %></td>
+                <td class="text-right text-muted"><%= fmt_n(s[:orders]) %></td>
+                <td class="text-right fw-bold"><%= fmt_money(s[:revenue]) %></td>
+                <td>
+                  <div style="background:#f0f0f0; border-radius:4px; height:8px; overflow:hidden;">
+                    <div style="width:<%= pct %>%; background:#9b59b6; height:8px;"></div>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<%# ── 月份趨勢 ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">月份購買趨勢</p>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <%
+        max_monthly_rev = @monthly.map { |m| m.revenue.to_f }.max.to_f
+      %>
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="thead-light">
+          <tr>
+            <th class="px-3">月份</th>
+            <th class="text-right">訂單數</th>
+            <th class="text-right">總營收</th>
+            <th>趨勢</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @monthly.reverse.each do |m| %>
+            <%
+              pct = max_monthly_rev > 0 ? (m.revenue.to_f / max_monthly_rev * 100).round : 0
+              is_best = m.revenue.to_f == max_monthly_rev
+            %>
+            <tr class="<%= is_best ? 'table-success' : '' %>">
+              <td class="px-3 fw-bold"><%= m.ym %><%= " 🏆" if is_best %></td>
+              <td class="text-right text-muted"><%= fmt_n(m.order_count) %></td>
+              <td class="text-right fw-bold text-success"><%= fmt_money(m.revenue) %></td>
+              <td style="width:200px">
+                <div style="background:#f0f0f0; border-radius:4px; height:8px; overflow:hidden;">
+                  <div style="width:<%= pct %>%; background:#27ae60; height:8px;"></div>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<%# ── 買家名單 ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">買家名單（依消費排序）</p>
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0">
+        <thead class="thead-light">
+          <tr>
+            <th class="px-3">IG 帳號</th>
+            <th>客戶姓名</th>
+            <th>Email</th>
+            <th class="text-right">訂單數</th>
+            <th class="text-right">總消費</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @buyers.first(200).each do |b| %>
+            <tr>
+              <td class="px-3">
+                <a href="https://www.instagram.com/<%= b['ig'] %>" target="_blank" class="text-muted small">
+                  @<%= b["ig"] %>
+                </a>
+              </td>
+              <td><%= b["name"] %></td>
+              <td class="text-muted small"><%= b["email"] %></td>
+              <td class="text-right"><%= b["orders"] %></td>
+              <td class="text-right fw-bold">NT$<%= fmt_n(b["amount"]) %></td>
+            </tr>
+          <% end %>
+          <% if @buyers.size > 200 %>
+            <tr>
+              <td colspan="5" class="text-center text-muted small py-2">
+                顯示前 200 筆，完整名單請下載 CSV（共 <%= @buyers.size %> 筆）
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<% end %>

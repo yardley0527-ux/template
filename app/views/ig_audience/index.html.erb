@@ -134,19 +134,23 @@
 </div>
 
 <%# ── 買家分群 ── %>
-<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">買家分群分析</p>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">買家分群分析
+  <span class="text-muted fw-normal" style="font-size:11px">（點擊卡片查看購買商品與時間分析）</span>
+</p>
 <div class="row g-3 mb-4">
 
   <%# 🎯 目標 %>
   <div class="col-md-3 col-6">
-    <a href="<%= ig_audience_path(tab: 'target') %>" class="text-decoration-none">
-      <div class="card border-0 shadow-sm h-100 <%= @active_tab == 'target' ? 'border-warning' : '' %>"
-           style="<%= @active_tab == 'target' ? 'border-left: 4px solid #f0ad4e !important;' : '' %>">
+    <a href="<%= ig_audience_detail_path(tab: 'target') %>" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100" style="cursor:pointer; transition:box-shadow .15s;"
+           onmouseover="this.style.boxShadow='0 4px 16px rgba(240,173,78,.35)'"
+           onmouseout="this.style.boxShadow=''">
         <div class="card-body text-center">
           <div style="font-size:1.5rem">🎯</div>
           <div class="fw-bold" style="font-size:1.6rem; color:#f0ad4e"><%= number_with_delimiter(@target["count"]) %></div>
           <div class="small fw-bold">追蹤品牌＋有買</div>
           <div class="text-muted small">未追蹤 Chloe</div>
+          <div class="text-muted mt-2" style="font-size:11px">點擊看購買分析 →</div>
         </div>
       </div>
     </a>
@@ -154,14 +158,16 @@
 
   <%# ✅ 兩邊都追蹤 %>
   <div class="col-md-3 col-6">
-    <a href="<%= ig_audience_path(tab: 'both') %>" class="text-decoration-none">
-      <div class="card border-0 shadow-sm h-100 <%= @active_tab == 'both' ? 'border-success' : '' %>"
-           style="<%= @active_tab == 'both' ? 'border-left: 4px solid #5cb85c !important;' : '' %>">
+    <a href="<%= ig_audience_detail_path(tab: 'both') %>" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100" style="cursor:pointer; transition:box-shadow .15s;"
+           onmouseover="this.style.boxShadow='0 4px 16px rgba(92,184,92,.35)'"
+           onmouseout="this.style.boxShadow=''">
         <div class="card-body text-center">
           <div style="font-size:1.5rem">✅</div>
           <div class="fw-bold" style="font-size:1.6rem; color:#5cb85c"><%= number_with_delimiter(@both["count"]) %></div>
           <div class="small fw-bold">兩邊都追蹤＋有買</div>
           <div class="text-muted small">核心受眾</div>
+          <div class="text-muted mt-2" style="font-size:11px">點擊看購買分析 →</div>
         </div>
       </div>
     </a>
@@ -169,14 +175,16 @@
 
   <%# 📌 只追 Chloe %>
   <div class="col-md-3 col-6">
-    <a href="<%= ig_audience_path(tab: 'chloe_only') %>" class="text-decoration-none">
-      <div class="card border-0 shadow-sm h-100 <%= @active_tab == 'chloe_only' ? 'border-primary' : '' %>"
-           style="<%= @active_tab == 'chloe_only' ? 'border-left: 4px solid #337ab7 !important;' : '' %>">
+    <a href="<%= ig_audience_detail_path(tab: 'chloe_only') %>" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100" style="cursor:pointer; transition:box-shadow .15s;"
+           onmouseover="this.style.boxShadow='0 4px 16px rgba(51,122,183,.35)'"
+           onmouseout="this.style.boxShadow=''">
         <div class="card-body text-center">
           <div style="font-size:1.5rem">📌</div>
           <div class="fw-bold" style="font-size:1.6rem; color:#337ab7"><%= number_with_delimiter(@chloe_only["count"]) %></div>
           <div class="small fw-bold">追蹤 Chloe＋有買</div>
           <div class="text-muted small">未追蹤品牌帳號</div>
+          <div class="text-muted mt-2" style="font-size:11px">點擊看購買分析 →</div>
         </div>
       </div>
     </a>
@@ -184,13 +192,16 @@
 
   <%# ⚪ 兩邊都沒追蹤 %>
   <div class="col-md-3 col-6">
-    <a href="<%= ig_audience_path(tab: 'neither') %>" class="text-decoration-none">
-      <div class="card border-0 shadow-sm h-100 <%= @active_tab == 'neither' ? '' : '' %>">
+    <a href="<%= ig_audience_detail_path(tab: 'neither') %>" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100" style="cursor:pointer; transition:box-shadow .15s;"
+           onmouseover="this.style.boxShadow='0 4px 16px rgba(136,136,136,.3)'"
+           onmouseout="this.style.boxShadow=''">
         <div class="card-body text-center">
           <div style="font-size:1.5rem">⚪</div>
           <div class="fw-bold" style="font-size:1.6rem; color:#888"><%= number_with_delimiter(@neither["count"]) %></div>
           <div class="small fw-bold">有買</div>
           <div class="text-muted small">兩邊都未追蹤</div>
+          <div class="text-muted mt-2" style="font-size:11px">點擊看購買分析 →</div>
         </div>
       </div>
     </a>
