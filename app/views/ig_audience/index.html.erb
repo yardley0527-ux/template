@@ -1,0 +1,190 @@
+<%# app/views/ig_audience/index.html.erb %>
+<% content_for :page_title, "IG 受眾重疊分析" %>
+
+<% unless @data %>
+  <div class="alert alert-warning">
+    尚無分析資料。請在本機執行 <code>rake ig:audience_analysis</code> 並將結果 JSON 推上來。
+  </div>
+<% else %>
+
+<%# ── Header ── %>
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">IG 受眾重疊分析</h4>
+      <p class="text-muted small mb-0">
+        <a href="https://www.instagram.com/shengting_official" target="_blank" class="text-muted">@shengting_official</a>
+        ✕
+        <a href="https://www.instagram.com/chloechao0527" target="_blank" class="text-muted">@chloechao0527</a>
+      </p>
+    </div>
+    <span class="text-muted small">最後更新：<%= @last_updated %></span>
+  </div>
+</div>
+
+<%# ── 帳號概覽 ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">帳號粉絲概覽</p>
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center">
+        <div class="text-muted small mb-1">@shengting_official</div>
+        <div class="fw-bold" style="font-size:1.5rem"><%= number_with_delimiter(@shengting_followers) %></div>
+        <div class="text-muted small">粉絲人數</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center">
+        <div class="text-muted small mb-1">@chloechao0527</div>
+        <div class="fw-bold" style="font-size:1.5rem"><%= number_with_delimiter(@chloe_followers) %></div>
+        <div class="text-muted small">粉絲人數</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center">
+        <div class="text-muted small mb-1">兩帳號粉絲重疊</div>
+        <div class="fw-bold text-primary" style="font-size:1.5rem"><%= number_with_delimiter(@overlap_count) %></div>
+        <div class="text-muted small">佔品牌粉絲 <%= @overlap_pct %>%</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body text-center">
+        <div class="text-muted small mb-1">有購買 + 有IG帳號</div>
+        <div class="fw-bold text-success" style="font-size:1.5rem"><%= number_with_delimiter(@total_buyers) %></div>
+        <div class="text-muted small">Shopline 買家</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 買家分群 ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">買家分群分析</p>
+<div class="row g-3 mb-4">
+
+  <%# 🎯 目標 %>
+  <div class="col-md-3 col-6">
+    <a href="<%= ig_audience_path(tab: 'target') %>" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100 <%= @active_tab == 'target' ? 'border-warning' : '' %>"
+           style="<%= @active_tab == 'target' ? 'border-left: 4px solid #f0ad4e !important;' : '' %>">
+        <div class="card-body text-center">
+          <div style="font-size:1.5rem">🎯</div>
+          <div class="fw-bold" style="font-size:1.6rem; color:#f0ad4e"><%= number_with_delimiter(@target["count"]) %></div>
+          <div class="small fw-bold">追蹤品牌＋有買</div>
+          <div class="text-muted small">未追蹤 Chloe</div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <%# ✅ 兩邊都追蹤 %>
+  <div class="col-md-3 col-6">
+    <a href="<%= ig_audience_path(tab: 'both') %>" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100 <%= @active_tab == 'both' ? 'border-success' : '' %>"
+           style="<%= @active_tab == 'both' ? 'border-left: 4px solid #5cb85c !important;' : '' %>">
+        <div class="card-body text-center">
+          <div style="font-size:1.5rem">✅</div>
+          <div class="fw-bold" style="font-size:1.6rem; color:#5cb85c"><%= number_with_delimiter(@both["count"]) %></div>
+          <div class="small fw-bold">兩邊都追蹤＋有買</div>
+          <div class="text-muted small">核心受眾</div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <%# 📌 只追 Chloe %>
+  <div class="col-md-3 col-6">
+    <a href="<%= ig_audience_path(tab: 'chloe_only') %>" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100 <%= @active_tab == 'chloe_only' ? 'border-primary' : '' %>"
+           style="<%= @active_tab == 'chloe_only' ? 'border-left: 4px solid #337ab7 !important;' : '' %>">
+        <div class="card-body text-center">
+          <div style="font-size:1.5rem">📌</div>
+          <div class="fw-bold" style="font-size:1.6rem; color:#337ab7"><%= number_with_delimiter(@chloe_only["count"]) %></div>
+          <div class="small fw-bold">追蹤 Chloe＋有買</div>
+          <div class="text-muted small">未追蹤品牌帳號</div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <%# ⚪ 兩邊都沒追蹤 %>
+  <div class="col-md-3 col-6">
+    <a href="<%= ig_audience_path(tab: 'neither') %>" class="text-decoration-none">
+      <div class="card border-0 shadow-sm h-100 <%= @active_tab == 'neither' ? '' : '' %>">
+        <div class="card-body text-center">
+          <div style="font-size:1.5rem">⚪</div>
+          <div class="fw-bold" style="font-size:1.6rem; color:#888"><%= number_with_delimiter(@neither["count"]) %></div>
+          <div class="small fw-bold">有買</div>
+          <div class="text-muted small">兩邊都未追蹤</div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+</div>
+
+<%# ── 明細名單 ── %>
+<%
+  tab_meta = {
+    "target"     => { label: "🎯 追蹤品牌＋有買＋未追蹤 Chloe",   color: "#f0ad4e", buyers: @target },
+    "both"       => { label: "✅ 兩邊都追蹤＋有買（核心受眾）",       color: "#5cb85c", buyers: @both },
+    "chloe_only" => { label: "📌 追蹤 Chloe＋有買＋未追蹤品牌",      color: "#337ab7", buyers: @chloe_only },
+    "neither"    => { label: "⚪ 有買但兩邊都未追蹤",                 color: "#888",    buyers: @neither }
+  }
+  current = tab_meta[@active_tab]
+  buyers  = current[:buyers]["buyers"] || []
+%>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center"
+       style="border-left: 4px solid <%= current[:color] %>;">
+    <span class="fw-bold"><%= current[:label] %>（<%= buyers.size %> 人）</span>
+    <a href="<%= ig_audience_export_path(tab: @active_tab) %>" class="btn btn-sm btn-outline-secondary">
+      <i class="fa fa-download mr-1"></i> 下載 CSV
+    </a>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0">
+        <thead class="thead-light">
+          <tr>
+            <th class="px-3">IG 帳號</th>
+            <th>客戶姓名</th>
+            <th>Email</th>
+            <th class="text-right">訂單數</th>
+            <th class="text-right">總消費</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% buyers.first(200).each do |b| %>
+            <tr>
+              <td class="px-3">
+                <a href="https://www.instagram.com/<%= b['ig'] %>" target="_blank" class="text-muted small">
+                  @<%= b["ig"] %>
+                </a>
+              </td>
+              <td><%= b["name"] %></td>
+              <td class="text-muted small"><%= b["email"] %></td>
+              <td class="text-right"><%= b["orders"] %></td>
+              <td class="text-right fw-bold">NT$<%= number_with_delimiter(b["amount"].to_i) %></td>
+            </tr>
+          <% end %>
+          <% if buyers.size > 200 %>
+            <tr>
+              <td colspan="5" class="text-center text-muted small py-2">
+                顯示前 200 筆，完整名單請下載 CSV（共 <%= buyers.size %> 筆）
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<% end %>

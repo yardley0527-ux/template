@@ -22,6 +22,8 @@ Rails.application.routes.draw do
   get  '/ig_dashboard',             to: 'ig_dashboard#index',         as: :ig_dashboard
   get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
   get  '/line_broadcast',           to: 'line_broadcast#index',       as: :line_broadcast
+  get  '/ig_audience',              to: 'ig_audience#index',          as: :ig_audience
+  get  '/ig_audience/export',       to: 'ig_audience#export',         as: :ig_audience_export
   post '/ig_dashboard/refresh',     to: 'ig_dashboard#refresh',       as: :ig_dashboard_refresh
   get  '/threads_dashboard',             to: 'threads_dashboard#index',     as: :threads_dashboard
   post '/threads_dashboard/refresh',    to: 'threads_dashboard#refresh',   as: :threads_dashboard_refresh
