@@ -236,7 +236,7 @@
   <div class="col-md-8">
     <div class="card border-0 shadow-sm">
       <div class="card-body">
-        <div class="fw-bold mb-1">CTR 與 CPM 趨勢 <small class="text-muted fw-normal">（互動組）</small></div>
+        <div class="fw-bold mb-1">CTR 與 CPM 趨勢 <small class="text-muted fw-normal">（<%= (@active_campaigns.first || @campaigns.max_by { |c| (c['daily_data'] || []).size })&.dig('name') %>）</small></div>
         <div class="text-muted mb-3" style="font-size:11px;line-height:1.6">
           <span class="me-3"><strong>CTR</strong>（點擊率）＝ 點擊數 ÷ 曝光數，反映廣告對受眾的吸引力，台灣均值約 1–2%</span>
           <span><strong>CPM</strong>（千次曝光成本）＝ 花費 ÷ 曝光數 × 1000，反映競價熱度，越低越省</span>
@@ -248,7 +248,7 @@
   <div class="col-md-4">
     <div class="card border-0 shadow-sm">
       <div class="card-body">
-        <div class="fw-bold mb-3">影片觀看漏斗 <small class="text-muted fw-normal">（互動組最新）</small></div>
+        <div class="fw-bold mb-3">影片觀看漏斗 <small class="text-muted fw-normal">（<%= (@active_campaigns.first || @campaigns.max_by { |c| (c['daily_data'] || []).size })&.dig('name') %>最新）</small></div>
         <div id="funnelContainer"></div>
       </div>
     </div>
@@ -285,7 +285,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // ── Trend Chart ──
-  const engagementData = <%= raw @campaigns.find { |c| c['name'].include?('互動') }&.then { |c|
+  const engagementData = <%= raw (@active_campaigns.first || @campaigns.max_by { |c| (c['daily_data'] || []).size })&.then { |c|
     sorted = (c['daily_data'] || []).sort_by { |d| d['date'] }
     { labels: sorted.map { |d| d['date'][5..] }, ctr: sorted.map { |d| d['ctr'] }, cpm: sorted.map { |d| d['cpm'] } }.to_json
   } || '{"labels":[],"ctr":[],"cpm":[]}' %>;
@@ -336,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ── Funnel ──
-  const funnelCampaign = <%= raw @campaigns.find { |c| c['name'].include?('互動') }&.then { |c|
+  const funnelCampaign = <%= raw (@active_campaigns.first || @campaigns.max_by { |c| (c['daily_data'] || []).size })&.then { |c|
     fd = (c['daily_data'] || []).sort_by { |d| d['date'] }.reverse.find { |d| d['video_3s'] && d['video_100'] }
     fd ? { date: fd['date'], impressions: fd['impressions'], video_3s: fd['video_3s'], video_25: fd['video_25'], video_50: fd['video_50'], video_75: fd['video_75'], video_100: fd['video_100'] }.to_json : 'null'
   } || 'null' %>;
