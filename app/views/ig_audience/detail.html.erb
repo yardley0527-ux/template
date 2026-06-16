@@ -230,7 +230,7 @@
 
       <%# 首購商品 %>
       <div class="col-md-4">
-        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">首購商品 Top 10</p>
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">首購商品 Top 5</p>
         <% fp_total = @first_top_products.sum { |p| p[:revenue] } %>
         <table class="table table-sm mb-0">
           <tbody>
@@ -300,6 +300,26 @@
         </table>
       </div>
 
+      <%# 首購月份 %>
+      <div class="col-12 mt-2">
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">首購月份趨勢</p>
+        <% if @first_by_month.any? %>
+          <% max_fm = (@first_by_month.map { |r| r[:order_count] }.max || 1).to_f %>
+          <div class="d-flex flex-wrap gap-1 align-items-end" style="min-height:80px">
+            <% @first_by_month.each do |r| %>
+              <% bar_h = max_fm > 0 ? (r[:order_count] / max_fm * 64).round : 4 %>
+              <div class="text-center" style="min-width:48px; flex:1; max-width:72px;">
+                <div class="small text-muted fw-bold mb-1"><%= r[:order_count] %>人</div>
+                <div style="height:<%= bar_h %>px; background:#e74c3c; border-radius:3px 3px 0 0; opacity:0.8;"></div>
+                <div class="small text-muted mt-1" style="font-size:10px"><%= r[:ym].sub(/^\d{4}-/, '') %>月<br/><span style="font-size:9px;color:#aaa"><%= r[:ym][0..3] %></span></div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="text-muted small">無資料</p>
+        <% end %>
+      </div>
+
     </div>
   </div>
 </div>
@@ -311,7 +331,7 @@
 </p>
 
 <%# ── 商品排行 ── %>
-<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">購買商品排行（前 20 名，依營收）</p>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">購買商品排行（Top 5）</p>
 <div class="card border-0 shadow-sm mb-4">
   <div class="card-body p-0">
     <div class="table-responsive">

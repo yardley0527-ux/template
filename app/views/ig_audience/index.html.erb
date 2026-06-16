@@ -261,8 +261,8 @@
 
   <div class="card-body">
 
-    <%# ── 商品排行 Top 10 ── %>
-    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">購買商品排行 Top 10</p>
+    <%# ── 商品排行 Top 5 ── %>
+    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">購買商品排行 Top 5</p>
     <% if @tab_top_products&.any? %>
       <% total_rev = @tab_top_products.sum { |p| p.total_revenue.to_f } %>
       <div class="table-responsive mb-4">

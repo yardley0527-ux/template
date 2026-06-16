@@ -44,7 +44,7 @@ class IgAudienceController < ApplicationController
                 "SUM(total_amount) AS total_revenue",
                 "COUNT(DISTINCT email) AS buyer_count")
         .order("SUM(total_amount) DESC NULLS LAST")
-        .limit(10)
+        .limit(5)
 
       @tab_by_weekday = orders
         .where.not(order_date: nil)
@@ -105,7 +105,7 @@ class IgAudienceController < ApplicationController
           "COUNT(DISTINCT email) AS buyer_count"
         )
         .order("SUM(total_amount) DESC NULLS LAST")
-        .limit(20)
+        .limit(5)
 
       # ── 首次購買分析 ─────────────────────────────────────────
       # 每位客戶最早的那筆訂單
@@ -129,7 +129,16 @@ class IgAudienceController < ApplicationController
             revenue:      rows.sum { |r| r["total_amount"].to_f } }
         }
         .sort_by { |p| -p[:revenue] }
-        .first(10)
+        .first(5)
+
+      # 首購月份
+      @first_by_month = first_orders
+        .group_by { |r| Time.parse(r["order_date"]).strftime("%Y-%m") rescue nil }
+        .reject { |k, _| k.nil? }
+        .map { |ym, rows|
+          { ym: ym, order_count: rows.size, revenue: rows.sum { |r| r["total_amount"].to_f } }
+        }
+        .sort_by { |r| r[:ym] }
 
       # 首購星期幾
       @first_by_weekday = first_orders
