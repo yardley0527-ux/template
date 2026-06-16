@@ -308,49 +308,90 @@
 
 </div>
 
-<%# ── 直播附近的推播 ── %>
+<%# ── 直播連動分析 ── %>
 <% if @near_broadcasts.any? %>
-  <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">
-    直播日期前後 3 天的推播（<%= @near_broadcasts.size %> 筆）
-  </p>
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0 align-middle">
-          <thead class="thead-light">
-            <tr>
-              <th class="px-3">推播主題</th>
-              <th class="text-center">時間</th>
-              <th class="text-center">星期</th>
-              <th class="text-center">與直播距離</th>
-              <th class="text-center">閱讀率</th>
-              <th class="text-center">CTR</th>
-              <th class="text-right">訂單</th>
-              <th class="text-right">營收</th>
+<%
+  # 按距離分組
+  by_day = (-3..3).map do |d|
+    rows = @near_broadcasts.select { |b| b["near_days"] == d }
+    next if rows.empty?
+    avg_rev = rows.sum { |b| b["revenue"].to_f } / rows.size
+    avg_ctr = rows.map { |b| b["ctr"].to_f }.select { |v| v > 0 }.then { |a| a.empty? ? 0 : a.sum / a.size }
+    avg_read = rows.map { |b| b["read_rate"].to_f }.select { |v| v > 0 }.then { |a| a.empty? ? 0 : a.sum / a.size }
+    vs_avg = @avg_revenue_per_push > 0 ? ((avg_rev / @avg_revenue_per_push - 1) * 100).round : 0
+    { day: d, count: rows.size, avg_rev: avg_rev, avg_ctr: avg_ctr, avg_read: avg_read, vs_avg: vs_avg }
+  end.compact
+
+  best_slot = by_day.max_by { |r| r[:avg_rev] }
+  overall_near_avg = @near_broadcasts.sum { |b| b["revenue"].to_f } / @near_broadcasts.size
+  near_vs_all = @avg_revenue_per_push > 0 ? ((overall_near_avg / @avg_revenue_per_push - 1) * 100).round : 0
+%>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">直播連動分析</p>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+
+    <%# 整體結論 %>
+    <p class="mb-3">
+      <%= @selected_year %> 年共有 <strong><%= @near_broadcasts.size %> 次</strong>推播落在直播日前後 3 天，
+      平均每次帶來 <strong class="<%= near_vs_all >= 0 ? 'text-success' : 'text-danger' %>"><%= fmt_money(overall_near_avg) %></strong>，
+      比全年均值（<%= fmt_money(@avg_revenue_per_push) %>）
+      <% if near_vs_all >= 0 %>
+        <strong class="text-success">高 <%= near_vs_all %>%</strong>。
+      <% else %>
+        <strong class="text-danger">低 <%= near_vs_all.abs %>%</strong>。
+      <% end %>
+      <% if best_slot %>
+        效果最好的時間點為
+        <strong><%= near_day_label.call(best_slot[:day]) %></strong>（平均 <%= fmt_money(best_slot[:avg_rev]) %>）。
+      <% end %>
+    </p>
+
+    <%# 各距離對比表 %>
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="thead-light">
+          <tr>
+            <th class="px-3">與直播距離</th>
+            <th class="text-center">推播次數</th>
+            <th class="text-right">平均每次營收</th>
+            <th class="text-right">vs 全年均值</th>
+            <th class="text-center">平均閱讀率</th>
+            <th class="text-center">平均 CTR</th>
+          </tr>
+        </thead>
+        <tbody>
+          <%# 全年均值對照列 %>
+          <tr class="table-light">
+            <td class="px-3 text-muted small">全年平均（基準）</td>
+            <td class="text-center text-muted small"><%= @total_broadcasts %></td>
+            <td class="text-right text-muted"><%= fmt_money(@avg_revenue_per_push) %></td>
+            <td class="text-right text-muted">—</td>
+            <td class="text-center text-muted"><%= fmt_pct(@avg_read_rate&.round(1)) %></td>
+            <td class="text-center text-muted"><%= fmt_pct(@avg_ctr&.round(2)) %></td>
+          </tr>
+          <% by_day.sort_by { |r| r[:day] }.each do |r| %>
+            <% is_best = best_slot && r[:day] == best_slot[:day] %>
+            <tr class="<%= is_best ? 'table-success' : '' %>">
+              <td class="px-3 fw-bold">
+                <% color = r[:day] == 0 ? "danger" : r[:day].abs == 1 ? "warning" : "secondary" %>
+                <span class="badge badge-<%= color %> mr-1"><%= near_day_label.call(r[:day]) %></span>
+                <%= "🏆" if is_best %>
+              </td>
+              <td class="text-center"><%= r[:count] %></td>
+              <td class="text-right fw-bold"><%= fmt_money(r[:avg_rev]) %></td>
+              <td class="text-right fw-bold <%= r[:vs_avg] >= 10 ? 'text-success' : r[:vs_avg] <= -10 ? 'text-danger' : 'text-muted' %>">
+                <%= r[:vs_avg] >= 0 ? "+#{r[:vs_avg]}%" : "#{r[:vs_avg]}%" %>
+              </td>
+              <td class="text-center"><%= fmt_pct(r[:avg_read].round(1)) %></td>
+              <td class="text-center"><%= fmt_pct(r[:avg_ctr].round(2)) %></td>
             </tr>
-          </thead>
-          <tbody>
-            <% @near_broadcasts.each do |b| %>
-              <tr>
-                <td class="px-3 small" style="max-width:200px; white-space:normal"><%= b["topic"] %></td>
-                <td class="text-center text-muted small"><%= b["push_time"].to_s[0..15] %></td>
-                <td class="text-center text-muted small"><%= ["週一","週二","週三","週四","週五","週六","週日"][b["wday"].to_i] %></td>
-                <td class="text-center">
-                  <% d = b["near_days"] %>
-                  <% color = d == 0 ? "danger" : d.abs == 1 ? "warning" : "secondary" %>
-                  <span class="badge badge-<%= color %>"><%= near_day_label.call(d) %></span>
-                </td>
-                <td class="text-center"><%= fmt_pct(b["read_rate"]) %></td>
-                <td class="text-center"><%= fmt_pct(b["ctr"]) %></td>
-                <td class="text-right"><%= b["orders"] %></td>
-                <td class="text-right fw-bold text-success"><%= fmt_money(b["revenue"]) %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
+          <% end %>
+        </tbody>
+      </table>
     </div>
+
   </div>
+</div>
 <% end %>
 
 <%# ── 亮點推播（老闆看的圖片） ── %>
