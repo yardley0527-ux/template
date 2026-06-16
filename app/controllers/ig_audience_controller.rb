@@ -37,8 +37,13 @@ class IgAudienceController < ApplicationController
 
     @meta    = SEGMENT_META[@tab]
     @buyers  = @data.dig("segments", @tab, "buyers") || []
-    @count   = @buyers.size
-    @emails  = @buyers.map { |b| b["email"] }.compact.uniq
+    @count      = @buyers.size
+    @per_page   = 50
+    @page       = [params[:page].to_i, 1].max
+    @total_pages = (@count.to_f / @per_page).ceil
+    @page       = [@page, @total_pages].min if @total_pages > 0
+    @paged_buyers = @buyers.slice((@page - 1) * @per_page, @per_page) || []
+    @emails     = @buyers.map { |b| b["email"] }.compact.uniq
 
     if @emails.any?
       orders = ShoplineOrder

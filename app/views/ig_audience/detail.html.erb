@@ -211,14 +211,18 @@
 </div>
 
 <%# ── 買家名單 ── %>
-<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">買家名單（依消費排序）</p>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">
+  買家名單（依消費排序）
+  <span class="text-muted fw-normal">— 共 <%= fmt_n(@count) %> 人，第 <%= @page %> / <%= @total_pages %> 頁</span>
+</p>
 <div class="card border-0 shadow-sm">
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table table-hover table-sm mb-0">
         <thead class="thead-light">
           <tr>
-            <th class="px-3">IG 帳號</th>
+            <th class="px-3" style="width:40px">#</th>
+            <th>IG 帳號</th>
             <th>客戶姓名</th>
             <th>Email</th>
             <th class="text-right">訂單數</th>
@@ -226,9 +230,10 @@
           </tr>
         </thead>
         <tbody>
-          <% @buyers.first(200).each do |b| %>
+          <% @paged_buyers.each_with_index do |b, i| %>
             <tr>
-              <td class="px-3">
+              <td class="px-3 text-muted small"><%= (@page - 1) * @per_page + i + 1 %></td>
+              <td>
                 <a href="https://www.instagram.com/<%= b['ig'] %>" target="_blank" class="text-muted small">
                   @<%= b["ig"] %>
                 </a>
@@ -239,16 +244,56 @@
               <td class="text-right fw-bold">NT$<%= fmt_n(b["amount"]) %></td>
             </tr>
           <% end %>
-          <% if @buyers.size > 200 %>
-            <tr>
-              <td colspan="5" class="text-center text-muted small py-2">
-                顯示前 200 筆，完整名單請下載 CSV（共 <%= @buyers.size %> 筆）
-              </td>
-            </tr>
-          <% end %>
         </tbody>
       </table>
     </div>
+
+    <%# ── 分頁列 ── %>
+    <% if @total_pages > 1 %>
+      <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+        <span class="text-muted small">
+          第 <%= (@page - 1) * @per_page + 1 %>–<%= [(@page * @per_page), @count].min %> 筆，共 <%= fmt_n(@count) %> 筆
+        </span>
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            <%# 上一頁 %>
+            <li class="page-item <%= @page <= 1 ? 'disabled' : '' %>">
+              <%= link_to "«", ig_audience_detail_path(tab: @tab, page: @page - 1),
+                          class: "page-link" %>
+            </li>
+
+            <%# 頁碼（最多顯示 7 頁） %>
+            <%
+              window = 3
+              first_p = [@page - window, 1].max
+              last_p  = [@page + window, @total_pages].min
+            %>
+            <% if first_p > 1 %>
+              <%= link_to "1", ig_audience_detail_path(tab: @tab, page: 1), class: "page-link" %>
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            <% end %>
+
+            <% (first_p..last_p).each do |p| %>
+              <li class="page-item <%= p == @page ? 'active' : '' %>">
+                <%= link_to p, ig_audience_detail_path(tab: @tab, page: p), class: "page-link" %>
+              </li>
+            <% end %>
+
+            <% if last_p < @total_pages %>
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+              <%= link_to @total_pages, ig_audience_detail_path(tab: @tab, page: @total_pages), class: "page-link" %>
+            <% end %>
+
+            <%# 下一頁 %>
+            <li class="page-item <%= @page >= @total_pages ? 'disabled' : '' %>">
+              <%= link_to "»", ig_audience_detail_path(tab: @tab, page: @page + 1),
+                          class: "page-link" %>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    <% end %>
+
   </div>
 </div>
 
