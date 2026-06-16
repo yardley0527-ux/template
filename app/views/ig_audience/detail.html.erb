@@ -5,6 +5,15 @@
   def fmt_n(n);     number_with_delimiter(n.to_i); end
   def fmt_money(n); "NT$#{number_with_delimiter(n.to_i)}"; end
   wday_names = %w[週日 週一 週二 週三 週四 週五 週六]
+  hour_slots = [
+    { label: "凌晨 0–5",   hours: (0..5) },
+    { label: "早上 6–9",   hours: (6..9) },
+    { label: "上午 10–12", hours: (10..11) },
+    { label: "中午 12–14", hours: (12..13) },
+    { label: "下午 14–18", hours: (14..17) },
+    { label: "晚上 18–22", hours: (18..21) },
+    { label: "深夜 22–24", hours: (22..23) },
+  ]
 %>
 
 <%# ── Header ── %>
@@ -26,6 +35,97 @@
 <% if @emails.empty? %>
   <div class="alert alert-warning">此分群沒有可比對的客戶資料。</div>
 <% else %>
+
+<%# ── 首次購買分析 ── %>
+<div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #e74c3c !important;">
+  <div class="card-header">
+    <span class="fw-bold">🛒 首次購買分析</span>
+    <span class="text-muted small ml-2">— 客戶第一筆訂單，反映什麼打動他們決定買</span>
+  </div>
+  <div class="card-body">
+    <div class="row g-4">
+
+      <%# 首購商品 %>
+      <div class="col-md-4">
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">首購商品 Top 10</p>
+        <% fp_total = @first_top_products.sum { |p| p[:revenue] } %>
+        <table class="table table-sm mb-0">
+          <tbody>
+            <% @first_top_products.each_with_index do |p, i| %>
+              <% pct = fp_total > 0 ? (p[:revenue] / fp_total * 100).round(1) : 0 %>
+              <tr>
+                <td class="text-muted small px-0" style="width:20px"><%= i+1 %></td>
+                <td class="fw-bold small"><%= p[:product_name] %></td>
+                <td class="text-right text-muted small" style="width:50px"><%= p[:buyer_count] %>人</td>
+                <td class="text-right small" style="width:70px"><%= pct %>%</td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%# 首購星期幾 %>
+      <div class="col-md-4">
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">首購星期幾</p>
+        <% max_fw = (@first_by_weekday.map { |r| r[:revenue] }.max || 1).to_f %>
+        <table class="table table-sm mb-0">
+          <tbody>
+            <% @first_by_weekday.each do |r| %>
+              <% is_best = r[:revenue] == max_fw %>
+              <tr class="<%= is_best ? 'table-warning' : '' %>">
+                <td class="px-0 fw-bold small" style="width:50px"><%= wday_names[r[:dow]] %></td>
+                <td>
+                  <div style="background:#f0f0f0;border-radius:3px;height:7px;overflow:hidden;">
+                    <div style="width:<%= max_fw > 0 ? (r[:revenue]/max_fw*100).round : 0 %>%;background:#e74c3c;height:7px;"></div>
+                  </div>
+                </td>
+                <td class="text-right small text-muted" style="width:40px"><%= r[:order_count] %>筆</td>
+                <td class="small" style="width:16px"><%= "🏆" if is_best %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%# 首購時段 %>
+      <div class="col-md-4">
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">首購時段</p>
+        <%
+          fp_slotted = hour_slots.map do |s|
+            rows = @first_by_hour.select { |r| s[:hours].include?(r[:hour]) }
+            next nil if rows.empty?
+            { label: s[:label], orders: rows.sum { |r| r[:order_count] }, revenue: rows.sum { |r| r[:revenue] } }
+          end.compact
+          max_fh = (fp_slotted.map { |s| s[:revenue] }.max || 1).to_f
+        %>
+        <table class="table table-sm mb-0">
+          <tbody>
+            <% fp_slotted.each do |s| %>
+              <% is_best = s[:revenue] == max_fh %>
+              <tr class="<%= is_best ? 'table-warning' : '' %>">
+                <td class="px-0 fw-bold small" style="width:90px"><%= s[:label] %></td>
+                <td>
+                  <div style="background:#f0f0f0;border-radius:3px;height:7px;overflow:hidden;">
+                    <div style="width:<%= max_fh > 0 ? (s[:revenue]/max_fh*100).round : 0 %>%;background:#e74c3c;height:7px;"></div>
+                  </div>
+                </td>
+                <td class="text-right small text-muted" style="width:40px"><%= s[:orders] %>筆</td>
+                <td class="small" style="width:16px"><%= "🏆" if is_best %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<%# ── 所有訂單分析（參考用） ── %>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">
+  所有訂單分析
+  <span class="fw-normal text-muted">（含重複購買，週五高可能受直播影響）</span>
+</p>
 
 <%# ── 商品排行 ── %>
 <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">購買商品排行（前 20 名，依營收）</p>

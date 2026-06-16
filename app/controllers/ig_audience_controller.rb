@@ -43,7 +43,7 @@ class IgAudienceController < ApplicationController
                 "SUM(quantity) AS total_qty",
                 "SUM(total_amount) AS total_revenue",
                 "COUNT(DISTINCT email) AS buyer_count")
-        .order("total_revenue DESC")
+        .order("SUM(total_amount) DESC NULLS LAST")
         .limit(10)
 
       @tab_by_weekday = orders
@@ -95,17 +95,59 @@ class IgAudienceController < ApplicationController
         .where(email: @emails, payment_status: "已付款")
         .where.not(product_name: [nil, ""])
 
-      # ── 商品排行 ─────────────────────────────────────────────
+      # ── 商品排行（所有訂單）───────────────────────────────────
       @top_products = orders
         .group(:product_name)
         .select(
           :product_name,
-          "SUM(quantity)    AS total_qty",
+          "SUM(quantity)     AS total_qty",
           "SUM(total_amount) AS total_revenue",
           "COUNT(DISTINCT email) AS buyer_count"
         )
-        .order("total_revenue DESC")
+        .order("SUM(total_amount) DESC NULLS LAST")
         .limit(20)
+
+      # ── 首次購買分析 ─────────────────────────────────────────
+      # 每位客戶最早的那筆訂單
+      first_orders_sql = <<~SQL
+        SELECT DISTINCT ON (email) email, product_name, order_date, total_amount
+        FROM shopline_orders
+        WHERE email = ANY(ARRAY[#{@emails.map { |e| "'#{e.gsub("'", "''")}'" }.join(",")}])
+          AND payment_status = '已付款'
+          AND product_name IS NOT NULL AND product_name != ''
+          AND order_date IS NOT NULL
+        ORDER BY email, order_date ASC
+      SQL
+      first_orders = ActiveRecord::Base.connection.execute(first_orders_sql).to_a
+
+      # 首購商品排行
+      @first_top_products = first_orders
+        .group_by { |r| r["product_name"] }
+        .map { |name, rows|
+          { product_name: name,
+            buyer_count:  rows.size,
+            revenue:      rows.sum { |r| r["total_amount"].to_f } }
+        }
+        .sort_by { |p| -p[:revenue] }
+        .first(10)
+
+      # 首購星期幾
+      @first_by_weekday = first_orders
+        .group_by { |r| Time.parse(r["order_date"]).wday rescue nil }
+        .reject { |k, _| k.nil? }
+        .map { |dow, rows|
+          { dow: dow, order_count: rows.size, revenue: rows.sum { |r| r["total_amount"].to_f } }
+        }
+        .sort_by { |r| r[:dow] }
+
+      # 首購時段
+      @first_by_hour = first_orders
+        .group_by { |r| Time.parse(r["order_date"]).hour rescue nil }
+        .reject { |k, _| k.nil? }
+        .map { |hour, rows|
+          { hour: hour, order_count: rows.size, revenue: rows.sum { |r| r["total_amount"].to_f } }
+        }
+        .sort_by { |r| r[:hour] }
 
       # ── 月份趨勢 ─────────────────────────────────────────────
       @monthly = orders
@@ -118,7 +160,7 @@ class IgAudienceController < ApplicationController
         )
         .order("ym")
 
-      # ── 星期幾 ───────────────────────────────────────────────
+      # ── 星期幾（所有訂單） ────────────────────────────────────
       @by_weekday = orders
         .where.not(order_date: nil)
         .group("EXTRACT(DOW FROM order_date)::int")
@@ -129,7 +171,7 @@ class IgAudienceController < ApplicationController
         )
         .order("dow")
 
-      # ── 時段 ─────────────────────────────────────────────────
+      # ── 時段（所有訂單） ─────────────────────────────────────
       @by_hour = orders
         .where.not(order_date: nil)
         .group("EXTRACT(HOUR FROM order_date)::int")
@@ -140,7 +182,10 @@ class IgAudienceController < ApplicationController
         )
         .order("hour")
     else
-      @top_products = []
+      @top_products      = []
+      @first_top_products = []
+      @first_by_weekday  = []
+      @first_by_hour     = []
       @monthly = @by_weekday = @by_hour = []
     end
   end
