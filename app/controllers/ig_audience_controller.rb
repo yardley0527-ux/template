@@ -25,7 +25,52 @@ class IgAudienceController < ApplicationController
     @chloe_only = seg["chloe_only"]
     @neither    = seg["neither"]
 
-    @active_tab = params[:tab] || "target"
+    @active_tab = params[:tab] || "chloe_only"
+
+    # ── 當前分群的商品 & 時間快覽 ─────────────────────────────────
+    active_buyers = @data.dig("segments", @active_tab, "buyers") || []
+    @active_count  = active_buyers.size
+    @active_emails = active_buyers.map { |b| b["email"] }.compact.uniq
+
+    if @active_emails.any?
+      orders = ShoplineOrder
+        .where(email: @active_emails, payment_status: "已付款")
+        .where.not(product_name: [nil, ""])
+
+      @tab_top_products = orders
+        .group(:product_name)
+        .select(:product_name,
+                "SUM(quantity) AS total_qty",
+                "SUM(total_amount) AS total_revenue",
+                "COUNT(DISTINCT email) AS buyer_count")
+        .order("total_revenue DESC")
+        .limit(10)
+
+      @tab_by_weekday = orders
+        .where.not(order_date: nil)
+        .group("EXTRACT(DOW FROM order_date)::int")
+        .select("EXTRACT(DOW FROM order_date)::int AS dow",
+                "COUNT(*) AS order_count",
+                "SUM(total_amount) AS revenue")
+        .order("dow")
+
+      @tab_by_hour = orders
+        .where.not(order_date: nil)
+        .group("EXTRACT(HOUR FROM order_date)::int")
+        .select("EXTRACT(HOUR FROM order_date)::int AS hour",
+                "COUNT(*) AS order_count",
+                "SUM(total_amount) AS revenue")
+        .order("hour")
+
+      @tab_total_revenue = orders.sum(:total_amount)
+    end
+
+    # 分頁（買家名單）
+    @per_page    = 50
+    @page        = [params[:page].to_i, 1].max
+    @total_pages = (active_buyers.size.to_f / @per_page).ceil
+    @page        = [@page, [@total_pages, 1].max].min
+    @paged_buyers = active_buyers.slice((@page - 1) * @per_page, @per_page) || []
   end
 
   def detail

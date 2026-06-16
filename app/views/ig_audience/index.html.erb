@@ -209,32 +209,157 @@
 
 </div>
 
-<%# ── 明細名單 ── %>
+<%# ── 分群分析面板 ── %>
 <%
   tab_meta = {
-    "target"     => { label: "🎯 追蹤品牌＋有買＋未追蹤 Chloe",   color: "#f0ad4e", buyers: @target },
-    "both"       => { label: "✅ 兩邊都追蹤＋有買（核心受眾）",       color: "#5cb85c", buyers: @both },
-    "chloe_only" => { label: "📌 追蹤 Chloe＋有買＋未追蹤品牌",      color: "#337ab7", buyers: @chloe_only },
-    "neither"    => { label: "⚪ 有買但兩邊都未追蹤",                 color: "#888",    buyers: @neither }
+    "target"     => { label: "🎯 追蹤品牌＋有買＋未追蹤 Chloe",  color: "#f0ad4e" },
+    "both"       => { label: "✅ 兩邊都追蹤＋有買（核心受眾）",    color: "#5cb85c" },
+    "chloe_only" => { label: "📌 追蹤 Chloe＋有買＋未追蹤品牌",   color: "#337ab7" },
+    "neither"    => { label: "⚪ 有買但兩邊都未追蹤",              color: "#888"    }
   }
   current = tab_meta[@active_tab]
-  buyers  = current[:buyers]["buyers"] || []
+  wday_names = %w[週日 週一 週二 週三 週四 週五 週六]
+  hour_slots = [
+    { label: "凌晨 0–5",   hours: (0..5) },
+    { label: "早上 6–9",   hours: (6..9) },
+    { label: "上午 10–12", hours: (10..11) },
+    { label: "中午 12–14", hours: (12..13) },
+    { label: "下午 14–18", hours: (14..17) },
+    { label: "晚上 18–22", hours: (18..21) },
+    { label: "深夜 22–24", hours: (22..23) },
+  ]
+  by_hour_map = (@tab_by_hour || []).index_by { |r| r.hour.to_i }
+  slotted = hour_slots.map do |s|
+    rows = s[:hours].map { |h| by_hour_map[h] }.compact
+    next nil if rows.empty?
+    { label: s[:label], orders: rows.sum { |r| r.order_count.to_i }, revenue: rows.sum { |r| r.revenue.to_f } }
+  end.compact
 %>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-header d-flex justify-content-between align-items-center"
-       style="border-left: 4px solid <%= current[:color] %>;">
-    <span class="fw-bold"><%= current[:label] %>（<%= buyers.size %> 人）</span>
-    <a href="<%= ig_audience_export_path(tab: @active_tab) %>" class="btn btn-sm btn-outline-secondary">
-      <i class="fa fa-download mr-1"></i> 下載 CSV
+<%# Tab 切換列 %>
+<div class="d-flex gap-2 flex-wrap mb-3">
+  <% tab_meta.each do |key, meta| %>
+    <a href="<%= ig_audience_path(tab: key) %>"
+       class="btn btn-sm <%= @active_tab == key ? 'btn-primary' : 'btn-outline-secondary' %>">
+      <%= meta[:label] %>
     </a>
+  <% end %>
+</div>
+
+<div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid <%= current[:color] %> !important;">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-bold"><%= current[:label] %>（<%= @active_count %> 人）</span>
+    <div class="d-flex gap-2">
+      <%= link_to ig_audience_detail_path(tab: @active_tab), class: "btn btn-sm btn-outline-primary" do %>
+        <i class="fa fa-expand mr-1"></i> 完整分析
+      <% end %>
+      <%= link_to ig_audience_export_path(tab: @active_tab), class: "btn btn-sm btn-outline-secondary" do %>
+        <i class="fa fa-download mr-1"></i> 下載 CSV
+      <% end %>
+    </div>
   </div>
-  <div class="card-body p-0">
+
+  <div class="card-body">
+
+    <%# ── 商品排行 Top 10 ── %>
+    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">購買商品排行 Top 10</p>
+    <% if @tab_top_products&.any? %>
+      <% total_rev = @tab_top_products.sum { |p| p.total_revenue.to_f } %>
+      <div class="table-responsive mb-4">
+        <table class="table table-sm mb-0 align-middle">
+          <thead class="thead-light">
+            <tr>
+              <th class="px-2" style="width:28px">#</th>
+              <th>商品</th>
+              <th class="text-right">人數</th>
+              <th class="text-right">數量</th>
+              <th class="text-right">營收</th>
+              <th style="width:140px">佔比</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @tab_top_products.each_with_index do |p, i| %>
+              <% pct = total_rev > 0 ? (p.total_revenue.to_f / total_rev * 100).round(1) : 0 %>
+              <tr>
+                <td class="px-2 text-muted small"><%= i + 1 %></td>
+                <td class="fw-bold small"><%= p.product_name %></td>
+                <td class="text-right text-muted small"><%= p.buyer_count %> 人</td>
+                <td class="text-right text-muted small"><%= number_with_delimiter(p.total_qty) %></td>
+                <td class="text-right text-success fw-bold small">NT$<%= number_with_delimiter(p.total_revenue.to_i) %></td>
+                <td>
+                  <div class="d-flex align-items-center gap-1">
+                    <div style="flex:1;background:#f0f0f0;border-radius:3px;height:7px;overflow:hidden;">
+                      <div style="width:<%= pct %>%;background:<%= i == 0 ? current[:color] : '#adb5bd' %>;height:7px;"></div>
+                    </div>
+                    <span class="text-muted" style="font-size:11px;min-width:32px"><%= pct %>%</span>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <%# ── 星期 & 時段 ── %>
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">星期幾下單</p>
+        <% max_wday = (@tab_by_weekday || []).map { |r| r.revenue.to_f }.max.to_f %>
+        <table class="table table-sm mb-0">
+          <tbody>
+            <% (@tab_by_weekday || []).each do |r| %>
+              <% pct = max_wday > 0 ? (r.revenue.to_f / max_wday * 100).round : 0 %>
+              <% is_best = r.revenue.to_f == max_wday %>
+              <tr class="<%= is_best ? 'table-warning' : '' %>">
+                <td class="px-2 fw-bold small" style="width:60px"><%= wday_names[r.dow.to_i] %></td>
+                <td>
+                  <div style="background:#f0f0f0;border-radius:3px;height:7px;overflow:hidden;">
+                    <div style="width:<%= pct %>%;background:#5bc0de;height:7px;"></div>
+                  </div>
+                </td>
+                <td class="text-right text-muted small" style="width:100px">NT$<%= number_with_delimiter(r.revenue.to_i) %></td>
+                <td class="small text-muted" style="width:20px"><%= "🏆" if is_best %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <div class="col-md-6">
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">幾點下單</p>
+        <% max_slot = slotted.map { |s| s[:revenue] }.max.to_f %>
+        <table class="table table-sm mb-0">
+          <tbody>
+            <% slotted.each do |s| %>
+              <% pct = max_slot > 0 ? (s[:revenue] / max_slot * 100).round : 0 %>
+              <% is_best = s[:revenue] == max_slot %>
+              <tr class="<%= is_best ? 'table-warning' : '' %>">
+                <td class="px-2 fw-bold small" style="width:90px"><%= s[:label] %></td>
+                <td>
+                  <div style="background:#f0f0f0;border-radius:3px;height:7px;overflow:hidden;">
+                    <div style="width:<%= pct %>%;background:#9b59b6;height:7px;"></div>
+                  </div>
+                </td>
+                <td class="text-right text-muted small" style="width:100px">NT$<%= number_with_delimiter(s[:revenue].to_i) %></td>
+                <td class="small text-muted" style="width:20px"><%= "🏆" if is_best %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <%# ── 買家名單（分頁） ── %>
+    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">
+      買家名單
+      <span class="fw-normal text-muted">— 第 <%= @page %> / <%= @total_pages %> 頁，共 <%= number_with_delimiter(@active_count) %> 人</span>
+    </p>
     <div class="table-responsive">
       <table class="table table-hover table-sm mb-0">
         <thead class="thead-light">
           <tr>
-            <th class="px-3">IG 帳號</th>
+            <th class="px-2" style="width:36px">#</th>
+            <th>IG 帳號</th>
             <th>客戶姓名</th>
             <th>Email</th>
             <th class="text-right">訂單數</th>
@@ -242,29 +367,56 @@
           </tr>
         </thead>
         <tbody>
-          <% buyers.first(200).each do |b| %>
+          <% @paged_buyers.each_with_index do |b, i| %>
             <tr>
-              <td class="px-3">
+              <td class="px-2 text-muted small"><%= (@page - 1) * @per_page + i + 1 %></td>
+              <td>
                 <a href="https://www.instagram.com/<%= b['ig'] %>" target="_blank" class="text-muted small">
                   @<%= b["ig"] %>
                 </a>
               </td>
-              <td><%= b["name"] %></td>
+              <td class="small"><%= b["name"] %></td>
               <td class="text-muted small"><%= b["email"] %></td>
-              <td class="text-right"><%= b["orders"] %></td>
-              <td class="text-right fw-bold">NT$<%= number_with_delimiter(b["amount"].to_i) %></td>
-            </tr>
-          <% end %>
-          <% if buyers.size > 200 %>
-            <tr>
-              <td colspan="5" class="text-center text-muted small py-2">
-                顯示前 200 筆，完整名單請下載 CSV（共 <%= buyers.size %> 筆）
-              </td>
+              <td class="text-right small"><%= b["orders"] %></td>
+              <td class="text-right fw-bold small">NT$<%= number_with_delimiter(b["amount"].to_i) %></td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
+
+    <% if @total_pages > 1 %>
+      <div class="d-flex justify-content-between align-items-center pt-2 mt-1 border-top">
+        <span class="text-muted small">
+          第 <%= (@page - 1) * @per_page + 1 %>–<%= [@page * @per_page, @active_count].min %> 筆
+        </span>
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item <%= @page <= 1 ? 'disabled' : '' %>">
+              <%= link_to "«", ig_audience_path(tab: @active_tab, page: @page - 1), class: "page-link" %>
+            </li>
+            <% first_p = [@page - 3, 1].max; last_p = [@page + 3, @total_pages].min %>
+            <% if first_p > 1 %>
+              <%= link_to "1", ig_audience_path(tab: @active_tab, page: 1), class: "page-link" %>
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            <% end %>
+            <% (first_p..last_p).each do |p| %>
+              <li class="page-item <%= p == @page ? 'active' : '' %>">
+                <%= link_to p, ig_audience_path(tab: @active_tab, page: p), class: "page-link" %>
+              </li>
+            <% end %>
+            <% if last_p < @total_pages %>
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+              <%= link_to @total_pages, ig_audience_path(tab: @active_tab, page: @total_pages), class: "page-link" %>
+            <% end %>
+            <li class="page-item <%= @page >= @total_pages ? 'disabled' : '' %>">
+              <%= link_to "»", ig_audience_path(tab: @active_tab, page: @page + 1), class: "page-link" %>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    <% end %>
+
   </div>
 </div>
 
