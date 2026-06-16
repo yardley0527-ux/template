@@ -63,6 +63,133 @@
   </div>
 </div>
 
+<%# ── 文字分析 ── %>
+<%
+  best_month   = @monthly.max_by { |m| m[:revenue] }
+  worst_month  = @monthly.min_by { |m| m[:revenue] }
+  best_wday    = @weekday_stats.max_by { |w| w[:avg_revenue] }
+  best_hour    = @hour_stats.max_by { |h| h[:avg_revenue] }
+
+  # 月度趨勢：後半段 vs 前半段平均營收
+  half = (@monthly.size / 2.0).ceil
+  first_half_avg  = @monthly.first(half).map { |m| m[:revenue] }.then { |r| r.empty? ? 0 : r.sum / r.size }
+  second_half_avg = @monthly.last(@monthly.size - half).map { |m| m[:revenue] }.then { |r| r.empty? ? 0 : r.sum / r.size }
+  trend_up = second_half_avg > first_half_avg
+%>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2"><%= @selected_year %> 年分析摘要</p>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <div class="row g-3">
+
+      <%# 整體表現 %>
+      <div class="col-12">
+        <div class="fw-bold mb-2" style="font-size:0.85rem;color:#888;text-transform:uppercase;letter-spacing:.05em">整體表現</div>
+        <p class="mb-1">
+          <%= @selected_year %> 年共執行 <strong><%= @total_broadcasts %> 次</strong>推播，帶來總營收
+          <strong class="text-success"><%= fmt_money(@total_revenue) %></strong>、
+          訂單 <strong><%= fmt_n(@total_orders) %> 筆</strong>，
+          平均每次推播貢獻 <strong><%= fmt_money(@avg_revenue_per_push) %></strong>。
+        </p>
+        <p class="mb-0 text-muted small">
+          平均已讀率 <%= fmt_pct(@avg_read_rate&.round(1)) %>，平均 CTR <%= fmt_pct(@avg_ctr&.round(2)) %>。
+          <% if @monthly.size >= 4 %>
+            下半年整體表現較上半年<% if trend_up %>
+              <span class="text-success fw-bold">提升</span>（平均月收 <%= fmt_money(second_half_avg) %> vs <%= fmt_money(first_half_avg) %>）。
+            <% else %>
+              <span class="text-danger fw-bold">下滑</span>（平均月收 <%= fmt_money(second_half_avg) %> vs <%= fmt_money(first_half_avg) %>）。
+            <% end %>
+          <% end %>
+        </p>
+      </div>
+
+      <div class="col-12"><hr class="my-1"></div>
+
+      <%# 月份亮點 %>
+      <div class="col-md-6">
+        <div class="fw-bold mb-2" style="font-size:0.85rem;color:#888;text-transform:uppercase;letter-spacing:.05em">月份亮點</div>
+        <% if best_month %>
+          <p class="mb-1">
+            <span class="badge badge-success mr-1">最佳月份</span>
+            <strong><%= @selected_year %>/<%= best_month[:month] %></strong>：
+            營收 <strong class="text-success"><%= fmt_money(best_month[:revenue]) %></strong>，
+            共 <%= best_month[:count] %> 次推播，訂單 <%= fmt_n(best_month[:orders]) %> 筆。
+          </p>
+        <% end %>
+        <% if worst_month && worst_month != best_month %>
+          <p class="mb-0 text-muted small">
+            表現最弱月份：<%= @selected_year %>/<%= worst_month[:month] %>（<%= fmt_money(worst_month[:revenue]) %>，<%= worst_month[:count] %> 次推播）。
+          </p>
+        <% end %>
+      </div>
+
+      <%# 推播亮點 %>
+      <div class="col-md-6">
+        <div class="fw-bold mb-2" style="font-size:0.85rem;color:#888;text-transform:uppercase;letter-spacing:.05em">推播亮點</div>
+        <% if @best_revenue_broadcast %>
+          <p class="mb-1">
+            <span class="badge badge-warning mr-1">最高營收</span>
+            「<strong><%= @best_revenue_broadcast["topic"] %></strong>」
+            （<%= @best_revenue_broadcast["push_time"].to_s[0..9] %>）：
+            <strong class="text-success"><%= fmt_money(@best_revenue_broadcast["revenue"]) %></strong>，
+            訂單 <%= @best_revenue_broadcast["orders"] %> 筆。
+          </p>
+        <% end %>
+        <% if @best_ctr_broadcast %>
+          <p class="mb-0 text-muted small">
+            CTR 最高：「<%= @best_ctr_broadcast["topic"] %>」<%= fmt_pct(@best_ctr_broadcast["ctr"]) %>
+            （<%= @best_ctr_broadcast["push_time"].to_s[0..9] %>）。
+          </p>
+        <% end %>
+      </div>
+
+      <div class="col-12"><hr class="my-1"></div>
+
+      <%# 時機建議 %>
+      <div class="col-md-6">
+        <div class="fw-bold mb-2" style="font-size:0.85rem;color:#888;text-transform:uppercase;letter-spacing:.05em">最佳推播時機</div>
+        <% if best_wday %>
+          <p class="mb-1">
+            <span class="badge badge-primary mr-1">最佳星期</span>
+            <strong><%= best_wday[:label] %></strong>：
+            平均每次 <strong><%= fmt_money(best_wday[:avg_revenue]) %></strong>，
+            CTR <%= fmt_pct(best_wday[:avg_ctr]) %>。
+          </p>
+        <% end %>
+        <% if best_hour %>
+          <p class="mb-0 text-muted small">
+            最佳時段：<strong><%= best_hour[:label] %></strong>，平均每次 <%= fmt_money(best_hour[:avg_revenue]) %>。
+          </p>
+        <% end %>
+      </div>
+
+      <%# 直播連動 %>
+      <% if @near_livestream_count > 0 %>
+        <div class="col-md-6">
+          <div class="fw-bold mb-2" style="font-size:0.85rem;color:#888;text-transform:uppercase;letter-spacing:.05em">直播連動</div>
+          <%
+            near_rev = @near_broadcasts.sum { |b| b["revenue"].to_f }
+            near_avg = @near_broadcasts.size > 0 ? near_rev / @near_broadcasts.size : 0
+            all_avg  = @avg_revenue_per_push
+          %>
+          <p class="mb-1">
+            直播日期前後 3 天共 <strong><%= @near_livestream_count %> 次</strong>推播，
+            平均每次 <strong class="<%= near_avg > all_avg ? 'text-success' : 'text-danger' %>"><%= fmt_money(near_avg) %></strong>
+            （全年均 <%= fmt_money(all_avg) %>）。
+          </p>
+          <p class="mb-0 text-muted small">
+            直播前後推播效益<% if near_avg > all_avg %>
+              <strong class="text-success">高於</strong>一般推播 +<%= ((near_avg / all_avg - 1) * 100).round %>%。
+            <% else %>
+              <strong class="text-muted">低於</strong>一般推播。
+            <% end %>
+          </p>
+        </div>
+      <% end %>
+
+    </div>
+  </div>
+</div>
+
 <%# ── 月份成效表 ── %>
 <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">每月成效</p>
 <div class="card border-0 shadow-sm mb-4">

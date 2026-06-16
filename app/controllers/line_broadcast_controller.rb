@@ -30,6 +30,13 @@ class LineBroadcastController < ApplicationController
     @avg_ctr               = avg(@broadcasts.map { |b| b["ctr"].to_f })
     @avg_read_rate         = avg(@broadcasts.map { |b| b["read_rate"].to_f })
     @near_livestream_count = @broadcasts.count { |b| b["near_days"] }
+    @avg_revenue_per_push  = @total_broadcasts > 0 ? (@total_revenue / @total_broadcasts) : 0
+
+    # ── 亮點推播 ──────────────────────────────────────────────────
+    @best_revenue_broadcast = @broadcasts.max_by { |b| b["revenue"].to_f }
+    @best_ctr_broadcast     = @broadcasts.max_by { |b| b["ctr"].to_f }
+    @worst_unsub_broadcast  = @broadcasts.select { |b| b["unsubscribe_rate"].to_f > 0 }
+                                         .max_by { |b| b["unsubscribe_rate"].to_f }
 
     # ── 月份成效表 ────────────────────────────────────────────────
     @monthly = @broadcasts.group_by { |b| b["push_time"].to_s[0..6] }.sort.map do |ym, rows|
