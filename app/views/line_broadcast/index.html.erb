@@ -34,6 +34,99 @@
   </div>
 </div>
 
+<%# ── 關鍵結論 ── %>
+<%
+  best_wday_ins  = @weekday_stats&.max_by { |w| w[:avg_revenue] }
+  best_hour_ins  = @hour_stats&.max_by    { |h| h[:avg_revenue] }
+  best_month_ins = @monthly&.max_by       { |m| m[:revenue] }
+  best_rev_ins   = @broadcasts&.max_by    { |b| b["revenue"].to_f }
+
+  # 直播最佳時間點
+  near_by_day = (-3..3).map do |d|
+    rows = @near_broadcasts.select { |b| b["near_days"] == d }
+    next if rows.empty?
+    avg_rev = rows.sum { |b| b["revenue"].to_f } / rows.size
+    { day: d, avg_rev: avg_rev, count: rows.size }
+  end.compact
+  best_near_slot = near_by_day.max_by { |r| r[:avg_rev] }
+  best_near_vs   = best_near_slot && @avg_revenue_per_push > 0 ?
+    ((best_near_slot[:avg_rev] / @avg_revenue_per_push - 1) * 100).round : nil
+
+  _sorted_m = @monthly.reverse
+  half2 = (_sorted_m.size / 2.0).ceil
+  fh = _sorted_m.first(half2).map { |m| m[:revenue] }.then { |r| r.empty? ? 0 : r.sum / r.size }
+  sh = _sorted_m.last(_sorted_m.size - half2).map { |m| m[:revenue] }.then { |r| r.empty? ? 0 : r.sum / r.size }
+  trend_pct = fh > 0 ? ((sh / fh - 1) * 100).round : nil
+%>
+<div class="card border-0 mb-4" style="background:linear-gradient(135deg,#1a2a4a 0%,#2d4a7a 100%);color:#fff">
+  <div class="card-body px-4 py-3">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <span class="fw-bold" style="font-size:0.8rem;letter-spacing:.1em;text-transform:uppercase;opacity:.7"><%= @selected_year %> 年 LINE 推播 — 關鍵結論</span>
+      <span style="font-size:0.75rem;opacity:.5">供行銷策略參考</span>
+    </div>
+    <div class="row g-3">
+
+      <% if best_wday_ins && best_hour_ins %>
+      <div class="col-md-4">
+        <div class="p-3 rounded" style="background:rgba(255,255,255,.08)">
+          <div style="font-size:.75rem;opacity:.6;margin-bottom:4px">最佳推播時機</div>
+          <div class="fw-bold" style="font-size:1.1rem">
+            <%= best_wday_ins[:label] %> × <%= best_hour_ins[:label] %>
+          </div>
+          <div style="font-size:.82rem;opacity:.8;margin-top:4px">
+            <%= best_wday_ins[:label] %> 平均每次 <%= fmt_money(best_wday_ins[:avg_revenue]) %>，
+            <%= best_hour_ins[:label] %> 時段平均 <%= fmt_money(best_hour_ins[:avg_revenue]) %>
+          </div>
+          <div class="mt-2" style="font-size:.78rem;background:rgba(255,193,7,.2);border-left:3px solid #ffc107;padding:4px 8px;border-radius:2px">
+            建議：固定排在 <%= best_wday_ins[:label] %> <%= best_hour_ins[:label] %>
+          </div>
+        </div>
+      </div>
+      <% end %>
+
+      <% if best_near_slot && best_near_vs %>
+      <div class="col-md-4">
+        <div class="p-3 rounded" style="background:rgba(255,255,255,.08)">
+          <div style="font-size:.75rem;opacity:.6;margin-bottom:4px">直播連動最佳時間點</div>
+          <div class="fw-bold" style="font-size:1.1rem">
+            <%= near_day_label.call(best_near_slot[:day]) %>
+          </div>
+          <div style="font-size:.82rem;opacity:.8;margin-top:4px">
+            平均每次 <%= fmt_money(best_near_slot[:avg_rev]) %>，
+            比全年均值 <span style="color:<%= best_near_vs >= 0 ? '#6fcf97' : '#eb5757' %>"><%= best_near_vs >= 0 ? "+#{best_near_vs}" : best_near_vs %>%</span>
+          </div>
+          <div class="mt-2" style="font-size:.78rem;background:rgba(255,193,7,.2);border-left:3px solid #ffc107;padding:4px 8px;border-radius:2px">
+            建議：直播前後都要推，<%= near_day_label.call(best_near_slot[:day]) %>效果最強
+          </div>
+        </div>
+      </div>
+      <% end %>
+
+      <% if best_month_ins %>
+      <div class="col-md-4">
+        <div class="p-3 rounded" style="background:rgba(255,255,255,.08)">
+          <div style="font-size:.75rem;opacity:.6;margin-bottom:4px">年度表現趨勢</div>
+          <% if trend_pct %>
+            <div class="fw-bold" style="font-size:1.1rem">
+              下半年 <%= trend_pct >= 0 ? "↑ 成長 #{trend_pct}%" : "↓ 下滑 #{trend_pct.abs}%" %>
+            </div>
+          <% end %>
+          <div style="font-size:.82rem;opacity:.8;margin-top:4px">
+            最佳月份：<%= @selected_year %>/<%= best_month_ins[:month] %>（<%= fmt_money(best_month_ins[:revenue]) %>）
+          </div>
+          <% if best_rev_ins %>
+          <div style="font-size:.78rem;opacity:.7;margin-top:4px">
+            單次最高：「<%= best_rev_ins["topic"] %>」<%= fmt_money(best_rev_ins["revenue"]) %>
+          </div>
+          <% end %>
+        </div>
+      </div>
+      <% end %>
+
+    </div>
+  </div>
+</div>
+
 <%# ── 總覽卡片 ── %>
 <div class="row g-3 mb-4">
   <div class="col-6 col-md-3">
