@@ -22,6 +22,76 @@
   </div>
 </div>
 
+<%# ── 結論摘要（給老闆 & 社群同事） ── %>
+<%
+  target_count     = @target["count"]
+  both_count       = @both["count"]
+  chloe_only_count = @chloe_only["count"]
+  neither_count    = @neither["count"]
+  buyers_total     = target_count + both_count + chloe_only_count + neither_count
+
+  chloe_buyer_pct    = buyers_total > 0 ? (chloe_only_count.to_f / buyers_total * 100).round(1) : 0
+  neither_buyer_pct  = buyers_total > 0 ? (neither_count.to_f    / buyers_total * 100).round(1) : 0
+  overlap_buyer_pct  = buyers_total > 0 ? (both_count.to_f       / buyers_total * 100).round(1) : 0
+%>
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">分析結論</p>
+<div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #4a6fa5 !important;">
+  <div class="card-body">
+
+    <p class="fw-bold mb-3" style="font-size:1rem">
+      在 <%= number_with_delimiter(buyers_total) %> 位有購買紀錄且留有 IG 帳號的客戶中，受眾結構如下：
+    </p>
+
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#fff8e1;">
+          <div class="fw-bold mb-1">📌 Chloe 個人帳號的帶購影響力遠大於品牌帳號</div>
+          <p class="small mb-0">
+            有 <strong><%= number_with_delimiter(chloe_only_count) %> 人（<%= chloe_buyer_pct %>%）</strong>只追蹤 @chloechao0527、沒有追蹤品牌帳號，卻已購買。
+            反過來，只追蹤品牌帳號就購買的僅有 <strong><%= target_count %> 人</strong>。
+            代表大部分購買決策是被 Chloe 個人影響，品牌帳號對轉換的直接貢獻較小。
+          </p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#e8f5e9;">
+          <div class="fw-bold mb-1">✅ 核心受眾：兩邊都追蹤的 <%= number_with_delimiter(both_count) %> 人（<%= overlap_buyer_pct %>%）</div>
+          <p class="small mb-0">
+            同時追蹤 @shengting_official 與 @chloechao0527 且有購買的客戶，是品牌最忠實的一群。
+            這群人對兩邊的廣告都會看到，是重複曝光的核心族群，也最容易響應新品或活動通知。
+          </p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#fce4ec;">
+          <div class="fw-bold mb-1">⚠️ <%= neither_buyer_pct %>% 的買家兩個帳號都沒追蹤</div>
+          <p class="small mb-0">
+            共 <strong><%= number_with_delimiter(neither_count) %> 人</strong>有購買但不追蹤任何一個帳號，
+            可能來自搜尋、直播連結、親友分享等非 IG 管道。
+            這群人目前在 IG 上無法被再行銷觸及，值得另外建立 LINE 或 EDM 名單。
+          </p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 rounded" style="background:#e3f2fd;">
+          <div class="fw-bold mb-1">💡 廣告投放建議</div>
+          <p class="small mb-0">
+            若 Chloe 廣告與品牌廣告分開投，<strong>應以 Chloe 帳號為主力</strong>——
+            她的受眾中有購買行為的人數是品牌帳號的 <%= (chloe_only_count.to_f / [target_count, 1].max).round(0).to_i %> 倍。
+            品牌帳號的廣告適合用來做<strong>既有買家的品牌感經營</strong>，而非主要獲客工具。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-muted small mb-0">
+      資料來源：Instagram 帳號原生匯出（<%= @last_updated %>）✕ Shopline 客戶購買紀錄。
+      比對依據：客戶填寫的 Instagram 帳號欄位（精準比對）。
+    </p>
+
+  </div>
+</div>
+
 <%# ── 帳號概覽 ── %>
 <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">帳號粉絲概覽</p>
 <div class="row g-3 mb-4">
