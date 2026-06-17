@@ -222,14 +222,21 @@
 <%# ── LINE ID 確認（only neither tab） ── %>
 <% if @tab == "neither" %>
 <div class="card border-0 shadow-sm mb-4" style="border-left: 4px solid #00b900 !important;">
-  <div class="card-header" style="background:#00b900;">
-    <span class="fw-bold text-white">📱 LINE ID 確認</span>
-    <span class="text-white-50 small ml-2">— 這群人有沒有加 LINE 好友？</span>
+  <div class="card-header d-flex justify-content-between align-items-center" style="background:#00b900;">
+    <div>
+      <span class="fw-bold text-white">📱 LINE ID 確認</span>
+      <span class="text-white-50 small ml-2">— 這群人有沒有加 LINE 好友？</span>
+    </div>
+    <% if @without_line_id.any? %>
+      <%= link_to ig_audience_export_no_line_path, class: "btn btn-sm btn-light text-success flex-shrink-0" do %>
+        <i class="fa fa-download mr-1"></i> 下載無 LINE ID 名單 CSV
+      <% end %>
+    <% end %>
   </div>
   <div class="card-body">
 
     <%# 摘要數字 %>
-    <div class="row g-3 mb-4">
+    <div class="row g-3">
       <div class="col-6 col-md-3">
         <div class="text-center p-3 rounded" style="background:#e8f5e9;">
           <div class="text-muted small mb-1">有 LINE ID</div>
@@ -261,51 +268,6 @@
         </div>
       </div>
     </div>
-
-    <%# 無 LINE ID 名單 %>
-    <% if @without_line_id.any? %>
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-0">
-          無 LINE ID 名單（共 <%= @without_line_id.size %> 人）
-          <span class="fw-normal text-muted">— 這些人無法透過 LINE 推播觸及，需透過 EDM 或簡訊聯繫</span>
-        </p>
-        <%= link_to ig_audience_export_no_line_path, class: "btn btn-sm btn-outline-success flex-shrink-0" do %>
-          <i class="fa fa-download mr-1"></i> 下載無 LINE ID 名單 CSV
-        <% end %>
-      </div>
-      <div class="table-responsive">
-        <table class="table table-hover table-sm mb-0">
-          <thead class="thead-light">
-            <tr>
-              <th class="px-3" style="width:36px">#</th>
-              <th>IG 帳號</th>
-              <th>客戶姓名</th>
-              <th>Email</th>
-              <th class="text-right">訂單數</th>
-              <th class="text-right">總消費</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @without_line_id.each_with_index do |b, i| %>
-              <tr>
-                <td class="px-3 text-muted small"><%= i + 1 %></td>
-                <td>
-                  <a href="https://www.instagram.com/<%= b['ig'] %>" target="_blank" class="text-muted small">
-                    @<%= b["ig"] %>
-                  </a>
-                </td>
-                <td><%= b["name"] %></td>
-                <td class="text-muted small"><%= b["email"] %></td>
-                <td class="text-right text-muted small"><%= b["orders"] %></td>
-                <td class="text-right fw-bold">NT$<%= fmt_n(b["amount"]) %></td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    <% else %>
-      <div class="alert alert-success mb-0">這群人全部都有 LINE ID！</div>
-    <% end %>
 
   </div>
 </div>
