@@ -102,7 +102,11 @@ class IgAudienceController < ApplicationController
       @without_line_id = []
     end
 
-    @with_line_spend_buckets = spend_buckets(@with_line_id)
+    @spend_buckets_by_group = {
+      "with_line"    => spend_buckets(@with_line_id),
+      "without_line" => spend_buckets(@without_line_id),
+      "total"        => spend_buckets(@buyers)
+    }
 
     if @emails.any?
       orders = ShoplineOrder

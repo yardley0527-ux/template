@@ -242,31 +242,31 @@
   </div>
   <div class="card-body">
 
-    <%# 摘要數字 %>
-    <div class="row g-3">
+    <%# 摘要數字（點擊可切換下方消費區間分布） %>
+    <div class="row g-3" id="line-id-summary-cards">
       <div class="col-6 col-md-3">
-        <div class="text-center p-3 rounded" style="background:#e8f5e9;">
+        <div class="text-center p-3 rounded spend-toggle-card is-active" data-group="with_line" style="background:#e8f5e9;cursor:pointer;">
           <div class="text-muted small mb-1">有 LINE ID</div>
           <div class="fw-bold" style="font-size:2rem;color:#2e7d32;"><%= @with_line_id.size %></div>
           <div class="text-muted small">人</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="text-center p-3 rounded" style="background:#fce4ec;">
+        <div class="text-center p-3 rounded spend-toggle-card" data-group="without_line" style="background:#fce4ec;cursor:pointer;">
           <div class="text-muted small mb-1">無 LINE ID</div>
           <div class="fw-bold" style="font-size:2rem;color:#c62828;"><%= @without_line_id.size %></div>
           <div class="text-muted small">人</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="text-center p-3 rounded" style="background:#f5f5f5;">
+        <div class="text-center p-3 rounded spend-toggle-card" data-group="total" style="background:#f5f5f5;cursor:pointer;">
           <div class="text-muted small mb-1">總人數</div>
           <div class="fw-bold" style="font-size:2rem;color:#555;"><%= @count %></div>
           <div class="text-muted small">人</div>
         </div>
       </div>
       <div class="col-6 col-md-3">
-        <div class="text-center p-3 rounded" style="background:#e3f2fd;">
+        <div class="text-center p-3 rounded spend-toggle-card" data-group="total" style="background:#e3f2fd;cursor:pointer;">
           <div class="text-muted small mb-1">LINE 覆蓋率</div>
           <div class="fw-bold" style="font-size:2rem;color:#1565c0;">
             <%= @count > 0 ? (@with_line_id.size.to_f / @count * 100).round(1) : 0 %>%
@@ -276,29 +276,66 @@
       </div>
     </div>
 
-    <% if @with_line_spend_buckets.present? %>
+    <% spend_panels = {
+         "with_line"    => { title: "有 LINE ID", buckets: @spend_buckets_by_group["with_line"], count: @with_line_id.size },
+         "without_line" => { title: "無 LINE ID", buckets: @spend_buckets_by_group["without_line"], count: @without_line_id.size },
+         "total"        => { title: "全部",       buckets: @spend_buckets_by_group["total"],      count: @count }
+       } %>
+    <% if spend_panels.values.any? { |p| p[:buckets].present? } %>
       <hr class="my-4">
-      <div class="fw-bold mb-3">💰 有 LINE ID 這群人的消費區間分布（<%= @with_line_id.size %> 人）</div>
-      <% max_pct = @with_line_spend_buckets.map { |b| b[:pct] }.max %>
-      <% @with_line_spend_buckets.each do |bucket| %>
-        <div class="d-flex align-items-center mb-2">
-          <div class="small text-muted" style="width: 130px; flex-shrink: 0;"><%= bucket[:label] %></div>
-          <div class="flex-grow-1 mr-2">
-            <div class="progress" style="height: 18px;">
-              <div class="progress-bar" role="progressbar"
-                   style="width: <%= max_pct.zero? ? 0 : (bucket[:pct] / max_pct * 100).round(1) %>%; background-color:#00b900;">
+      <% spend_panels.each do |group, panel| %>
+        <% next if panel[:buckets].blank? %>
+        <div class="spend-bucket-panel <%= 'd-none' unless group == 'with_line' %>" data-group="<%= group %>">
+          <div class="fw-bold mb-3">💰 <%= panel[:title] %>這群人的消費區間分布（<%= panel[:count] %> 人）</div>
+          <% max_pct = panel[:buckets].map { |b| b[:pct] }.max %>
+          <% panel[:buckets].each do |bucket| %>
+            <div class="d-flex align-items-center mb-2">
+              <div class="small text-muted" style="width: 130px; flex-shrink: 0;"><%= bucket[:label] %></div>
+              <div class="flex-grow-1 mr-2">
+                <div class="progress" style="height: 18px;">
+                  <div class="progress-bar" role="progressbar"
+                       style="width: <%= max_pct.zero? ? 0 : (bucket[:pct] / max_pct * 100).round(1) %>%; background-color:#00b900;">
+                  </div>
+                </div>
+              </div>
+              <div class="small text-right" style="width: 110px; flex-shrink: 0;">
+                <%= bucket[:count] %> 人（<%= bucket[:pct] %>%）
               </div>
             </div>
-          </div>
-          <div class="small text-right" style="width: 110px; flex-shrink: 0;">
-            <%= bucket[:count] %> 人（<%= bucket[:pct] %>%）
-          </div>
+          <% end %>
         </div>
       <% end %>
     <% end %>
 
   </div>
 </div>
+
+<% content_for :scripts_block do %>
+  <script>
+    function initSpendToggleCards() {
+      var cards = document.querySelectorAll("#line-id-summary-cards .spend-toggle-card");
+      if (!cards.length) return;
+      cards.forEach(function (card) {
+        card.addEventListener("click", function () {
+          var group = card.getAttribute("data-group");
+
+          cards.forEach(function (c) { c.classList.remove("is-active"); });
+          document.querySelectorAll("#line-id-summary-cards .spend-toggle-card[data-group='" + group + "']")
+            .forEach(function (c) { c.classList.add("is-active"); });
+
+          document.querySelectorAll(".spend-bucket-panel").forEach(function (panel) {
+            panel.classList.toggle("d-none", panel.getAttribute("data-group") !== group);
+          });
+        });
+      });
+    }
+    document.addEventListener("turbolinks:load", initSpendToggleCards);
+    document.addEventListener("DOMContentLoaded", initSpendToggleCards);
+  </script>
+  <style>
+    .spend-toggle-card.is-active { box-shadow: 0 0 0 2px #00b900 inset; }
+  </style>
+<% end %>
 <% end %>
 
 <%# ── 購買軌跡總覽（老闆報告） ── %>
