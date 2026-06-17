@@ -12,6 +12,8 @@
   </div>
 </div>
 
+<%= render "shared/data_freshness", updated_at: @customers_report_updated_at %>
+
 <% levels = @membership_order.select { |l| @total_by_level[l].to_i > 0 } %>
 
 <%# ── 城市 ── %>

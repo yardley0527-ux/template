@@ -60,15 +60,21 @@ module Importing
 
       flush = lambda do
         if shopline_batch.any?
+          # 同一批次可能有重複 shopline_id（CSV 重複列），保留最後一筆
+          # 必須先 dedupe 再做下面的 email 回填，否則同一批次裡兩筆不同 email
+          # 但 shopline_id 相同的列，會搶著把同一個 shopline_id 寫進兩筆不同的舊紀錄，
+          # 第二次 update_all 就會撞 unique constraint
+          deduped = shopline_batch.each_with_object({}) { |r, h| h[r[:shopline_id]] = r }.values
+
           # 先把 email 已存在但 shopline_id 為 nil 的舊記錄補上 shopline_id
-          shopline_batch.each do |r|
+          deduped.each do |r|
             next if r[:email].blank? || r[:shopline_id].blank?
             ShoplineCustomer.where(email: r[:email], shopline_id: nil)
                             .update_all(shopline_id: r[:shopline_id])
+          rescue => backfill_error
+            log "[import] WARN shopline_id backfill failed email=#{r[:email]} shopline_id=#{r[:shopline_id]}: #{backfill_error.class} - #{backfill_error.message}", :warn
           end
 
-          # 同一批次可能有重複 shopline_id（CSV 重複列），保留最後一筆
-          deduped = shopline_batch.each_with_object({}) { |r, h| h[r[:shopline_id]] = r }.values
           batch_without_email = deduped.map { |r| r.except(:email) }
 
           begin
@@ -97,10 +103,12 @@ module Importing
           end
 
           # 補回填 email（原本的邏輯不變）
-          shopline_batch.each do |r|
+          deduped.each do |r|
             next if r[:email].blank? || r[:shopline_id].blank?
             ShoplineCustomer.where(shopline_id: r[:shopline_id], email: nil)
                             .update_all(email: r[:email])
+          rescue => backfill_error
+            log "[import] WARN email backfill failed email=#{r[:email]} shopline_id=#{r[:shopline_id]}: #{backfill_error.class} - #{backfill_error.message}", :warn
           end
 
           log "[import] flushed shopline_batch size=#{shopline_batch.size}"

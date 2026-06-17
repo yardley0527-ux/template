@@ -237,6 +237,9 @@ class CustomersController < ApplicationController
 
   def stats
     @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員 非會員]
+    @customers_report_updated_at = ImportRun.where(kind: "customers_report")
+                                              .order(started_at: :desc)
+                                              .first&.finished_at
 
     customers = ShoplineCustomer.select(:membership_level, :city, :birthdate)
 
