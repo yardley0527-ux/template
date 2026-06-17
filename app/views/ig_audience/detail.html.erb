@@ -367,36 +367,6 @@
       </p>
     <% end %>
 
-    <%# 個人購買序列 %>
-    <hr class="my-3"/>
-    <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">每位顧客購買序列</p>
-    <div class="table-responsive">
-      <table class="table table-sm table-hover mb-0 align-middle">
-        <thead class="thead-light">
-          <tr>
-            <th>姓名</th>
-            <th class="text-center">訂單數</th>
-            <th class="text-right">總消費</th>
-            <th>購買路徑</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @customer_sequences.each do |c| %>
-            <tr>
-              <td class="fw-bold small"><%= c[:name] %></td>
-              <td class="text-center small text-muted"><%= c[:count] %> 筆</td>
-              <td class="text-right fw-bold small text-success">NT$<%= number_with_delimiter(c[:total].to_i) %></td>
-              <td class="small text-muted">
-                <% c[:products].each_with_index do |p, i| %>
-                  <span class="badge badge-light border mr-1 mb-1" style="font-size:10px; font-weight:normal;"><%= p.to_s.truncate(12) %></span>
-                  <% if i < c[:products].size - 1 %><span class="text-muted" style="font-size:10px;">→</span><% end %>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
 
   </div>
 </div>
