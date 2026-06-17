@@ -238,6 +238,11 @@
           <i class="fa fa-download mr-1"></i> 下載無 LINE ID 名單 CSV
         <% end %>
       <% end %>
+      <% if @high_value_silent.present? %>
+        <%= link_to ig_audience_export_high_value_silent_path, class: "btn btn-sm btn-light text-danger" do %>
+          <i class="fa fa-download mr-1"></i> 下載高價值沈默名單 CSV
+        <% end %>
+      <% end %>
     </div>
   </div>
   <div class="card-body">
@@ -305,6 +310,18 @@
           <% end %>
         </div>
       <% end %>
+    <% end %>
+
+    <% if @high_value_silent.present? %>
+      <hr class="my-4">
+      <div class="p-3 rounded" style="background:#fdecea;border:1px solid #f5c6cb;">
+        <div class="fw-bold mb-1">🚨 高價值沈默名單（<%= @high_value_silent.size %> 人）</div>
+        <p class="small text-muted mb-0">
+          總消費 <%= number_with_delimiter(IgAudienceController::HIGH_VALUE_SPEND_THRESHOLD) %> 元以上、
+          且超過 <%= IgAudienceController::SILENT_DAYS_THRESHOLD %> 天沒有再下單、又沒有 LINE ID 的顧客。
+          這群人價值高但已經很久沒回購，建議優先確認聯絡方式並安排回購提醒。
+        </p>
+      </div>
     <% end %>
 
   </div>

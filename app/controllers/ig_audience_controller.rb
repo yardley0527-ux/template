@@ -102,6 +102,8 @@ class IgAudienceController < ApplicationController
       @without_line_id = []
     end
 
+    @high_value_silent = high_value_silent_buyers(@without_line_id)
+
     @spend_buckets_by_group = {
       "with_line"    => spend_buckets(@with_line_id),
       "without_line" => spend_buckets(@without_line_id),
@@ -331,6 +333,30 @@ class IgAudienceController < ApplicationController
               disposition: "attachment"
   end
 
+  def export_high_value_silent
+    @data = load_data
+    return redirect_to ig_audience_path, alert: "尚無資料" unless @data
+
+    buyers = @data.dig("segments", "neither", "buyers") || []
+    emails = buyers.map { |b| b["email"] }.compact.uniq
+    line_id_map = ShoplineCustomer.where(email: emails).pluck(:email, :line_id).to_h
+    without_line = buyers.reject { |b| line_id_map[b["email"]].present? }
+    high_value_silent = high_value_silent_buyers(without_line)
+
+    csv_data = CSV.generate(encoding: "UTF-8") do |csv|
+      csv << %w[IG帳號 客戶姓名 Email 電話 訂單數 總消費金額 最後購買日期 沈默天數]
+      high_value_silent.each do |b|
+        csv << [b["ig"], b["name"], b["email"], b["phone"], b["orders"], b["amount"],
+                b["last_order_date"].to_date, b["days_silent"]]
+      end
+    end
+
+    send_data "\xEF\xBB\xBF" + csv_data,
+              filename:    "ig_neither_high_value_silent_#{Date.today}.csv",
+              type:        "text/csv; charset=utf-8",
+              disposition: "attachment"
+  end
+
   private
 
   def load_data
@@ -367,5 +393,25 @@ class IgAudienceController < ApplicationController
 
   def spend_bucket_label(amount)
     SPEND_BUCKET_RANGES.find { |_, range| range.cover?(amount.to_f) }&.first
+  end
+
+  HIGH_VALUE_SPEND_THRESHOLD = 20_000
+  SILENT_DAYS_THRESHOLD      = 60
+
+  def high_value_silent_buyers(buyers)
+    high_value = buyers.select { |b| b["amount"].to_f >= HIGH_VALUE_SPEND_THRESHOLD }
+    return [] if high_value.empty?
+
+    emails = high_value.map { |b| b["email"] }.compact.uniq
+    last_order_map = CustomerPurchaseSummary.where(email: emails).pluck(:email, :last_order_date).to_h
+
+    high_value.filter_map do |b|
+      last_order_date = last_order_map[b["email"]]
+      next unless last_order_date
+      days_silent = (Date.current - last_order_date.to_date).to_i
+      next if days_silent < SILENT_DAYS_THRESHOLD
+
+      b.merge("last_order_date" => last_order_date, "days_silent" => days_silent)
+    end.sort_by { |b| -b["amount"].to_f }
   end
 end
