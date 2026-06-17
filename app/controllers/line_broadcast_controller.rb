@@ -85,7 +85,8 @@ class LineBroadcastController < ApplicationController
       .sort_by { |b| b["near_days"].abs }
 
     # ── 亮點推播（有 image_url 的）────────────────────────────────
-    @highlights = (@data["highlights"] || [])
+    @highlights = LineBroadcastHighlight.all
+    @highlight_candidates = @broadcasts.sort_by { |b| -b["revenue"].to_f }
 
     # ── 年份切換用摘要 ────────────────────────────────────────────
     @year_summary = @years.map do |y|

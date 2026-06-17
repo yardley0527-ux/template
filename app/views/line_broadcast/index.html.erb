@@ -488,28 +488,62 @@
 <% end %>
 
 <%# ── 亮點推播（老闆看的圖片） ── %>
-<% if @highlights.any? %>
-  <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">亮點推播</p>
-  <div class="row g-3 mb-4">
-    <% @highlights.each do |h| %>
-      <div class="col-md-4 col-sm-6">
-        <div class="card border-0 shadow-sm h-100">
-          <% if h["image_url"].present? %>
-            <img src="<%= h["image_url"] %>" class="card-img-top"
-                 style="object-fit:cover; max-height:240px;">
+<p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">亮點推播</p>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-5">
+        <label class="small text-muted mb-1">選擇推播（依營收排序）</label>
+        <select id="hl_broadcast_select" class="form-control form-control-sm">
+          <option value="">— 請選擇要標記的推播 —</option>
+          <% @highlight_candidates.each do |b| %>
+            <option value="<%= b["push_time"] %>"
+                    data-topic="<%= b["topic"] %>"
+                    data-push-time="<%= b["push_time"] %>"
+                    data-revenue="<%= b["revenue"].to_f %>"
+                    data-read-rate="<%= b["read_rate"].to_f %>">
+              <%= fmt_money(b["revenue"]) %>｜<%= b["push_time"].to_s[0..9] %>｜<%= b["topic"] %>
+            </option>
           <% end %>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="small text-muted mb-1">備註（選填）</label>
+        <input type="text" id="hl_note" class="form-control form-control-sm" placeholder="例如：母親節檔期，圖文並用">
+      </div>
+      <div class="col-md-3">
+        <button type="button" id="hl_upload_btn" class="btn btn-sm btn-primary w-100">
+          <i class="fal fa-upload mr-1"></i>上傳圖片
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @highlights.any? %>
+  <div class="row g-3 mb-4" id="highlights-container">
+    <% @highlights.each do |h| %>
+      <div class="col-md-4 col-sm-6" id="highlight-card-<%= h.id %>">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="position-relative">
+            <img src="<%= h.image_url %>" class="card-img-top" style="object-fit:cover; max-height:240px;">
+            <button type="button" class="btn btn-xs btn-danger position-absolute" style="top:6px;right:6px;"
+                    data-delete-highlight-url="<%= line_broadcast_highlight_path(h) %>">
+              <i class="fal fa-times"></i>
+            </button>
+          </div>
           <div class="card-body">
-            <div class="fw-bold small mb-1"><%= h["topic"] %></div>
-            <div class="text-muted small mb-2"><%= h["push_time"].to_s[0..15] %></div>
-            <% if h["note"].present? %>
-              <p class="small mb-2"><%= h["note"] %></p>
+            <div class="fw-bold small mb-1"><%= h.topic %></div>
+            <div class="text-muted small mb-2"><%= h.push_time&.strftime("%Y-%m-%d %H:%M") %></div>
+            <% if h.note.present? %>
+              <p class="small mb-2"><%= h.note %></p>
             <% end %>
             <div class="d-flex gap-3 flex-wrap">
-              <% if h["revenue"].to_f > 0 %>
-                <span class="text-success fw-bold small"><%= fmt_money(h["revenue"]) %></span>
+              <% if h.revenue.to_f > 0 %>
+                <span class="text-success fw-bold small"><%= fmt_money(h.revenue) %></span>
               <% end %>
-              <% if h["read_rate"].to_f > 0 %>
-                <span class="text-muted small">閱讀率 <%= fmt_pct(h["read_rate"]) %></span>
+              <% if h.read_rate.to_f > 0 %>
+                <span class="text-muted small">閱讀率 <%= fmt_pct(h.read_rate) %></span>
               <% end %>
             </div>
           </div>
@@ -517,4 +551,125 @@
       </div>
     <% end %>
   </div>
+<% else %>
+  <p class="text-muted small mb-4" id="highlights-empty-msg">尚未加入亮點推播，請從上方選擇推播並上傳圖片。</p>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  var uploadBtn = document.getElementById('hl_upload_btn');
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', function() {
+      var select = document.getElementById('hl_broadcast_select');
+      var opt = select.options[select.selectedIndex];
+      if (!opt || !opt.value) { alert('請先選擇要標記的推播'); return; }
+
+      loadCloudinary().then(function(cloudinary) {
+        var widget = cloudinary.createUploadWidget(
+          {
+            cloudName: '<%= ENV["CLOUDINARY_CLOUD_NAME"] %>',
+            uploadPreset: 'ml_default',
+            multiple: false,
+            maxFiles: 1,
+            resourceType: 'image'
+          },
+          function(error, result) {
+            if (!error && result && result.event === 'success') {
+              var info = result.info;
+              var note = document.getElementById('hl_note').value;
+              fetch('<%= line_broadcast_highlights_path %>', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+                body: JSON.stringify({
+                  line_broadcast_highlight: {
+                    cloudinary_public_id: info.public_id,
+                    image_url: info.secure_url,
+                    topic: opt.getAttribute('data-topic'),
+                    push_time: opt.getAttribute('data-push-time'),
+                    revenue: opt.getAttribute('data-revenue'),
+                    read_rate: opt.getAttribute('data-read-rate'),
+                    note: note
+                  }
+                })
+              })
+              .then(function(r) { return r.json(); })
+              .then(function(data) {
+                if (data.errors) { alert(data.errors.join('\n')); return; }
+                addHighlightCard(data);
+                document.getElementById('hl_note').value = '';
+              });
+            }
+          }
+        );
+        widget.open();
+      });
+    });
+  }
+
+  function addHighlightCard(h) {
+    var container = document.getElementById('highlights-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'row g-3 mb-4';
+      container.id = 'highlights-container';
+      uploadBtn.closest('.card').insertAdjacentElement('afterend', container);
+      var emptyMsg = document.getElementById('highlights-empty-msg');
+      if (emptyMsg) emptyMsg.remove();
+    }
+    var col = document.createElement('div');
+    col.className = 'col-md-4 col-sm-6';
+    col.id = 'highlight-card-' + h.id;
+    col.innerHTML =
+      '<div class="card border-0 shadow-sm h-100">' +
+        '<div class="position-relative">' +
+          '<img src="' + h.image_url + '" class="card-img-top" style="object-fit:cover; max-height:240px;">' +
+          '<button type="button" class="btn btn-xs btn-danger position-absolute" style="top:6px;right:6px;" data-delete-highlight-url="/line_broadcast_highlights/' + h.id + '"><i class="fal fa-times"></i></button>' +
+        '</div>' +
+        '<div class="card-body">' +
+          '<div class="fw-bold small mb-1">' + escHtml(h.topic || '') + '</div>' +
+          '<div class="text-muted small mb-2">' + escHtml((h.push_time || '').replace('T', ' ').slice(0, 16)) + '</div>' +
+          (h.note ? '<p class="small mb-2">' + escHtml(h.note) + '</p>' : '') +
+          '<div class="d-flex gap-3 flex-wrap">' +
+            (parseFloat(h.revenue) > 0 ? '<span class="text-success fw-bold small">NT$' + Math.round(parseFloat(h.revenue)).toLocaleString() + '</span>' : '') +
+            (parseFloat(h.read_rate) > 0 ? '<span class="text-muted small">閱讀率 ' + h.read_rate + '%</span>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    container.appendChild(col);
+    bindDeleteHighlight(col.querySelector('button'));
+  }
+
+  function bindDeleteHighlight(btn) {
+    btn.addEventListener('click', function() {
+      if (!confirm('確定刪除這張亮點推播圖片？')) return;
+      var url = btn.getAttribute('data-delete-highlight-url');
+      fetch(url, { method: 'DELETE', headers: { 'X-CSRF-Token': CSRF_TOKEN } })
+        .then(function() { btn.closest('[id^="highlight-card-"]').remove(); });
+    });
+  }
+  document.querySelectorAll('[data-delete-highlight-url]').forEach(bindDeleteHighlight);
+
+  var cloudinaryPromise = null;
+  function loadCloudinary() {
+    if (window.cloudinary) return Promise.resolve(window.cloudinary);
+    if (cloudinaryPromise) return cloudinaryPromise;
+    cloudinaryPromise = new Promise(function(resolve, reject) {
+      var script = document.createElement('script');
+      script.src = 'https://upload-widget.cloudinary.com/global/all.js';
+      script.setAttribute('data-cloudinary-widget', 'true');
+      script.onload = function() { resolve(window.cloudinary); };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    return cloudinaryPromise;
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+})();
+</script>
 <% end %>

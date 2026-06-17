@@ -15,14 +15,11 @@ Rails.application.routes.draw do
   get  '/member_contacts/export',        to: 'member_contacts#export',         as: :member_contacts_export
   post '/member_contacts/refresh_line',  to: 'member_contacts#refresh_line',   as: :member_contacts_refresh_line
   post '/member_contacts/update_sl',     to: 'member_contacts#update_sl',      as: :member_contacts_update_sl
-  get  '/manychat_audience',        to: 'manychat_audience#index',  as: :manychat_audience
-  post '/manychat_audience/upload', to: 'manychat_audience#upload', as: :manychat_audience_upload
-  get  '/manychat_audience/export', to: 'manychat_audience#export', as: :manychat_audience_export
-
   get  '/ig_dashboard',             to: 'ig_dashboard#index',         as: :ig_dashboard
   get  '/ig_followers',             to: 'ig_followers#index',         as: :ig_followers
   get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
   get  '/line_broadcast',           to: 'line_broadcast#index',       as: :line_broadcast
+  resources :line_broadcast_highlights, only: [:create, :destroy]
   get  '/ig_audience',              to: 'ig_audience#index',          as: :ig_audience
   get  '/ig_audience/detail',       to: 'ig_audience#detail',         as: :ig_audience_detail
   get  '/ig_audience/export',       to: 'ig_audience#export',         as: :ig_audience_export

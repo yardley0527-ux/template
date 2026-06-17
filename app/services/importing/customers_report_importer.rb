@@ -70,11 +70,31 @@ module Importing
           # 同一批次可能有重複 shopline_id（CSV 重複列），保留最後一筆
           deduped = shopline_batch.each_with_object({}) { |r, h| h[r[:shopline_id]] = r }.values
           batch_without_email = deduped.map { |r| r.except(:email) }
-          ShoplineCustomer.upsert_all(
-            batch_without_email,
-            unique_by: :shopline_id,
-            update_only: upsertable_columns
-          )
+
+          begin
+            ShoplineCustomer.upsert_all(
+              batch_without_email,
+              unique_by: :shopline_id,
+              update_only: upsertable_columns
+            )
+            upserted += deduped.size
+          rescue => e
+            # 整批寫入失敗時，逐筆重試，避免一筆衝突拖累同批其他正常資料
+            log "[import] WARN batch upsert failed (#{e.class} - #{e.message}), retrying #{batch_without_email.size} rows individually", :warn
+            batch_without_email.each do |record|
+              ShoplineCustomer.upsert_all(
+                [record],
+                unique_by: :shopline_id,
+                update_only: upsertable_columns
+              )
+              upserted += 1
+            rescue => row_error
+              error_rows += 1
+              msg = "upsert row failed shopline_id=#{record[:shopline_id]}: #{row_error.class} - #{row_error.message}"
+              log "[import] ERROR #{msg}", :error
+              run.add_error(msg)
+            end
+          end
 
           # 補回填 email（原本的邏輯不變）
           shopline_batch.each do |r|
@@ -84,7 +104,6 @@ module Importing
           end
 
           log "[import] flushed shopline_batch size=#{shopline_batch.size}"
-          upserted += shopline_batch.size
         end
       rescue => e
         log "[import] ERROR upsert shopline_batch failed: #{e.class} - #{e.message}", :error
@@ -98,13 +117,33 @@ module Importing
       flush_email = lambda do
         if email_batch.any?
           deduped_email = email_batch.each_with_object({}) { |r, h| h[r[:email]] = r }.values
-          ShoplineCustomer.upsert_all(
-            deduped_email,
-            unique_by: :email,
-            update_only: upsertable_columns
-          )
+
+          begin
+            ShoplineCustomer.upsert_all(
+              deduped_email,
+              unique_by: :email,
+              update_only: upsertable_columns
+            )
+            upserted += deduped_email.size
+          rescue => e
+            # 整批寫入失敗時，逐筆重試，避免一筆衝突拖累同批其他正常資料
+            log "[import] WARN email batch upsert failed (#{e.class} - #{e.message}), retrying #{deduped_email.size} rows individually", :warn
+            deduped_email.each do |record|
+              ShoplineCustomer.upsert_all(
+                [record],
+                unique_by: :email,
+                update_only: upsertable_columns
+              )
+              upserted += 1
+            rescue => row_error
+              error_rows += 1
+              msg = "upsert row failed email=#{record[:email]}: #{row_error.class} - #{row_error.message}"
+              log "[import] ERROR #{msg}", :error
+              run.add_error(msg)
+            end
+          end
+
           log "[import] flushed email_batch size=#{email_batch.size}"
-          upserted += email_batch.size
         end
       rescue => e
         log "[import] ERROR upsert email_batch failed: #{e.class} - #{e.message}", :error
