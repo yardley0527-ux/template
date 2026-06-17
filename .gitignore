@@ -46,3 +46,6 @@ vendor/bundle
 # Local environment variables (never commit)
 .env
 .env.local
+
+# Instaloader session cache (IG follower tracker)
+.ig_session

@@ -59,6 +59,7 @@ class SidebarEntry
             { href: threads_dashboard_path,   title: "Threads 分析",   icon: "fa-comment-alt" },
             { href: line_broadcast_path,      title: "LINE 推播分析",  icon: "fa-paper-plane" },
             { href: ig_audience_path,         title: "IG 受眾重疊分析", icon: "fa-users" },
+            { href: ig_followers_path,        title: "IG 粉絲成長追蹤", icon: "fa-chart-line" },
           ]
         },
         {

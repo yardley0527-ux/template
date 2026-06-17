@@ -20,6 +20,7 @@ Rails.application.routes.draw do
   get  '/manychat_audience/export', to: 'manychat_audience#export', as: :manychat_audience_export
 
   get  '/ig_dashboard',             to: 'ig_dashboard#index',         as: :ig_dashboard
+  get  '/ig_followers',             to: 'ig_followers#index',         as: :ig_followers
   get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
   get  '/line_broadcast',           to: 'line_broadcast#index',       as: :line_broadcast
   get  '/ig_audience',              to: 'ig_audience#index',          as: :ig_audience
