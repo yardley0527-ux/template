@@ -291,9 +291,10 @@ class IgAudienceController < ApplicationController
     without_line = buyers.reject { |b| line_id_map[b["email"]].present? }
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << %w[IG帳號 客戶姓名 Email 電話 訂單數 總消費金額]
+      csv << %w[IG帳號 客戶姓名 Email 電話 訂單數 總消費金額 消費區間]
       without_line.each do |b|
-        csv << [b["ig"], b["name"], b["email"], b["phone"], b["orders"], b["amount"]]
+        csv << [b["ig"], b["name"], b["email"], b["phone"], b["orders"], b["amount"],
+                spend_bucket_label(b["amount"])]
       end
     end
 
@@ -313,9 +314,10 @@ class IgAudienceController < ApplicationController
     with_line = buyers.select { |b| line_id_map[b["email"]].present? }
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << %w[IG帳號 客戶姓名 Email 電話 訂單數 總消費金額]
+      csv << %w[IG帳號 客戶姓名 Email 電話 訂單數 總消費金額 消費區間]
       with_line.each do |b|
-        csv << [b["ig"], b["name"], b["email"], b["phone"], b["orders"], b["amount"]]
+        csv << [b["ig"], b["name"], b["email"], b["phone"], b["orders"], b["amount"],
+                spend_bucket_label(b["amount"])]
       end
     end
 
@@ -357,5 +359,9 @@ class IgAudienceController < ApplicationController
       count = amounts.count { |a| range.cover?(a) }
       { label: label, count: count, pct: (count.to_f / total * 100).round(1) }
     end
+  end
+
+  def spend_bucket_label(amount)
+    SPEND_BUCKET_RANGES.find { |_, range| range.cover?(amount.to_f) }&.first
   end
 end
