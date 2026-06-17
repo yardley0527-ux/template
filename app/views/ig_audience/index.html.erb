@@ -220,7 +220,6 @@
   current = tab_meta[@active_tab]
   wday_names = %w[週日 週一 週二 週三 週四 週五 週六]
   hour_slots = [
-    { label: "凌晨 0–5",   hours: (0..5) },
     { label: "早上 6–9",   hours: (6..9) },
     { label: "上午 10–12", hours: (10..11) },
     { label: "中午 12–14", hours: (12..13) },
@@ -304,29 +303,43 @@
     <%# ── 星期 & 時段 ── %>
     <div class="row g-3 mb-4">
       <div class="col-md-6">
-        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">星期幾下單</p>
-        <% max_wday = (@tab_by_weekday || []).map { |r| r.revenue.to_f }.max.to_f %>
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">
+          星期幾下單
+          <span class="fw-normal text-muted" style="font-size:10px">（週五為直播日，供參考）</span>
+        </p>
+        <%
+          max_wday_rev    = (@tab_by_weekday || []).map { |r| r.revenue.to_f }.max.to_f
+          non_fri_wday    = (@tab_by_weekday || []).reject { |r| r.dow.to_i == 5 }
+          max_non_fri_rev = non_fri_wday.map { |r| r.revenue.to_f }.max.to_f
+        %>
         <table class="table table-sm mb-0">
           <tbody>
             <% (@tab_by_weekday || []).each do |r| %>
-              <% pct = max_wday > 0 ? (r.revenue.to_f / max_wday * 100).round : 0 %>
-              <% is_best = r.revenue.to_f == max_wday %>
-              <tr class="<%= is_best ? 'table-warning' : '' %>">
+              <%
+                is_fri  = r.dow.to_i == 5
+                is_best = !is_fri && r.revenue.to_f == max_non_fri_rev && max_non_fri_rev > 0
+                pct = max_wday_rev > 0 ? (r.revenue.to_f / max_wday_rev * 100).round : 0
+              %>
+              <tr class="<%= is_best ? 'table-warning' : '' %>" style="<%= is_fri ? 'opacity:0.45' : '' %>">
                 <td class="px-2 fw-bold small" style="width:60px"><%= wday_names[r.dow.to_i] %></td>
                 <td>
                   <div style="background:#f0f0f0;border-radius:3px;height:7px;overflow:hidden;">
-                    <div style="width:<%= pct %>%;background:#5bc0de;height:7px;"></div>
+                    <div style="width:<%= pct %>%;background:<%= is_fri ? '#adb5bd' : '#5bc0de' %>;height:7px;"></div>
                   </div>
                 </td>
                 <td class="text-right text-muted small" style="width:100px">NT$<%= number_with_delimiter(r.revenue.to_i) %></td>
-                <td class="small text-muted" style="width:20px"><%= "🏆" if is_best %></td>
+                <td class="small text-muted" style="width:30px"><%= is_fri ? "🎥" : ("🏆" if is_best) %></td>
               </tr>
             <% end %>
           </tbody>
         </table>
+        <p class="text-muted mt-1 mb-0" style="font-size:10px">🎥 = 直播日（不參與最高判斷）　🏆 = 非直播日最高</p>
       </div>
       <div class="col-md-6">
-        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">幾點下單</p>
+        <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">
+          幾點下單
+          <span class="fw-normal text-muted" style="font-size:10px">（凌晨已排除）</span>
+        </p>
         <% max_slot = slotted.map { |s| s[:revenue] }.max.to_f %>
         <table class="table table-sm mb-0">
           <tbody>
@@ -346,6 +359,7 @@
             <% end %>
           </tbody>
         </table>
+        <p class="text-muted mt-1 mb-0" style="font-size:10px">＊凌晨 0–5 為系統匯入時間戳，已排除</p>
       </div>
     </div>
 
