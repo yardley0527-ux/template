@@ -90,6 +90,18 @@ class IgAudienceController < ApplicationController
     @paged_buyers = @buyers.slice((@page - 1) * @per_page, @per_page) || []
     @emails     = @buyers.map { |b| b["email"] }.compact.uniq
 
+    # LINE ID 比對（用於 neither tab，但全 tab 都備著）
+    if @emails.any?
+      line_id_rows = ShoplineCustomer.where(email: @emails).pluck(:email, :line_id)
+      @line_id_map = line_id_rows.to_h
+      @with_line_id    = @buyers.select { |b| @line_id_map[b["email"]].present? }
+      @without_line_id = @buyers.reject { |b| @line_id_map[b["email"]].present? }
+    else
+      @line_id_map     = {}
+      @with_line_id    = []
+      @without_line_id = []
+    end
+
     if @emails.any?
       orders = ShoplineOrder
         .where(email: @emails, payment_status: "已付款")
@@ -263,6 +275,28 @@ class IgAudienceController < ApplicationController
 
     send_data "\xEF\xBB\xBF" + csv_data,
               filename:    "ig_audience_#{tab}_#{Date.today}.csv",
+              type:        "text/csv; charset=utf-8",
+              disposition: "attachment"
+  end
+
+  def export_no_line
+    @data = load_data
+    return redirect_to ig_audience_path, alert: "尚無資料" unless @data
+
+    buyers = @data.dig("segments", "neither", "buyers") || []
+    emails = buyers.map { |b| b["email"] }.compact.uniq
+    line_id_map = ShoplineCustomer.where(email: emails).pluck(:email, :line_id).to_h
+    without_line = buyers.reject { |b| line_id_map[b["email"]].present? }
+
+    csv_data = CSV.generate(encoding: "UTF-8") do |csv|
+      csv << %w[IG帳號 客戶姓名 Email 電話 訂單數 總消費金額]
+      without_line.each do |b|
+        csv << [b["ig"], b["name"], b["email"], b["phone"], b["orders"], b["amount"]]
+      end
+    end
+
+    send_data "\xEF\xBB\xBF" + csv_data,
+              filename:    "ig_neither_no_line_#{Date.today}.csv",
               type:        "text/csv; charset=utf-8",
               disposition: "attachment"
   end
