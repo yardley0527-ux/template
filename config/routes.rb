@@ -24,6 +24,7 @@ Rails.application.routes.draw do
   get  '/ig_audience/detail',       to: 'ig_audience#detail',         as: :ig_audience_detail
   get  '/ig_audience/export',       to: 'ig_audience#export',         as: :ig_audience_export
   get  '/ig_audience/export_no_line', to: 'ig_audience#export_no_line', as: :ig_audience_export_no_line
+  get  '/ig_audience/export_with_line', to: 'ig_audience#export_with_line', as: :ig_audience_export_with_line
   post '/ig_dashboard/refresh',     to: 'ig_dashboard#refresh',       as: :ig_dashboard_refresh
   get  '/threads_dashboard',             to: 'threads_dashboard#index',     as: :threads_dashboard
   post '/threads_dashboard/refresh',    to: 'threads_dashboard#refresh',   as: :threads_dashboard_refresh

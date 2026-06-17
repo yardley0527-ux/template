@@ -102,6 +102,8 @@ class IgAudienceController < ApplicationController
       @without_line_id = []
     end
 
+    @with_line_spend_buckets = spend_buckets(@with_line_id)
+
     if @emails.any?
       orders = ShoplineOrder
         .where(email: @emails, payment_status: "已付款")
@@ -301,6 +303,28 @@ class IgAudienceController < ApplicationController
               disposition: "attachment"
   end
 
+  def export_with_line
+    @data = load_data
+    return redirect_to ig_audience_path, alert: "尚無資料" unless @data
+
+    buyers = @data.dig("segments", "neither", "buyers") || []
+    emails = buyers.map { |b| b["email"] }.compact.uniq
+    line_id_map = ShoplineCustomer.where(email: emails).pluck(:email, :line_id).to_h
+    with_line = buyers.select { |b| line_id_map[b["email"]].present? }
+
+    csv_data = CSV.generate(encoding: "UTF-8") do |csv|
+      csv << %w[IG帳號 客戶姓名 Email 電話 訂單數 總消費金額]
+      with_line.each do |b|
+        csv << [b["ig"], b["name"], b["email"], b["phone"], b["orders"], b["amount"]]
+      end
+    end
+
+    send_data "\xEF\xBB\xBF" + csv_data,
+              filename:    "ig_neither_with_line_#{Date.today}.csv",
+              type:        "text/csv; charset=utf-8",
+              disposition: "attachment"
+  end
+
   private
 
   def load_data
@@ -312,5 +336,26 @@ class IgAudienceController < ApplicationController
         .map { |name, rs| { name: name, count: rs.size } }
         .sort_by { |p| -p[:count] }
         .first(limit)
+  end
+
+  SPEND_BUCKET_RANGES = [
+    ["0-999",         0...1_000],
+    ["1,000-2,999",   1_000...3_000],
+    ["3,000-4,999",   3_000...5_000],
+    ["5,000-9,999",   5_000...10_000],
+    ["10,000-19,999", 10_000...20_000],
+    ["20,000-49,999", 20_000...50_000],
+    ["50,000+",       50_000...Float::INFINITY]
+  ].freeze
+
+  def spend_buckets(buyers)
+    amounts = buyers.map { |b| b["amount"].to_f }
+    total   = amounts.size
+    return [] if total.zero?
+
+    SPEND_BUCKET_RANGES.map do |label, range|
+      count = amounts.count { |a| range.cover?(a) }
+      { label: label, count: count, pct: (count.to_f / total * 100).round(1) }
+    end
   end
 end

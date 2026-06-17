@@ -227,11 +227,18 @@
       <span class="fw-bold text-white">📱 LINE ID 確認</span>
       <span class="text-white-50 small ml-2">— 這群人有沒有加 LINE 好友？</span>
     </div>
-    <% if @without_line_id.any? %>
-      <%= link_to ig_audience_export_no_line_path, class: "btn btn-sm btn-light text-success flex-shrink-0" do %>
-        <i class="fa fa-download mr-1"></i> 下載無 LINE ID 名單 CSV
+    <div class="d-flex gap-2 flex-shrink-0">
+      <% if @with_line_id.any? %>
+        <%= link_to ig_audience_export_with_line_path, class: "btn btn-sm btn-light text-success" do %>
+          <i class="fa fa-download mr-1"></i> 下載有 LINE ID 名單 CSV
+        <% end %>
       <% end %>
-    <% end %>
+      <% if @without_line_id.any? %>
+        <%= link_to ig_audience_export_no_line_path, class: "btn btn-sm btn-light text-success" do %>
+          <i class="fa fa-download mr-1"></i> 下載無 LINE ID 名單 CSV
+        <% end %>
+      <% end %>
+    </div>
   </div>
   <div class="card-body">
 
@@ -268,6 +275,27 @@
         </div>
       </div>
     </div>
+
+    <% if @with_line_spend_buckets.present? %>
+      <hr class="my-4">
+      <div class="fw-bold mb-3">💰 有 LINE ID 這群人的消費區間分布（<%= @with_line_id.size %> 人）</div>
+      <% max_pct = @with_line_spend_buckets.map { |b| b[:pct] }.max %>
+      <% @with_line_spend_buckets.each do |bucket| %>
+        <div class="d-flex align-items-center mb-2">
+          <div class="small text-muted" style="width: 130px; flex-shrink: 0;"><%= bucket[:label] %></div>
+          <div class="flex-grow-1 mr-2">
+            <div class="progress" style="height: 18px;">
+              <div class="progress-bar" role="progressbar"
+                   style="width: <%= max_pct.zero? ? 0 : (bucket[:pct] / max_pct * 100).round(1) %>%; background-color:#00b900;">
+              </div>
+            </div>
+          </div>
+          <div class="small text-right" style="width: 110px; flex-shrink: 0;">
+            <%= bucket[:count] %> 人（<%= bucket[:pct] %>%）
+          </div>
+        </div>
+      <% end %>
+    <% end %>
 
   </div>
 </div>
