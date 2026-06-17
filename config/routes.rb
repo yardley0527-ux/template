@@ -42,6 +42,7 @@ Rails.application.routes.draw do
   get '/probiotic_analysis',                to: 'probiotic_analysis#index',          as: :probiotic_analysis
   get '/probiotic_analysis/export_missing', to: 'probiotic_analysis#export_missing',  as: :probiotic_export_missing
   get '/probiotic_analysis/export_event',   to: 'probiotic_analysis#export_event',    as: :probiotic_export_event
+  get '/probiotic_analysis/export_action',  to: 'probiotic_analysis#export_action',   as: :probiotic_export_action
   get '/omnipotent_analysis',                to: 'omnipotent_analysis#index',          as: :omnipotent_analysis
   get '/omnipotent_analysis/export_missing',    to: 'omnipotent_analysis#export_missing',    as: :omnipotent_export_missing
   get '/omnipotent_analysis/export_event',     to: 'omnipotent_analysis#export_event',      as: :omnipotent_export_event

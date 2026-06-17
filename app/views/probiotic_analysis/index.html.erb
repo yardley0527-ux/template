@@ -25,101 +25,7 @@
 </div>
 
 <%# ══════════════════════════════════════════════════════════════════════ %>
-<%# 一、行動優先清單（核心，放最上面）                                      %>
-<%# 合併：快用完 × 高風險流失 × 本場未回購，依急迫度排序，同一人只出現一次  %>
-<%# ══════════════════════════════════════════════════════════════════════ %>
-<% if @action_list&.any? %>
-  <div class="d-flex align-items-center mb-3">
-    <div class="border-start border-4 ps-3" style="border-color: #b91c1c !important;">
-      <h5 class="fw-bold mb-0" style="color: #b91c1c;">📋 本週行動清單</h5>
-      <p class="text-muted small mb-0">
-        快用完、黑金流失、未回購三份名單整合成一份，同一人只出現一次，依最急迫理由排序
-      </p>
-    </div>
-  </div>
-
-  <%# 摘要計數 %>
-  <div class="d-flex gap-2 flex-wrap mb-3">
-    <% urgent  = @action_list.count { |e| e[:best_rank] <= 2 } %>
-    <% medium  = @action_list.count { |e| e[:best_rank] == 3 || e[:best_rank] == 4 } %>
-    <% normal  = @action_list.count { |e| e[:best_rank] >= 5 } %>
-    <span class="badge bg-danger fs-6 px-3 py-2">立即聯絡 <%= urgent %> 人</span>
-    <span class="badge bg-warning text-dark fs-6 px-3 py-2">本週內 <%= medium %> 人</span>
-    <span class="badge bg-secondary fs-6 px-3 py-2">追蹤中 <%= normal %> 人</span>
-  </div>
-
-  <div class="card border-0 shadow-sm mb-5">
-    <div class="card-header text-white d-flex justify-content-between align-items-center"
-         style="background-color: #7f1d1d;">
-      <span class="fw-bold">行動清單（共 <%= @action_list.size %> 人）</span>
-      <span class="text-white-50 small">同一人若有多個理由，全部列在同一列</span>
-    </div>
-    <div class="table-responsive" data-paginate="true" data-page-size="20">
-      <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
-        <thead class="table-light">
-          <tr>
-            <th style="width: 2.5rem;">#</th>
-            <th>姓名</th>
-            <th>卡別</th>
-            <th>聯絡理由</th>
-            <th>電話</th>
-            <th>IG</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @action_list.each_with_index do |e, i| %>
-            <% c = e[:customer] %>
-            <% rank = e[:best_rank] %>
-            <tr>
-              <td>
-                <span class="badge <%= rank <= 2 ? 'bg-danger' : rank <= 4 ? 'bg-warning text-dark' : 'bg-light text-muted' %>">
-                  <%= i + 1 %>
-                </span>
-              </td>
-              <td>
-                <%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %>
-              </td>
-              <td><span class="text-muted small"><%= c.membership_level %></span></td>
-              <td>
-                <div class="d-flex flex-column gap-1">
-                  <% e[:reasons].each do |r| %>
-                    <div>
-                      <span class="badge <%= r[:badge].include?('已用完') ? 'bg-danger' :
-                                            r[:badge].include?('流失')   ? 'bg-danger bg-opacity-75' :
-                                            r[:badge].include?('剩 ') && r[:badge].match?(/剩 \d 天|剩 [0-7] 天/) ? 'bg-warning text-dark' :
-                                            'bg-secondary' %>
-                            me-1 fw-semibold" style="font-size: 0.75rem;">
-                        <%= r[:badge] %>
-                      </span>
-                      <span class="text-muted small"><%= r[:detail] %></span>
-                    </div>
-                  <% end %>
-                </div>
-              </td>
-              <td>
-                <% if c.mobile_phone.present? %>
-                  <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
-                    📞 <%= c.mobile_phone %>
-                  </a>
-                <% end %>
-              </td>
-              <td>
-                <% if c.instagram_account.present? %>
-                  <%= link_to "📷 #{c.instagram_account}",
-                        "https://instagram.com/#{c.instagram_account.gsub('@', '')}",
-                        target: "_blank", class: "text-decoration-none small" %>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-<% end %>
-
-<%# ══════════════════════════════════════════════════════════════════════ %>
-<%# 二、歷史場次趨勢 ＋ 鐵粉 ＋ 策略參考                                  %>
+<%# 一、歷史場次趨勢 ＋ 策略參考                                           %>
 <%# ══════════════════════════════════════════════════════════════════════ %>
 <div class="d-flex align-items-center mb-3">
   <div class="border-start border-3 border-secondary ps-3">
@@ -279,7 +185,7 @@
 <% end %>
 
 <%# ══════════════════════════════════════════════════════════════════════ %>
-<%# 三、盒數組合分析                                                        %>
+<%# 二、盒數組合分析                                                        %>
 <%# ══════════════════════════════════════════════════════════════════════ %>
 <% if @sku_by_event&.any? %>
   <div class="d-flex align-items-center mb-3">
@@ -347,7 +253,7 @@
 <% end %>
 
 <%# ══════════════════════════════════════════════════════════════════════ %>
-<%# 四、本場購買名單（客戶價值分層，可展開）                                 %>
+<%# 三、本場購買名單（客戶價值分層）                                         %>
 <%# ══════════════════════════════════════════════════════════════════════ %>
 <% if @event_customers.any? %>
   <% vip_count   = @event_customers.count { |r| r[:value_tier] == "重點維護" } %>
@@ -444,7 +350,6 @@
                   <th>本次金額</th>
                   <th>整體消費力</th>
                   <th>益生菌歷史</th>
-                  <th>電話</th>
                   <th>IG</th>
                 </tr>
               </thead>
@@ -465,13 +370,6 @@
                     <td class="fw-semibold">NT$<%= number_with_delimiter(r[:total_spend].to_i) %></td>
                     <td class="text-center text-muted"><%= r[:omni_count] %> 次</td>
                     <td>
-                      <% if c.mobile_phone.present? %>
-                        <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
-                          📞 <%= c.mobile_phone %>
-                        </a>
-                      <% end %>
-                    </td>
-                    <td>
                       <% if c.instagram_account.present? %>
                         <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
                           📷 <%= c.instagram_account %>
@@ -485,6 +383,93 @@
           </div>
         </div>
       <% end %>
+    </div>
+  </div>
+<% end %>
+
+<%# ══════════════════════════════════════════════════════════════════════ %>
+<%# 四、本週行動清單（最下面，要傳訊息的名單）                               %>
+<%# ══════════════════════════════════════════════════════════════════════ %>
+<% if @action_list&.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-4 ps-3" style="border-color: #b91c1c !important;">
+      <h5 class="fw-bold mb-0" style="color: #b91c1c;">📋 本週行動清單</h5>
+      <p class="text-muted small mb-0">
+        快用完、黑金流失、未回購整合成一份，同一人只出現一次，依最急迫理由排序
+      </p>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2 flex-wrap mb-3">
+    <% urgent = @action_list.count { |e| e[:best_rank] <= 2 } %>
+    <% medium = @action_list.count { |e| e[:best_rank] == 3 || e[:best_rank] == 4 } %>
+    <% normal = @action_list.count { |e| e[:best_rank] >= 5 } %>
+    <span class="badge bg-danger fs-6 px-3 py-2">立即聯絡 <%= urgent %> 人</span>
+    <span class="badge bg-warning text-dark fs-6 px-3 py-2">本週內 <%= medium %> 人</span>
+    <span class="badge bg-secondary fs-6 px-3 py-2">追蹤中 <%= normal %> 人</span>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #7f1d1d;">
+      <span class="fw-bold">行動清單（共 <%= @action_list.size %> 人）</span>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-white-50 small d-none d-md-inline">同一人若有多個理由，全部列在同一列</span>
+        <%= link_to "⬇ 匯出 CSV", probiotic_export_action_path, class: "btn btn-sm btn-light fw-semibold" %>
+      </div>
+    </div>
+    <div class="table-responsive" data-paginate="true" data-page-size="20">
+      <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 2.5rem;">#</th>
+            <th>姓名</th>
+            <th>卡別</th>
+            <th>聯絡理由</th>
+            <th>IG</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @action_list.each_with_index do |e, i| %>
+            <% c    = e[:customer] %>
+            <% rank = e[:best_rank] %>
+            <tr>
+              <td>
+                <span class="badge <%= rank <= 2 ? 'bg-danger' : rank <= 4 ? 'bg-warning text-dark' : 'bg-light text-muted' %>">
+                  <%= i + 1 %>
+                </span>
+              </td>
+              <td>
+                <%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %>
+              </td>
+              <td><span class="text-muted small"><%= c.membership_level %></span></td>
+              <td>
+                <div class="d-flex flex-column gap-1">
+                  <% e[:reasons].each do |r| %>
+                    <div>
+                      <span class="badge <%= r[:badge].include?('已用完') ? 'bg-danger' :
+                                            r[:badge].include?('流失')   ? 'bg-danger bg-opacity-75' :
+                                            r[:badge].include?('剩 ') && r[:badge].match?(/剩 [0-7] 天/) ? 'bg-warning text-dark' :
+                                            'bg-secondary' %>
+                            me-1 fw-semibold" style="font-size: 0.75rem;">
+                        <%= r[:badge] %>
+                      </span>
+                      <span class="text-muted small"><%= r[:detail] %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </td>
+              <td>
+                <% if c.instagram_account.present? %>
+                  <%= link_to "📷 #{c.instagram_account}",
+                        "https://instagram.com/#{c.instagram_account.gsub('@', '')}",
+                        target: "_blank", class: "text-decoration-none small" %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
     </div>
   </div>
 <% end %>

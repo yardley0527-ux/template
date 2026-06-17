@@ -17,6 +17,16 @@ class ProbioticAnalysisController < ApplicationController
     build_action_list
   end
 
+  def export_action
+    @all_probiotic_events = product_event_list.select { |e| e[:date] <= Date.today }
+    build_comprehensive_data(@all_probiotic_events)
+    build_all_buyers_expiring
+    build_action_list
+    send_data "\xEF\xBB\xBF" + action_csv,
+              filename: "益生菌_行動清單_#{Date.today}.csv",
+              type: "text/csv; charset=utf-8"
+  end
+
   private
 
   # 把「快用完」「黑金流失」「本場未回購」三份名單合併成一份，
@@ -59,6 +69,18 @@ class ProbioticAnalysisController < ApplicationController
 
     @action_list = entries.values.sort_by do |e|
       [e[:best_rank], -MEMBERSHIP_RANK.fetch(e[:customer].membership_level, 0)]
+    end
+  end
+
+  def action_csv
+    require "csv"
+    CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["#", "姓名", "卡別", "聯絡理由", "IG"]
+      @action_list.each_with_index do |e, i|
+        c       = e[:customer]
+        reasons = e[:reasons].map { |r| "#{r[:badge]} #{r[:detail]}" }.join(" | ")
+        csv << [i + 1, c.full_name, c.membership_level, reasons, c.instagram_account]
+      end
     end
   end
 
