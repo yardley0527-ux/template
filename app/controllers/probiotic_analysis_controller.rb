@@ -19,6 +19,7 @@ class ProbioticAnalysisController < ApplicationController
 
   def export_action
     @all_probiotic_events = product_event_list.select { |e| e[:date] <= Date.today }
+    build_analysis_data
     build_comprehensive_data(@all_probiotic_events)
     build_all_buyers_expiring
     build_action_list
