@@ -14,9 +14,53 @@ class ProbioticAnalysisController < ApplicationController
     build_comprehensive_data(@all_probiotic_events)
     build_sku_data(@all_probiotic_events)
     build_all_buyers_expiring
+    build_action_list
   end
 
   private
+
+  # 把「快用完」「黑金流失」「本場未回購」三份名單合併成一份，
+  # 同一人只出現一次、附上全部理由，依最急迫的理由排序，
+  # 解決原本要看好幾份名單才知道該聯絡誰的問題。
+  def build_action_list
+    entries = {}
+
+    add_reason = lambda do |customer, rank, badge, detail|
+      entry = entries[customer.id] ||= { customer: customer, reasons: [], best_rank: 999 }
+      entry[:reasons] << { badge: badge, detail: detail }
+      entry[:best_rank] = rank if rank < entry[:best_rank]
+    end
+
+    @all_expiring_soon.each do |r|
+      c  = r[:customer]
+      dl = r[:days_left]
+      rank, badge = if dl < 0
+        [1, "🧴 已用完 #{dl.abs} 天"]
+      elsif dl <= 7
+        [4, "🧴 剩 #{dl} 天用完"]
+      else
+        [6, "🧴 剩 #{dl} 天用完"]
+      end
+      add_reason.call(c, rank, badge, "上次買 #{r[:last_product]}（#{r[:last_date]&.strftime('%m/%d')}）")
+    end
+
+    @high_risk_lost.each do |r|
+      c = r[:customer]
+      add_reason.call(c, 2, "🚨 #{c.membership_level}流失",
+                       "曾出席 #{r[:attended_labels].join('、')}，最近一場沒來")
+    end
+
+    @missing_customers.each do |r|
+      c    = r[:customer]
+      rank = r[:overdue_days] && r[:overdue_days] > 14 ? 3 : 5
+      add_reason.call(c, rank, "📦 本場未回購（逾 #{r[:overdue_days]} 天）",
+                       "上次買 #{r[:last_product]}（#{r[:last_date]&.strftime('%m/%d')}）")
+    end
+
+    @action_list = entries.values.sort_by do |e|
+      [e[:best_rank], -MEMBERSHIP_RANK.fetch(e[:customer].membership_level, 0)]
+    end
+  end
 
   def build_sku_data(all_events)
     return if all_events.empty?

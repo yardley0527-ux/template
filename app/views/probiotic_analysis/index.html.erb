@@ -3,93 +3,18 @@
 
 <% level_keys = ProbioticAnalysisController::LEVEL_KEYS %>
 
-<%= render 'shared/next_livestream_plan',
-      cross_event_stats: @cross_event_stats || [],
-      iron_fans:         @iron_fans         || [],
-      expiring_soon:     @expiring_soon     || [],
-      high_risk_lost:    @high_risk_lost    || [],
-      section_id:        'probiotic',
-      product_name:      '益生菌' %>
-
-<%# ══════════════════════════════════════════════════════ %>
-<%# 全歷史買家快用完名單                                    %>
-<%# ══════════════════════════════════════════════════════ %>
-
-<% if @all_expiring_soon&.any? %>
-  <div class="d-flex align-items-center mb-3">
-    <div class="border-start border-4 ps-3" style="border-color: #d97706 !important;">
-      <h5 class="fw-bold mb-0" style="color: #d97706;">⏰ 全部益生菌買家 — 近期快用完</h5>
-      <p class="text-muted small mb-0">涵蓋所有曾購買益生菌的客人（不限直播場次），剩餘 -7 到 +30 天</p>
-    </div>
-  </div>
-
-  <div class="card border-0 shadow-sm mb-5">
-    <div class="card-header text-white d-flex justify-content-between align-items-center"
-         style="background-color: #92400e;">
-      <span class="fw-bold">補貨時機名單</span>
-      <span class="badge bg-white text-dark"><%= @all_expiring_soon.size %> 人</span>
-    </div>
-
-    <%# 摘要統計 %>
-    <div class="px-3 pt-3 pb-2 border-bottom d-flex gap-3 flex-wrap">
-      <% overdue  = @all_expiring_soon.count { |r| r[:days_left] < 0 } %>
-      <% week     = @all_expiring_soon.count { |r| r[:days_left] >= 0 && r[:days_left] <= 7 } %>
-      <% later    = @all_expiring_soon.count { |r| r[:days_left] > 7 } %>
-      <span class="badge bg-danger fs-6 fw-semibold px-3 py-2">已用完 <%= overdue %> 人</span>
-      <span class="badge bg-warning text-dark fs-6 fw-semibold px-3 py-2">7天內 <%= week %> 人</span>
-      <span class="badge bg-info text-dark fs-6 fw-semibold px-3 py-2">8–30天 <%= later %> 人</span>
-    </div>
-
-    <div class="table-responsive" data-paginate="true" data-page-size="10">
-      <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
-        <thead class="table-light">
-          <tr>
-            <th>姓名</th>
-            <th>卡別</th>
-            <th>剩餘天數</th>
-            <th>上次購買</th>
-            <th>購買品項</th>
-            <th>IG</th>
-            <th>Email</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% @all_expiring_soon.each do |r| %>
-            <% c  = r[:customer] %>
-            <% dl = r[:days_left] %>
-            <tr>
-              <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
-              <td><span class="text-muted small"><%= c.membership_level %></span></td>
-              <td class="text-center">
-                <% if dl < 0 %>
-                  <span class="badge bg-danger">已用完 <%= dl.abs %> 天</span>
-                <% elsif dl <= 7 %>
-                  <span class="badge bg-warning text-dark">剩 <%= dl %> 天</span>
-                <% else %>
-                  <span class="badge bg-info text-dark">剩 <%= dl %> 天</span>
-                <% end %>
-              </td>
-              <td><%= r[:last_date]&.strftime("%m/%d") || "—" %></td>
-              <td class="text-muted small"><%= r[:last_product] || "—" %></td>
-              <td><%= c.instagram_account.present? ? link_to("📷 #{c.instagram_account}", "https://instagram.com/#{c.instagram_account.gsub('@','')}", target: "_blank", class: "text-decoration-none small") : "" %></td>
-              <td class="text-muted small"><%= c.email %></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-  </div>
-<% end %>
-
+<%# ══════════════════════════════════════════════════════════════════════ %>
+<%# 頁面標題 ＋ 場次切換                                                  %>
+<%# ══════════════════════════════════════════════════════════════════════ %>
 <div class="row g-3 mb-4">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
-      <h4 class="fw-bold mb-0">益生菌直播分析 — <%= @event_label %></h4>
-      <p class="text-muted small mb-0">追蹤 <%= @event_label %> 購買情況，以及曾買過益生菌的各卡別客人回流狀況</p>
+      <h4 class="fw-bold mb-0">益生菌直播分析</h4>
+      <p class="text-muted small mb-0">目前場次：<%= @event_label %></p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
       <% @all_probiotic_events.each do |ev| %>
-        <% label = "#{ev[:year]}/#{ev[:label]}" %>
+        <% label  = "#{ev[:year]}/#{ev[:label]}" %>
         <% active = ev[:date] == @current_event[:date] %>
         <%= link_to label,
               probiotic_analysis_path(event: ev[:date].to_s),
@@ -99,18 +24,167 @@
   </div>
 </div>
 
-<%# ══════════════════════════════════════════ %>
-<%# 區塊一：策略參考                           %>
-<%# ══════════════════════════════════════════ %>
+<%# ══════════════════════════════════════════════════════════════════════ %>
+<%# 一、行動優先清單（核心，放最上面）                                      %>
+<%# 合併：快用完 × 高風險流失 × 本場未回購，依急迫度排序，同一人只出現一次  %>
+<%# ══════════════════════════════════════════════════════════════════════ %>
+<% if @action_list&.any? %>
+  <div class="d-flex align-items-center mb-3">
+    <div class="border-start border-4 ps-3" style="border-color: #b91c1c !important;">
+      <h5 class="fw-bold mb-0" style="color: #b91c1c;">📋 本週行動清單</h5>
+      <p class="text-muted small mb-0">
+        快用完、黑金流失、未回購三份名單整合成一份，同一人只出現一次，依最急迫理由排序
+      </p>
+    </div>
+  </div>
 
+  <%# 摘要計數 %>
+  <div class="d-flex gap-2 flex-wrap mb-3">
+    <% urgent  = @action_list.count { |e| e[:best_rank] <= 2 } %>
+    <% medium  = @action_list.count { |e| e[:best_rank] == 3 || e[:best_rank] == 4 } %>
+    <% normal  = @action_list.count { |e| e[:best_rank] >= 5 } %>
+    <span class="badge bg-danger fs-6 px-3 py-2">立即聯絡 <%= urgent %> 人</span>
+    <span class="badge bg-warning text-dark fs-6 px-3 py-2">本週內 <%= medium %> 人</span>
+    <span class="badge bg-secondary fs-6 px-3 py-2">追蹤中 <%= normal %> 人</span>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-5">
+    <div class="card-header text-white d-flex justify-content-between align-items-center"
+         style="background-color: #7f1d1d;">
+      <span class="fw-bold">行動清單（共 <%= @action_list.size %> 人）</span>
+      <span class="text-white-50 small">同一人若有多個理由，全部列在同一列</span>
+    </div>
+    <div class="table-responsive" data-paginate="true" data-page-size="20">
+      <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 2.5rem;">#</th>
+            <th>姓名</th>
+            <th>卡別</th>
+            <th>聯絡理由</th>
+            <th>電話</th>
+            <th>IG</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @action_list.each_with_index do |e, i| %>
+            <% c = e[:customer] %>
+            <% rank = e[:best_rank] %>
+            <tr>
+              <td>
+                <span class="badge <%= rank <= 2 ? 'bg-danger' : rank <= 4 ? 'bg-warning text-dark' : 'bg-light text-muted' %>">
+                  <%= i + 1 %>
+                </span>
+              </td>
+              <td>
+                <%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %>
+              </td>
+              <td><span class="text-muted small"><%= c.membership_level %></span></td>
+              <td>
+                <div class="d-flex flex-column gap-1">
+                  <% e[:reasons].each do |r| %>
+                    <div>
+                      <span class="badge <%= r[:badge].include?('已用完') ? 'bg-danger' :
+                                            r[:badge].include?('流失')   ? 'bg-danger bg-opacity-75' :
+                                            r[:badge].include?('剩 ') && r[:badge].match?(/剩 \d 天|剩 [0-7] 天/) ? 'bg-warning text-dark' :
+                                            'bg-secondary' %>
+                            me-1 fw-semibold" style="font-size: 0.75rem;">
+                        <%= r[:badge] %>
+                      </span>
+                      <span class="text-muted small"><%= r[:detail] %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </td>
+              <td>
+                <% if c.mobile_phone.present? %>
+                  <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
+                    📞 <%= c.mobile_phone %>
+                  </a>
+                <% end %>
+              </td>
+              <td>
+                <% if c.instagram_account.present? %>
+                  <%= link_to "📷 #{c.instagram_account}",
+                        "https://instagram.com/#{c.instagram_account.gsub('@', '')}",
+                        target: "_blank", class: "text-decoration-none small" %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<%# ══════════════════════════════════════════════════════════════════════ %>
+<%# 二、歷史場次趨勢 ＋ 鐵粉 ＋ 策略參考                                  %>
+<%# ══════════════════════════════════════════════════════════════════════ %>
 <div class="d-flex align-items-center mb-3">
   <div class="border-start border-3 border-secondary ps-3">
     <h5 class="fw-bold mb-0 text-secondary">📊 策略參考</h5>
-    <p class="text-muted small mb-0">本場數據總覽</p>
+    <p class="text-muted small mb-0">場次趨勢 ＋ 鐵粉 ＋ 卡別出席率</p>
   </div>
 </div>
 
-<%# 人數卡片 %>
+<%# 歷史場次趨勢表 %>
+<% if @cross_event_stats&.any? %>
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header text-white fw-semibold" style="background-color: #4a6fa5;">📈 歷史場次趨勢</div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table align-middle mb-0 text-center" style="font-size: 0.875rem;">
+        <thead class="table-light">
+          <tr>
+            <th class="text-start ps-3">場次</th>
+            <th class="text-start">品項</th>
+            <th>買家數</th>
+            <th>業績</th>
+            <th>人均消費</th>
+            <th>連場回流率</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @cross_event_stats.each_with_index do |s, i| %>
+            <tr <%= i == @cross_event_stats.size - 1 ? 'style="background-color:#f0f4ff;"' : '' %>>
+              <td class="fw-bold text-start ps-3">
+                <%= s[:label] %>
+                <% if i == @cross_event_stats.size - 1 %>
+                  <span class="badge ms-1" style="background-color:#4a6fa5;font-size:0.6rem;">最新</span>
+                <% end %>
+              </td>
+              <td class="text-start">
+                <div class="text-muted small"><%= s[:note] %></div>
+                <% if s.key?(:single_product) %>
+                  <% if s[:single_product] %>
+                    <span style="display:inline-block;margin-top:3px;padding:2px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;background:#d4edda;color:#155724;border:1px solid #c3e6cb;">單品業績</span>
+                  <% else %>
+                    <span style="display:inline-block;margin-top:3px;padding:2px 7px;border-radius:4px;font-size:0.72rem;font-weight:700;background:#fde8c8;color:#7d3c00;border:1px solid #f5c580;">混場 — 業績僅含本產品</span>
+                  <% end %>
+                <% end %>
+              </td>
+              <td><%= s[:buyers] %> 人</td>
+              <td><%= s[:revenue] > 0 ? "NT$#{number_with_delimiter(s[:revenue])}" : "—" %></td>
+              <td><%= s[:aov] > 0 ? "NT$#{number_with_delimiter(s[:aov])}" : "—" %></td>
+              <td>
+                <% if s[:return_rate] %>
+                  <span class="fw-semibold <%= s[:return_rate] >= 30 ? 'text-success' : 'text-warning' %>">
+                    <%= s[:return_rate] %>%
+                  </span>
+                  <span class="text-muted small">（<%= s[:return_count] %>人）</span>
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<%# 本場人數卡片 %>
 <div class="row g-3 mb-3">
   <div class="col-md-4">
     <div class="card border-0 shadow-sm text-center py-4">
@@ -161,7 +235,7 @@
 </div>
 
 <%# 建議行動 %>
-<div class="card border-0 shadow-sm mb-5">
+<div class="card border-0 shadow-sm mb-3">
   <div class="card-header text-white" style="background-color: #4a4a4a;">📌 建議行動</div>
   <div class="card-body">
     <% @insights.each do |insight| %>
@@ -171,10 +245,42 @@
   </div>
 </div>
 
-<%# ══════════════════════════════════════════ %>
-<%# 盒數組合分析                               %>
-<%# ══════════════════════════════════════════ %>
+<%# 鐵粉（可展開） %>
+<% if @iron_fans&.any? %>
+  <div class="mb-4">
+    <button class="btn btn-outline-warning btn-sm fw-semibold" type="button"
+            data-bs-toggle="collapse" data-bs-target="#iron-fans-panel">
+      ⭐ 鐵粉（全場次出席）— <%= @iron_fans.size %> 人
+    </button>
+    <div id="iron-fans-panel" class="collapse mt-2">
+      <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
+            <thead class="table-light">
+              <tr><th>姓名</th><th>卡別</th><th>出席場數</th><th>IG</th><th>Email</th></tr>
+            </thead>
+            <tbody>
+              <% @iron_fans.each do |r| %>
+                <% c = r[:customer] %>
+                <tr>
+                  <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
+                  <td><span class="text-muted small"><%= c.membership_level %></span></td>
+                  <td class="text-center fw-bold text-warning"><%= r[:attended_count] %> 場</td>
+                  <td><%= c.instagram_account.present? ? link_to("📷 #{c.instagram_account}", "https://instagram.com/#{c.instagram_account.gsub('@','')}", target: "_blank", class: "text-decoration-none small") : "" %></td>
+                  <td class="text-muted small"><%= c.email %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
 
+<%# ══════════════════════════════════════════════════════════════════════ %>
+<%# 三、盒數組合分析                                                        %>
+<%# ══════════════════════════════════════════════════════════════════════ %>
 <% if @sku_by_event&.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-primary ps-3">
@@ -183,8 +289,7 @@
     </div>
   </div>
 
-  <%# 各場次 SKU 卡片 %>
-  <div class="row g-3 mb-4">
+  <div class="row g-3 mb-5">
     <% @sku_by_event.each do |ev_data| %>
       <% ev = ev_data[:event] %>
       <div class="col-md-6">
@@ -239,134 +344,11 @@
       </div>
     <% end %>
   </div>
-
 <% end %>
 
-<%# ══════════════════════════════════════════════════ %>
-<%# 曾買、本場未出現                                    %>
-<%# ══════════════════════════════════════════════════ %>
-
-<% if @missing_customers.any? %>
-  <div class="d-flex align-items-center mb-3">
-    <div class="border-start border-3 border-danger ps-3">
-      <h5 class="fw-bold mb-0 text-danger">🚨 曾買益生菌、<%= @event_label %> 未回購</h5>
-      <p class="text-muted small mb-0">逾期越多越優先，建議盡快聯繫</p>
-    </div>
-  </div>
-
-  <div class="card border-0 shadow-sm mb-5">
-    <div class="card-header text-white d-flex justify-content-between align-items-center"
-         style="background-color: #8b1a1a;">
-      <div>
-        <span class="fw-bold"><%= @event_label %> 未回購名單</span>
-        <span class="ms-2 small opacity-75">依卡級 → 逾期天數排列</span>
-      </div>
-      <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-white text-dark"><%= @missing_customers.size %> 人</span>
-        <%= link_to "⬇ 匯出 CSV", probiotic_export_missing_path, class: "btn btn-sm btn-light fw-semibold" %>
-      </div>
-    </div>
-
-    <div class="px-3 pt-2 border-bottom">
-      <ul class="nav nav-tabs" id="tabs-missing">
-        <% ProbioticAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
-          <% key = level_keys[level] %>
-          <% next if @missing_customers.none? { |r| r[:customer].membership_level == level } %>
-          <li class="nav-item">
-            <button class="nav-link"
-                    data-tab-prefix="missing"
-                    data-tab-target="missing-<%= key %>"
-                    type="button">
-              <%= level %>
-              <span class="badge bg-secondary">
-                <%= @missing_customers.count { |r| r[:customer].membership_level == level } %>
-              </span>
-            </button>
-          </li>
-        <% end %>
-      </ul>
-    </div>
-
-    <div class="card-body p-0">
-      <% ProbioticAnalysisController::TARGET_MEMBERSHIPS.each do |level| %>
-        <% key  = level_keys[level] %>
-        <% rows = @missing_customers.select { |r| r[:customer].membership_level == level } %>
-        <% next if rows.empty? %>
-        <div class="invite-pane" id="pane-missing-<%= key %>" style="display: none;">
-          <div class="table-responsive" data-paginate="true" data-page-size="20">
-            <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
-              <thead class="table-light">
-                <tr>
-                  <th>#</th>
-                  <th>姓名</th>
-                  <th>卡別</th>
-                  <th>上次買益生菌</th>
-                  <th>盒數</th>
-                  <th>預期回購</th>
-                  <th>逾期</th>
-                  <th>歷史次數</th>
-                  <th>歷史消費</th>
-                  <th>電話</th>
-                  <th>IG</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% rows.each_with_index do |r, i| %>
-                  <% c = r[:customer] %>
-                  <tr>
-                    <td>
-                      <span class="badge <%= i < 3 ? 'bg-danger' : i < 8 ? 'bg-warning text-dark' : 'bg-light text-dark' %>">
-                        #<%= i + 1 %>
-                      </span>
-                    </td>
-                    <td><%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %></td>
-                    <td><span class="text-muted small"><%= c.membership_level %></span></td>
-                    <td><%= r[:last_date]&.strftime("%m/%d") || "-" %></td>
-                    <td class="text-center"><%= r[:bottles] %> 盒</td>
-                    <td><%= r[:last_date] ? (r[:last_date] + r[:expected_days]).strftime("%m/%d") : "-" %></td>
-                    <td>
-                      <% od = r[:overdue_days] %>
-                      <% if od.nil? %>
-                        <span class="text-muted">-</span>
-                      <% elsif od > 14 %>
-                        <span class="badge bg-danger">+<%= od %>天</span>
-                      <% elsif od > 0 %>
-                        <span class="badge bg-warning text-dark">+<%= od %>天</span>
-                      <% else %>
-                        <span class="badge bg-success">未到期</span>
-                      <% end %>
-                    </td>
-                    <td class="text-center"><%= r[:history_count] %> 次</td>
-                    <td>NT$<%= number_with_delimiter(r[:history_amount].to_i) %></td>
-                    <td>
-                      <% if c.mobile_phone.present? %>
-                        <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
-                          📞 <%= c.mobile_phone %>
-                        </a>
-                      <% end %>
-                    </td>
-                    <td>
-                      <% if c.instagram_account.present? %>
-                        <a href="https://instagram.com/<%= c.instagram_account.gsub('@','') %>" target="_blank" class="text-decoration-none">
-                          📷 <%= c.instagram_account %>
-                        </a>
-                      <% end %>
-                    </td>
-                  </tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      <% end %>
-    </div>
-  </div>
-<% end %>
-
-<%# ══════════════════════════════════════════ %>
-<%# 本場購買名單（所有卡別）                    %>
-<%# ══════════════════════════════════════════ %>
-
+<%# ══════════════════════════════════════════════════════════════════════ %>
+<%# 四、本場購買名單（客戶價值分層，可展開）                                 %>
+<%# ══════════════════════════════════════════════════════════════════════ %>
 <% if @event_customers.any? %>
   <% vip_count   = @event_customers.count { |r| r[:value_tier] == "重點維護" } %>
   <% track_count = @event_customers.count { |r| r[:value_tier] == "值得追蹤" } %>
@@ -379,7 +361,6 @@
     </div>
   </div>
 
-  <%# 價值分層統計卡片 %>
   <div class="row g-2 mb-3">
     <div class="col-4">
       <div class="vt-stat-card vt-vip" data-tier-filter="重點維護">
@@ -417,7 +398,6 @@
       </div>
     </div>
 
-    <%# 價值層篩選 %>
     <div class="px-3 pt-3 pb-2 border-bottom bg-light d-flex align-items-center gap-2 flex-wrap">
       <span class="text-muted small fw-semibold me-1">篩選：</span>
       <button class="vt-filter-btn is-active" data-tier="all">全部</button>
@@ -529,6 +509,10 @@ document.addEventListener('DOMContentLoaded', function () {
     btn.addEventListener('click', function () {
       applyTierFilter(btn.dataset.tier);
     });
+  });
+
+  document.querySelectorAll('[data-paginate="true"]').forEach(function (wrapper) {
+    if (!wrapper.dataset.paginated) initPaginate(wrapper);
   });
 });
 
@@ -650,12 +634,6 @@ function initPaginate(wrapper) {
 
   renderPage(1);
 }
-
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('[data-paginate="true"]').forEach(function (wrapper) {
-    if (!wrapper.dataset.paginated) initPaginate(wrapper);
-  });
-});
 </script>
 
 <style>
