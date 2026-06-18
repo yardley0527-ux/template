@@ -157,6 +157,21 @@
   </div>
 </div>
 
+<%# ── 分頁 ── %>
+<% if @total_pages > 1 %>
+  <div class="d-flex align-items-center justify-content-center gap-3 mt-3">
+    <% prev_page = [@page - 1, 1].max %>
+    <% next_page = [@page + 1, @total_pages].min %>
+    <%= link_to "← 上一頁",
+          kocs_path(request.query_parameters.merge(page: prev_page)),
+          class: "btn btn-sm btn-outline-secondary #{'disabled' if @page <= 1}" %>
+    <span class="text-muted small">第 <%= @page %> 頁，共 <%= @total_pages %> 頁</span>
+    <%= link_to "下一頁 →",
+          kocs_path(request.query_parameters.merge(page: next_page)),
+          class: "btn btn-sm btn-outline-secondary #{'disabled' if @page >= @total_pages}" %>
+  </div>
+<% end %>
+
 <%# ── 新增 KOC Modal ── %>
 <div class="modal fade" id="new-koc-modal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">

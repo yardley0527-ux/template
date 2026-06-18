@@ -1,4 +1,6 @@
 class KocsController < ApplicationController
+  PER_PAGE = 10
+
   def index
     @sort = params[:sort]
     @kocs = @sort == "likes" ? Koc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : Koc.ordered_by_engagement
@@ -8,6 +10,11 @@ class KocsController < ApplicationController
     @total_count = Koc.count
     @paid_count  = Koc.where(has_paid_partnership: true).count
     @status_counts = Koc.group(:status).count
+
+    @page = [params[:page].to_i, 1].max
+    @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max
+    @page = @total_pages if @page > @total_pages
+    @kocs = @kocs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
   end
 
   def create
