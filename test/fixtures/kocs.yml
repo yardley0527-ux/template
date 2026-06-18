@@ -1,0 +1,35 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  ig_username: MyString
+  ig_full_name: MyString
+  ig_user_id: MyString
+  email: MyString
+  alias: MyString
+  profile_url: MyString
+  status: MyString
+  has_paid_partnership: false
+  post_count: 1
+  max_likes: 1
+  max_video_views: 1
+  last_post_at: 2026-06-18 16:58:05
+  last_post_url: MyString
+  source: MyString
+  notes: MyText
+
+two:
+  ig_username: MyString
+  ig_full_name: MyString
+  ig_user_id: MyString
+  email: MyString
+  alias: MyString
+  profile_url: MyString
+  status: MyString
+  has_paid_partnership: false
+  post_count: 1
+  max_likes: 1
+  max_video_views: 1
+  last_post_at: 2026-06-18 16:58:05
+  last_post_url: MyString
+  source: MyString
+  notes: MyText

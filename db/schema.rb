@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_17_120001) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_18_085805) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -214,6 +214,27 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_17_120001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["kind", "file_checksum"], name: "index_import_runs_on_kind_and_file_checksum"
+  end
+
+  create_table "kocs", force: :cascade do |t|
+    t.string "ig_username"
+    t.string "ig_full_name"
+    t.string "ig_user_id"
+    t.string "email"
+    t.string "alias"
+    t.string "profile_url"
+    t.string "status"
+    t.boolean "has_paid_partnership"
+    t.integer "post_count"
+    t.integer "max_likes"
+    t.integer "max_video_views"
+    t.datetime "last_post_at"
+    t.string "last_post_url"
+    t.string "source"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_username"], name: "index_kocs_on_ig_username", unique: true
   end
 
   create_table "line_broadcast_highlights", force: :cascade do |t|
