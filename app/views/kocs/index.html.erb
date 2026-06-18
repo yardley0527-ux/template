@@ -66,10 +66,10 @@
 
 <%# ── 篩選列 ── %>
 <div class="d-flex flex-wrap gap-2 mb-3">
-  <%= link_to "全部", kocs_path, class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank?} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank?}" %>
-  <%= link_to "只看已業配", kocs_path(paid: "1"), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1'} #{'btn-outline-secondary' unless params[:paid] == '1'}" %>
+  <%= link_to "全部", kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank?} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank?}" %>
+  <%= link_to "只看已業配", kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1'} #{'btn-outline-secondary' unless params[:paid] == '1'}" %>
   <% Koc::STATUSES.each do |s| %>
-    <%= link_to s, kocs_path(status: s), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
+    <%= link_to s, kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
   <% end %>
 </div>
 
@@ -85,8 +85,16 @@
             <th>來源</th>
             <th>業配</th>
             <th class="text-end">貼文數</th>
-            <th class="text-end">最高觀看</th>
-            <th class="text-end">最高讚數</th>
+            <th class="text-end">
+              <%= link_to kocs_path(status: params[:status], paid: params[:paid]), class: "text-dark #{'fw-bold' unless @sort == 'likes'}" do %>
+                最高觀看<%= @sort != "likes" ? " ▼" : "" %>
+              <% end %>
+            </th>
+            <th class="text-end">
+              <%= link_to kocs_path(status: params[:status], paid: params[:paid], sort: "likes"), class: "text-dark #{'fw-bold' if @sort == 'likes'}" do %>
+                最高讚數<%= @sort == "likes" ? " ▼" : "" %>
+              <% end %>
+            </th>
             <th>最近貼文</th>
             <th>Email</th>
             <th style="min-width:140px">狀態</th>

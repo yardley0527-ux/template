@@ -1,6 +1,7 @@
 class KocsController < ApplicationController
   def index
-    @kocs = Koc.ordered_by_engagement
+    @sort = params[:sort]
+    @kocs = @sort == "likes" ? Koc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : Koc.ordered_by_engagement
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
 
