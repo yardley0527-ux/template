@@ -31,7 +31,7 @@ class HighValueOrdersController < ApplicationController
         )
         .where("o.payment_status = '已付款'")
         .group("o.order_number")
-        .having("MAX(o.total_amount) >= ?", THRESHOLD)
+        .having("MAX(COALESCE(o.checkout_amount, o.total_amount)) >= ?", THRESHOLD)
     ).to_a
     @tab_counts = LEVELS.index_with { |lvl| all_for_counts.count { |o| o.membership_level_col == lvl } }
     @tab_counts['新客'] = all_for_counts.count { |o| o.purchase_count_val.to_i == 1 }
@@ -76,7 +76,7 @@ class HighValueOrdersController < ApplicationController
         "MAX(o.customer_name) AS cust_name",
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
         "MAX(o.order_date) AS ord_date",
-        "MAX(o.total_amount) AS order_total",
+        "MAX(COALESCE(o.checkout_amount, o.total_amount)) AS order_total",
         "STRING_AGG(DISTINCT o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name || ' ×' || o.quantity::text) AS products_list",
         "MAX(COALESCE(sc.instagram_account, o.instagram_account)) AS ig_account",
         "MAX(COALESCE(sc.email, o.email)) AS email_val",
@@ -84,7 +84,7 @@ class HighValueOrdersController < ApplicationController
       )
       .where("o.payment_status = '已付款'")
       .group("o.order_number")
-      .having("MAX(o.total_amount) >= ?", THRESHOLD)
+      .having("MAX(COALESCE(o.checkout_amount, o.total_amount)) >= ?", THRESHOLD)
       .order(Arel.sql("MAX(o.order_date) DESC"))
   end
 
