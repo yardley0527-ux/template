@@ -106,6 +106,23 @@
           "ig_followers_gained": null
         },
         {
+          "date": "2026-06-19",
+          "impressions": 53065,
+          "reach": 48796,
+          "clicks": 3634,
+          "ctr": 6.85,
+          "cpm": 117,
+          "spend": 6199,
+          "video_3s": 24164,
+          "video_25": 3665,
+          "video_50": 1177,
+          "video_75": 722,
+          "video_100": 343,
+          "shares": 21,
+          "thruplay": 7488,
+          "ig_followers_gained": null
+        },
+        {
           "date": "2026-06-20",
           "impressions": 24086,
           "reach": 22678,
