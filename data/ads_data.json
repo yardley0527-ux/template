@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-06-18",
+  "last_updated": "2026-06-20",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -16,7 +16,7 @@
         "type": "VIDEO",
         "ig_post_url": null,
         "ig_embed_url": null,
-        "thumbnail_url": "https://scontent-sea5-1.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=KQI7gS86QW8Q7kNvwH-xoRT&_nc_oc=AdrC8w-j8nOcVHq_IuzfIyViBKqcNgHmGjTKNDhg2bbQqC5uhNKwf33C-gMmSvzLtT4&_nc_zt=23&_nc_ht=scontent-sea5-1.xx&edm=AEZPnVgEAAAA&_nc_gid=_Cb2__2AeeiuV3rePKJHug&_nc_tpa=Q5bMBQHf6yCWGlI7YhMfbMcOgFmQBQD5ACwanNXpCKxveQEy9HJYGanLWpA3eidBe3iRBz-t0RvYMYnBPg&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af-cX9DjG2MwJmn6nVe-47xG1Xa_bLIsgFlVEc8l3LjBfg&oe=6A39166A",
+        "thumbnail_url": "https://scontent-sea5-1.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=KQI7gS86QW8Q7kNvwG7Kjbs&_nc_oc=AdoudpZGyXNYf5dzmyfcTJsPHD1a--w4AAyOahXBPETyvlcLZKqh4fEu2zn73O405cU&_nc_zt=23&_nc_ht=scontent-sea5-1.xx&edm=AEZPnVgEAAAA&_nc_gid=CNvjLedBR1NF5aheTNgnug&_nc_tpa=Q5bMBQFDc6VqLjo_mK3jnMYLt-g__8ARYflHWnoMQsZK6olnP5xDFiwwnovcLpKkQl0r-nnO1I4TFX7dXA&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af9WGD4KFLqwCv0eCOVzgtHgiVN-4DM-0n2ObXwR1U-GVw&oe=6A3BF1AA",
         "label": "Chloe 狀態廣告"
       },
       "daily_data": [
@@ -104,6 +104,23 @@
           "shares": 4,
           "thruplay": 2098,
           "ig_followers_gained": null
+        },
+        {
+          "date": "2026-06-20",
+          "impressions": 24086,
+          "reach": 22678,
+          "clicks": 1664,
+          "ctr": 6.91,
+          "cpm": 113,
+          "spend": 2720,
+          "video_3s": 10772,
+          "video_25": 1576,
+          "video_50": 517,
+          "video_75": 352,
+          "video_100": 177,
+          "shares": 11,
+          "thruplay": 3188,
+          "ig_followers_gained": 135
         }
       ]
     },
