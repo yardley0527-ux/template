@@ -60,8 +60,11 @@ class SidebarEntry
             { href: line_broadcast_path,      title: "LINE 推播分析",  icon: "fa-paper-plane" },
             { href: ig_audience_path,         title: "IG 受眾重疊分析", icon: "fa-users" },
             { href: ig_followers_path,        title: "IG 粉絲成長追蹤", icon: "fa-chart-line" },
-            { href: kocs_path,                 title: "KOC 業配名單",   icon: "fa-star" },
-            { href: relove_kocs_path,          title: "Relove 業配名單", icon: "fa-star" },
+            { href: "#", title: "業配名單", icon: "fa-star", children: [
+                { href: kocs_path,        title: "Hiff 業配名單",   icon: "fa-star" },
+                { href: relove_kocs_path, title: "Relove 業配名單", icon: "fa-star" },
+              ]
+            },
           ]
         },
         {
