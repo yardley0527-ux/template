@@ -78,12 +78,16 @@ class ThreadsAnalysisService
 
       你是在跟我們公司的社群小編說話，目的是提升品牌在 Threads 上的能見度。請用繁體中文給出具體可執行的行動建議，盡量點名具體帳號/貼文或話題角度，不要只講通則。
 
-      回答以下三個面向，正好輸出三段純文字、每段 2-4 句：
+      回答以下三個面向：
       1. 這幾篇熱門貼文裡，有哪些適合現在就去留言或轉發互動、蹭熱度
       2. 這週可以發什麼樣的原創內容（主題、角度、形式）來搭上這些討論
       3. 有什麼話題或行銷角度要避免，以免引發負面反應
 
-      格式規定：不要開場白、不要結尾總結、不要任何標題或編號、不要 markdown 粗體或列點符號、不要分隔線。直接從第一段的內容開始寫，三段之間用一個換行分隔。
+      格式規定（嚴格遵守）：
+      - 每個面向獨立列出 2-3 個要點，每個要點獨立一行、開頭加「・」、限制在 50 字以內
+      - 三個面向之間留一個空行分隔
+      - 不要開場白、不要結尾總結、不要任何標題文字或數字編號、不要 markdown 粗體
+      - 直接從第一個要點開始輸出
     PROMPT
 
     call_claude(prompt, api_key)
@@ -101,7 +105,7 @@ class ThreadsAnalysisService
     req["content-type"]      = "application/json"
     req.body = {
       model:      MODEL,
-      max_tokens: 600,
+      max_tokens: 1200,
       messages:   [{ role: "user", content: prompt }]
     }.to_json
 
