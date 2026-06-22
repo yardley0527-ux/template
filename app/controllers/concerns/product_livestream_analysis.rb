@@ -108,7 +108,7 @@ module ProductLivestreamAnalysis
     end
 
     history_counts  = ShoplineOrder.where(product_sql).where(email: missing_emails).group(:email).count
-    history_amounts = ShoplineOrder.where(product_sql).where(email: missing_emails).group(:email).sum(:total_amount)
+    history_amounts = email_order_amounts(ShoplineOrder.where(product_sql).where(email: missing_emails))
 
     last_any_order_raw = ShoplineOrder.where(email: missing_emails)
       .order(:email, order_date: :desc)
@@ -157,16 +157,25 @@ module ProductLivestreamAnalysis
       }
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
 
-    event_orders_raw = ShoplineOrder
+    event_order_lines = ShoplineOrder
       .where(product_sql).where(email: @event_emails).where(order_date: event_range)
-      .order(:email, order_date: :desc)
-      .pluck(:email, :product_name, :order_date, :checkout_amount, :total_amount)
+      .group(:email, :order_number)
+      .pluck(
+        :email, :order_number,
+        Arel.sql("MAX(order_date) AS order_date"),
+        Arel.sql("STRING_AGG(DISTINCT product_name, '、') AS product_name"),
+        Arel.sql("MAX(NULLIF(total_amount, 0)) AS max_total"),
+        Arel.sql("SUM(COALESCE(checkout_amount, 0)) AS sum_checkout")
+      )
 
     event_by_email = {}
-    event_orders_raw.each do |email, pname, odate, checkout, total|
-      event_by_email[email] ||= {
+    event_order_lines.each do |email, _order_number, odate, pname, max_total, sum_checkout|
+      current = event_by_email[email]
+      next if current && current[:order_date] >= odate
+
+      event_by_email[email] = {
         product_name: pname, order_date: odate,
-        order_amount: (checkout || total).to_f
+        order_amount: (max_total || sum_checkout).to_f
       }
     end
 
@@ -345,6 +354,22 @@ module ProductLivestreamAnalysis
   def product_emails(range)
     ShoplineOrder.where(product_sql).where(order_date: range)
       .where.not(email: [nil, ""]).distinct.pluck(:email)
+  end
+
+  # total_amount 是整張訂單的付款總額（同一訂單每個商品行都重複同一值，逐行 SUM 會灌水），
+  # 需先以 order_number 分組取一筆，再依 email 加總，避免多商品行訂單被重複計入。
+  def email_order_amounts(scope)
+    order_totals = scope
+      .group(:email, :order_number)
+      .pluck(
+        :email,
+        Arel.sql("MAX(NULLIF(total_amount, 0)) AS max_total"),
+        Arel.sql("SUM(COALESCE(checkout_amount, 0)) AS sum_checkout")
+      )
+
+    order_totals.each_with_object(Hash.new(0.0)) do |(email, max_total, sum_checkout), acc|
+      acc[email] += (max_total || sum_checkout).to_f
+    end
   end
 
   def extract_bottles(product_name)

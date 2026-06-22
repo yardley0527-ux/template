@@ -4,6 +4,15 @@ class HighValueOrdersController < ApplicationController
   ALL_TABS       = (LEVELS + ['新客']).freeze
   SERIES_OPTIONS = %w[代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣 面膜].freeze
 
+  # total_amount 是整張訂單的付款總額（同一訂單每個商品行都重複同一值，需取 MAX）；
+  # checkout_amount 是逐行商品金額，只有在 total_amount 缺失時才需要 SUM 全部商品行回推訂單總額。
+  ORDER_TOTAL_SQL = <<~SQL.squish.freeze
+    CASE
+      WHEN MAX(NULLIF(o.total_amount, 0)) IS NOT NULL THEN MAX(NULLIF(o.total_amount, 0))
+      ELSE SUM(COALESCE(o.checkout_amount, 0))
+    END
+  SQL
+
   def index
     @period         = params[:period].presence || 'month'
     @level          = params[:level].presence || LEVELS.first
@@ -31,7 +40,7 @@ class HighValueOrdersController < ApplicationController
         )
         .where("o.payment_status = '已付款'")
         .group("o.order_number")
-        .having("MAX(COALESCE(o.checkout_amount, o.total_amount)) >= ?", THRESHOLD)
+        .having("#{ORDER_TOTAL_SQL} >= ?", THRESHOLD)
     ).to_a
     @tab_counts = LEVELS.index_with { |lvl| all_for_counts.count { |o| o.membership_level_col == lvl } }
     @tab_counts['新客'] = all_for_counts.count { |o| o.purchase_count_val.to_i == 1 }
@@ -76,7 +85,7 @@ class HighValueOrdersController < ApplicationController
         "MAX(o.customer_name) AS cust_name",
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
         "MAX(o.order_date) AS ord_date",
-        "MAX(COALESCE(o.checkout_amount, o.total_amount)) AS order_total",
+        "#{ORDER_TOTAL_SQL} AS order_total",
         "STRING_AGG(DISTINCT o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name || ' ×' || o.quantity::text) AS products_list",
         "MAX(COALESCE(sc.instagram_account, o.instagram_account)) AS ig_account",
         "MAX(COALESCE(sc.email, o.email)) AS email_val",
@@ -84,7 +93,7 @@ class HighValueOrdersController < ApplicationController
       )
       .where("o.payment_status = '已付款'")
       .group("o.order_number")
-      .having("MAX(COALESCE(o.checkout_amount, o.total_amount)) >= ?", THRESHOLD)
+      .having("#{ORDER_TOTAL_SQL} >= ?", THRESHOLD)
       .order(Arel.sql("MAX(o.order_date) DESC"))
   end
 
