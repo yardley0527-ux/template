@@ -2,8 +2,9 @@ require 'net/http'
 require 'json'
 
 class ThreadsScraperService
-  API_BASE = "https://api.scrapecreators.com/v1/threads/search"
-  API_KEY  = ENV['SCRAPECREATORS_API_KEY']
+  API_BASE = "https://api.apify.com/v2/acts/automation-lab~threads-scraper/run-sync-get-dataset-items"
+  API_KEY  = ENV['APIFY_API_KEY']
+  MAX_POSTS_PER_KEYWORD = 20
 
   KEYWORD_CATEGORIES = {
     "代謝瘦身" => %w[代謝 減肥 瘦身 燃脂 體脂 減脂 水腫],
@@ -26,7 +27,7 @@ class ThreadsScraperService
 
   def call
     if API_KEY.blank?
-      Rails.logger.error("[ThreadsScraperService] SCRAPECREATORS_API_KEY 未設定")
+      Rails.logger.error("[ThreadsScraperService] APIFY_API_KEY 未設定")
       return false
     end
 
@@ -36,25 +37,25 @@ class ThreadsScraperService
     KEYWORDS.each do |keyword|
       posts = fetch_keyword(keyword)
       posts.each do |item|
-        post_id = item["pk"].to_s.presence || item["id"].to_s.presence
+        post_id = item["postId"].to_s
         next if post_id.blank?
 
-        username = item.dig("user", "username")
+        username = item["username"]
         code     = item["code"]
 
-        text = item.dig("caption", "text").to_s
+        text = item["text"].to_s
         next unless text.include?(keyword)
 
         ThreadsPost.find_or_initialize_by(post_id: post_id).tap do |p|
           p.username     = username
-          p.full_name    = item.dig("user", "full_name").to_s.presence || username
+          p.full_name    = item["fullName"].to_s.presence || username
           p.text_content = text.slice(0, 500)
-          p.like_count   = item["like_count"].to_i
-          p.reply_count  = item.dig("text_post_app_info", "direct_reply_count").to_i
-          p.repost_count = item.dig("text_post_app_info", "repost_count").to_i
-          p.post_url     = code.present? && username.present? ? "https://www.threads.net/@#{username}/post/#{code}" : nil
+          p.like_count   = item["likeCount"].to_i
+          p.reply_count  = item["replyCount"].to_i
+          p.repost_count = item["repostCount"].to_i
+          p.post_url     = item["url"].presence || (code.present? && username.present? ? "https://www.threads.net/@#{username}/post/#{code}" : nil)
           p.keyword      = keyword
-          p.posted_at    = parse_time(item["taken_at"])
+          p.posted_at    = parse_time(item["date"] || item["timestamp"])
           p.fetched_on   = today
           p.save!
           saved += 1
@@ -75,20 +76,21 @@ class ThreadsScraperService
 
   def fetch_keyword(keyword)
     uri = URI(API_BASE)
-    uri.query = URI.encode_www_form(query: keyword)
+    uri.query = URI.encode_www_form(token: API_KEY)
 
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl      = true
-    http.read_timeout = 30
+    http.read_timeout = 120
 
-    request = Net::HTTP::Get.new(uri)
-    request["x-api-key"] = API_KEY
+    request = Net::HTTP::Post.new(uri)
+    request["Content-Type"] = "application/json"
+    request.body = { mode: "search", searchQueries: [keyword], maxPosts: MAX_POSTS_PER_KEYWORD }.to_json
 
     response = http.request(request)
-    body = JSON.parse(response.body)
+    posts = JSON.parse(response.body)
+    posts = [] unless posts.is_a?(Array)
 
-    posts = body["posts"] || []
-    Rails.logger.info("[ThreadsScraperService] keyword=#{keyword} status=#{response.code} posts=#{posts.size} raw=#{response.body.to_s.first(200)}")
+    Rails.logger.info("[ThreadsScraperService] keyword=#{keyword} status=#{response.code} posts=#{posts.size}")
     posts
   rescue => e
     Rails.logger.warn("[ThreadsScraperService] keyword=#{keyword} error: #{e.message}")
@@ -97,7 +99,7 @@ class ThreadsScraperService
 
   def parse_time(raw)
     return nil if raw.blank?
-    raw.is_a?(Integer) ? Time.at(raw) : Time.parse(raw.to_s)
+    raw.is_a?(Numeric) ? Time.at(raw) : Time.parse(raw.to_s)
   rescue
     nil
   end

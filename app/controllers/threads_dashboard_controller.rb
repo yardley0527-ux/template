@@ -24,7 +24,7 @@ class ThreadsDashboardController < ApplicationController
       ThreadsAnalysisService.run(Date.today)
       redirect_to threads_dashboard_path, notice: "資料已更新，共抓取 #{ThreadsPost.today.count} 則貼文，AI 分析已產生"
     else
-      redirect_to threads_dashboard_path, alert: "爬蟲失敗，請確認 SCRAPECREATORS_API_KEY 設定是否正確"
+      redirect_to threads_dashboard_path, alert: "爬蟲失敗，請確認 APIFY_API_KEY 設定是否正確"
     end
   end
 
@@ -47,16 +47,17 @@ class ThreadsDashboardController < ApplicationController
     require 'net/http'
     require 'json'
 
-    api_key = ENV['SCRAPECREATORS_API_KEY']
-    uri = URI("https://api.scrapecreators.com/v1/threads/search")
-    uri.query = URI.encode_www_form(query: "probiotics")
+    api_key = ENV['APIFY_API_KEY']
+    uri = URI("https://api.apify.com/v2/acts/automation-lab~threads-scraper/run-sync-get-dataset-items")
+    uri.query = URI.encode_www_form(token: api_key.to_s)
 
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl      = true
-    http.read_timeout = 30
+    http.read_timeout = 60
 
-    request = Net::HTTP::Get.new(uri)
-    request["x-api-key"] = api_key.to_s
+    request = Net::HTTP::Post.new(uri)
+    request["Content-Type"] = "application/json"
+    request.body = { mode: "search", searchQueries: ["probiotics"], maxPosts: 3 }.to_json
 
     response = http.request(request)
     render json: { status: response.code, key_prefix: api_key.to_s.first(6), body: JSON.parse(response.body) }
