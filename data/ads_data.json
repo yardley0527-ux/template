@@ -1,15 +1,49 @@
 {
-  "last_updated": "2026-06-20",
+  "last_updated": "2026-06-22",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
   "kol": "chloechao0527",
   "campaigns": [
     {
+      "id": "120251699226940022",
+      "name": "中醫水2",
+      "objective": "流量",
+      "status": "ACTIVE",
+      "daily_budget": null,
+      "start_date": "2026-06-01",
+      "creative": {
+        "type": "SHARE",
+        "ig_post_url": null,
+        "ig_embed_url": null,
+        "thumbnail_url": null,
+        "label": "中醫水2"
+      },
+      "daily_data": [
+        {
+          "date": "2026-06-22",
+          "impressions": 43212,
+          "reach": 39667,
+          "clicks": 510,
+          "ctr": 1.18,
+          "cpm": 108,
+          "spend": 4653,
+          "video_3s": null,
+          "video_25": null,
+          "video_50": null,
+          "video_75": null,
+          "video_100": null,
+          "shares": null,
+          "thruplay": null,
+          "ig_followers_gained": null
+        }
+      ]
+    },
+    {
       "id": "120250889608820022",
       "name": "Chloe 狀態",
       "objective": "流量",
-      "status": "ACTIVE",
+      "status": "PAUSED",
       "daily_budget": 6000,
       "start_date": null,
       "creative": {
