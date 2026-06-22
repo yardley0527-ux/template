@@ -79,15 +79,15 @@
         <% paragraphs = @analysis.ai_summary.to_s.split(/\n+/).reject(&:blank?) %>
         <% if paragraphs.size >= 3 %>
           <div class="mb-2">
-            <span class="badge mb-1" style="background:#e8f0fb; color:#4a6fa5; font-size:0.7rem;">熱門話題</span>
+            <span class="badge mb-1" style="background:#e8f0fb; color:#4a6fa5; font-size:0.7rem;">可立即互動</span>
             <p class="mb-0 small text-dark" style="line-height:1.6;"><%= paragraphs[0] %></p>
           </div>
           <div class="mb-2">
-            <span class="badge mb-1" style="background:#fff3e0; color:#e65100; font-size:0.7rem;">消費者痛點</span>
+            <span class="badge mb-1" style="background:#fff3e0; color:#e65100; font-size:0.7rem;">本週內容方向</span>
             <p class="mb-0 small text-dark" style="line-height:1.6;"><%= paragraphs[1] %></p>
           </div>
           <div>
-            <span class="badge mb-1" style="background:#e8f5e9; color:#2e7d32; font-size:0.7rem;">品牌機會</span>
+            <span class="badge mb-1" style="background:#e8f5e9; color:#2e7d32; font-size:0.7rem;">注意事項</span>
             <p class="mb-0 small text-dark" style="line-height:1.6;"><%= paragraphs[2] %></p>
           </div>
         <% else %>

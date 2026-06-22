@@ -66,7 +66,7 @@ class ThreadsAnalysisService
 
     top_posts   = posts.sort_by { |p| -(p.like_count + p.reply_count * 2 + p.repost_count) }.first(20)
     posts_text  = top_posts.map do |p|
-      "【#{p.keyword}】@#{p.username}：#{p.text_content.to_s.first(150)}（❤️#{p.like_count} 💬#{p.reply_count} 🔁#{p.repost_count}）"
+      "【#{p.keyword}】@#{p.username}：#{p.text_content.to_s.first(150)}（❤️#{p.like_count} 💬#{p.reply_count} 🔁#{p.repost_count}）#{p.post_url}"
     end.join("\n")
 
     kw_summary = stats.map { |s| "#{s[:keyword]}（#{s[:count]} 則，互動 #{s[:total_engagement]}）" }.join("、")
@@ -76,10 +76,14 @@ class ThreadsAnalysisService
 
       #{posts_text}
 
-      請用繁體中文做簡短分析，回答以下三個面向（每段 2-3 句，不加標題編號）：
-      1. 本次最熱門的話題或討論方向
-      2. 消費者關注的痛點或需求
-      3. 值得品牌注意的訊號或機會
+      你是在跟我們公司的社群小編說話，目的是提升品牌在 Threads 上的能見度。請用繁體中文給出具體可執行的行動建議，盡量點名具體帳號/貼文或話題角度，不要只講通則。
+
+      回答以下三個面向，正好輸出三段純文字、每段 2-4 句：
+      1. 這幾篇熱門貼文裡，有哪些適合現在就去留言或轉發互動、蹭熱度
+      2. 這週可以發什麼樣的原創內容（主題、角度、形式）來搭上這些討論
+      3. 有什麼話題或行銷角度要避免，以免引發負面反應
+
+      格式規定：不要開場白、不要結尾總結、不要任何標題或編號、不要 markdown 粗體或列點符號、不要分隔線。直接從第一段的內容開始寫，三段之間用一個換行分隔。
     PROMPT
 
     call_claude(prompt, api_key)
