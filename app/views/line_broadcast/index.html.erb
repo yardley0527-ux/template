@@ -338,7 +338,7 @@
   <div class="col-md-6">
     <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">星期幾成效</p>
     <div class="card border-0 shadow-sm">
-      <div class="card-body p-0">
+      <div class="card-body p-0 table-responsive">
         <% max_rev = @weekday_stats.map { |w| w[:avg_revenue] }.max.to_f %>
         <table class="table table-sm mb-0 align-middle">
           <thead class="thead-light">
@@ -370,7 +370,7 @@
   <div class="col-md-6">
     <p class="text-uppercase text-muted small fw-bold letter-spacing-1 mb-2">時段成效</p>
     <div class="card border-0 shadow-sm">
-      <div class="card-body p-0">
+      <div class="card-body p-0 table-responsive">
         <% max_rev_h = @hour_stats.map { |h| h[:avg_revenue] }.max.to_f %>
         <table class="table table-sm mb-0 align-middle">
           <thead class="thead-light">

@@ -178,6 +178,7 @@
     <%# 每日報告格式輸入表 %>
     <%= form_with url: member_contacts_update_sl_path, method: :post do |f| %>
       <%= f.fields_for :daily_member_stat, @today_stat do |ff| %>
+        <div class="table-responsive">
         <table class="table align-middle mb-0" style="font-size:0.9rem;">
           <thead class="table-light">
             <tr>
@@ -224,6 +225,7 @@
             <% end %>
           </tbody>
         </table>
+        </div>
         <div class="px-3 py-2 text-end border-top">
           <%= button_tag "儲存今日數據", type: "submit", class: "btn btn-sm btn-primary" %>
         </div>
