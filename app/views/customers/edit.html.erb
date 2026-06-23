@@ -87,6 +87,15 @@
           </div>
 
           <div class="edit-field">
+            <label class="edit-label">是否追蹤 Chloe IG</label>
+            <label class="toggle-wrap">
+              <%= f.check_box :follows_chloe_ig, class: "toggle-input" %>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-text">出貨時附小卡</span>
+            </label>
+          </div>
+
+          <div class="edit-field">
             <label class="edit-label">備註</label>
             <%= f.text_area :notes, rows: 6, class: "edit-textarea", placeholder: "輸入備註內容…" %>
           </div>

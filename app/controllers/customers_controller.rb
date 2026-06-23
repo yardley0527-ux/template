@@ -406,6 +406,7 @@ class CustomersController < ApplicationController
     params.require(:customer_profile).permit(
       :brand_ambassador_training,
       :brand_ambassador_blacklisted,
+      :follows_chloe_ig,
       :notes,
       :health_profile,
       :feedback,

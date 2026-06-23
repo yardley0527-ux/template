@@ -10,6 +10,8 @@ Rails.application.routes.draw do
   end
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
+  get  '/daily_orders',             to: 'daily_orders#index',         as: :daily_orders
+  get  '/daily_orders/export',      to: 'daily_orders#export',        as: :export_daily_orders
   post '/order_gift_records/upsert', to: 'order_gift_records#upsert',  as: :upsert_order_gift_record
   get  '/member_contacts',                to: 'member_contacts#index',          as: :member_contacts
   get  '/member_contacts/export',        to: 'member_contacts#export',         as: :member_contacts_export

@@ -1,0 +1,131 @@
+class DailyOrdersController < ApplicationController
+  TIERS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
+
+  ORDER_TOTAL_SQL = <<~SQL.squish.freeze
+    CASE
+      WHEN MAX(NULLIF(o.total_amount, 0)) IS NOT NULL THEN MAX(NULLIF(o.total_amount, 0))
+      ELSE SUM(COALESCE(o.checkout_amount, 0))
+    END
+  SQL
+
+  OrderRow = Struct.new(
+    :order_number, :customer_name, :ig_account, :email, :order_total, :order_date,
+    :is_new_customer, :membership_level, :products, :health_profile, :health_tags,
+    :follows_chloe_ig,
+    keyword_init: true
+  )
+
+  def index
+    @date = parse_date(params[:date]) || Date.today
+    @groups = build_groups(@date)
+  end
+
+  def export
+    @date = parse_date(params[:date]) || Date.today
+    groups = build_groups(@date)
+
+    csv_data = CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "是否購買過同產品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG"]
+      groups.each do |label, rows|
+        rows.each do |row|
+          csv << [
+            label,
+            row.order_number,
+            row.customer_name,
+            row.ig_account,
+            row.order_total.to_i,
+            same_product_text(row.products),
+            row.health_profile.presence,
+            row.health_tags.join("、"),
+            row.follows_chloe_ig ? "是" : "否"
+          ]
+        end
+      end
+    end
+
+    send_data "\xEF\xBB\xBF" + csv_data,
+      filename: "每日訂單報表_#{@date}.csv",
+      type: "text/csv; charset=utf-8"
+  end
+
+  private
+
+  def parse_date(value)
+    Date.parse(value) if value.present?
+  rescue ArgumentError
+    nil
+  end
+
+  def same_product_text(products)
+    products.map { |p| p[:prior_date] ? "#{p[:name]}：✓ #{p[:prior_date].strftime('%Y/%m/%d')}" : "#{p[:name]}：（首次購買）" }.join("\n")
+  end
+  helper_method :same_product_text
+
+  def build_groups(date)
+    day_start = date.beginning_of_day
+    day_end   = date.end_of_day
+
+    raw_orders = ShoplineOrder.from("shopline_orders o")
+      .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
+      .select(
+        "o.order_number AS order_num",
+        "MAX(o.customer_name) AS cust_name",
+        "MAX(COALESCE(sc.instagram_account, o.instagram_account)) AS ig_account",
+        "MAX(COALESCE(sc.email, o.email)) AS email_val",
+        "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
+        "MAX(o.order_date) AS ord_date",
+        "#{ORDER_TOTAL_SQL} AS order_total",
+        "ARRAY_AGG(DISTINCT o.product_name) AS product_names_arr"
+      )
+      .where("o.payment_status = '已付款'")
+      .where("o.order_date >= ? AND o.order_date < ?", day_start, day_end)
+      .group("o.order_number")
+      .order(Arel.sql("MAX(o.order_date) ASC"))
+      .to_a
+
+    emails = raw_orders.map(&:email_val).compact.uniq
+
+    prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", day_start).distinct.pluck(:email).to_set
+
+    prior_product_dates = ShoplineOrder.where(email: emails).where("order_date < ?", day_start)
+      .group(:email, :product_name).minimum(:order_date)
+
+    customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
+
+    rows = raw_orders.map do |o|
+      profile = customers_by_email[o.email_val]&.customer_profile
+
+      products = Array(o.product_names_arr).compact.map do |name|
+        prior_date = prior_product_dates[[o.email_val, name]]
+        { name: name, prior_date: prior_date }
+      end
+
+      OrderRow.new(
+        order_number: o.order_num,
+        customer_name: o.cust_name,
+        ig_account: o.ig_account,
+        email: o.email_val,
+        order_total: o.order_total,
+        order_date: o.ord_date,
+        is_new_customer: o.email_val.blank? || !prior_emails.include?(o.email_val),
+        membership_level: o.membership_level_col,
+        products: products,
+        health_profile: profile&.health_profile,
+        health_tags: profile&.health_tags || [],
+        follows_chloe_ig: profile&.follows_chloe_ig || false
+      )
+    end
+
+    new_rows = rows.select(&:is_new_customer)
+    old_rows = rows.reject(&:is_new_customer)
+
+    groups = [["新客", new_rows]]
+    TIERS.each do |tier|
+      groups << [tier, old_rows.select { |r| r.membership_level == tier }]
+    end
+    other = old_rows.reject { |r| TIERS.include?(r.membership_level) }
+    groups << ["未分級", other] if other.any?
+
+    groups
+  end
+end

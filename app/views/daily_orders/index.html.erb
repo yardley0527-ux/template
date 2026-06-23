@@ -1,0 +1,113 @@
+<%# app/views/daily_orders/index.html.erb %>
+<% content_for :page_title, "每日訂單報表" %>
+
+<% def daily_orders_ig_link(account)
+  return nil if account.blank?
+  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+end %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
+    <div>
+      <h4 class="fw-bold mb-0">每日訂單報表</h4>
+      <p class="text-muted small mb-0">依新客／舊客卡別分類，協助出貨備貨</p>
+    </div>
+    <div class="d-flex align-items-center" style="gap:8px;">
+      <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center", style: "gap:8px;" do %>
+        <input type="date" name="date" value="<%= @date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+      <% end %>
+      <%= link_to "匯出 CSV", export_daily_orders_path(date: @date), class: "btn btn-sm btn-outline-secondary" %>
+    </div>
+  </div>
+</div>
+
+<% total_count = @groups.sum { |_, rows| rows.size } %>
+<p class="text-muted small mb-3">
+  <%= @date.strftime('%Y/%m/%d') %> 共 <%= total_count %> 筆訂單
+</p>
+
+<% @groups.each do |label, rows| %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
+      <span class="fw-bold"><%= label %></span>
+      <span class="badge bg-secondary"><%= rows.size %></span>
+    </div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table align-middle mb-0" style="font-size:0.86rem;">
+        <thead style="background-color:#4a4a4a; color:white;">
+          <tr>
+            <th class="ps-3">訂單號碼</th>
+            <th>姓名</th>
+            <th style="width:160px;">IG</th>
+            <th class="text-end" style="width:110px;">消費金額</th>
+            <th style="width:220px;">是否購買過同產品</th>
+            <th style="width:220px;">健康資料</th>
+            <th class="text-center" style="width:110px;">追蹤 Chloe IG</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.each do |row| %>
+            <% url = daily_orders_ig_link(row.ig_account) %>
+            <tr>
+              <td class="ps-3 text-muted small"><%= row.order_number %></td>
+              <td class="fw-semibold"><%= row.customer_name %></td>
+              <td>
+                <% if url %>
+                  <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                    <i class="fal fa-at text-danger"></i>
+                    <span style="font-size:0.8rem;"><%= row.ig_account&.sub(/^@/, '') %></span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td class="text-end fw-bold text-danger">
+                NT$<%= number_with_delimiter(row.order_total.to_i) %>
+              </td>
+              <td>
+                <% row.products.each do |p| %>
+                  <div style="font-size:0.78rem;">
+                    <% if p[:prior_date] %>
+                      <span class="text-success">✓</span> <%= p[:name] %>（<%= p[:prior_date].strftime('%Y/%m/%d') %>）
+                    <% else %>
+                      <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
+                    <% end %>
+                  </div>
+                <% end %>
+              </td>
+              <td style="max-width:220px;">
+                <% if row.health_profile.present? %>
+                  <div class="small text-truncate" style="max-width:220px;" title="<%= row.health_profile %>"><%= row.health_profile %></div>
+                <% end %>
+                <% if row.health_tags.present? %>
+                  <div class="d-flex flex-wrap" style="gap:3px; margin-top:2px;">
+                    <% row.health_tags.each do |tag| %>
+                      <span class="badge bg-light text-dark border" style="font-size:0.7rem;"><%= tag %></span>
+                    <% end %>
+                  </div>
+                <% end %>
+                <% if row.health_profile.blank? && row.health_tags.blank? %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% if row.follows_chloe_ig %>
+                  <span class="text-success">✅</span>
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          <% if rows.empty? %>
+            <tr>
+              <td colspan="7" class="text-center py-4 text-muted">（無訂單）</td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>

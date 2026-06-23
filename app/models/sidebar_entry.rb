@@ -24,6 +24,7 @@ class SidebarEntry
         {
           group_title: "高消費分析",
           children: [
+            { href: daily_orders_path,                title: "每日訂單報表",   icon: "fa-calendar-day" },
             { href: high_spender_first_purchase_path, title: "破萬新客分析",   icon: "fa-gem" },
             { href: high_value_orders_path,           title: "破萬訂單速覽",   icon: "fa-fire" },
             { href: first_purchase_index_path,        title: "首購總覽",       icon: "fa-shopping-bag" },

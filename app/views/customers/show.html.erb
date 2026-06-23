@@ -86,6 +86,15 @@
             <span class="status-empty">—</span>
           <% end %>
         </div>
+
+        <div class="profile-status-item">
+          <span class="profile-status-label">是否追蹤 Chloe IG</span>
+          <% if @profile.follows_chloe_ig? %>
+            <span class="status-check">✅</span>
+          <% else %>
+            <span class="status-empty">—</span>
+          <% end %>
+        </div>
       </div>
 
       <div class="profile-block">
