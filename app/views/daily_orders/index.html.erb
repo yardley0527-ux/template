@@ -15,6 +15,7 @@ end %>
     </div>
     <div class="d-flex align-items-center" style="gap:8px;">
       <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center", style: "gap:8px;" do %>
+        <%= hidden_field_tag :tab, @tab %>
         <input type="date" name="date" value="<%= @date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
         <button type="submit" class="btn btn-sm btn-primary">查詢</button>
       <% end %>
@@ -28,7 +29,18 @@ end %>
   <%= @date.strftime('%Y/%m/%d') %> 共 <%= total_count %> 筆訂單
 </p>
 
-<% @groups.each do |label, rows| %>
+<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+  <li class="nav-item">
+    <%= link_to "新客（#{@new_count}）", daily_orders_path(date: @date, tab: "new"), class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "舊客（#{@old_count}）", daily_orders_path(date: @date, tab: "old"), class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+</ul>
+
+<% visible_groups = @tab == "new" ? @groups.first(1) : @groups.drop(1) %>
+
+<% visible_groups.each do |label, rows| %>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
       <span class="fw-bold"><%= label %></span>
@@ -38,13 +50,14 @@ end %>
       <table class="table align-middle mb-0" style="font-size:0.86rem; table-layout:fixed; width:100%;">
         <thead style="background-color:#4a4a4a; color:white;">
           <tr>
-            <th class="ps-3" style="width:13%;">訂單號碼</th>
-            <th style="width:9%;">姓名</th>
-            <th style="width:11%;">IG</th>
-            <th class="text-end" style="width:9%;">消費金額</th>
-            <th style="width:26%;">是否購買過同產品</th>
-            <th style="width:24%;">健康資料</th>
-            <th class="text-center" style="width:8%;">追蹤 Chloe IG</th>
+            <th class="ps-3" style="width:11%;">訂單號碼</th>
+            <th style="width:8%;">姓名</th>
+            <th style="width:10%;">IG</th>
+            <th class="text-end" style="width:8%;">消費金額</th>
+            <th style="width:21%;">是否購買過同產品</th>
+            <th style="width:20%;">健康資料</th>
+            <th class="text-center" style="width:11%;">追蹤 Chloe IG</th>
+            <th class="text-center" style="width:11%;">已邀請追蹤產品IG</th>
           </tr>
         </thead>
         <tbody>
@@ -97,8 +110,25 @@ end %>
                 <% end %>
               </td>
               <td class="text-center">
-                <% if row.follows_chloe_ig %>
-                  <span class="text-success">✅</span>
+                <% if row.shopline_customer_id %>
+                  <input type="checkbox"
+                    class="customer-flag-checkbox"
+                    data-customer-id="<%= row.shopline_customer_id %>"
+                    data-field="follows_chloe_ig"
+                    <%= row.follows_chloe_ig ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% if row.shopline_customer_id %>
+                  <input type="checkbox"
+                    class="customer-flag-checkbox"
+                    data-customer-id="<%= row.shopline_customer_id %>"
+                    data-field="invited_to_follow_product_ig"
+                    <%= row.invited_to_follow_product_ig ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
                 <% else %>
                   <span class="text-muted">—</span>
                 <% end %>
@@ -107,11 +137,32 @@ end %>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="7" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="8" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
       </table>
     </div>
   </div>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var URL = "<%= toggle_daily_orders_customer_flag_path %>";
+
+  document.querySelectorAll('.customer-flag-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      fetch(URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({ customer_id: cb.dataset.customerId, field: cb.dataset.field, value: cb.checked })
+      }).then(function(r) {
+        if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
+      });
+    });
+  });
+})();
+</script>
 <% end %>

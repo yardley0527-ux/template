@@ -95,6 +95,15 @@
             <span class="status-empty">—</span>
           <% end %>
         </div>
+
+        <div class="profile-status-item">
+          <span class="profile-status-label">已私訊邀請追蹤產品IG</span>
+          <% if @profile.invited_to_follow_product_ig? %>
+            <span class="status-check">✅</span>
+          <% else %>
+            <span class="status-empty">—</span>
+          <% end %>
+        </div>
       </div>
 
       <div class="profile-block">

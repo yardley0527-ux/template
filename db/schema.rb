@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_23_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -70,6 +70,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_23_100000) do
     t.datetime "renewal_confirmed_at"
     t.date "renewal_confirmed_for"
     t.boolean "follows_chloe_ig", default: false, null: false
+    t.boolean "invited_to_follow_product_ig", default: false, null: false
     t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin
     t.index ["product_tags"], name: "index_customer_profiles_on_product_tags", using: :gin
     t.index ["shopline_customer_id"], name: "index_customer_profiles_on_shopline_customer_id"

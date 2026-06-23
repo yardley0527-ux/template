@@ -96,6 +96,15 @@
           </div>
 
           <div class="edit-field">
+            <label class="edit-label">是否已私訊邀請追蹤產品IG</label>
+            <label class="toggle-wrap">
+              <%= f.check_box :invited_to_follow_product_ig, class: "toggle-input" %>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-text">客服已私訊邀請</span>
+            </label>
+          </div>
+
+          <div class="edit-field">
             <label class="edit-label">備註</label>
             <%= f.text_area :notes, rows: 6, class: "edit-textarea", placeholder: "輸入備註內容…" %>
           </div>

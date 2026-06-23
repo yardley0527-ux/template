@@ -1,5 +1,6 @@
 class DailyOrdersController < ApplicationController
   TIERS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
+  TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig].freeze
 
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
     CASE
@@ -11,13 +12,27 @@ class DailyOrdersController < ApplicationController
   OrderRow = Struct.new(
     :order_number, :customer_name, :ig_account, :email, :order_total, :order_date,
     :is_new_customer, :membership_level, :products, :health_profile, :health_tags,
-    :follows_chloe_ig, :shopline_customer_id,
+    :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
     keyword_init: true
   )
 
   def index
     @date = parse_date(params[:date]) || Date.yesterday
+    @tab = %w[new old].include?(params[:tab]) ? params[:tab] : "new"
     @groups = build_groups(@date)
+    @new_count = @groups.first.last.size
+    @old_count = @groups.drop(1).sum { |_, rows| rows.size }
+  end
+
+  def toggle_customer_flag
+    field = params[:field].to_s
+    return head :bad_request unless TOGGLEABLE_FIELDS.include?(field)
+
+    customer = ShoplineCustomer.find(params[:customer_id])
+    profile  = customer.customer_profile || customer.build_customer_profile
+    profile.update!(field => ActiveModel::Type::Boolean.new.cast(params[:value]))
+
+    head :ok
   end
 
   def export
@@ -25,7 +40,7 @@ class DailyOrdersController < ApplicationController
     groups = build_groups(@date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "是否購買過同產品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG"]
+      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "是否購買過同產品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG"]
       groups.each do |label, rows|
         rows.each do |row|
           csv << [
@@ -37,7 +52,8 @@ class DailyOrdersController < ApplicationController
             same_product_text(row.products),
             row.health_profile.presence,
             row.health_tags.join("、"),
-            row.follows_chloe_ig ? "是" : "否"
+            row.follows_chloe_ig ? "是" : "否",
+            row.invited_to_follow_product_ig ? "是" : "否"
           ]
         end
       end
@@ -114,9 +130,12 @@ class DailyOrdersController < ApplicationController
         health_profile: profile&.health_profile,
         health_tags: profile&.health_tags || [],
         follows_chloe_ig: profile&.follows_chloe_ig || false,
+        invited_to_follow_product_ig: profile&.invited_to_follow_product_ig || false,
         shopline_customer_id: customer&.id
       )
     end
+
+    rows = rows.sort_by { |r| -r.order_total.to_f }
 
     new_rows = rows.select(&:is_new_customer)
     old_rows = rows.reject(&:is_new_customer)

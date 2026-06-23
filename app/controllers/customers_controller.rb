@@ -407,6 +407,7 @@ class CustomersController < ApplicationController
       :brand_ambassador_training,
       :brand_ambassador_blacklisted,
       :follows_chloe_ig,
+      :invited_to_follow_product_ig,
       :notes,
       :health_profile,
       :feedback,
