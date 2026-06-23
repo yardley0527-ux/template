@@ -33,6 +33,8 @@ Rails.application.routes.draw do
   post '/threads_dashboard/refresh',    to: 'threads_dashboard#refresh',   as: :threads_dashboard_refresh
   post '/threads_dashboard/reanalyze',  to: 'threads_dashboard#reanalyze', as: :threads_dashboard_reanalyze
   get  '/threads_dashboard/test_api',   to: 'threads_dashboard#test_api',  as: :threads_dashboard_test_api
+  patch  '/threads_dashboard/posts/:id/toggle_commented', to: 'threads_dashboard#toggle_commented', as: :threads_dashboard_toggle_commented
+  delete '/threads_dashboard/posts/:id',                  to: 'threads_dashboard#destroy_post',     as: :threads_dashboard_post
   get "/api/birthday_customers", to: "welcome#birthday_customers"
   get '/livestream_analysis', to: 'livestream_analysis#index', as: :livestream_analysis
   get '/turmeric_analysis',                to: 'turmeric_analysis#index',          as: :turmeric_analysis

@@ -2,6 +2,7 @@ class ThreadsDashboardController < ApplicationController
   def index
     scope = ThreadsPost.recent
       .where(keyword: ThreadsScraperService::KEYWORDS)
+      .where(hidden: false)
       .where("like_count + reply_count + repost_count >= 10")
       .order(Arel.sql("like_count + reply_count * 2 + repost_count DESC"))
 
@@ -41,6 +42,18 @@ class ThreadsDashboardController < ApplicationController
     else
       redirect_to threads_dashboard_path, alert: "AI 分析失敗，請查看 Render logs"
     end
+  end
+
+  def toggle_commented
+    post = ThreadsPost.find(params[:id])
+    post.update!(commented: !post.commented)
+    redirect_to threads_dashboard_path(keyword: params[:keyword])
+  end
+
+  def destroy_post
+    post = ThreadsPost.find(params[:id])
+    post.update!(hidden: true)
+    redirect_to threads_dashboard_path(keyword: params[:keyword]), notice: "已刪除該則貼文（無正相關）"
   end
 
   def test_api

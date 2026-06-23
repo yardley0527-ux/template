@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_23_041107) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_23_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -640,7 +640,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_23_041107) do
     t.date "fetched_on"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "hidden", default: false, null: false
+    t.boolean "commented", default: false, null: false
     t.index ["fetched_on"], name: "index_threads_posts_on_fetched_on"
+    t.index ["hidden"], name: "index_threads_posts_on_hidden"
     t.index ["keyword"], name: "index_threads_posts_on_keyword"
     t.index ["post_id"], name: "index_threads_posts_on_post_id", unique: true
   end

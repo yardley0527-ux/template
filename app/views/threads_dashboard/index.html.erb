@@ -216,7 +216,9 @@
           <th class="text-center" style="width:70px;">💬 留言</th>
           <th class="text-center" style="width:70px;">🔁 轉貼</th>
           <th class="text-center" style="width:90px;">發文時間</th>
+          <th class="text-center" style="width:70px;">是否留言</th>
           <th style="width:70px;"></th>
+          <th class="text-center" style="width:40px;"></th>
         </tr>
       </thead>
       <tbody>
@@ -244,12 +246,27 @@
             <td class="text-center text-muted small">
               <%= post.posted_at ? post.posted_at.in_time_zone("Asia/Taipei").strftime("%m/%d %H:%M") : "—" %>
             </td>
+            <td class="text-center">
+              <%= button_to (post.commented ? "✅" : "☐"), threads_dashboard_toggle_commented_path(post, keyword: @active_keyword),
+                    method: :patch,
+                    form_class: "d-inline",
+                    class: "btn btn-outline-#{post.commented ? 'success' : 'secondary'} btn-xs",
+                    style: "padding:2px 8px;" %>
+            </td>
             <td>
               <% if post.post_url.present? %>
                 <a href="<%= post.post_url %>" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-xs">
                   留言 →
                 </a>
               <% end %>
+            </td>
+            <td class="text-center">
+              <%= button_to "✕", threads_dashboard_post_path(post, keyword: @active_keyword),
+                    method: :delete,
+                    form_class: "d-inline",
+                    class: "btn btn-outline-danger btn-xs",
+                    style: "padding:2px 8px;",
+                    data: { confirm: "確定要刪除這則貼文嗎？（標記為無正相關，將不再顯示）" } %>
             </td>
           </tr>
         <% end %>
