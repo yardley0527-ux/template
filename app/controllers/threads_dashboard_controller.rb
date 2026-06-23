@@ -10,10 +10,17 @@ class ThreadsDashboardController < ApplicationController
       scope = scope.where(keyword: params[:keyword])
     end
 
+    if params[:commented] == "yes"
+      scope = scope.where(commented: true)
+    elsif params[:commented] == "no"
+      scope = scope.where(commented: false)
+    end
+
     @posts             = scope.limit(60)
     @keyword_categories = ThreadsScraperService::KEYWORD_CATEGORIES
     @keywords           = ThreadsScraperService::KEYWORDS
     @active_keyword     = params[:keyword]
+    @active_commented   = params[:commented]
     @last_fetched       = ThreadsPost.maximum(:updated_at)
     @today_count        = ThreadsPost.today.count
     @analysis           = ThreadsAnalysis.latest_record
@@ -47,13 +54,13 @@ class ThreadsDashboardController < ApplicationController
   def toggle_commented
     post = ThreadsPost.find(params[:id])
     post.update!(commented: !post.commented)
-    redirect_to threads_dashboard_path(keyword: params[:keyword])
+    redirect_to threads_dashboard_path(keyword: params[:keyword], commented: params[:commented])
   end
 
   def destroy_post
     post = ThreadsPost.find(params[:id])
     post.update!(hidden: true)
-    redirect_to threads_dashboard_path(keyword: params[:keyword]), notice: "已刪除該則貼文（無正相關）"
+    redirect_to threads_dashboard_path(keyword: params[:keyword], commented: params[:commented]), notice: "已刪除該則貼文（無正相關）"
   end
 
   def hidden_posts

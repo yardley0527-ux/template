@@ -188,7 +188,7 @@
   <div class="card-body py-2 px-3">
 
     <div class="mb-2">
-      <%= link_to "全部", threads_dashboard_path,
+      <%= link_to "全部", threads_dashboard_path(commented: @active_commented),
             class: "btn btn-sm #{@active_keyword.blank? ? 'btn-dark' : 'btn-outline-secondary'}" %>
     </div>
 
@@ -198,10 +198,22 @@
         <span style="display:inline-block; background:<%= color %>; color:#fff; font-size:0.7rem; font-weight:600; padding:1px 7px; border-radius:3px; margin-right:4px; vertical-align:middle; white-space:nowrap;"><%= category %></span>
         <% kws.each do |kw| %>
           <% active = @active_keyword == kw %>
-          <%= link_to kw, threads_dashboard_path(keyword: kw), style: "display:inline-block; margin:2px 3px 2px 0; padding:1px 9px; font-size:0.82rem; border-radius:4px; text-decoration:none; vertical-align:middle; white-space:nowrap; #{active ? "background:#{color}; color:#fff; border:1px solid #{color};" : "background:#fff; color:#333; border:1px solid #ccc;"}" %>
+          <%= link_to kw, threads_dashboard_path(keyword: kw, commented: @active_commented), style: "display:inline-block; margin:2px 3px 2px 0; padding:1px 9px; font-size:0.82rem; border-radius:4px; text-decoration:none; vertical-align:middle; white-space:nowrap; #{active ? "background:#{color}; color:#fff; border:1px solid #{color};" : "background:#fff; color:#333; border:1px solid #ccc;"}" %>
         <% end %>
       </div>
     <% end %>
+
+    <hr class="my-2">
+
+    <div class="d-flex align-items-center gap-2">
+      <span class="text-muted small">是否留言：</span>
+      <%= link_to "全部", threads_dashboard_path(keyword: @active_keyword),
+            class: "btn btn-sm #{@active_commented.blank? ? 'btn-dark' : 'btn-outline-secondary'}" %>
+      <%= link_to "☐ 未留言", threads_dashboard_path(keyword: @active_keyword, commented: "no"),
+            class: "btn btn-sm #{@active_commented == 'no' ? 'btn-dark' : 'btn-outline-secondary'}" %>
+      <%= link_to "✅ 已留言", threads_dashboard_path(keyword: @active_keyword, commented: "yes"),
+            class: "btn btn-sm #{@active_commented == 'yes' ? 'btn-dark' : 'btn-outline-secondary'}" %>
+    </div>
 
   </div>
 </div>
@@ -250,7 +262,7 @@
               <%= post.posted_at ? post.posted_at.in_time_zone("Asia/Taipei").strftime("%m/%d %H:%M") : "—" %>
             </td>
             <td class="text-center">
-              <%= button_to (post.commented ? "✅" : "☐"), threads_dashboard_toggle_commented_path(post, keyword: @active_keyword),
+              <%= button_to (post.commented ? "✅" : "☐"), threads_dashboard_toggle_commented_path(post, keyword: @active_keyword, commented: @active_commented),
                     method: :patch,
                     form_class: "d-inline",
                     class: "btn btn-outline-#{post.commented ? 'success' : 'secondary'} btn-xs",
@@ -264,7 +276,7 @@
               <% end %>
             </td>
             <td class="text-center">
-              <%= button_to "✕", threads_dashboard_post_path(post, keyword: @active_keyword),
+              <%= button_to "✕", threads_dashboard_post_path(post, keyword: @active_keyword, commented: @active_commented),
                     method: :delete,
                     form: { class: "d-inline", data: { confirm: "確定要刪除這則貼文嗎？（標記為無正相關，將不再顯示）" } },
                     class: "btn btn-outline-danger btn-xs",
