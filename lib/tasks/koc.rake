@@ -22,7 +22,7 @@ namespace :koc do
 
         entry = stats_by_username[username] ||= {
           ig_full_name: nil, ig_user_id: nil, post_count: 0,
-          max_likes: nil, max_video_views: 0, has_paid_partnership: false,
+          max_likes: nil, max_video_views: 0, max_video_views_url: nil, has_paid_partnership: false,
           last_post_at: nil, last_post_url: nil
         }
 
@@ -30,7 +30,10 @@ namespace :koc do
         entry[:ig_user_id] = row["ownerId"].presence || entry[:ig_user_id]
         entry[:post_count] += 1
         entry[:max_likes] = [entry[:max_likes] || 0, likes || 0].max if likes
-        entry[:max_video_views] = [entry[:max_video_views], video_views].max
+        if video_views >= entry[:max_video_views]
+          entry[:max_video_views] = video_views
+          entry[:max_video_views_url] = row["url"]
+        end
         entry[:has_paid_partnership] ||= paid
 
         if timestamp && (entry[:last_post_at].nil? || timestamp > entry[:last_post_at])
@@ -62,6 +65,7 @@ namespace :koc do
       koc.post_count = stats[:post_count] || 0
       koc.max_likes = stats[:max_likes]
       koc.max_video_views = stats[:max_video_views]
+      koc.max_video_views_url = stats[:max_video_views_url]
       koc.has_paid_partnership = stats[:has_paid_partnership] || false
       koc.last_post_at = stats[:last_post_at]
       koc.last_post_url = stats[:last_post_url]
@@ -82,6 +86,7 @@ namespace :koc do
       koc.post_count = stats[:post_count]
       koc.max_likes = stats[:max_likes]
       koc.max_video_views = stats[:max_video_views]
+      koc.max_video_views_url = stats[:max_video_views_url]
       koc.has_paid_partnership = stats[:has_paid_partnership]
       koc.last_post_at = stats[:last_post_at]
       koc.last_post_url = stats[:last_post_url]

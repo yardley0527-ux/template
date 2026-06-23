@@ -123,7 +123,13 @@
                 <% end %>
               </td>
               <td class="text-end"><%= fmt_num(koc.post_count) %></td>
-              <td class="text-end"><%= fmt_num(koc.max_video_views) %></td>
+              <td class="text-end">
+                <% if koc.max_video_views.present? && koc.max_video_views.positive? && koc.max_video_views_url.present? %>
+                  <%= link_to fmt_num(koc.max_video_views), koc.max_video_views_url, target: "_blank", rel: "noopener" %>
+                <% else %>
+                  <%= fmt_num(koc.max_video_views) %>
+                <% end %>
+              </td>
               <td class="text-end"><%= fmt_num(koc.max_likes) %></td>
               <td>
                 <% if koc.last_post_at %>
