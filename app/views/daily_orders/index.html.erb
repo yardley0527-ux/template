@@ -35,16 +35,16 @@ end %>
       <span class="badge bg-secondary"><%= rows.size %></span>
     </div>
     <div class="card-body p-0 table-responsive">
-      <table class="table align-middle mb-0" style="font-size:0.86rem;">
+      <table class="table align-middle mb-0" style="font-size:0.86rem; table-layout:fixed; width:100%;">
         <thead style="background-color:#4a4a4a; color:white;">
           <tr>
-            <th class="ps-3">訂單號碼</th>
-            <th>姓名</th>
-            <th style="width:160px;">IG</th>
-            <th class="text-end" style="width:110px;">消費金額</th>
-            <th style="width:220px;">是否購買過同產品</th>
-            <th style="width:220px;">健康資料</th>
-            <th class="text-center" style="width:110px;">追蹤 Chloe IG</th>
+            <th class="ps-3" style="width:13%;">訂單號碼</th>
+            <th style="width:9%;">姓名</th>
+            <th style="width:11%;">IG</th>
+            <th class="text-end" style="width:9%;">消費金額</th>
+            <th style="width:26%;">是否購買過同產品</th>
+            <th style="width:24%;">健康資料</th>
+            <th class="text-center" style="width:8%;">追蹤 Chloe IG</th>
           </tr>
         </thead>
         <tbody>
@@ -89,7 +89,11 @@ end %>
                   </div>
                 <% end %>
                 <% if row.health_profile.blank? && row.health_tags.blank? %>
-                  <span class="text-muted small">—</span>
+                  <% if row.shopline_customer_id %>
+                    <%= link_to "+ 填寫健康資料", edit_customer_path(row.shopline_customer_id, section: "health"), target: "_blank", class: "small text-decoration-none" %>
+                  <% else %>
+                    <span class="text-muted small">—</span>
+                  <% end %>
                 <% end %>
               </td>
               <td class="text-center">

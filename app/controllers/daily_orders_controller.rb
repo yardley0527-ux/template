@@ -11,17 +11,17 @@ class DailyOrdersController < ApplicationController
   OrderRow = Struct.new(
     :order_number, :customer_name, :ig_account, :email, :order_total, :order_date,
     :is_new_customer, :membership_level, :products, :health_profile, :health_tags,
-    :follows_chloe_ig,
+    :follows_chloe_ig, :shopline_customer_id,
     keyword_init: true
   )
 
   def index
-    @date = parse_date(params[:date]) || Date.today
+    @date = parse_date(params[:date]) || Date.yesterday
     @groups = build_groups(@date)
   end
 
   def export
-    @date = parse_date(params[:date]) || Date.today
+    @date = parse_date(params[:date]) || Date.yesterday
     groups = build_groups(@date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
@@ -93,7 +93,8 @@ class DailyOrdersController < ApplicationController
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
 
     rows = raw_orders.map do |o|
-      profile = customers_by_email[o.email_val]&.customer_profile
+      customer = customers_by_email[o.email_val]
+      profile  = customer&.customer_profile
 
       products = Array(o.product_names_arr).compact.map do |name|
         prior_date = prior_product_dates[[o.email_val, name]]
@@ -112,7 +113,8 @@ class DailyOrdersController < ApplicationController
         products: products,
         health_profile: profile&.health_profile,
         health_tags: profile&.health_tags || [],
-        follows_chloe_ig: profile&.follows_chloe_ig || false
+        follows_chloe_ig: profile&.follows_chloe_ig || false,
+        shopline_customer_id: customer&.id
       )
     end
 
