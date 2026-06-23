@@ -84,7 +84,7 @@
       <% dist = @combo_data[:series_count_dist] %>
       <% total = @combo_data[:total_customers].to_f %>
       <% dist.each do |row| %>
-        <% n = row["n"].to_i; cnt = row["customer_count"].to_i; pct = (cnt / total * 100).round(1) %>
+        <% n = row["n"].to_i; cnt = row["customer_count"].to_i; pct = total > 0 ? (cnt / total * 100).round(1) : 0 %>
         <div class="col-6 col-md-3 col-lg-2">
           <div class="card border-0 shadow-sm text-center py-3 h-100"
                style="border-top: 3px solid <%= n == 1 ? '#dc2626' : n <= 3 ? '#d97706' : '#16a34a' %> !important;">
@@ -105,7 +105,7 @@
         <% only_one = dist.find { |r| r["n"].to_i == 1 }&.dig("customer_count").to_i %>
         <% two_plus = dist.select { |r| r["n"].to_i >= 2 }.sum { |r| r["customer_count"].to_i } %>
         <ul class="mb-0 small" style="color:#78350f;">
-          <li><strong><%= only_one %> 人（<%= (only_one / total * 100).round %>%）只買過 1 種系列</strong>，是定期購最直接的切入點——先穩定他們的回購再做交叉推薦。</li>
+          <li><strong><%= only_one %> 人（<%= total > 0 ? (only_one / total * 100).round : 0 %>%）只買過 1 種系列</strong>，是定期購最直接的切入點——先穩定他們的回購再做交叉推薦。</li>
           <li><strong><%= two_plus %> 人已同時購買 2 種以上</strong>，這群人消費習慣穩定，定期購搭配方案接受度會更高。</li>
           <li>買 3 種以上的客人共 <%= dist.select { |r| r["n"].to_i >= 3 }.sum { |r| r["customer_count"].to_i } %> 人，屬於高黏著度核心客群，可優先推「季訂 82 折」最優惠方案。</li>
         </ul>
@@ -135,7 +135,7 @@
           <tbody>
             <% @combo_data[:top_pairs].each_with_index do |row, i| %>
               <% s1 = row["s1"]; s2 = row["s2"]; cnt = row["pair_count"].to_i %>
-              <% pct = (cnt / total * 100).round(1) %>
+              <% pct = total > 0 ? (cnt / total * 100).round(1) : 0 %>
               <% is_top3 = i < 3 %>
               <tr <%= is_top3 ? 'style="background:#faf5ff;"' : '' %>>
                 <td class="ps-3 text-muted fw-semibold"><%= i + 1 %></td>
