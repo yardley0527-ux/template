@@ -11,9 +11,12 @@
         <% end %>
       </p>
     </div>
-    <%= button_to "🔄 更新資料", threads_dashboard_refresh_path, method: :post,
-          class: "btn btn-primary btn-sm",
-          data: { confirm: "將呼叫 API 爬取最新資料並執行 AI 分析，約需 60–120 秒，確認繼續？" } %>
+    <div class="d-flex gap-2">
+      <%= link_to "🗑 已刪除貼文", threads_dashboard_hidden_path, class: "btn btn-outline-secondary btn-sm" %>
+      <%= button_to "🔄 更新資料", threads_dashboard_refresh_path, method: :post,
+            class: "btn btn-primary btn-sm",
+            form: { data: { confirm: "將呼叫 API 爬取最新資料並執行 AI 分析，約需 60–120 秒，確認繼續？" } } %>
+    </div>
   </div>
 </div>
 
@@ -211,12 +214,12 @@
         <tr>
           <th class="ps-3" style="width:80px;">關鍵字</th>
           <th style="width:120px;">作者</th>
-          <th>內容</th>
+          <th style="width:420px;">內容</th>
           <th class="text-center" style="width:70px;">❤️ 按讚</th>
           <th class="text-center" style="width:70px;">💬 留言</th>
           <th class="text-center" style="width:70px;">🔁 轉貼</th>
           <th class="text-center" style="width:90px;">發文時間</th>
-          <th class="text-center" style="width:70px;">是否留言</th>
+          <th class="text-center" style="width:60px;">是否留言</th>
           <th style="width:70px;"></th>
           <th class="text-center" style="width:40px;"></th>
         </tr>
@@ -263,10 +266,9 @@
             <td class="text-center">
               <%= button_to "✕", threads_dashboard_post_path(post, keyword: @active_keyword),
                     method: :delete,
-                    form_class: "d-inline",
+                    form: { class: "d-inline", data: { confirm: "確定要刪除這則貼文嗎？（標記為無正相關，將不再顯示）" } },
                     class: "btn btn-outline-danger btn-xs",
-                    style: "padding:2px 8px;",
-                    data: { confirm: "確定要刪除這則貼文嗎？（標記為無正相關，將不再顯示）" } %>
+                    style: "padding:2px 8px;" %>
             </td>
           </tr>
         <% end %>

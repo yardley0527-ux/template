@@ -56,6 +56,16 @@ class ThreadsDashboardController < ApplicationController
     redirect_to threads_dashboard_path(keyword: params[:keyword]), notice: "已刪除該則貼文（無正相關）"
   end
 
+  def hidden_posts
+    @posts = ThreadsPost.where(hidden: true).order(updated_at: :desc).limit(100)
+  end
+
+  def restore_post
+    post = ThreadsPost.find(params[:id])
+    post.update!(hidden: false)
+    redirect_to threads_dashboard_hidden_path, notice: "已復原該則貼文"
+  end
+
   def test_api
     require 'net/http'
     require 'json'
