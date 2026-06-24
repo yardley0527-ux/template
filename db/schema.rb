@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_24_043633) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_24_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -317,6 +317,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_24_043633) do
     t.index ["direction"], name: "index_membership_level_changes_on_direction"
     t.index ["import_run_id"], name: "index_membership_level_changes_on_import_run_id"
     t.index ["shopline_id"], name: "index_membership_level_changes_on_shopline_id"
+  end
+
+  create_table "omnipotent_notification_statuses", force: :cascade do |t|
+    t.string "email", null: false
+    t.date "reference_date", null: false
+    t.string "status", default: "未通知", null: false
+    t.datetime "notified_at"
+    t.text "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email", "reference_date"], name: "idx_omni_notif_email_date", unique: true
+    t.index ["status"], name: "index_omnipotent_notification_statuses_on_status"
   end
 
   create_table "order_gift_records", force: :cascade do |t|

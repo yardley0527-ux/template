@@ -1,36 +1,38 @@
 <%# locals: rows %>
 <div class="table-responsive" data-paginate="true" data-page-size="25">
-  <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+  <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
     <thead class="table-light">
       <tr>
-        <th>#</th>
-        <th>姓名</th>
-        <th>卡別</th>
-        <th>購買紀錄</th>
-        <th>IG</th>
+        <th style="width:3%">#</th>
+        <th style="width:14%">姓名 / 卡別</th>
+        <th style="width:12%">客戶類型</th>
+        <th style="width:18%">購買紀錄</th>
+        <th style="width:10%">IG</th>
       </tr>
     </thead>
     <tbody>
       <% rows.each_with_index do |r, i| %>
-        <% c = r[:customer] %>
+        <% c = r[:customer]; ct = r[:customer_type] %>
         <tr>
           <td><span class="badge bg-light text-dark">#<%= i + 1 %></span></td>
           <td>
             <%= link_to c.full_name, customer_path(c.id), target: "_blank",
-                  class: "fw-semibold text-decoration-none" %>
+                  class: "fw-semibold text-decoration-none d-block" %>
+            <span class="text-muted small"><%= c.membership_level %></span>
           </td>
-          <td><span class="text-muted small"><%= c.membership_level %></span></td>
           <td>
-            <div class="fw-semibold">買過 <%= r[:order_count] %> 次．NT$<%= number_with_delimiter(r[:total_spend].to_i) %></div>
+            <span class="fw-semibold small" style="color:<%= ct[:color] %>;"><%= ct[:emoji] %> <%= ct[:label] %></span>
+            <div class="text-muted small">累計 <%= r[:total_bottles] %> 瓶・<%= r[:order_count] %> 次</div>
+          </td>
+          <td>
+            <div class="fw-semibold">買過 <%= r[:order_count] %> 次・NT$<%= number_with_delimiter(r[:total_spend].to_i) %></div>
             <div class="text-muted small">上次 <%= r[:last_date]&.strftime("%Y/%m/%d") || "-" %></div>
           </td>
           <td>
             <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>
               <% ig = c.instagram_account.gsub('@', '').strip %>
               <a href="https://instagram.com/<%= ig %>" target="_blank"
-                 class="text-decoration-none small">
-                @<%= ig %>
-              </a>
+                 class="text-decoration-none small d-block">@<%= ig %></a>
             <% else %>
               <span class="text-muted small">—</span>
             <% end %>

@@ -1,20 +1,22 @@
 <%# locals: rows %>
 <div class="table-responsive" data-paginate="true" data-page-size="25">
-  <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+  <table class="table table-hover align-middle mb-0" style="font-size: 0.85rem;">
     <thead class="table-light">
       <tr>
-        <th>#</th>
-        <th>姓名</th>
-        <th>卡別</th>
-        <th>上次購買</th>
-        <th>喝完日 / 提醒日</th>
-        <th>全能累計</th>
-        <th>IG</th>
+        <th style="width:3%">#</th>
+        <th style="width:12%">姓名 / 卡別</th>
+        <th style="width:10%">客戶類型</th>
+        <th style="width:15%">上次購買</th>
+        <th style="width:14%">吃完日 / 提醒日</th>
+        <th style="width:12%">通知狀態</th>
+        <th style="width:10%">IG</th>
       </tr>
     </thead>
     <tbody>
       <% rows.each_with_index do |r, i| %>
         <% c = r[:customer]; dl = r[:days_left]; dur = r[:days_until_reminder] %>
+        <% ct = r[:customer_type]; notif = r[:notification] %>
+        <% current_status = notif&.status || "未通知" %>
         <tr>
           <td>
             <span class="badge <%= i < 3 ? 'bg-danger' : i < 8 ? 'bg-warning text-dark' : 'bg-light text-dark' %>">
@@ -23,42 +25,64 @@
           </td>
           <td>
             <%= link_to c.full_name, customer_path(c.id), target: "_blank",
-                  class: "fw-semibold text-decoration-none" %>
+                  class: "fw-semibold text-decoration-none d-block" %>
+            <span class="text-muted small"><%= c.membership_level %></span>
           </td>
-          <td><span class="text-muted small"><%= c.membership_level %></span></td>
+          <td>
+            <span class="fw-semibold small" style="color:<%= ct[:color] %>;"><%= ct[:emoji] %> <%= ct[:label] %></span>
+            <div class="text-muted small">累計 <%= r[:total_omni_bottles] %> 瓶・<%= r[:omni_count] %> 次</div>
+          </td>
           <td>
             <div class="fw-semibold">
-              <%= r[:bought_date]&.strftime("%m/%d") || "-" %> 買 <%= r[:bottles] %> 瓶
-              <% if r[:from_broadcast] %>
-                <span class="badge bg-warning text-dark ms-1" style="font-size:0.7rem;">直播</span>
+              <%= r[:bought_date]&.strftime("%m/%d") %> 買 <%= r[:bottles] %> 瓶
+            </div>
+            <div class="small">
+              <% se = r[:source_event] %>
+              <% if se == "一般購買" %>
+                <span class="text-muted"><%= se %></span>
+              <% else %>
+                <span class="badge bg-warning text-dark" style="font-size:0.7rem;"><%= se %></span>
               <% end %>
             </div>
-            <div class="text-muted small">
+            <div class="text-muted small mt-1">
               <% if dl < 0 %>
                 <span class="text-danger fw-semibold">逾期 <%= dl.abs %> 天</span>
               <% elsif dur <= 0 %>
-                <span class="text-warning fw-semibold">提醒中，剩 <%= dl %> 天</span>
+                <span class="text-warning fw-semibold">提醒中，<%= dl %> 天後回購</span>
               <% else %>
                 還有 <%= dur %> 天到提醒日
               <% end %>
             </div>
           </td>
           <td>
-            <div class="small">喝完 <span class="fw-semibold"><%= r[:estimated_finish_date]&.strftime("%m/%d") || "-" %></span></div>
-            <div class="small text-muted">提醒 <%= r[:suggested_reminder_date]&.strftime("%m/%d") || "-" %>・回購 <%= r[:expected_return_date]&.strftime("%m/%d") || "-" %></div>
+            <div class="small">吃完 <strong><%= r[:estimated_finish_date]&.strftime("%m/%d") %></strong></div>
+            <div class="text-muted small">提醒 <%= r[:suggested_reminder_date]&.strftime("%m/%d") %></div>
+            <div class="text-muted small">回購 <%= r[:expected_return_date]&.strftime("%m/%d") %></div>
           </td>
           <td>
-            <% n = r[:omni_count] %>
-            <% color, weight = if n >= 6 then ['#1d4ed8','fw-bold'] elsif n >= 3 then ['#0369a1','fw-semibold'] elsif n == 2 then ['#b45309',''] else ['#9ca3af',''] end %>
-            <span style="color:<%= color %>;" class="<%= weight %> small"><%= n %> 次</span>
+            <% status_colors = { "未通知" => "secondary", "已通知" => "primary", "已回覆" => "success", "暫不需要" => "light" } %>
+            <% status_text_colors = { "暫不需要" => "text-muted" } %>
+            <div class="mb-1">
+              <span class="badge bg-<%= status_colors[current_status] %> <%= status_text_colors[current_status] %>">
+                <%= current_status %>
+              </span>
+            </div>
+            <div class="d-flex flex-wrap gap-1"
+                 data-email="<%= c.email %>"
+                 data-ref-date="<%= r[:bought_date] %>"
+                 data-current="<%= current_status %>">
+              <% (OmnipotentNotificationStatus::STATUSES - [current_status]).each do |s| %>
+                <button class="btn btn-outline-secondary py-0 notif-btn"
+                        style="font-size:0.7rem;"
+                        data-status="<%= s %>"><%= s %></button>
+              <% end %>
+            </div>
           </td>
           <td>
             <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>
               <% ig = c.instagram_account.gsub('@', '').strip %>
               <a href="https://instagram.com/<%= ig %>" target="_blank"
-                 class="text-decoration-none small">
-                @<%= ig %>
-              </a>
+                 class="text-decoration-none small d-block">@<%= ig %></a>
             <% else %>
               <span class="text-muted small">—</span>
             <% end %>
@@ -68,6 +92,56 @@
     </tbody>
   </table>
 </div>
+
+<script>
+(function () {
+  var CSRF       = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  var UPDATE_URL = '<%= omnipotent_restock_update_status_path %>';
+  var STATUS_COLORS = { "未通知": "secondary", "已通知": "primary", "已回覆": "success", "暫不需要": "light" };
+  var ALL_STATUSES  = ["未通知", "已通知", "已回覆", "暫不需要"];
+
+  function applyStatus(container, newStatus) {
+    var email   = container.dataset.email;
+    var refDate = container.dataset.refDate;
+
+    fetch(UPDATE_URL, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ email: email, reference_date: refDate, status: newStatus })
+    })
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      if (!data.success) return;
+      container.dataset.current = newStatus;
+
+      // 更新 badge
+      var badge = container.closest('td').querySelector('.badge');
+      badge.className = 'badge bg-' + (STATUS_COLORS[newStatus] || 'secondary') + (newStatus === '暫不需要' ? ' text-muted' : '');
+      badge.textContent = newStatus;
+
+      // 重繪按鈕（排除目前狀態）
+      container.innerHTML = '';
+      ALL_STATUSES.filter(function (s) { return s !== newStatus; }).forEach(function (s) {
+        var b = document.createElement('button');
+        b.className = 'btn btn-outline-secondary py-0 notif-btn';
+        b.style.fontSize = '0.7rem';
+        b.dataset.status = s;
+        b.textContent = s;
+        container.appendChild(b);
+      });
+    });
+  }
+
+  // Event delegation — 處理動態新增的按鈕
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.notif-btn');
+    if (!btn) return;
+    var container = btn.closest('[data-email]');
+    if (!container) return;
+    applyStatus(container, btn.dataset.status);
+  });
+})();
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
