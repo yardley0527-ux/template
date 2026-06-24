@@ -14,7 +14,7 @@ class OmnipotentRestockController < ApplicationController
   # 依優先度建議的下一步行動，僅供前台人員發送時參考，不是已建立的系統折扣碼
   NEXT_ACTIONS = {
     overdue:      "🔴 今天致電聯絡，發 85 折碼",
-    restock_soon: "🟠 這週六直播前提醒，發 9 折碼",
+    restock_soon: "🟠 直播前提醒，發 9 折碼",
     not_urgent:   "⚪ 暫不用聯絡",
     loyal:        "🔵 直播前邀請，發 9 折回饋碼"
   }.freeze
