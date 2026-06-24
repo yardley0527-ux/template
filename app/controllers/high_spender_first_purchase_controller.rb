@@ -22,9 +22,12 @@ class HighSpenderFirstPurchaseController < ApplicationController
     @series_options      = analytics.series_options
     @anomaly_alerts      = analytics.anomaly_alerts
 
+    year_start = Date.new(@selected_year.to_i, 1, 1)
+    year_end   = year_start.next_year
+
     scope = CustomerPurchaseSummary
       .where("first_amount >= ?", THRESHOLD)
-      .where("EXTRACT(YEAR FROM first_date) = ?", @selected_year.to_i)
+      .where(first_date: year_start...year_end)
 
     scope = scope.where(first_series: @selected_series) if @selected_series.present?
     scope = scope.where("purchase_count >= 2") if @repurchase_only

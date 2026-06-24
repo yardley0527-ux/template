@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_23_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_24_043633) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -479,9 +479,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_23_120000) do
     t.text "personal_note"
     t.bigint "import_run_id"
     t.string "source_row_hash"
+    t.index "lower(TRIM(BOTH FROM email))", name: "index_shopline_customers_on_lower_trim_email"
     t.index ["email"], name: "index_shopline_customers_on_email", unique: true, where: "(email IS NOT NULL)"
     t.index ["import_run_id"], name: "index_shopline_customers_on_import_run_id"
     t.index ["membership_level"], name: "index_shopline_customers_on_membership_level"
+    t.index ["mobile_phone"], name: "index_shopline_customers_on_mobile_phone"
     t.index ["shopline_id"], name: "index_shopline_customers_on_shopline_id", unique: true
     t.index ["source_row_hash"], name: "index_shopline_customers_on_source_row_hash", unique: true
     t.index ["total_amount"], name: "index_shopline_customers_on_total_amount"

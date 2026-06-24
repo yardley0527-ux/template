@@ -198,7 +198,10 @@ class HighSpenderFirstPurchaseAnalytics
     scope = CustomerPurchaseSummary
       .where("first_amount >= ?", @threshold)
 
-    scope = scope.where("EXTRACT(YEAR FROM first_date) = ?", @year.to_i) if @year.present?
+    if @year.present?
+      year_start = Date.new(@year.to_i, 1, 1)
+      scope = scope.where(first_date: year_start...year_start.next_year)
+    end
     scope = scope.where(first_series: @series) if @series.present?
     scope = scope.where("purchase_count > 1") if @repurchase_only
 
