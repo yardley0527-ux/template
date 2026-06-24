@@ -7,17 +7,13 @@
         <th>姓名</th>
         <th>卡別</th>
         <th>上次購買</th>
-        <th>瓶數</th>
-        <th>預估用完</th>
-        <th><%= show_overdue_badge ? "逾期天數" : "剩餘天數" %></th>
-        <th>建議方案</th>
-        <th>電話</th>
-        <th>IG</th>
+        <th>下一步</th>
+        <th>聯絡方式</th>
       </tr>
     </thead>
     <tbody>
       <% rows.each_with_index do |r, i| %>
-        <% c = r[:customer] %>
+        <% c = r[:customer]; dl = r[:days_left] %>
         <tr>
           <td>
             <span class="badge <%= i < 3 ? 'bg-danger' : i < 8 ? 'bg-warning text-dark' : 'bg-light text-dark' %>">
@@ -29,35 +25,31 @@
                   class: "fw-semibold text-decoration-none" %>
           </td>
           <td><span class="text-muted small"><%= c.membership_level %></span></td>
-          <td><%= r[:bought_date]&.strftime("%m/%d") || "-" %></td>
-          <td class="text-center"><%= r[:bottles] %> 瓶</td>
-          <td><%= r[:runout_date]&.strftime("%m/%d") || "-" %></td>
           <td>
-            <% dl = r[:days_left] %>
-            <% if dl < 0 %>
-              <span class="badge bg-danger">逾期 <%= dl.abs %> 天</span>
-            <% elsif dl <= 7 %>
-              <span class="badge bg-warning text-dark">剩 <%= dl %> 天</span>
-            <% else %>
-              <span class="text-muted small">剩 <%= dl %> 天</span>
-            <% end %>
+            <div class="fw-semibold"><%= r[:bought_date]&.strftime("%m/%d") || "-" %> 買 <%= r[:bottles] %> 瓶</div>
+            <div class="text-muted small">
+              預估 <%= r[:runout_date]&.strftime("%m/%d") || "-" %> 用完．
+              <% if dl < 0 %>
+                <span class="text-danger fw-semibold">已逾期 <%= dl.abs %> 天</span>
+              <% elsif dl <= 7 %>
+                <span class="text-warning fw-semibold">剩 <%= dl %> 天</span>
+              <% else %>
+                剩 <%= dl %> 天
+              <% end %>
+            </div>
           </td>
-          <td><span class="text-muted small"><%= r[:suggested_offer] %></span></td>
+          <td class="fw-semibold"><%= r[:next_action] %></td>
           <td>
             <% if c.mobile_phone.present? %>
-              <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
+              <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small d-block">
                 📞 <%= c.mobile_phone %>
               </a>
             <% end %>
-          </td>
-          <td>
             <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>
               <a href="https://instagram.com/<%= c.instagram_account.gsub('@','').strip %>"
-                 target="_blank" class="text-decoration-none text-purple small">
+                 target="_blank" class="text-decoration-none text-purple small d-block">
                 @<%= c.instagram_account.gsub('@','').strip %>
               </a>
-            <% elsif c.instagram_account == "無ig帳號" %>
-              <span class="text-muted small">—</span>
             <% end %>
           </td>
         </tr>

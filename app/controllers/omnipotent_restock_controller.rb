@@ -11,12 +11,12 @@ class OmnipotentRestockController < ApplicationController
     "一般會員" => 1
   }.freeze
 
-  # 依優先度建議的折扣方案，僅供前台人員發送時參考，不是已建立的系統折扣碼
-  SUGGESTED_OFFERS = {
-    overdue:      "急需補貨．建議 85 折",
-    restock_soon: "即將用完．建議 9 折",
-    not_urgent:   "暫不急．建議 95 折",
-    loyal:        "常購回饋．建議 9 折"
+  # 依優先度建議的下一步行動，僅供前台人員發送時參考，不是已建立的系統折扣碼
+  NEXT_ACTIONS = {
+    overdue:      "🔴 今天致電聯絡，發 85 折碼",
+    restock_soon: "🟠 這週六直播前提醒，發 9 折碼",
+    not_urgent:   "⚪ 暫不用聯絡",
+    loyal:        "🔵 直播前邀請，發 9 折回饋碼"
   }.freeze
 
   before_action :build_restock_data
@@ -83,13 +83,13 @@ class OmnipotentRestockController < ApplicationController
       days_left    = (runout_date - today).to_i
 
       {
-        customer:       c,
-        product_name:   order[:product_name],
-        bought_date:    order[:order_date],
-        bottles:        bottles,
-        runout_date:    runout_date,
-        days_left:      days_left,
-        suggested_offer: suggested_offer_for(days_left)
+        customer:     c,
+        product_name: order[:product_name],
+        bought_date:  order[:order_date],
+        bottles:      bottles,
+        runout_date:  runout_date,
+        days_left:    days_left,
+        next_action:  next_action_for(days_left)
       }
     end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
 
@@ -130,22 +130,22 @@ class OmnipotentRestockController < ApplicationController
 
     @loyal_buyers = customers.map do |c|
       {
-        customer:        c,
-        order_count:     order_counts[c.email] || 0,
-        total_spend:     amounts[c.email] || 0,
-        last_date:       last_dates[c.email],
-        suggested_offer: SUGGESTED_OFFERS[:loyal]
+        customer:    c,
+        order_count: order_counts[c.email] || 0,
+        total_spend: amounts[c.email] || 0,
+        last_date:   last_dates[c.email],
+        next_action: NEXT_ACTIONS[:loyal]
       }
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:order_count], -r[:total_spend]] }
   end
 
-  def suggested_offer_for(days_left)
+  def next_action_for(days_left)
     if days_left <= 7
-      SUGGESTED_OFFERS[:overdue]
+      NEXT_ACTIONS[:overdue]
     elsif days_left <= 21
-      SUGGESTED_OFFERS[:restock_soon]
+      NEXT_ACTIONS[:restock_soon]
     else
-      SUGGESTED_OFFERS[:not_urgent]
+      NEXT_ACTIONS[:not_urgent]
     end
   end
 
@@ -158,7 +158,7 @@ class OmnipotentRestockController < ApplicationController
   def restock_csv(rows = @restock_list)
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["優先度", "姓名", "卡別", "電話", "IG", "上次購買", "瓶數", "預估用完日", "剩餘天數", "建議方案"]
+      csv << ["優先度", "姓名", "卡別", "電話", "IG", "上次購買", "瓶數", "預估用完日", "剩餘天數", "下一步"]
       rows.each do |r|
         priority = r[:days_left] <= 7 ? "急需補貨" : r[:days_left] <= 21 ? "即將用完" : "暫不急"
         csv << row_data(priority, r)
@@ -170,17 +170,17 @@ class OmnipotentRestockController < ApplicationController
     c = r[:customer]
     [priority, c.full_name, c.membership_level, c.mobile_phone,
      c.instagram_account, r[:bought_date]&.strftime("%Y/%m/%d"),
-     r[:bottles], r[:runout_date]&.strftime("%Y/%m/%d"), r[:days_left], r[:suggested_offer]]
+     r[:bottles], r[:runout_date]&.strftime("%Y/%m/%d"), r[:days_left], r[:next_action]]
   end
 
   def loyal_csv
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["姓名", "卡別", "電話", "IG", "全能購買次數", "全能累計消費(NT$)", "上次購買", "建議方案"]
+      csv << ["姓名", "卡別", "電話", "IG", "全能購買次數", "全能累計消費(NT$)", "上次購買", "下一步"]
       @loyal_buyers.each do |r|
         c = r[:customer]
         csv << [c.full_name, c.membership_level, c.mobile_phone, c.instagram_account,
-                 r[:order_count], r[:total_spend].to_i, r[:last_date]&.strftime("%Y/%m/%d"), r[:suggested_offer]]
+                 r[:order_count], r[:total_spend].to_i, r[:last_date]&.strftime("%Y/%m/%d"), r[:next_action]]
       end
     end
   end

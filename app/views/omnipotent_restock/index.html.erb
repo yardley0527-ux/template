@@ -14,32 +14,40 @@
   </div>
 </div>
 
-<%# ── 統計卡片 ── %>
+<%# ── 今天該做的事：點卡片可跳到對應名單 ── %>
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm text-center py-4" style="border-left: 4px solid #dc3545 !important;">
-      <div class="text-danger fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">急需補貨</div>
+  <div class="col-md-3">
+    <a href="#overdue" class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block" style="border-left: 4px solid #dc3545 !important;">
+      <div class="text-danger fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">🔴 急需補貨</div>
       <div class="fw-bold text-danger" style="font-size: 2.2rem; line-height: 1;"><%= @overdue.size %></div>
-      <div class="text-muted small mt-1">已用完或剩 ≤ 7 天</div>
-    </div>
+      <div class="text-dark small mt-1 px-2">今天致電聯絡，發 85 折碼</div>
+    </a>
   </div>
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm text-center py-4" style="border-left: 4px solid #f59e0b !important;">
-      <div class="fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px; color: #b45309;">即將用完</div>
+  <div class="col-md-3">
+    <a href="#restock-soon" class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block" style="border-left: 4px solid #f59e0b !important;">
+      <div class="fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px; color: #b45309;">🟠 即將用完</div>
       <div class="fw-bold" style="font-size: 2.2rem; line-height: 1; color: #b45309;"><%= @restock_soon.size %></div>
-      <div class="text-muted small mt-1">剩 8–21 天</div>
-    </div>
+      <div class="text-dark small mt-1 px-2">這週六直播前提醒，發 9 折碼</div>
+    </a>
   </div>
-  <div class="col-md-4">
-    <div class="card border-0 shadow-sm text-center py-4" style="border-left: 4px solid #9ca3af !important;">
-      <div class="text-muted fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">暫不急</div>
+  <div class="col-md-3">
+    <a href="#not-urgent" class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block" style="border-left: 4px solid #9ca3af !important;">
+      <div class="text-muted fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">⚪ 暫不急</div>
       <div class="fw-bold text-muted" style="font-size: 2.2rem; line-height: 1;"><%= @not_urgent.size %></div>
-      <div class="text-muted small mt-1">剩 22 天以上</div>
-    </div>
+      <div class="text-dark small mt-1 px-2">庫存還夠，先不用聯絡</div>
+    </a>
+  </div>
+  <div class="col-md-3">
+    <a href="#loyal" class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block" style="border-left: 4px solid #1d4ed8 !important;">
+      <div class="fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px; color: #1d4ed8;">🔵 常購名單</div>
+      <div class="fw-bold" style="font-size: 2.2rem; line-height: 1; color: #1d4ed8;"><%= @loyal_buyers.size %></div>
+      <div class="text-dark small mt-1 px-2">直播前都該邀請，發 9 折回饋碼</div>
+    </a>
   </div>
 </div>
 
 <%# ── 急需補貨 ── %>
+<div id="overdue"></div>
 <% if @overdue.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-danger ps-3">
@@ -59,6 +67,7 @@
 <% end %>
 
 <%# ── 即將用完（禮拜六主要推廣對象）── %>
+<div id="restock-soon"></div>
 <% if @restock_soon.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 ps-3" style="border-color: #f59e0b;">
@@ -78,6 +87,7 @@
 <% end %>
 
 <%# ── 暫不急 ── %>
+<div id="not-urgent"></div>
 <% if @not_urgent.any? %>
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-secondary ps-3">
@@ -97,6 +107,7 @@
 <% end %>
 
 <%# ── 常購名單（每場直播前都該邀請，不受補貨時間影響）── %>
+<div id="loyal"></div>
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
   <div class="border-start border-3 border-primary ps-3">
     <h5 class="fw-bold mb-0 text-primary">常購名單</h5>
