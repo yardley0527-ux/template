@@ -42,19 +42,13 @@ class OmnipotentRestockController < ApplicationController
   private
 
   def build_restock_data
-    # 從 OMNI_EVENTS 自動取最近一檔全能場次
-    past_omni = OmnipotentAnalysisController::OMNI_EVENTS.select { |e| e[:date] <= Date.today }
-    return (@restock_list = @overdue = @restock_soon = @not_urgent = []) if past_omni.empty?
+    today       = Date.today
+    since_date  = today - 365  # 只追蹤近一年內有購買的客戶
 
-    last_event   = past_omni.last
-    @event_date  = last_event[:date]
-    @event_label = "#{last_event[:year]}/#{last_event[:label]}"
-    event_range  = @event_date.beginning_of_day..(@event_date + 3).end_of_day
-
-    # 上一檔全能購買（每人取最新一筆）
+    # 每位客戶最近一次全能購買
     orders_raw = ShoplineOrder
       .where(OMNIPOTENT)
-      .where(order_date: event_range)
+      .where("order_date >= ?", since_date.beginning_of_day)
       .where.not(email: [nil, ""])
       .order(:email, order_date: :desc)
       .pluck(:email, :product_name, :order_date)
@@ -64,22 +58,16 @@ class OmnipotentRestockController < ApplicationController
       last_order_by_email[email] ||= { product_name: product_name, order_date: order_date.to_date }
     end
 
-    # 排除已回購
-    repurchased = ShoplineOrder
-      .where(OMNIPOTENT)
-      .where("order_date > ?", (@event_date + 3).end_of_day)
-      .where.not(email: [nil, ""])
-      .distinct.pluck(:email)
+    return (@restock_list = @overdue = @restock_soon = @not_urgent = []) if last_order_by_email.empty?
 
-    eligible_emails = last_order_by_email.keys - repurchased
-    today = Date.today
+    @event_label = "近一年全客戶追蹤"
 
     customers = ShoplineCustomer
-      .where(email: eligible_emails)
+      .where(email: last_order_by_email.keys)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
     @restock_list = customers.map do |c|
-      order        = last_order_by_email[c.email]
+      order                = last_order_by_email[c.email]
       bottles              = extract_bottles(order[:product_name])
       expected_return_date = order[:order_date] + expected_days(bottles)
       days_left            = (expected_return_date - today).to_i
