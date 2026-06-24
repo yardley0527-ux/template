@@ -1,4 +1,4 @@
-<%# locals: rows, show_overdue_badge %>
+<%# locals: rows %>
 <div class="table-responsive" data-paginate="true" data-page-size="25">
   <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
     <thead class="table-light">
@@ -7,8 +7,7 @@
         <th>姓名</th>
         <th>卡別</th>
         <th>上次購買</th>
-        <th>下一步</th>
-        <th>聯絡方式</th>
+        <th>IG</th>
       </tr>
     </thead>
     <tbody>
@@ -38,18 +37,15 @@
               <% end %>
             </div>
           </td>
-          <td class="fw-semibold"><%= r[:next_action] %></td>
           <td>
-            <% if c.mobile_phone.present? %>
-              <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small d-block">
-                📞 <%= c.mobile_phone %>
-              </a>
-            <% end %>
             <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>
-              <a href="https://instagram.com/<%= c.instagram_account.gsub('@','').strip %>"
-                 target="_blank" class="text-decoration-none text-purple small d-block">
-                @<%= c.instagram_account.gsub('@','').strip %>
+              <% ig = c.instagram_account.gsub('@', '').strip %>
+              <a href="https://instagram.com/<%= ig %>" target="_blank"
+                 class="text-decoration-none small">
+                @<%= ig %>
               </a>
+            <% else %>
+              <span class="text-muted small">—</span>
             <% end %>
           </td>
         </tr>

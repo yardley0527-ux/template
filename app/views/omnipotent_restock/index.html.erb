@@ -9,119 +9,161 @@
         上一檔：<strong><%= @event_label %></strong>．資料隨訂單匯入自動更新，不用手動貼標籤
       </p>
     </div>
-    <%= link_to "⬇ 匯出補貨名單", omnipotent_restock_export_path,
-          class: "btn btn-outline-secondary btn-sm fw-semibold" %>
+    <div class="d-flex gap-2">
+      <%= link_to "⬇ 匯出補貨名單", omnipotent_restock_export_path,
+            class: "btn btn-outline-secondary btn-sm fw-semibold" %>
+      <%= link_to "⬇ 匯出常購名單", omnipotent_restock_export_loyal_path,
+            class: "btn btn-outline-secondary btn-sm fw-semibold" %>
+    </div>
   </div>
 </div>
 
-<%# ── 今天該做的事：點卡片可跳到對應名單 ── %>
-<div class="row g-3 mb-4">
+<%# ── 4 張卡片當 tab 切換 ── %>
+<div class="row g-3 mb-0" role="tablist">
   <div class="col-md-3">
-    <a href="#overdue" class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block" style="border-left: 4px solid #dc3545 !important;">
+    <a href="#tab-overdue" data-toggle="tab" role="tab"
+       class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block restock-tab-card"
+       style="border-left: 4px solid #dc3545 !important; cursor: pointer;">
       <div class="text-danger fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">🔴 急需補貨</div>
       <div class="fw-bold text-danger" style="font-size: 2.2rem; line-height: 1;"><%= @overdue.size %></div>
     </a>
   </div>
   <div class="col-md-3">
-    <a href="#restock-soon" class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block" style="border-left: 4px solid #f59e0b !important;">
+    <a href="#tab-restock-soon" data-toggle="tab" role="tab"
+       class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block restock-tab-card"
+       style="border-left: 4px solid #f59e0b !important; cursor: pointer;">
       <div class="fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px; color: #b45309;">🟠 即將用完</div>
       <div class="fw-bold" style="font-size: 2.2rem; line-height: 1; color: #b45309;"><%= @restock_soon.size %></div>
     </a>
   </div>
   <div class="col-md-3">
-    <a href="#not-urgent" class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block" style="border-left: 4px solid #9ca3af !important;">
+    <a href="#tab-not-urgent" data-toggle="tab" role="tab"
+       class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block restock-tab-card"
+       style="border-left: 4px solid #9ca3af !important; cursor: pointer;">
       <div class="text-muted fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">⚪ 暫不急</div>
       <div class="fw-bold text-muted" style="font-size: 2.2rem; line-height: 1;"><%= @not_urgent.size %></div>
     </a>
   </div>
   <div class="col-md-3">
-    <a href="#loyal" class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block" style="border-left: 4px solid #1d4ed8 !important;">
+    <a href="#tab-loyal" data-toggle="tab" role="tab"
+       class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block restock-tab-card"
+       style="border-left: 4px solid #1d4ed8 !important; cursor: pointer;">
       <div class="fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px; color: #1d4ed8;">🔵 常購名單</div>
       <div class="fw-bold" style="font-size: 2.2rem; line-height: 1; color: #1d4ed8;"><%= @loyal_buyers.size %></div>
     </a>
   </div>
 </div>
 
-<%# ── 急需補貨 ── %>
-<div id="overdue"></div>
-<% if @overdue.any? %>
-  <div class="d-flex align-items-center mb-3">
-    <div class="border-start border-3 border-danger ps-3">
-      <h5 class="fw-bold mb-0 text-danger">緊急補貨</h5>
-      <p class="text-muted small mb-0">已用完或剩 7 天以內，建議優先聯繫</p>
-    </div>
-  </div>
-  <div class="card border-0 shadow-sm mb-5">
-    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #991b1b;">
-      <span class="fw-bold">逾期未回購</span>
-      <span class="badge bg-white text-dark"><%= @overdue.size %> 人</span>
-    </div>
-    <div class="card-body p-0">
-      <%= render 'restock_table', rows: @overdue, show_overdue_badge: true %>
-    </div>
-  </div>
-<% end %>
+<%# ── Tab 內容 ── %>
+<div class="tab-content mt-3">
 
-<%# ── 即將用完（禮拜六主要推廣對象）── %>
-<div id="restock-soon"></div>
-<% if @restock_soon.any? %>
-  <div class="d-flex align-items-center mb-3">
-    <div class="border-start border-3 ps-3" style="border-color: #f59e0b;">
-      <h5 class="fw-bold mb-0" style="color: #b45309;">即將用完（剩 8–21 天）</h5>
-      <p class="text-muted small mb-0">下次直播推廣主要名單，倒數補貨節點到了</p>
+  <div class="tab-pane" id="tab-overdue" role="tabpanel">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #991b1b;">
+        <span class="fw-bold">急需補貨</span>
+        <span class="badge bg-white text-dark"><%= @overdue.size %> 人</span>
+      </div>
+      <div class="card-body p-0">
+        <% if @overdue.any? %>
+          <%= render 'restock_table', rows: @overdue %>
+        <% else %>
+          <p class="text-muted small p-3 mb-0">目前沒有急需補貨的客戶。</p>
+        <% end %>
+      </div>
     </div>
   </div>
-  <div class="card border-0 shadow-sm mb-5">
-    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #d97706;">
-      <span class="fw-bold">即將用完名單</span>
-      <span class="badge bg-white text-dark"><%= @restock_soon.size %> 人</span>
-    </div>
-    <div class="card-body p-0">
-      <%= render 'restock_table', rows: @restock_soon, show_overdue_badge: false %>
-    </div>
-  </div>
-<% end %>
 
-<%# ── 暫不急 ── %>
-<div id="not-urgent"></div>
-<% if @not_urgent.any? %>
-  <div class="d-flex align-items-center mb-3">
-    <div class="border-start border-3 border-secondary ps-3">
-      <h5 class="fw-bold mb-0 text-muted">暫不急（30 天以上）</h5>
-      <p class="text-muted small mb-0">供參考，目前庫存充足</p>
+  <div class="tab-pane" id="tab-restock-soon" role="tabpanel">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #d97706;">
+        <span class="fw-bold">即將用完（剩 8–21 天）</span>
+        <span class="badge bg-white text-dark"><%= @restock_soon.size %> 人</span>
+      </div>
+      <div class="card-body p-0">
+        <% if @restock_soon.any? %>
+          <%= render 'restock_table', rows: @restock_soon %>
+        <% else %>
+          <p class="text-muted small p-3 mb-0">目前沒有即將用完的客戶。</p>
+        <% end %>
+      </div>
     </div>
   </div>
-  <div class="card border-0 shadow-sm mb-5">
-    <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #6b7280;">
-      <span class="fw-bold">暫不急名單</span>
-      <span class="badge bg-white text-dark"><%= @not_urgent.size %> 人</span>
-    </div>
-    <div class="card-body p-0">
-      <%= render 'restock_table', rows: @not_urgent, show_overdue_badge: false %>
-    </div>
-  </div>
-<% end %>
 
-<%# ── 常購名單（每場直播前都該邀請，不受補貨時間影響）── %>
-<div id="loyal"></div>
-<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
-  <div class="border-start border-3 border-primary ps-3">
-    <h5 class="fw-bold mb-0 text-primary">常購名單</h5>
-    <p class="text-muted small mb-0">全能歷史購買 ≥ <%= OmnipotentRestockController::LOYAL_THRESHOLD %> 次，每場直播前都建議邀請</p>
+  <div class="tab-pane" id="tab-not-urgent" role="tabpanel">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #6b7280;">
+        <span class="fw-bold">暫不急（21 天以上）</span>
+        <span class="badge bg-white text-dark"><%= @not_urgent.size %> 人</span>
+      </div>
+      <div class="card-body p-0">
+        <% if @not_urgent.any? %>
+          <%= render 'restock_table', rows: @not_urgent %>
+        <% else %>
+          <p class="text-muted small p-3 mb-0">目前沒有此類客戶。</p>
+        <% end %>
+      </div>
+    </div>
   </div>
-  <%= link_to "⬇ 匯出常購名單", omnipotent_restock_export_loyal_path,
-        class: "btn btn-outline-secondary btn-sm fw-semibold" %>
+
+  <div class="tab-pane" id="tab-loyal" role="tabpanel">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #1d4ed8;">
+        <span class="fw-bold">常購名單（全能歷史購買 ≥ <%= OmnipotentRestockController::LOYAL_THRESHOLD %> 次）</span>
+        <span class="badge bg-white text-dark"><%= @loyal_buyers.size %> 人</span>
+      </div>
+      <div class="card-body p-0">
+        <% if @loyal_buyers.any? %>
+          <%= render 'loyal_table', rows: @loyal_buyers %>
+        <% else %>
+          <p class="text-muted small p-3 mb-0">目前沒有符合常購條件的客戶。</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
 </div>
-<div class="card border-0 shadow-sm mb-5">
-  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #1d4ed8;">
-    <span class="fw-bold">常購名單</span>
-    <span class="badge bg-white text-dark"><%= @loyal_buyers.size %> 人</span>
-  </div>
-  <div class="card-body p-0">
-    <% if @loyal_buyers.any? %>
-      <%= render 'loyal_table', rows: @loyal_buyers %>
-    <% else %>
-      <p class="text-muted small p-3 mb-0">目前沒有符合常購條件的客戶。</p>
-    <% end %>
-  </div>
-</div>
+
+<style>
+.restock-tab-card { transition: box-shadow 0.15s, opacity 0.15s; opacity: 0.75; }
+.restock-tab-card.active { opacity: 1; box-shadow: 0 4px 16px rgba(0,0,0,0.13) !important; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var cards = document.querySelectorAll('.restock-tab-card');
+
+  function activateTab(targetId) {
+    // 更新卡片高亮
+    cards.forEach(function (c) { c.classList.remove('active'); });
+    var activeCard = document.querySelector('.restock-tab-card[href="' + targetId + '"]');
+    if (activeCard) activeCard.classList.add('active');
+
+    // 切換 tab pane
+    document.querySelectorAll('.tab-pane').forEach(function (p) {
+      p.classList.remove('show', 'active');
+    });
+    var pane = document.querySelector(targetId);
+    if (pane) {
+      pane.classList.add('show', 'active');
+      // 觸發該 pane 內的分頁初始化
+      pane.querySelectorAll('[data-paginate="true"]:not([data-paginated])').forEach(function (w) {
+        if (typeof initPaginate === 'function') initPaginate(w);
+      });
+    }
+  }
+
+  cards.forEach(function (card) {
+    card.addEventListener('click', function (e) {
+      e.preventDefault();
+      activateTab(card.getAttribute('href'));
+    });
+  });
+
+  // 預設開啟第一個有資料的 tab
+  var defaultCard = Array.from(cards).find(function (c) {
+    var pane = document.querySelector(c.getAttribute('href'));
+    return pane && pane.querySelector('tbody tr');
+  }) || cards[0];
+  if (defaultCard) activateTab(defaultCard.getAttribute('href'));
+});
+</script>
