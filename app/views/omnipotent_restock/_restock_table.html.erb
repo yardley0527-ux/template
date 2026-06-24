@@ -7,13 +7,14 @@
         <th>姓名</th>
         <th>卡別</th>
         <th>上次購買</th>
+        <th>喝完日 / 提醒日</th>
         <th>全能累計</th>
         <th>IG</th>
       </tr>
     </thead>
     <tbody>
       <% rows.each_with_index do |r, i| %>
-        <% c = r[:customer]; dl = r[:days_left] %>
+        <% c = r[:customer]; dl = r[:days_left]; dur = r[:days_until_reminder] %>
         <tr>
           <td>
             <span class="badge <%= i < 3 ? 'bg-danger' : i < 8 ? 'bg-warning text-dark' : 'bg-light text-dark' %>">
@@ -33,20 +34,23 @@
               <% end %>
             </div>
             <div class="text-muted small">
-              預計 <%= r[:expected_return_date]&.strftime("%m/%d") || "-" %> 回購．
               <% if dl < 0 %>
                 <span class="text-danger fw-semibold">逾期 <%= dl.abs %> 天</span>
-              <% elsif dl <= 14 %>
-                <span class="text-warning fw-semibold">剩 <%= dl %> 天</span>
+              <% elsif dur <= 0 %>
+                <span class="text-warning fw-semibold">提醒中，剩 <%= dl %> 天</span>
               <% else %>
-                剩 <%= dl %> 天
+                還有 <%= dur %> 天到提醒日
               <% end %>
             </div>
           </td>
           <td>
+            <div class="small">喝完 <span class="fw-semibold"><%= r[:estimated_finish_date]&.strftime("%m/%d") || "-" %></span></div>
+            <div class="small text-muted">提醒 <%= r[:suggested_reminder_date]&.strftime("%m/%d") || "-" %>・回購 <%= r[:expected_return_date]&.strftime("%m/%d") || "-" %></div>
+          </td>
+          <td>
             <% n = r[:omni_count] %>
-            <% color, label = if n >= 6 then ['#1d4ed8','fw-bold'] elsif n >= 3 then ['#0369a1','fw-semibold'] elsif n == 2 then ['#b45309',''] else ['#9ca3af',''] end %>
-            <span style="color:<%= color %>;" class="<%= label %> small"><%= n %> 次</span>
+            <% color, weight = if n >= 6 then ['#1d4ed8','fw-bold'] elsif n >= 3 then ['#0369a1','fw-semibold'] elsif n == 2 then ['#b45309',''] else ['#9ca3af',''] end %>
+            <span style="color:<%= color %>;" class="<%= weight %> small"><%= n %> 次</span>
           </td>
           <td>
             <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>

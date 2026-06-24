@@ -59,9 +59,10 @@ Rails.application.routes.draw do
   get '/omnipotent_analysis/export_missing',    to: 'omnipotent_analysis#export_missing',    as: :omnipotent_export_missing
   get '/omnipotent_analysis/export_event',     to: 'omnipotent_analysis#export_event',      as: :omnipotent_export_event
   get '/omnipotent_analysis/export_whitening', to: 'omnipotent_analysis#export_whitening',  as: :omnipotent_export_whitening
-  get '/omnipotent_restock',              to: 'omnipotent_restock#index',        as: :omnipotent_restock
-  get '/omnipotent_restock/export',       to: 'omnipotent_restock#export',       as: :omnipotent_restock_export
-  get '/omnipotent_restock/export_loyal', to: 'omnipotent_restock#export_loyal', as: :omnipotent_restock_export_loyal
+  get '/omnipotent_restock',                  to: 'omnipotent_restock#index',            as: :omnipotent_restock
+  get '/omnipotent_restock/export',           to: 'omnipotent_restock#export',           as: :omnipotent_restock_export
+  get '/omnipotent_restock/export_at_risk',   to: 'omnipotent_restock#export_at_risk',   as: :omnipotent_restock_export_at_risk
+  get '/omnipotent_restock/export_loyal',     to: 'omnipotent_restock#export_loyal',     as: :omnipotent_restock_export_loyal
   get 'customers/export_inactive',         to: 'customers#export_inactive',         as: :export_inactive_customers
   get 'customers/export_credits_expiring', to: 'customers#export_credits_expiring', as: :export_credits_expiring_customers
 

@@ -1,6 +1,8 @@
 class OmnipotentRestockController < ApplicationController
-  OMNIPOTENT      = "product_name LIKE '%全能%'"
-  LOYAL_THRESHOLD = 2
+  OMNIPOTENT           = "product_name LIKE '%全能%'"
+  LOYAL_THRESHOLD      = 2
+  REMINDER_BUFFER_DAYS = 7   # 提醒日 = 預計回購日前幾天
+  CHURN_THRESHOLD_DAYS = -60 # 超過預計回購日這麼多天還沒回來 → 可能流失
 
   MEMBERSHIP_RANK = {
     "黑卡"    => 5,
@@ -10,7 +12,7 @@ class OmnipotentRestockController < ApplicationController
     "一般會員" => 1
   }.freeze
 
-  # 實際回購中位數（天），由 DB 統計得出
+  # 實際回購中位數（天），由 DB 統計 5,082 筆回購記錄得出
   REPURCHASE_MEDIANS = {
     1  => 45,
     2  => 50,
@@ -26,10 +28,18 @@ class OmnipotentRestockController < ApplicationController
 
   def index; end
 
+  # 今日提醒 + 逾期未回購
   def export
-    rows = @overdue + @restock_soon
-    send_data "\xEF\xBB\xBF" + restock_csv(rows),
-              filename: "全能補貨名單_#{Date.today}.csv",
+    rows = @remind_now + @overdue
+    send_data "\xEF\xBB\xBF" + restock_csv(rows, "今日維護"),
+              filename: "全能維護名單_#{Date.today}.csv",
+              type: "text/csv; charset=utf-8"
+  end
+
+  # 可能流失喚醒名單
+  def export_at_risk
+    send_data "\xEF\xBB\xBF" + restock_csv(@at_risk, "可能流失"),
+              filename: "全能流失喚醒名單_#{Date.today}.csv",
               type: "text/csv; charset=utf-8"
   end
 
@@ -42,10 +52,9 @@ class OmnipotentRestockController < ApplicationController
   private
 
   def build_restock_data
-    today       = Date.today
-    since_date  = today - 365  # 只追蹤近一年內有購買的客戶
+    today      = Date.today
+    since_date = today - 365
 
-    # 每位客戶最近一次全能購買
     orders_raw = ShoplineOrder
       .where(OMNIPOTENT)
       .where("order_date >= ?", since_date.beginning_of_day)
@@ -58,54 +67,59 @@ class OmnipotentRestockController < ApplicationController
       last_order_by_email[email] ||= { product_name: product_name, order_date: order_date.to_date }
     end
 
-    return (@restock_list = @overdue = @restock_soon = @not_urgent = []) if last_order_by_email.empty?
+    return (@restock_list = @remind_now = @overdue = @at_risk = @not_urgent = []) if last_order_by_email.empty?
 
-    @event_label = "近一年全客戶追蹤"
-
-    # 建立直播期間範圍集合，用來標記哪些購買來自直播
     broadcast_ranges = OmnipotentAnalysisController::OMNI_EVENTS.map do |e|
       e[:date].beginning_of_day..(e[:date] + 3).end_of_day
     end
 
-    all_emails = last_order_by_email.keys
-
-    # 每位客戶的全能歷史購買總次數（不限近一年）
-    omni_counts = ShoplineOrder
-      .where(OMNIPOTENT)
-      .where(email: all_emails)
-      .group(:email)
-      .count
+    all_emails  = last_order_by_email.keys
+    omni_counts = ShoplineOrder.where(OMNIPOTENT).where(email: all_emails).group(:email).count
 
     customers = ShoplineCustomer
       .where(email: all_emails)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
     @restock_list = customers.map do |c|
-      order                = last_order_by_email[c.email]
-      bottles              = extract_bottles(order[:product_name])
-      expected_return_date = order[:order_date] + expected_days(bottles)
-      days_left            = (expected_return_date - today).to_i
-      bought_dt            = order[:order_date].to_time
-      from_broadcast       = broadcast_ranges.any? { |r| r.cover?(bought_dt) }
+      order  = last_order_by_email[c.email]
+      bought = order[:order_date]
+      bottles = extract_bottles(order[:product_name])
+
+      # 喝完日：理論瓶數 × 30 天（顯示用）
+      estimated_finish_date   = bought + bottles * 30
+      # 預計回購日：由實際回購中位數推算（segmentation 用）
+      expected_return_date    = bought + expected_days(bottles)
+      # 建議提醒日：預計回購日前 REMINDER_BUFFER_DAYS 天
+      suggested_reminder_date = expected_return_date - REMINDER_BUFFER_DAYS
+
+      days_left           = (expected_return_date    - today).to_i
+      days_until_reminder = (suggested_reminder_date - today).to_i
 
       {
-        customer:             c,
-        product_name:         order[:product_name],
-        bought_date:          order[:order_date],
-        bottles:              bottles,
-        expected_return_date: expected_return_date,
-        days_left:            days_left,
-        from_broadcast:       from_broadcast,
-        omni_count:           omni_counts[c.email] || 0
+        customer:               c,
+        product_name:           order[:product_name],
+        bought_date:            bought,
+        bottles:                bottles,
+        estimated_finish_date:  estimated_finish_date,
+        expected_return_date:   expected_return_date,
+        suggested_reminder_date: suggested_reminder_date,
+        days_left:              days_left,
+        days_until_reminder:    days_until_reminder,
+        from_broadcast:         broadcast_ranges.any? { |r| r.cover?(bought.to_time) },
+        omni_count:             omni_counts[c.email] || 0
       }
     end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
 
-    @overdue      = @restock_list.select { |r| r[:days_left] <= 0 }
-    @restock_soon = @restock_list.select { |r| r[:days_left].between?(1, 14) }
-    @not_urgent   = @restock_list.select { |r| r[:days_left] > 14 }
+    # 提醒中：建議提醒日已到，但還沒過預計回購日
+    @remind_now = @restock_list.select { |r| r[:days_until_reminder] <= 0 && r[:days_left] > 0 }
+    # 逾期未回購：過了預計回購日，但還在流失閾值內（0 ~ -60 天）
+    @overdue    = @restock_list.select { |r| r[:days_left] < 0 && r[:days_left] >= CHURN_THRESHOLD_DAYS }
+    # 可能流失：超過流失閾值（-60 天以上）
+    @at_risk    = @restock_list.select { |r| r[:days_left] < CHURN_THRESHOLD_DAYS }
+    # 尚早：還沒到建議提醒日
+    @not_urgent = @restock_list.select { |r| r[:days_until_reminder] > 0 }
   end
 
-  # 常購名單：不管目前是否該補貨，每場直播前都該邀請的全能老客戶
   def build_loyal_buyers
     order_counts = ShoplineOrder
       .where(OMNIPOTENT)
@@ -145,7 +159,6 @@ class OmnipotentRestockController < ApplicationController
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:order_count], -r[:total_spend]] }
   end
 
-  # 依瓶數查實際回購中位數；無精確值時線性內插
   def expected_days(bottles)
     return REPURCHASE_MEDIANS[bottles] if REPURCHASE_MEDIANS.key?(bottles)
     keys = REPURCHASE_MEDIANS.keys.sort
@@ -162,33 +175,39 @@ class OmnipotentRestockController < ApplicationController
     m ? m[1].to_i : 1
   end
 
-  def restock_csv(rows = @restock_list)
+  def restock_csv(rows, status_label)
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["狀態", "姓名", "卡別", "IG", "上次購買", "瓶數", "預計回購日", "距今天數"]
+      csv << ["狀態", "姓名", "卡別", "IG", "購買來源", "上次購買", "瓶數",
+              "喝完日", "建議提醒日", "預計回購日", "距今天數", "全能累計次數"]
       rows.each do |r|
-        status = r[:days_left] <= 0 ? "逾期未回購" : r[:days_left] <= 14 ? "即將回購" : "尚早"
-        csv << row_data(status, r)
+        c  = r[:customer]
+        ig = c.instagram_account&.gsub('@', '')&.strip
+        source = r[:from_broadcast] ? "直播購買" : "一般購買"
+        csv << [
+          status_label,
+          c.full_name, c.membership_level, ig, source,
+          r[:bought_date]&.strftime("%Y/%m/%d"),
+          r[:bottles],
+          r[:estimated_finish_date]&.strftime("%Y/%m/%d"),
+          r[:suggested_reminder_date]&.strftime("%Y/%m/%d"),
+          r[:expected_return_date]&.strftime("%Y/%m/%d"),
+          r[:days_left],
+          r[:omni_count]
+        ]
       end
     end
-  end
-
-  def row_data(status, r)
-    c = r[:customer]
-    ig = c.instagram_account&.gsub('@', '')&.strip
-    [status, c.full_name, c.membership_level, ig,
-     r[:bought_date]&.strftime("%Y/%m/%d"),
-     r[:bottles], r[:expected_return_date]&.strftime("%Y/%m/%d"), r[:days_left]]
   end
 
   def loyal_csv
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["姓名", "卡別", "電話", "IG", "全能購買次數", "全能累計消費(NT$)", "上次購買", "下一步"]
+      csv << ["姓名", "卡別", "IG", "全能購買次數", "全能累計消費(NT$)", "上次購買"]
       @loyal_buyers.each do |r|
-        c = r[:customer]
-        csv << [c.full_name, c.membership_level, c.mobile_phone, c.instagram_account,
-                 r[:order_count], r[:total_spend].to_i, r[:last_date]&.strftime("%Y/%m/%d"), r[:next_action]]
+        c  = r[:customer]
+        ig = c.instagram_account&.gsub('@', '')&.strip
+        csv << [c.full_name, c.membership_level, ig,
+                r[:order_count], r[:total_spend].to_i, r[:last_date]&.strftime("%Y/%m/%d")]
       end
     end
   end

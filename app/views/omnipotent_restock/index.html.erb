@@ -1,18 +1,20 @@
 <%# app/views/omnipotent_restock/index.html.erb %>
 <% content_for :page_title, "B群／全能 旅程管理" %>
 
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-3">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
       <h4 class="fw-bold mb-0">B群／全能 旅程管理</h4>
       <p class="text-muted small mb-0">
-        追蹤範圍：近一年所有全能購買客戶，依最後購買日＋實際回購中位數計算預計回購日．資料隨訂單匯入自動更新
+        追蹤近一年所有全能購買客戶・依最後購買日＋實際回購中位數自動推算喝完日、提醒日、預計回購日・訂單匯入後自動更新
       </p>
     </div>
-    <div class="d-flex gap-2">
-      <%= link_to "⬇ 匯出補貨名單", omnipotent_restock_export_path,
+    <div class="d-flex gap-2 flex-wrap">
+      <%= link_to "⬇ 今日維護名單", omnipotent_restock_export_path,
             class: "btn btn-outline-secondary btn-sm fw-semibold" %>
-      <%= link_to "⬇ 匯出常購名單", omnipotent_restock_export_loyal_path,
+      <%= link_to "⬇ 流失喚醒名單", omnipotent_restock_export_at_risk_path,
+            class: "btn btn-outline-secondary btn-sm fw-semibold" %>
+      <%= link_to "⬇ 常購名單", omnipotent_restock_export_loyal_path,
             class: "btn btn-outline-secondary btn-sm fw-semibold" %>
     </div>
   </div>
@@ -21,66 +23,76 @@
 <%# ── 維護標準說明 ── %>
 <div class="card border-0 bg-light mb-4" style="border-left: 4px solid #374151 !important;">
   <div class="card-body py-3">
-    <div class="fw-bold text-dark mb-2" style="font-size:0.85rem; letter-spacing:0.5px;">📋 維護標準（逾期名單判斷依據）</div>
+    <div class="fw-bold text-dark mb-2" style="font-size:0.85rem;">📋 維護標準</div>
     <div class="row g-2" style="font-size:0.82rem;">
       <div class="col-md-3">
-        <span class="fw-bold" style="color:#991b1b;">🔥 最優先聯繫</span>
-        <div class="text-muted">逾期 1–90 天＋買過 3 次以上</div>
+        <div class="fw-bold" style="color:#991b1b;">🔴 逾期未回購（0–60 天）</div>
+        <div class="text-muted">買過 3 次以上 → 最優先聯繫<br>買過 2 次 → 可以試試</div>
       </div>
       <div class="col-md-3">
-        <span class="fw-bold" style="color:#b45309;">🟡 可以試試</span>
-        <div class="text-muted">逾期 1–60 天＋買過 2 次</div>
+        <div class="fw-bold" style="color:#b45309;">⚠️ 可能流失（60 天以上）</div>
+        <div class="text-muted">買過 3 次以上 → 還值得喚醒<br>只買 1 次 → 低優先</div>
       </div>
       <div class="col-md-3">
-        <span class="fw-bold text-muted">⚪ 低優先</span>
-        <div class="text-muted">只買過 1 次（可能只是試用）</div>
+        <div class="fw-bold" style="color:#0369a1;">🟠 提醒中</div>
+        <div class="text-muted">已到建議提醒日，尚未逾期<br>是最佳聯繫時機</div>
       </div>
       <div class="col-md-3">
-        <span class="fw-bold text-muted">✖ 可能放棄</span>
-        <div class="text-muted">逾期 180 天以上（很可能已流失）</div>
+        <div class="fw-bold" style="color:#1d4ed8;">🔵 常購名單</div>
+        <div class="text-muted">買過 <%= OmnipotentRestockController::LOYAL_THRESHOLD %> 次以上<br>每場直播前都要邀請</div>
       </div>
     </div>
     <div class="text-muted mt-2" style="font-size:0.78rem;">
-      全能累計次數顏色：<span style="color:#1d4ed8;" class="fw-bold">深藍 = 6次以上</span>・
-      <span style="color:#0369a1;" class="fw-semibold">藍 = 3–5次</span>・
-      <span style="color:#b45309;">橘 = 2次</span>・
-      <span class="text-muted">灰 = 1次</span>
+      全能累計顏色：
+      <span style="color:#1d4ed8;" class="fw-bold">深藍 6次+</span>・
+      <span style="color:#0369a1;" class="fw-semibold">藍 3–5次</span>・
+      <span style="color:#b45309;">橘 2次</span>・
+      <span class="text-muted">灰 1次</span>
+      ／喝完日 = 瓶數×30天（理論值）・提醒日 = 預計回購日前 <%= OmnipotentRestockController::REMINDER_BUFFER_DAYS %> 天・預計回購日 = 依實際回購中位數推算
     </div>
   </div>
 </div>
 
-<%# ── 4 張卡片當 tab 切換 ── %>
+<%# ── 5 張 Tab 卡片 ── %>
 <div class="row g-3 mb-0" role="tablist">
-  <div class="col-md-3">
+  <div class="col">
     <a href="#tab-overdue" data-toggle="tab" role="tab"
-       class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block restock-tab-card"
+       class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
        style="border-left: 4px solid #dc3545 !important; cursor: pointer;">
-      <div class="text-danger fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">🔴 逾期未回購</div>
-      <div class="fw-bold text-danger" style="font-size: 2.2rem; line-height: 1;"><%= @overdue.size %></div>
+      <div class="text-danger fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">🔴 逾期未回購</div>
+      <div class="fw-bold text-danger" style="font-size: 2rem; line-height: 1;"><%= @overdue.size %></div>
     </a>
   </div>
-  <div class="col-md-3">
-    <a href="#tab-restock-soon" data-toggle="tab" role="tab"
-       class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block restock-tab-card"
+  <div class="col">
+    <a href="#tab-at-risk" data-toggle="tab" role="tab"
+       class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
+       style="border-left: 4px solid #7c3aed !important; cursor: pointer;">
+      <div class="fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px; color: #7c3aed;">⚠️ 可能流失</div>
+      <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #7c3aed;"><%= @at_risk.size %></div>
+    </a>
+  </div>
+  <div class="col">
+    <a href="#tab-remind" data-toggle="tab" role="tab"
+       class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
        style="border-left: 4px solid #f59e0b !important; cursor: pointer;">
-      <div class="fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px; color: #b45309;">🟠 即將回購</div>
-      <div class="fw-bold" style="font-size: 2.2rem; line-height: 1; color: #b45309;"><%= @restock_soon.size %></div>
+      <div class="fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px; color: #b45309;">🟠 提醒中</div>
+      <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #b45309;"><%= @remind_now.size %></div>
     </a>
   </div>
-  <div class="col-md-3">
+  <div class="col">
     <a href="#tab-not-urgent" data-toggle="tab" role="tab"
-       class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block restock-tab-card"
+       class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
        style="border-left: 4px solid #9ca3af !important; cursor: pointer;">
-      <div class="text-muted fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px;">⚪ 暫不急</div>
-      <div class="fw-bold text-muted" style="font-size: 2.2rem; line-height: 1;"><%= @not_urgent.size %></div>
+      <div class="text-muted fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">⚪ 尚早</div>
+      <div class="fw-bold text-muted" style="font-size: 2rem; line-height: 1;"><%= @not_urgent.size %></div>
     </a>
   </div>
-  <div class="col-md-3">
+  <div class="col">
     <a href="#tab-loyal" data-toggle="tab" role="tab"
-       class="card border-0 shadow-sm text-center py-4 text-decoration-none d-block restock-tab-card"
+       class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
        style="border-left: 4px solid #1d4ed8 !important; cursor: pointer;">
-      <div class="fw-bold mb-1" style="font-size: 0.8rem; letter-spacing: 1px; color: #1d4ed8;">🔵 常購名單</div>
-      <div class="fw-bold" style="font-size: 2.2rem; line-height: 1; color: #1d4ed8;"><%= @loyal_buyers.size %></div>
+      <div class="fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px; color: #1d4ed8;">🔵 常購名單</div>
+      <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #1d4ed8;"><%= @loyal_buyers.size %></div>
     </a>
   </div>
 </div>
@@ -91,30 +103,46 @@
   <div class="tab-pane" id="tab-overdue" role="tabpanel">
     <div class="card border-0 shadow-sm">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #991b1b;">
-        <span class="fw-bold">逾期未回購</span>
+        <span class="fw-bold">逾期未回購（0–60 天）</span>
         <span class="badge bg-white text-dark"><%= @overdue.size %> 人</span>
       </div>
       <div class="card-body p-0">
         <% if @overdue.any? %>
           <%= render 'restock_table', rows: @overdue %>
         <% else %>
-          <p class="text-muted small p-3 mb-0">目前沒有急需補貨的客戶。</p>
+          <p class="text-muted small p-3 mb-0">目前沒有逾期未回購的客戶。</p>
         <% end %>
       </div>
     </div>
   </div>
 
-  <div class="tab-pane" id="tab-restock-soon" role="tabpanel">
+  <div class="tab-pane" id="tab-at-risk" role="tabpanel">
     <div class="card border-0 shadow-sm">
-      <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #d97706;">
-        <span class="fw-bold">預計 14 天內回購</span>
-        <span class="badge bg-white text-dark"><%= @restock_soon.size %> 人</span>
+      <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #6d28d9;">
+        <span class="fw-bold">可能流失（逾期超過 <%= OmnipotentRestockController::CHURN_THRESHOLD_DAYS.abs %> 天）</span>
+        <span class="badge bg-white text-dark"><%= @at_risk.size %> 人</span>
       </div>
       <div class="card-body p-0">
-        <% if @restock_soon.any? %>
-          <%= render 'restock_table', rows: @restock_soon %>
+        <% if @at_risk.any? %>
+          <%= render 'restock_table', rows: @at_risk %>
         <% else %>
-          <p class="text-muted small p-3 mb-0">目前沒有即將用完的客戶。</p>
+          <p class="text-muted small p-3 mb-0">目前沒有可能流失的客戶。</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="tab-remind" role="tabpanel">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #d97706;">
+        <span class="fw-bold">提醒中（已到建議提醒日，尚未逾期）</span>
+        <span class="badge bg-white text-dark"><%= @remind_now.size %> 人</span>
+      </div>
+      <div class="card-body p-0">
+        <% if @remind_now.any? %>
+          <%= render 'restock_table', rows: @remind_now %>
+        <% else %>
+          <p class="text-muted small p-3 mb-0">目前沒有進入提醒期的客戶。</p>
         <% end %>
       </div>
     </div>
@@ -123,7 +151,7 @@
   <div class="tab-pane" id="tab-not-urgent" role="tabpanel">
     <div class="card border-0 shadow-sm">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #6b7280;">
-        <span class="fw-bold">尚早（14 天以上）</span>
+        <span class="fw-bold">尚早（未到提醒日）</span>
         <span class="badge bg-white text-dark"><%= @not_urgent.size %> 人</span>
       </div>
       <div class="card-body p-0">
@@ -139,7 +167,7 @@
   <div class="tab-pane" id="tab-loyal" role="tabpanel">
     <div class="card border-0 shadow-sm">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #1d4ed8;">
-        <span class="fw-bold">常購名單（全能歷史購買 ≥ <%= OmnipotentRestockController::LOYAL_THRESHOLD %> 次）</span>
+        <span class="fw-bold">常購名單（全能歷史購買 ≥ <%= OmnipotentRestockController::LOYAL_THRESHOLD %> 次，直播前邀請）</span>
         <span class="badge bg-white text-dark"><%= @loyal_buyers.size %> 人</span>
       </div>
       <div class="card-body p-0">
@@ -164,19 +192,16 @@ document.addEventListener('DOMContentLoaded', function () {
   var cards = document.querySelectorAll('.restock-tab-card');
 
   function activateTab(targetId) {
-    // 更新卡片高亮
     cards.forEach(function (c) { c.classList.remove('active'); });
     var activeCard = document.querySelector('.restock-tab-card[href="' + targetId + '"]');
     if (activeCard) activeCard.classList.add('active');
 
-    // 切換 tab pane
     document.querySelectorAll('.tab-pane').forEach(function (p) {
       p.classList.remove('show', 'active');
     });
     var pane = document.querySelector(targetId);
     if (pane) {
       pane.classList.add('show', 'active');
-      // 觸發該 pane 內的分頁初始化
       pane.querySelectorAll('[data-paginate="true"]:not([data-paginated])').forEach(function (w) {
         if (typeof initPaginate === 'function') initPaginate(w);
       });
@@ -190,7 +215,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  // 預設開啟第一個有資料的 tab
   var defaultCard = Array.from(cards).find(function (c) {
     var pane = document.querySelector(c.getAttribute('href'));
     return pane && pane.querySelector('tbody tr');
