@@ -7,7 +7,7 @@
       <h4 class="fw-bold mb-0"><%= @customer.full_name %> 的全能旅程</h4>
       <p class="text-muted small mb-0"><%= @customer.email %></p>
     </div>
-    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+    <%= link_to "← 旅程管理", crm_journey_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
   </div>
 </div>
 

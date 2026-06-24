@@ -13,7 +13,7 @@
         驗證旅程管理是否真的創造營收・通知後 <%= OmnipotentRestockController::ATTRIBUTION_WINDOW %> 天內有回購即歸因為 CRM 帶動
       </p>
     </div>
-    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+    <%= link_to "← 旅程管理", omnipotent_restock_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
   </div>
 </div>
 

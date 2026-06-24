@@ -32,7 +32,7 @@
               <%= link_to c.full_name, customer_path(c.id), target: "_blank",
                     class: "fw-semibold text-decoration-none d-block" %>
               <span class="text-muted" style="font-size:0.7rem;"><%= c.membership_level %></span>
-              <%= link_to "旅程", omnipotent_restock_customer_journey_path(c.id), style: "font-size:0.65rem;", class: "text-muted" %>
+              <%= link_to "旅程", crm_customer_journey_path(c.id, product: @product_key), style: "font-size:0.65rem;", class: "text-muted" %>
             </td>
             <td>
               <span class="fw-semibold small" style="color:<%= ct[:color] %>;"><%= ct[:emoji] %> <%= ct[:label] %></span>
