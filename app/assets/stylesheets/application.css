@@ -54,6 +54,11 @@
   color: #a07060 !important;
 }
 
+/* 手動展開的子選單（href="#" 父項目，點擊後切換顯示） */
+.nav-menu li.open > ul {
+  display: block !important;
+}
+
 /* Logo 區塊 */
 .page-logo {
   box-shadow: none !important;

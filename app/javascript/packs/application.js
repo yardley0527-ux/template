@@ -6,6 +6,7 @@
 import Rails from "@rails/ujs";
 import * as ActiveStorage from "@rails/activestorage";
 import Chart from "chart.js/auto";
+import "../nav_menu";
 
 Rails.start();
 require("turbolinks").start();
