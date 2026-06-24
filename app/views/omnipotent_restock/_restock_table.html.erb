@@ -10,6 +10,7 @@
         <th>瓶數</th>
         <th>預估用完</th>
         <th><%= show_overdue_badge ? "逾期天數" : "剩餘天數" %></th>
+        <th>建議方案</th>
         <th>電話</th>
         <th>IG</th>
       </tr>
@@ -41,6 +42,7 @@
               <span class="text-muted small">剩 <%= dl %> 天</span>
             <% end %>
           </td>
+          <td><span class="text-muted small"><%= r[:suggested_offer] %></span></td>
           <td>
             <% if c.mobile_phone.present? %>
               <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">

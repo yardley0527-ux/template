@@ -1,12 +1,12 @@
 <%# app/views/omnipotent_restock/index.html.erb %>
-<% content_for :page_title, "全能補貨提醒名單" %>
+<% content_for :page_title, "B群／全能 旅程管理" %>
 
 <div class="row g-3 mb-4">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
-      <h4 class="fw-bold mb-0">全能補貨提醒名單</h4>
+      <h4 class="fw-bold mb-0">B群／全能 旅程管理</h4>
       <p class="text-muted small mb-0">
-        上一檔：<strong><%= @event_label %></strong>．依預計用完日排序，排除已回購者
+        上一檔：<strong><%= @event_label %></strong>．資料隨訂單匯入自動更新，不用手動貼標籤
       </p>
     </div>
     <%= link_to "⬇ 匯出補貨名單", omnipotent_restock_export_path,
@@ -95,3 +95,26 @@
     </div>
   </div>
 <% end %>
+
+<%# ── 常購名單（每場直播前都該邀請，不受補貨時間影響）── %>
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div class="border-start border-3 border-primary ps-3">
+    <h5 class="fw-bold mb-0 text-primary">常購名單</h5>
+    <p class="text-muted small mb-0">全能歷史購買 ≥ <%= OmnipotentRestockController::LOYAL_THRESHOLD %> 次，每場直播前都建議邀請</p>
+  </div>
+  <%= link_to "⬇ 匯出常購名單", omnipotent_restock_export_loyal_path,
+        class: "btn btn-outline-secondary btn-sm fw-semibold" %>
+</div>
+<div class="card border-0 shadow-sm mb-5">
+  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #1d4ed8;">
+    <span class="fw-bold">常購名單</span>
+    <span class="badge bg-white text-dark"><%= @loyal_buyers.size %> 人</span>
+  </div>
+  <div class="card-body p-0">
+    <% if @loyal_buyers.any? %>
+      <%= render 'loyal_table', rows: @loyal_buyers %>
+    <% else %>
+      <p class="text-muted small p-3 mb-0">目前沒有符合常購條件的客戶。</p>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,60 @@
+<%# locals: rows %>
+<div class="table-responsive" data-paginate="true" data-page-size="25">
+  <table class="table table-hover align-middle mb-0" style="font-size: 0.875rem;">
+    <thead class="table-light">
+      <tr>
+        <th>#</th>
+        <th>姓名</th>
+        <th>卡別</th>
+        <th>全能購買次數</th>
+        <th>全能累計消費</th>
+        <th>上次購買</th>
+        <th>建議方案</th>
+        <th>電話</th>
+        <th>IG</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% rows.each_with_index do |r, i| %>
+        <% c = r[:customer] %>
+        <tr>
+          <td><span class="badge bg-light text-dark">#<%= i + 1 %></span></td>
+          <td>
+            <%= link_to c.full_name, customer_path(c.id), target: "_blank",
+                  class: "fw-semibold text-decoration-none" %>
+          </td>
+          <td><span class="text-muted small"><%= c.membership_level %></span></td>
+          <td class="text-center"><%= r[:order_count] %> 次</td>
+          <td>NT$<%= number_with_delimiter(r[:total_spend].to_i) %></td>
+          <td><%= r[:last_date]&.strftime("%Y/%m/%d") || "-" %></td>
+          <td><span class="text-muted small"><%= r[:suggested_offer] %></span></td>
+          <td>
+            <% if c.mobile_phone.present? %>
+              <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">
+                📞 <%= c.mobile_phone %>
+              </a>
+            <% end %>
+          </td>
+          <td>
+            <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>
+              <a href="https://instagram.com/<%= c.instagram_account.gsub('@','').strip %>"
+                 target="_blank" class="text-decoration-none text-purple small">
+                @<%= c.instagram_account.gsub('@','').strip %>
+              </a>
+            <% elsif c.instagram_account == "無ig帳號" %>
+              <span class="text-muted small">—</span>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-paginate="true"]:not([data-paginated])').forEach(function (wrapper) {
+    if (typeof initPaginate === 'function') initPaginate(wrapper);
+  });
+});
+</script>
