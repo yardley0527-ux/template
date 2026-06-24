@@ -5,6 +5,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <% end %>
 
+<% switcher_links = @all_products.map { |p| { product: p, href: crm_accuracy_path(product: p[:key]) } } %>
+<%= render 'shared/product_switcher', links: switcher_links %>
+
 <div class="row g-3 mb-3">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
@@ -13,7 +16,7 @@
         驗證「預計回購日」模型準確度・以實際訂單 vs 預測日期比較・準確 = 誤差 ≤ 7 天
       </p>
     </div>
-    <%= link_to "← 旅程管理", omnipotent_restock_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
+    <%= link_to "← 旅程管理", crm_journey_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
   </div>
 </div>
 
@@ -30,7 +33,7 @@
     <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #0369a1 !important;">
       <div class="text-muted mb-1" style="font-size:0.72rem;">已驗證回購</div>
       <div class="fw-bold" style="font-size:2rem; line-height:1; color:#0369a1;"><%= @total_returned %></div>
-      <div class="text-muted" style="font-size:0.68rem;">找到後續全能訂單</div>
+      <div class="text-muted" style="font-size:0.68rem;">找到後續<%= @product[:short] %>訂單</div>
     </div>
   </div>
   <div class="col-6 col-md">

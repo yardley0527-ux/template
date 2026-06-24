@@ -56,7 +56,7 @@
       </div>
     </div>
     <div class="text-muted mt-2" style="font-size:0.78rem;">
-      全能累計顏色：
+      <%= @product[:short] %>累計顏色：
       <span style="color:#1d4ed8;" class="fw-bold">深藍 6次+</span>・
       <span style="color:#0369a1;" class="fw-semibold">藍 3–5次</span>・
       <span style="color:#b45309;">橘 2次</span>・
@@ -173,7 +173,7 @@
   <div class="tab-pane" id="tab-loyal" role="tabpanel">
     <div class="card border-0 shadow-sm">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #1d4ed8;">
-        <span class="fw-bold">常購名單（全能歷史購買 ≥ <%= OmnipotentRestockController::LOYAL_THRESHOLD %> 次，直播前邀請）</span>
+        <span class="fw-bold">常購名單（<%= @product[:short] %>歷史購買 ≥ <%= OmnipotentRestockController::LOYAL_THRESHOLD %> 次，直播前邀請）</span>
         <span class="badge bg-white text-dark"><%= @loyal_buyers.size %> 人</span>
       </div>
       <div class="card-body p-0">

@@ -1,13 +1,16 @@
 <%# app/views/omnipotent_restock/broadcast_room.html.erb %>
 <% content_for :page_title, "直播戰情室" %>
 
+<% switcher_links = @all_products.map { |p| { product: p, href: crm_broadcast_path(product: p[:key]) } } %>
+<%= render 'shared/product_switcher', links: switcher_links %>
+
 <div class="row g-3 mb-3">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
       <h4 class="fw-bold mb-0">直播戰情室</h4>
       <p class="text-muted small mb-0">直播前備戰清單・整合 VIP 邀請、提醒中、逾期、值得喚醒四個名單</p>
     </div>
-    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+    <%= link_to "← 旅程管理", crm_journey_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
   </div>
 </div>
 

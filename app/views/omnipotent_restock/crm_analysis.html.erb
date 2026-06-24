@@ -5,13 +5,16 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <% end %>
 
+<% switcher_links = @all_products.map { |p| { product: p, href: crm_operations_path(product: p[:key]) } } %>
+<%= render 'shared/product_switcher', links: switcher_links %>
+
 <div class="row g-3 mb-3">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
       <h4 class="fw-bold mb-0">客服操作分析</h4>
       <p class="text-muted small mb-0">整體通知效率、聯絡管道分佈、成交率追蹤</p>
     </div>
-    <%= link_to "← 旅程管理", omnipotent_restock_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
+    <%= link_to "← 旅程管理", crm_journey_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
   </div>
 </div>
 

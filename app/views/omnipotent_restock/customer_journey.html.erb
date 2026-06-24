@@ -1,10 +1,13 @@
 <%# app/views/omnipotent_restock/customer_journey.html.erb %>
 <% content_for :page_title, "客戶旅程 - #{@customer.full_name}" %>
 
+<% switcher_links = @all_products.map { |p| { product: p, href: crm_customer_journey_path(@customer.id, product: p[:key]) } } %>
+<%= render 'shared/product_switcher', links: switcher_links %>
+
 <div class="row g-3 mb-3">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
-      <h4 class="fw-bold mb-0"><%= @customer.full_name %> 的全能旅程</h4>
+      <h4 class="fw-bold mb-0"><%= @customer.full_name %> 的<%= @product[:short] %>旅程</h4>
       <p class="text-muted small mb-0"><%= @customer.email %></p>
     </div>
     <%= link_to "← 旅程管理", crm_journey_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
@@ -34,7 +37,7 @@
             <span class="badge" style="background-color:<%= @customer_type[:color] %>;">
               <%= @customer_type[:emoji] %> <%= @customer_type[:label] %>
             </span>
-            <span class="text-muted small ms-1">全能 <%= @omni_count %> 次・<%= @total_omni_bottles %> 瓶</span>
+            <span class="text-muted small ms-1"><%= @product[:short] %> <%= @omni_count %> 次・<%= @total_omni_bottles %> 瓶</span>
           </div>
         <% end %>
         <div class="small text-muted">
@@ -111,12 +114,12 @@
     <%# 購買時間軸 %>
     <div class="card border-0 shadow-sm mb-3">
       <div class="card-header fw-bold d-flex justify-content-between align-items-center">
-        <span>📦 全能購買紀錄</span>
+        <span>📦 <%= @product[:short] %>購買紀錄</span>
         <span class="badge bg-primary"><%= @omni_orders.size %> 筆</span>
       </div>
       <div class="card-body py-2">
         <% if @omni_orders.empty? %>
-          <p class="text-muted small mb-0">尚無全能購買紀錄。</p>
+          <p class="text-muted small mb-0">尚無<%= @product[:short] %>購買紀錄。</p>
         <% else %>
           <div class="timeline" style="position:relative; padding-left:24px;">
             <div style="position:absolute; left:8px; top:0; bottom:0; width:2px; background:#e5e7eb;"></div>

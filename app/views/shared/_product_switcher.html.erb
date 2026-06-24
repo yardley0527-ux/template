@@ -1,0 +1,10 @@
+<%# locals: links (array of { product:, href: }) %>
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <span class="text-muted small fw-semibold me-1">產品：</span>
+  <% links.each do |item| %>
+    <%= link_to item[:href],
+          class: "btn btn-sm #{item[:product][:key] == @product_key ? 'btn-primary' : 'btn-outline-secondary'}" do %>
+      <%= item[:product][:icon] %> <%= item[:product][:short] %>
+    <% end %>
+  <% end %>
+</div>
