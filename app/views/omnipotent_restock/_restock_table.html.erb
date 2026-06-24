@@ -4,6 +4,7 @@
     <thead class="table-light">
       <tr>
         <th style="width:3%">#</th>
+        <th style="width:5%">分數</th>
         <th style="width:12%">姓名 / 卡別</th>
         <th style="width:10%">客戶類型</th>
         <th style="width:15%">上次購買</th>
@@ -22,6 +23,12 @@
             <span class="badge <%= i < 3 ? 'bg-danger' : i < 8 ? 'bg-warning text-dark' : 'bg-light text-dark' %>">
               #<%= i + 1 %>
             </span>
+          </td>
+          <td class="text-center">
+            <% score = r[:crm_score] || 0 %>
+            <% score_color = score >= 70 ? '#991b1b' : score >= 50 ? '#b45309' : score >= 30 ? '#0369a1' : '#6b7280' %>
+            <span class="fw-bold" style="font-size:1.1rem; color:<%= score_color %>;"><%= score %></span>
+            <div class="text-muted" style="font-size:0.65rem;">分</div>
           </td>
           <td>
             <%= link_to c.full_name, customer_path(c.id), target: "_blank",

@@ -30,13 +30,22 @@ class OmnipotentRestockController < ApplicationController
     6 => 89, 10 => 106, 12 => 120
   }.freeze
 
+  # CRM 優先分數權重（客服不用思考，直接看分數排序）
+  CRM_SCORE = {
+    type:            { vip: 40, big: 20, small: 10, single: 0 },
+    from_broadcast:  10,   # 直播購買
+    repeat_buyer:    20,   # 有回購歷史（omni_count > 1）
+    overdue_mild:    10,   # 逾期 31–60 天
+    overdue_severe:  20    # 逾期 60 天以上
+  }.freeze
+
   before_action :build_restock_data, only: [:index, :export, :export_at_risk]
   before_action :build_loyal_buyers,  only: [:index, :export_loyal]
 
   def index; end
 
   def export
-    rows = @remind_now + @overdue
+    rows = @today  # already sorted by CRM score
     send_data "\xEF\xBB\xBF" + restock_csv(rows),
               filename: "全能維護名單_#{Date.today}.csv",
               type: "text/csv; charset=utf-8"
@@ -137,12 +146,18 @@ class OmnipotentRestockController < ApplicationController
         customer_type:           resolve_customer_type(count, total_bottles),
         notification:            notif_map[[c.email, bought]]
       }
-    end.sort_by { |r| [r[:days_left], -r[:customer_type][:rank], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
+    end.tap do |list|
+      list.each { |r| r[:crm_score] = calc_crm_score(r) }
+    end.sort_by { |r| [-r[:crm_score], r[:days_left]] }
 
     @remind_now = @restock_list.select { |r| r[:days_until_reminder] <= 0 && r[:days_left] > 0 }
     @overdue    = @restock_list.select { |r| r[:days_left] < 0 && r[:days_left] >= CHURN_THRESHOLD_DAYS }
     @at_risk    = @restock_list.select { |r| r[:days_left] < CHURN_THRESHOLD_DAYS }
     @not_urgent = @restock_list.select { |r| r[:days_until_reminder] > 0 }
+
+    # 今日應聯絡 = 提醒中 + 逾期未回購，統一依 CRM Score 排序
+    @today            = (@remind_now + @overdue).sort_by { |r| -r[:crm_score] }
+    @high_value_count = @today.count { |r| [:vip, :big].include?(r[:customer_type][:key]) }
   end
 
   def build_loyal_buyers
@@ -187,6 +202,17 @@ class OmnipotentRestockController < ApplicationController
   end
 
   # ── Helpers ────────────────────────────────────────────────────────
+
+  def calc_crm_score(row)
+    score  = CRM_SCORE[:type][row[:customer_type][:key]] || 0
+    score += CRM_SCORE[:from_broadcast]  if row[:source_event] != "一般購買"
+    score += CRM_SCORE[:repeat_buyer]    if row[:omni_count] > 1
+    dl = row[:days_left]
+    score += if dl < -60 then CRM_SCORE[:overdue_severe]
+              elsif dl < -30 then CRM_SCORE[:overdue_mild]
+              else 0 end
+    score
+  end
 
   def resolve_customer_type(order_count, total_bottles)
     if order_count >= 2 && total_bottles >= 6

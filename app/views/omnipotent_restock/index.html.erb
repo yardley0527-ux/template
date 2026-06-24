@@ -53,30 +53,42 @@
   </div>
 </div>
 
-<%# ── 5 張 Tab 卡片 ── %>
+<%# ── 今日待辦 Tab 卡片 ── %>
 <div class="row g-3 mb-0" role="tablist">
   <div class="col">
-    <a href="#tab-overdue" data-toggle="tab" role="tab"
+    <a href="#tab-today" data-toggle="tab" role="tab"
        class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
        style="border-left: 4px solid #dc3545 !important; cursor: pointer;">
-      <div class="text-danger fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">🔴 逾期未回購</div>
-      <div class="fw-bold text-danger" style="font-size: 2rem; line-height: 1;"><%= @overdue.size %></div>
+      <div class="text-danger fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">🔴 今日應聯絡</div>
+      <div class="fw-bold text-danger" style="font-size: 2rem; line-height: 1;"><%= @today.size %></div>
+      <div class="text-muted" style="font-size:0.7rem;">提醒中 + 逾期・依分數排序</div>
+    </a>
+  </div>
+  <div class="col">
+    <a href="#tab-today" data-toggle="tab" role="tab"
+       class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
+       style="border-left: 4px solid #dc2626 !important; cursor: pointer;">
+      <div class="fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px; color: #dc2626;">⚠️ 高價值客戶</div>
+      <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #dc2626;"><%= @high_value_count %></div>
+      <div class="text-muted" style="font-size:0.7rem;">今日清單中 VIP + 大套組</div>
     </a>
   </div>
   <div class="col">
     <a href="#tab-at-risk" data-toggle="tab" role="tab"
        class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
        style="border-left: 4px solid #7c3aed !important; cursor: pointer;">
-      <div class="fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px; color: #7c3aed;">⚠️ 可能流失</div>
+      <div class="fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px; color: #7c3aed;">🟣 流失喚醒</div>
       <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #7c3aed;"><%= @at_risk.size %></div>
+      <div class="text-muted" style="font-size:0.7rem;">逾期超過 60 天</div>
     </a>
   </div>
   <div class="col">
-    <a href="#tab-remind" data-toggle="tab" role="tab"
+    <a href="#tab-loyal" data-toggle="tab" role="tab"
        class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
        style="border-left: 4px solid #f59e0b !important; cursor: pointer;">
-      <div class="fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px; color: #b45309;">🟠 提醒中</div>
-      <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #b45309;"><%= @remind_now.size %></div>
+      <div class="fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px; color: #b45309;">🟠 直播前邀請</div>
+      <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #b45309;"><%= @loyal_buyers.size %></div>
+      <div class="text-muted" style="font-size:0.7rem;">常購客・直播前必邀</div>
     </a>
   </div>
   <div class="col">
@@ -85,14 +97,7 @@
        style="border-left: 4px solid #9ca3af !important; cursor: pointer;">
       <div class="text-muted fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px;">⚪ 尚早</div>
       <div class="fw-bold text-muted" style="font-size: 2rem; line-height: 1;"><%= @not_urgent.size %></div>
-    </a>
-  </div>
-  <div class="col">
-    <a href="#tab-loyal" data-toggle="tab" role="tab"
-       class="card border-0 shadow-sm text-center py-3 text-decoration-none d-block restock-tab-card"
-       style="border-left: 4px solid #1d4ed8 !important; cursor: pointer;">
-      <div class="fw-bold mb-1" style="font-size: 0.75rem; letter-spacing: 1px; color: #1d4ed8;">🔵 常購名單</div>
-      <div class="fw-bold" style="font-size: 2rem; line-height: 1; color: #1d4ed8;"><%= @loyal_buyers.size %></div>
+      <div class="text-muted" style="font-size:0.7rem;">未到提醒日</div>
     </a>
   </div>
 </div>
@@ -100,17 +105,21 @@
 <%# ── Tab 內容 ── %>
 <div class="tab-content mt-3">
 
-  <div class="tab-pane" id="tab-overdue" role="tabpanel">
+  <%# 今日應聯絡：提醒中 + 逾期，統一依 CRM Score 排序 %>
+  <div class="tab-pane" id="tab-today" role="tabpanel">
     <div class="card border-0 shadow-sm">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #991b1b;">
-        <span class="fw-bold">逾期未回購（0–60 天）</span>
-        <span class="badge bg-white text-dark"><%= @overdue.size %> 人</span>
+        <div>
+          <span class="fw-bold">今日應聯絡</span>
+          <span class="ms-2 small opacity-75">提醒中 <%= @remind_now.size %> 人 ＋ 逾期 <%= @overdue.size %> 人・依 CRM Score 排序</span>
+        </div>
+        <span class="badge bg-white text-dark"><%= @today.size %> 人</span>
       </div>
       <div class="card-body p-0">
-        <% if @overdue.any? %>
-          <%= render 'restock_table', rows: @overdue %>
+        <% if @today.any? %>
+          <%= render 'restock_table', rows: @today %>
         <% else %>
-          <p class="text-muted small p-3 mb-0">目前沒有逾期未回購的客戶。</p>
+          <p class="text-muted small p-3 mb-0">今天沒有需要聯絡的客戶。</p>
         <% end %>
       </div>
     </div>
@@ -119,7 +128,7 @@
   <div class="tab-pane" id="tab-at-risk" role="tabpanel">
     <div class="card border-0 shadow-sm">
       <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #6d28d9;">
-        <span class="fw-bold">可能流失（逾期超過 <%= OmnipotentRestockController::CHURN_THRESHOLD_DAYS.abs %> 天）</span>
+        <span class="fw-bold">流失喚醒（逾期超過 <%= OmnipotentRestockController::CHURN_THRESHOLD_DAYS.abs %> 天）</span>
         <span class="badge bg-white text-dark"><%= @at_risk.size %> 人</span>
       </div>
       <div class="card-body p-0">
@@ -127,22 +136,6 @@
           <%= render 'restock_table', rows: @at_risk %>
         <% else %>
           <p class="text-muted small p-3 mb-0">目前沒有可能流失的客戶。</p>
-        <% end %>
-      </div>
-    </div>
-  </div>
-
-  <div class="tab-pane" id="tab-remind" role="tabpanel">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #d97706;">
-        <span class="fw-bold">提醒中（已到建議提醒日，尚未逾期）</span>
-        <span class="badge bg-white text-dark"><%= @remind_now.size %> 人</span>
-      </div>
-      <div class="card-body p-0">
-        <% if @remind_now.any? %>
-          <%= render 'restock_table', rows: @remind_now %>
-        <% else %>
-          <p class="text-muted small p-3 mb-0">目前沒有進入提醒期的客戶。</p>
         <% end %>
       </div>
     </div>
