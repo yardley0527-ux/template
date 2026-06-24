@@ -1,20 +1,33 @@
 <%# app/views/omnipotent_restock/index.html.erb %>
-<% content_for :page_title, "B群／全能 旅程管理" %>
+<% content_for :page_title, "客戶旅程管理 - #{@product[:label]}" %>
+
+<%# ── 產品選擇器 ── %>
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <span class="text-muted small fw-semibold me-1">產品：</span>
+  <% @all_products.each do |p| %>
+    <%= link_to crm_journey_path(product: p[:key]),
+          class: "btn btn-sm #{p[:key] == @product_key ? 'btn-primary' : 'btn-outline-secondary'}" do %>
+      <%= p[:icon] %> <%= p[:short] %>
+    <% end %>
+  <% end %>
+</div>
 
 <div class="row g-3 mb-3">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <div>
-      <h4 class="fw-bold mb-0">B群／全能 旅程管理</h4>
+      <h4 class="fw-bold mb-0" style="color:<%= @product[:color] %>;">
+        <%= @product[:icon] %> <%= @product[:label] %> 旅程管理
+      </h4>
       <p class="text-muted small mb-0">
-        追蹤近一年所有全能購買客戶・依最後購買日＋實際回購中位數自動推算吃完日、提醒日、預計回購日・訂單匯入後自動更新
+        追蹤近一年購買客戶・依最後購買日＋實際回購中位數自動推算吃完日、提醒日、預計回購日・訂單匯入後自動更新
       </p>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-      <%= link_to "⬇ 今日維護名單", omnipotent_restock_export_path,
+      <%= link_to "⬇ 今日維護名單", crm_export_path(product: @product_key),
             class: "btn btn-outline-secondary btn-sm fw-semibold" %>
-      <%= link_to "⬇ 流失喚醒名單", omnipotent_restock_export_at_risk_path,
+      <%= link_to "⬇ 流失喚醒名單", crm_export_at_risk_path(product: @product_key),
             class: "btn btn-outline-secondary btn-sm fw-semibold" %>
-      <%= link_to "⬇ 常購名單", omnipotent_restock_export_loyal_path,
+      <%= link_to "⬇ 常購名單", crm_export_loyal_path(product: @product_key),
             class: "btn btn-outline-secondary btn-sm fw-semibold" %>
     </div>
   </div>

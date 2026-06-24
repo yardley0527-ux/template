@@ -34,7 +34,7 @@
             <%= link_to c.full_name, customer_path(c.id), target: "_blank",
                   class: "fw-semibold text-decoration-none d-block" %>
             <span class="text-muted small"><%= c.membership_level %></span>
-            <%= link_to "旅程 →", omnipotent_restock_customer_journey_path(c.id),
+            <%= link_to "旅程 →", crm_customer_journey_path(c.id, product: @product_key),
                   class: "text-muted d-block", style: "font-size:0.68rem;" %>
           </td>
           <td>
@@ -103,6 +103,7 @@
             <div class="d-flex flex-wrap gap-1 align-items-center"
                  data-email="<%= c.email %>"
                  data-ref-date="<%= r[:bought_date] %>"
+                 data-product-key="<%= @product_key %>"
                  data-current="<%= current_status %>"
                  data-channel="<%= notif&.channel %>"
                  data-result="<%= notif&.result %>"
@@ -154,7 +155,7 @@
 <script>
 (function () {
   var CSRF       = document.querySelector('meta[name="csrf-token"]')?.content || '';
-  var UPDATE_URL = '<%= omnipotent_restock_update_status_path %>';
+  var UPDATE_URL = '<%= crm_update_status_path %>';
   var STATUS_COLORS = { "未通知": "secondary", "已通知": "primary", "已回覆": "success", "暫不需要": "light" };
   var ALL_STATUSES  = ["未通知", "已通知", "已回覆", "暫不需要"];
 
@@ -162,7 +163,8 @@
     fetch(UPDATE_URL, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
-      body: JSON.stringify(Object.assign({ email: email, reference_date: refDate }, payload))
+      body: JSON.stringify(Object.assign({ email: email, reference_date: refDate,
+                                          product_key: container.dataset.productKey || 'omnipotent' }, payload))
     })
     .then(function (res) { return res.json(); })
     .then(function (data) { if (data.success) onSuccess(data); });

@@ -105,7 +105,7 @@
         <% end %>
         <div class="text-muted" style="font-size:0.75rem;">
           <div class="mb-1">使用中位數（天）：</div>
-          <% OmnipotentRestockController::REPURCHASE_MEDIANS.each do |b, d| %>
+          <% @product[:medians].each do |b, d| %>
             <span class="badge bg-light text-dark me-1"><%= b %>瓶→<%= d %>天</span>
           <% end %>
         </div>

@@ -45,20 +45,17 @@ class SidebarEntry
           ]
         },
         {
-          group_title: "旅程管理",
+          group_title: "CRM",
           children: [
-            { href: omnipotent_restock_path,                  title: "B群／全能 旅程管理", icon: "fa-route" },
-            { href: omnipotent_restock_broadcast_room_path,   title: "直播戰情室",          icon: "fa-broadcast-tower" },
-            { href: omnipotent_restock_boss_dashboard_path,   title: "老闆總覽",            icon: "fa-chart-pie" },
-          ]
-        },
-        {
-          group_title: "CRM 效益分析",
-          children: [
-            { href: omnipotent_restock_roi_dashboard_path,          title: "CRM ROI Dashboard",  icon: "fa-dollar-sign" },
-            { href: omnipotent_restock_journey_accuracy_path,       title: "Journey 預測驗證",    icon: "fa-crosshairs" },
-            { href: omnipotent_restock_crm_analysis_path,           title: "客服操作分析",         icon: "fa-headset" },
-            { href: omnipotent_restock_broadcast_performance_path,  title: "直播來源分析",         icon: "fa-video" },
+            { href: crm_home_path,      title: "CRM 首頁",    icon: "fa-chart-pie" },
+            { href: crm_journey_path,   title: "客戶旅程管理", icon: "fa-route" },
+            { href: crm_broadcast_path, title: "直播戰情室",   icon: "fa-broadcast-tower" },
+            { href: "#", title: "CRM 效益分析", icon: "fa-chart-bar", children: [
+              { href: crm_roi_path,        title: "ROI Dashboard",  icon: "fa-dollar-sign" },
+              { href: crm_accuracy_path,   title: "Journey 預測驗證", icon: "fa-crosshairs" },
+              { href: crm_operations_path, title: "客服操作分析",     icon: "fa-headset" },
+              { href: crm_broadcasts_path, title: "直播來源分析",     icon: "fa-video" },
+            ]},
           ]
         },
         {
