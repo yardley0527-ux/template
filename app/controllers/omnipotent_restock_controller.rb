@@ -62,6 +62,11 @@ class OmnipotentRestockController < ApplicationController
 
     @event_label = "近一年全客戶追蹤"
 
+    # 建立直播期間範圍集合，用來標記哪些購買來自直播
+    broadcast_ranges = OmnipotentAnalysisController::OMNI_EVENTS.map do |e|
+      e[:date].beginning_of_day..(e[:date] + 3).end_of_day
+    end
+
     customers = ShoplineCustomer
       .where(email: last_order_by_email.keys)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
@@ -71,6 +76,8 @@ class OmnipotentRestockController < ApplicationController
       bottles              = extract_bottles(order[:product_name])
       expected_return_date = order[:order_date] + expected_days(bottles)
       days_left            = (expected_return_date - today).to_i
+      bought_dt            = order[:order_date].to_time
+      from_broadcast       = broadcast_ranges.any? { |r| r.cover?(bought_dt) }
 
       {
         customer:             c,
@@ -78,7 +85,8 @@ class OmnipotentRestockController < ApplicationController
         bought_date:          order[:order_date],
         bottles:              bottles,
         expected_return_date: expected_return_date,
-        days_left:            days_left
+        days_left:            days_left,
+        from_broadcast:       from_broadcast
       }
     end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
 

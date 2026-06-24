@@ -25,7 +25,12 @@
           </td>
           <td><span class="text-muted small"><%= c.membership_level %></span></td>
           <td>
-            <div class="fw-semibold"><%= r[:bought_date]&.strftime("%m/%d") || "-" %> 買 <%= r[:bottles] %> 瓶</div>
+            <div class="fw-semibold">
+              <%= r[:bought_date]&.strftime("%m/%d") || "-" %> 買 <%= r[:bottles] %> 瓶
+              <% if r[:from_broadcast] %>
+                <span class="badge bg-warning text-dark ms-1" style="font-size:0.7rem;">直播</span>
+              <% end %>
+            </div>
             <div class="text-muted small">
               預計 <%= r[:expected_return_date]&.strftime("%m/%d") || "-" %> 回購．
               <% if dl < 0 %>
