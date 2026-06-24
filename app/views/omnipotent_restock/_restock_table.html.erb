@@ -34,6 +34,8 @@
             <%= link_to c.full_name, customer_path(c.id), target: "_blank",
                   class: "fw-semibold text-decoration-none d-block" %>
             <span class="text-muted small"><%= c.membership_level %></span>
+            <%= link_to "旅程 →", omnipotent_restock_customer_journey_path(c.id),
+                  class: "text-muted d-block", style: "font-size:0.68rem;" %>
           </td>
           <td>
             <span class="fw-semibold small" style="color:<%= ct[:color] %>;"><%= ct[:emoji] %> <%= ct[:label] %></span>
@@ -69,20 +71,69 @@
           <td>
             <% status_colors = { "未通知" => "secondary", "已通知" => "primary", "已回覆" => "success", "暫不需要" => "light" } %>
             <% status_text_colors = { "暫不需要" => "text-muted" } %>
-            <div class="mb-1">
-              <span class="badge bg-<%= status_colors[current_status] %> <%= status_text_colors[current_status] %>">
+            <div class="d-flex align-items-center gap-1 mb-1">
+              <span class="badge bg-<%= status_colors[current_status] %> <%= status_text_colors[current_status] %> notif-status-badge">
                 <%= current_status %>
               </span>
+              <% if notif&.contacted_at %>
+                <span class="text-muted notif-date-display" style="font-size:0.68rem;"><%= notif.contacted_at.strftime("%m/%d") %></span>
+              <% else %>
+                <span class="text-muted notif-date-display" style="font-size:0.68rem; display:none;"></span>
+              <% end %>
             </div>
-            <div class="d-flex flex-wrap gap-1"
+            <% if notif&.channel.present? || notif&.result.present? %>
+              <div class="notif-detail-display mb-1" style="font-size:0.68rem;">
+                <% if notif&.channel.present? %>
+                  <span class="badge bg-light text-dark notif-channel-badge"><%= notif.channel %></span>
+                <% else %>
+                  <span class="badge bg-light text-dark notif-channel-badge" style="display:none;"></span>
+                <% end %>
+                <% if notif&.result.present? %>
+                  <span class="badge bg-light text-dark notif-result-badge"><%= notif.result %></span>
+                <% else %>
+                  <span class="badge bg-light text-dark notif-result-badge" style="display:none;"></span>
+                <% end %>
+              </div>
+            <% else %>
+              <div class="notif-detail-display mb-1" style="font-size:0.68rem; display:none;">
+                <span class="badge bg-light text-dark notif-channel-badge" style="display:none;"></span>
+                <span class="badge bg-light text-dark notif-result-badge" style="display:none;"></span>
+              </div>
+            <% end %>
+            <div class="d-flex flex-wrap gap-1 align-items-center"
                  data-email="<%= c.email %>"
                  data-ref-date="<%= r[:bought_date] %>"
-                 data-current="<%= current_status %>">
+                 data-current="<%= current_status %>"
+                 data-channel="<%= notif&.channel %>"
+                 data-result="<%= notif&.result %>"
+                 data-contacted-at="<%= notif&.contacted_at %>">
               <% (OmnipotentNotificationStatus::STATUSES - [current_status]).each do |s| %>
                 <button class="btn btn-outline-secondary py-0 notif-btn"
                         style="font-size:0.7rem;"
                         data-status="<%= s %>"><%= s %></button>
               <% end %>
+              <button class="btn btn-link py-0 notif-detail-toggle text-muted"
+                      style="font-size:0.65rem;" title="填寫聯絡紀錄">📝</button>
+            </div>
+            <div class="notif-detail-form mt-1 border rounded p-1 bg-light" style="display:none; font-size:0.75rem;">
+              <div class="d-flex gap-1 flex-wrap align-items-center">
+                <select class="form-select form-select-sm notif-channel-select" style="width:auto; font-size:0.72rem; padding:1px 4px;">
+                  <option value="">管道</option>
+                  <% OmnipotentNotificationStatus::CHANNELS.each do |ch| %>
+                    <option value="<%= ch %>" <%= notif&.channel == ch ? 'selected' : '' %>><%= ch %></option>
+                  <% end %>
+                </select>
+                <select class="form-select form-select-sm notif-result-select" style="width:auto; font-size:0.72rem; padding:1px 4px;">
+                  <option value="">結果</option>
+                  <% OmnipotentNotificationStatus::RESULTS.each do |res| %>
+                    <option value="<%= res %>" <%= notif&.result == res ? 'selected' : '' %>><%= res %></option>
+                  <% end %>
+                </select>
+                <input type="date" class="form-control form-control-sm notif-date-input"
+                       value="<%= notif&.contacted_at || Date.today %>"
+                       style="width:auto; font-size:0.72rem; padding:1px 4px;">
+                <button class="btn btn-primary btn-sm py-0 notif-save-detail" style="font-size:0.7rem;">儲存</button>
+              </div>
             </div>
           </td>
           <td>
@@ -107,45 +158,93 @@
   var STATUS_COLORS = { "未通知": "secondary", "已通知": "primary", "已回覆": "success", "暫不需要": "light" };
   var ALL_STATUSES  = ["未通知", "已通知", "已回覆", "暫不需要"];
 
-  function applyStatus(container, newStatus) {
-    var email   = container.dataset.email;
-    var refDate = container.dataset.refDate;
-
+  function patchStatus(email, refDate, payload, onSuccess) {
     fetch(UPDATE_URL, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
-      body: JSON.stringify({ email: email, reference_date: refDate, status: newStatus })
+      body: JSON.stringify(Object.assign({ email: email, reference_date: refDate }, payload))
     })
     .then(function (res) { return res.json(); })
-    .then(function (data) {
-      if (!data.success) return;
-      container.dataset.current = newStatus;
+    .then(function (data) { if (data.success) onSuccess(data); });
+  }
 
-      // 更新 badge
-      var badge = container.closest('td').querySelector('.badge');
-      badge.className = 'badge bg-' + (STATUS_COLORS[newStatus] || 'secondary') + (newStatus === '暫不需要' ? ' text-muted' : '');
-      badge.textContent = newStatus;
+  function refreshCell(container, data) {
+    var td = container.closest('td');
+    var newStatus = data.status;
+    container.dataset.current = newStatus;
+    if (data.channel)     container.dataset.channel    = data.channel;
+    if (data.result)      container.dataset.result     = data.result;
+    if (data.contacted_at) container.dataset.contactedAt = data.contacted_at;
 
-      // 重繪按鈕（排除目前狀態）
-      container.innerHTML = '';
-      ALL_STATUSES.filter(function (s) { return s !== newStatus; }).forEach(function (s) {
-        var b = document.createElement('button');
-        b.className = 'btn btn-outline-secondary py-0 notif-btn';
-        b.style.fontSize = '0.7rem';
-        b.dataset.status = s;
-        b.textContent = s;
-        container.appendChild(b);
-      });
+    // badge
+    var badge = td.querySelector('.notif-status-badge');
+    badge.className = 'badge bg-' + (STATUS_COLORS[newStatus] || 'secondary') + (newStatus === '暫不需要' ? ' text-muted notif-status-badge' : ' notif-status-badge');
+    badge.textContent = newStatus;
+
+    // date display
+    if (data.contacted_at) {
+      var dateEl = td.querySelector('.notif-date-display');
+      dateEl.textContent = data.contacted_at; dateEl.style.display = '';
+    }
+
+    // channel / result badges
+    var detailDiv = td.querySelector('.notif-detail-display');
+    if (data.channel || data.result) {
+      detailDiv.style.display = '';
+      var chBadge = detailDiv.querySelector('.notif-channel-badge');
+      var resBadge = detailDiv.querySelector('.notif-result-badge');
+      if (data.channel) { chBadge.textContent = data.channel; chBadge.style.display = ''; }
+      if (data.result)  { resBadge.textContent = data.result;  resBadge.style.display = ''; }
+    }
+
+    // 重繪狀態按鈕
+    var oldBtns = Array.from(container.querySelectorAll('.notif-btn'));
+    oldBtns.forEach(function (b) { b.remove(); });
+    var toggle = container.querySelector('.notif-detail-toggle');
+    ALL_STATUSES.filter(function (s) { return s !== newStatus; }).forEach(function (s) {
+      var b = document.createElement('button');
+      b.className = 'btn btn-outline-secondary py-0 notif-btn';
+      b.style.fontSize = '0.7rem'; b.dataset.status = s; b.textContent = s;
+      container.insertBefore(b, toggle);
     });
   }
 
-  // Event delegation — 處理動態新增的按鈕
+  // 狀態切換按鈕
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('.notif-btn');
     if (!btn) return;
     var container = btn.closest('[data-email]');
     if (!container) return;
-    applyStatus(container, btn.dataset.status);
+    patchStatus(container.dataset.email, container.dataset.refDate, { status: btn.dataset.status },
+      function (data) { refreshCell(container, data); });
+  });
+
+  // 📝 展開 / 收合詳細紀錄表單
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.notif-detail-toggle');
+    if (!btn) return;
+    var container = btn.closest('[data-email]');
+    var form = container.closest('td').querySelector('.notif-detail-form');
+    form.style.display = form.style.display === 'none' ? '' : 'none';
+  });
+
+  // 儲存聯絡紀錄
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.notif-save-detail');
+    if (!btn) return;
+    var td        = btn.closest('td');
+    var container = td.querySelector('[data-email]');
+    var channel   = td.querySelector('.notif-channel-select').value;
+    var result    = td.querySelector('.notif-result-select').value;
+    var date      = td.querySelector('.notif-date-input').value;
+    var payload   = {};
+    if (channel) payload.channel     = channel;
+    if (result)  payload.result      = result;
+    if (date)    payload.contacted_at = date;
+    patchStatus(container.dataset.email, container.dataset.refDate, payload, function (data) {
+      refreshCell(container, data);
+      td.querySelector('.notif-detail-form').style.display = 'none';
+    });
   });
 })();
 </script>

@@ -59,11 +59,14 @@ Rails.application.routes.draw do
   get '/omnipotent_analysis/export_missing',    to: 'omnipotent_analysis#export_missing',    as: :omnipotent_export_missing
   get '/omnipotent_analysis/export_event',     to: 'omnipotent_analysis#export_event',      as: :omnipotent_export_event
   get '/omnipotent_analysis/export_whitening', to: 'omnipotent_analysis#export_whitening',  as: :omnipotent_export_whitening
-  get   '/omnipotent_restock',                  to: 'omnipotent_restock#index',            as: :omnipotent_restock
-  get   '/omnipotent_restock/export',           to: 'omnipotent_restock#export',           as: :omnipotent_restock_export
-  get   '/omnipotent_restock/export_at_risk',   to: 'omnipotent_restock#export_at_risk',   as: :omnipotent_restock_export_at_risk
-  get   '/omnipotent_restock/export_loyal',     to: 'omnipotent_restock#export_loyal',     as: :omnipotent_restock_export_loyal
-  patch '/omnipotent_restock/update_status',    to: 'omnipotent_restock#update_status',    as: :omnipotent_restock_update_status
+  get   '/omnipotent_restock',                         to: 'omnipotent_restock#index',            as: :omnipotent_restock
+  get   '/omnipotent_restock/export',                  to: 'omnipotent_restock#export',           as: :omnipotent_restock_export
+  get   '/omnipotent_restock/export_at_risk',          to: 'omnipotent_restock#export_at_risk',   as: :omnipotent_restock_export_at_risk
+  get   '/omnipotent_restock/export_loyal',            to: 'omnipotent_restock#export_loyal',     as: :omnipotent_restock_export_loyal
+  patch '/omnipotent_restock/update_status',           to: 'omnipotent_restock#update_status',    as: :omnipotent_restock_update_status
+  get   '/omnipotent_restock/broadcast_room',          to: 'omnipotent_restock#broadcast_room',   as: :omnipotent_restock_broadcast_room
+  get   '/omnipotent_restock/boss_dashboard',          to: 'omnipotent_restock#boss_dashboard',   as: :omnipotent_restock_boss_dashboard
+  get   '/omnipotent_restock/customer_journey/:id',    to: 'omnipotent_restock#customer_journey', as: :omnipotent_restock_customer_journey
   get 'customers/export_inactive',         to: 'customers#export_inactive',         as: :export_inactive_customers
   get 'customers/export_credits_expiring', to: 'customers#export_credits_expiring', as: :export_credits_expiring_customers
 

@@ -63,15 +63,77 @@ class OmnipotentRestockController < ApplicationController
               type: "text/csv; charset=utf-8"
   end
 
+  def broadcast_room
+    build_restock_data
+    build_loyal_buyers
+    @rescue_worthy = @at_risk.select { |r| r[:omni_count] >= 2 }
+  end
+
+  def boss_dashboard
+    build_restock_data
+    @month_start      = Date.today.beginning_of_month
+    @month_new_buyers = ShoplineOrder.where(OMNIPOTENT)
+      .where("order_date >= ?", @month_start).distinct.count(:email)
+    month_ns          = OmnipotentNotificationStatus.where("notified_at >= ?", @month_start)
+    @month_notified   = month_ns.where.not(status: "未通知").count
+    @month_replied    = month_ns.where(status: "已回覆").count
+    @month_ordered    = OmnipotentNotificationStatus
+      .where("contacted_at >= ?", @month_start).where(result: "已訂購").count
+    @monthly_trend    = 5.downto(0).map do |i|
+      m  = Date.today << i
+      ms = m.beginning_of_month; me = m.end_of_month
+      ns = OmnipotentNotificationStatus.where(notified_at: ms..me)
+      { label: m.strftime("%m月"), notified: ns.count,
+        ordered: OmnipotentNotificationStatus.where(contacted_at: ms..me).where(result: "已訂購").count }
+    end
+  end
+
+  def customer_journey
+    @customer     = ShoplineCustomer.find(params[:id])
+    @omni_orders  = ShoplineOrder.where(OMNIPOTENT).where(email: @customer.email)
+      .order(order_date: :desc)
+      .pluck(:product_name, :order_date, :order_number)
+      .map { |pn, od, on_| { product_name: pn, order_date: od&.to_date, order_number: on_,
+                              bottles: extract_bottles(pn), source_event: source_event_label(od&.to_date) } }
+    @contact_history = OmnipotentNotificationStatus
+      .where(email: @customer.email).order(reference_date: :desc)
+    if @omni_orders.any?
+      latest = @omni_orders.first
+      b = latest[:bottles]; bought = latest[:order_date]; exp = expected_days(b)
+      @journey = {
+        bought_date:             bought,             bottles:      b,
+        product_name:            latest[:product_name],
+        source_event:            latest[:source_event],
+        estimated_finish_date:   bought + b * 30,
+        expected_return_date:    bought + exp,
+        suggested_reminder_date: bought + exp - REMINDER_BUFFER_DAYS,
+        days_left:               (bought + exp - Date.today).to_i,
+        days_until_reminder:     (bought + exp - REMINDER_BUFFER_DAYS - Date.today).to_i
+      }
+      tb = @omni_orders.sum { |o| o[:bottles] }
+      @customer_type      = resolve_customer_type(@omni_orders.size, tb)
+      @total_omni_bottles = tb
+      @omni_count         = @omni_orders.size
+    end
+  end
+
   def update_status
     ns = OmnipotentNotificationStatus.find_or_initialize_by(
       email:          params[:email],
       reference_date: params[:reference_date]
     )
-    ns.status     = params[:status]
-    ns.notified_at = Time.current if params[:status] == "已通知" && ns.notified_at.nil?
+    ns.status      = params[:status]      if params[:status].present?
+    ns.notified_at = Time.current         if params[:status] == "已通知" && ns.notified_at.nil?
+    ns.channel     = params[:channel]     if params[:channel].present?
+    ns.result      = params[:result]      if params[:result].present?
+    if params[:contacted_at].present?
+      ns.contacted_at = Date.parse(params[:contacted_at])
+    elsif ns.contacted_at.nil? && params[:status].present? && params[:status] != "未通知"
+      ns.contacted_at = Date.today
+    end
     ns.save!
-    render json: { success: true, status: ns.status }
+    render json: { success: true, status: ns.status, channel: ns.channel,
+                   result: ns.result, contacted_at: ns.contacted_at&.strftime("%m/%d") }
   rescue => e
     render json: { success: false, error: e.message }, status: :unprocessable_entity
   end

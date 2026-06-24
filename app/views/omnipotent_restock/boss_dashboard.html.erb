@@ -1,0 +1,182 @@
+<%# app/views/omnipotent_restock/boss_dashboard.html.erb %>
+<% content_for :page_title, "老闆總覽" %>
+
+<% content_for :head_block do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<% end %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">老闆總覽</h4>
+      <p class="text-muted small mb-0">B群／全能 旅程管理效果追蹤・<%= Date.today.strftime("%Y年%m月") %></p>
+    </div>
+    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<%# ── 本月 KPI ── %>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #0369a1 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">本月新全能買家</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#0369a1;"><%= @month_new_buyers %></div>
+      <div class="text-muted" style="font-size:0.68rem;"><%= Date.today.strftime("%m") %> 月新訂單人數</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #1d4ed8 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">本月已通知</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#1d4ed8;"><%= @month_notified %></div>
+      <div class="text-muted" style="font-size:0.68rem;">旅程通知次數</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #16a34a !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">本月已回覆</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#16a34a;"><%= @month_replied %></div>
+      <div class="text-muted" style="font-size:0.68rem;">客戶有回應</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #dc3545 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">本月成交</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#dc3545;"><%= @month_ordered %></div>
+      <div class="text-muted" style="font-size:0.68rem;">聯絡後已訂購</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+
+  <%# ── 轉換率卡 ── %>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-bold">📊 本月轉換漏斗</div>
+      <div class="card-body">
+        <% notify_rate = @month_notified > 0 ? (@month_replied.to_f / @month_notified * 100).round(1) : 0 %>
+        <% order_rate  = @month_notified > 0 ? (@month_ordered.to_f / @month_notified * 100).round(1) : 0 %>
+        <div class="mb-3">
+          <div class="d-flex justify-content-between small mb-1">
+            <span>已通知 → 已回覆</span>
+            <span class="fw-semibold"><%= notify_rate %>%</span>
+          </div>
+          <div class="progress" style="height:8px;">
+            <div class="progress-bar bg-success" style="width:<%= [notify_rate, 100].min %>%"></div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <div class="d-flex justify-content-between small mb-1">
+            <span>已通知 → 成交</span>
+            <span class="fw-semibold text-danger"><%= order_rate %>%</span>
+          </div>
+          <div class="progress" style="height:8px;">
+            <div class="progress-bar bg-danger" style="width:<%= [order_rate, 100].min %>%"></div>
+          </div>
+        </div>
+        <div class="text-muted" style="font-size:0.72rem;">
+          以本月旅程通知紀錄計算
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── 過去6個月趨勢圖 ── %>
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold">📈 過去6個月通知趨勢</div>
+      <div class="card-body">
+        <canvas id="monthlyTrendChart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<%# ── 現況快照 ── %>
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold">🔍 現況快照（截至今日）</div>
+      <div class="card-body">
+        <div class="row g-3 text-center">
+          <div class="col-6 col-md-2">
+            <div class="text-muted small">追蹤中</div>
+            <div class="fw-bold" style="font-size:1.5rem;"><%= @restock_list.size %></div>
+            <div class="text-muted" style="font-size:0.68rem;">近一年全能客戶</div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-muted small" style="color:#1d4ed8;">VIP 常購客</div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#1d4ed8;"><%= @vip_count %></div>
+            <div class="text-muted" style="font-size:0.68rem;">2次+ 且 6瓶+</div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-muted small" style="color:#ea580c;">大套組客</div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#ea580c;"><%= @big_count %></div>
+            <div class="text-muted" style="font-size:0.68rem;">累計 6瓶+</div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-muted small" style="color:#dc3545;">今日應聯絡</div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#dc3545;"><%= @today.size %></div>
+            <div class="text-muted" style="font-size:0.68rem;">提醒中 + 逾期</div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-muted small" style="color:#b45309;">逾期未回購</div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#b45309;"><%= @overdue.size %></div>
+            <div class="text-muted" style="font-size:0.68rem;">0–60 天</div>
+          </div>
+          <div class="col-6 col-md-2">
+            <div class="text-muted small" style="color:#7c3aed;">可能流失</div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#7c3aed;"><%= @at_risk.size %></div>
+            <div class="text-muted" style="font-size:0.68rem;">超過 60 天</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 客戶類型分佈 ── %>
+<div class="row g-3">
+  <% type_counts = @restock_list.group_by { |r| r[:customer_type][:key] }.transform_values(&:size) %>
+  <% OmnipotentRestockController::CUSTOMER_TYPES.each do |ct| %>
+    <% count = type_counts[ct[:key]] || 0 %>
+    <% pct = @restock_list.size > 0 ? (count.to_f / @restock_list.size * 100).round(1) : 0 %>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-3">
+          <div class="fw-bold mb-1" style="color:<%= ct[:color] %>; font-size:0.82rem;"><%= ct[:emoji] %> <%= ct[:label] %></div>
+          <div class="fw-bold" style="font-size:1.8rem; line-height:1; color:<%= ct[:color] %>;"><%= count %></div>
+          <div class="text-muted" style="font-size:0.7rem;"><%= pct %>% 的追蹤客戶</div>
+          <div class="text-muted" style="font-size:0.68rem;"><%= ct[:desc] %></div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<% content_for :scripts_block do %>
+<script>
+(function () {
+  var labels   = <%= raw @monthly_trend.map { |t| t[:label] }.to_json %>;
+  var notified = <%= raw @monthly_trend.map { |t| t[:notified] }.to_json %>;
+  var ordered  = <%= raw @monthly_trend.map { |t| t[:ordered] }.to_json %>;
+
+  new Chart(document.getElementById('monthlyTrendChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: '已通知', data: notified, backgroundColor: 'rgba(29,78,216,0.7)', borderRadius: 4 },
+        { label: '已訂購', data: ordered,  backgroundColor: 'rgba(220,53,69,0.7)',  borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+})();
+</script>
+<% end %>

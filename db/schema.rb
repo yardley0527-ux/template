@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_24_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_24_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -327,6 +327,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_24_130000) do
     t.text "note"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "channel"
+    t.string "result"
+    t.date "contacted_at"
     t.index ["email", "reference_date"], name: "idx_omni_notif_email_date", unique: true
     t.index ["status"], name: "index_omnipotent_notification_statuses_on_status"
   end

@@ -1,0 +1,124 @@
+<%# app/views/omnipotent_restock/broadcast_room.html.erb %>
+<% content_for :page_title, "直播戰情室" %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">直播戰情室</h4>
+      <p class="text-muted small mb-0">直播前備戰清單・整合 VIP 邀請、提醒中、逾期、值得喚醒四個名單</p>
+    </div>
+    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<%# ── 四個 KPI 快覽卡 ── %>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-left:4px solid #1d4ed8 !important;">
+      <div class="fw-bold mb-1" style="font-size:0.72rem; color:#1d4ed8;">🔵 VIP 常購客</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#1d4ed8;"><%= @loyal_buyers.count { |r| r[:customer_type][:key] == :vip } %></div>
+      <div class="text-muted" style="font-size:0.68rem;">每場必邀</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-left:4px solid #dc3545 !important;">
+      <div class="fw-bold mb-1" style="font-size:0.72rem; color:#dc3545;">🔴 提醒中</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#dc3545;"><%= @remind_now.size %></div>
+      <div class="text-muted" style="font-size:0.68rem;">快吃完了</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-left:4px solid #b45309 !important;">
+      <div class="fw-bold mb-1" style="font-size:0.72rem; color:#b45309;">⚠️ 逾期未回購</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#b45309;"><%= @overdue.size %></div>
+      <div class="text-muted" style="font-size:0.68rem;">0–60 天逾期</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-left:4px solid #7c3aed !important;">
+      <div class="fw-bold mb-1" style="font-size:0.72rem; color:#7c3aed;">🟣 值得喚醒</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#7c3aed;"><%= @rescue_worthy.size %></div>
+      <div class="text-muted" style="font-size:0.68rem;">流失且買過 2 次+</div>
+    </div>
+  </div>
+</div>
+
+<%# ── VIP 常購客 ── %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#1d4ed8;">
+    <span class="fw-bold">🔵 VIP 常購客（直播前必邀）</span>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="badge bg-white text-dark"><%= @loyal_buyers.count { |r| r[:customer_type][:key] == :vip } %> 人</span>
+      <%= link_to "⬇ 匯出常購名單", omnipotent_restock_export_loyal_path, class: "btn btn-sm btn-light" %>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" style="font-size:0.82rem;">
+        <thead class="table-light"><tr><th>#</th><th>姓名</th><th>卡別</th><th>購買次數</th><th>累計瓶數</th><th>IG</th></tr></thead>
+        <tbody>
+          <% @loyal_buyers.select { |r| r[:customer_type][:key] == :vip }.each_with_index do |r, i| %>
+            <% c = r[:customer] %>
+            <tr>
+              <td><%= i + 1 %></td>
+              <td>
+                <%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %>
+                <%= link_to "旅程", omnipotent_restock_customer_journey_path(c.id), class: "text-muted ms-1", style: "font-size:0.7rem;" %>
+              </td>
+              <td><span class="badge bg-light text-dark"><%= c.membership_level %></span></td>
+              <td class="text-center"><strong><%= r[:order_count] %></strong></td>
+              <td class="text-center"><%= r[:total_bottles] %> 瓶</td>
+              <td>
+                <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>
+                  <% ig = c.instagram_account.gsub('@','').strip %>
+                  <a href="https://instagram.com/<%= ig %>" target="_blank" class="text-decoration-none small">@<%= ig %></a>
+                <% else %>
+                  <span class="text-muted">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<%# ── 提醒中 ── %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#dc3545;">
+    <span class="fw-bold">🔴 提醒中（已到建議提醒日）</span>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="badge bg-white text-dark"><%= @remind_now.size %> 人</span>
+      <%= link_to "⬇ 匯出今日名單", omnipotent_restock_export_path, class: "btn btn-sm btn-light" %>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <%= render 'broadcast_mini_table', rows: @remind_now %>
+  </div>
+</div>
+
+<%# ── 逾期未回購 ── %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#b45309;">
+    <span class="fw-bold">⚠️ 逾期未回購（0–60 天）</span>
+    <span class="badge bg-white text-dark"><%= @overdue.size %> 人</span>
+  </div>
+  <div class="card-body p-0">
+    <%= render 'broadcast_mini_table', rows: @overdue %>
+  </div>
+</div>
+
+<%# ── 值得喚醒 ── %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#7c3aed;">
+    <span class="fw-bold">🟣 值得喚醒（流失但買過 2 次以上）</span>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="badge bg-white text-dark"><%= @rescue_worthy.size %> 人</span>
+      <%= link_to "⬇ 匯出流失名單", omnipotent_restock_export_at_risk_path, class: "btn btn-sm btn-light" %>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <%= render 'broadcast_mini_table', rows: @rescue_worthy %>
+  </div>
+</div>

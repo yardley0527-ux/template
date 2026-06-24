@@ -1,0 +1,78 @@
+<%# locals: rows %>
+<% rows_shown = rows.first(50) %>
+<% if rows_shown.empty? %>
+  <p class="text-muted small p-3 mb-0">目前沒有符合的客戶。</p>
+<% else %>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0" style="font-size:0.82rem;">
+      <thead class="table-light">
+        <tr>
+          <th style="width:3%">#</th>
+          <th style="width:5%">分數</th>
+          <th>姓名 / 卡別</th>
+          <th>客戶類型</th>
+          <th>上次購買</th>
+          <th>逾期/距提醒</th>
+          <th>通知狀態</th>
+          <th>IG</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows_shown.each_with_index do |r, i| %>
+          <% c = r[:customer]; ct = r[:customer_type]; notif = r[:notification] %>
+          <% current_status = notif&.status || "未通知" %>
+          <% score = r[:crm_score] || 0 %>
+          <% score_color = score >= 70 ? '#991b1b' : score >= 50 ? '#b45309' : score >= 30 ? '#0369a1' : '#6b7280' %>
+          <tr>
+            <td><span class="text-muted" style="font-size:0.75rem;"><%= i + 1 %></span></td>
+            <td class="text-center">
+              <span class="fw-bold" style="color:<%= score_color %>; font-size:0.9rem;"><%= score %></span>
+            </td>
+            <td>
+              <%= link_to c.full_name, customer_path(c.id), target: "_blank",
+                    class: "fw-semibold text-decoration-none d-block" %>
+              <span class="text-muted" style="font-size:0.7rem;"><%= c.membership_level %></span>
+              <%= link_to "旅程", omnipotent_restock_customer_journey_path(c.id), style: "font-size:0.65rem;", class: "text-muted" %>
+            </td>
+            <td>
+              <span class="fw-semibold small" style="color:<%= ct[:color] %>;"><%= ct[:emoji] %> <%= ct[:label] %></span>
+              <div class="text-muted" style="font-size:0.7rem;"><%= r[:total_omni_bottles] %> 瓶・<%= r[:omni_count] %> 次</div>
+            </td>
+            <td>
+              <div class="fw-semibold small"><%= r[:bought_date]&.strftime("%m/%d") %> 買 <%= r[:bottles] %> 瓶</div>
+              <div class="text-muted" style="font-size:0.7rem;"><%= r[:source_event] == "一般購買" ? r[:source_event] : "📺 #{r[:source_event]}" %></div>
+            </td>
+            <td>
+              <% dl = r[:days_left]; dur = r[:days_until_reminder] %>
+              <% if dl < 0 %>
+                <span class="text-danger fw-semibold small">逾期 <%= dl.abs %> 天</span>
+              <% elsif dur <= 0 %>
+                <span class="text-warning fw-semibold small">提醒中，<%= dl %> 天後回購</span>
+              <% else %>
+                <span class="text-muted small"><%= dur %> 天到提醒</span>
+              <% end %>
+            </td>
+            <td>
+              <% status_colors = { "未通知" => "secondary", "已通知" => "primary", "已回覆" => "success", "暫不需要" => "light" } %>
+              <span class="badge bg-<%= status_colors[current_status] %>"><%= current_status %></span>
+              <% if notif&.channel.present? %>
+                <div style="font-size:0.65rem;" class="text-muted"><%= notif.channel %> <%= notif.result %></div>
+              <% end %>
+            </td>
+            <td>
+              <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>
+                <% ig = c.instagram_account.gsub('@','').strip %>
+                <a href="https://instagram.com/<%= ig %>" target="_blank" class="text-decoration-none small">@<%= ig %></a>
+              <% else %>
+                <span class="text-muted small">—</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <% if rows.size > 50 %>
+    <div class="text-muted small px-3 py-2 border-top">顯示前 50 筆，共 <%= rows.size %> 筆</div>
+  <% end %>
+<% end %>

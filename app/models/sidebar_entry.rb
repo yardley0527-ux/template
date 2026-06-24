@@ -47,7 +47,9 @@ class SidebarEntry
         {
           group_title: "旅程管理",
           children: [
-            { href: omnipotent_restock_path, title: "B群／全能 旅程管理", icon: "fa-route" },
+            { href: omnipotent_restock_path,             title: "B群／全能 旅程管理", icon: "fa-route" },
+            { href: omnipotent_restock_broadcast_room_path, title: "直播戰情室",        icon: "fa-broadcast-tower" },
+            { href: omnipotent_restock_boss_dashboard_path, title: "老闆總覽",          icon: "fa-chart-pie" },
           ]
         },
         {

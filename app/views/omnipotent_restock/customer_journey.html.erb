@@ -1,0 +1,200 @@
+<%# app/views/omnipotent_restock/customer_journey.html.erb %>
+<% content_for :page_title, "客戶旅程 - #{@customer.full_name}" %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0"><%= @customer.full_name %> 的全能旅程</h4>
+      <p class="text-muted small mb-0"><%= @customer.email %></p>
+    </div>
+    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<div class="row g-3">
+
+  <%# ── 左欄：客戶卡片 + 旅程狀態 ── %>
+  <div class="col-md-4">
+
+    <%# 客戶資料卡 %>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
+               style="width:48px; height:48px; font-size:1.2rem;">
+            <%= @customer.full_name&.chars&.first %>
+          </div>
+          <div>
+            <div class="fw-bold"><%= @customer.full_name %></div>
+            <div class="text-muted small"><%= @customer.membership_level %></div>
+          </div>
+        </div>
+        <% if @customer_type %>
+          <div class="mb-2">
+            <span class="badge" style="background-color:<%= @customer_type[:color] %>;">
+              <%= @customer_type[:emoji] %> <%= @customer_type[:label] %>
+            </span>
+            <span class="text-muted small ms-1">全能 <%= @omni_count %> 次・<%= @total_omni_bottles %> 瓶</span>
+          </div>
+        <% end %>
+        <div class="small text-muted">
+          <% if @customer.mobile_phone.present? %>
+            <div>📱 <%= @customer.mobile_phone %></div>
+          <% end %>
+          <% if @customer.instagram_account.present? && @customer.instagram_account != "無ig帳號" %>
+            <% ig = @customer.instagram_account.gsub('@','').strip %>
+            <div>
+              <a href="https://instagram.com/<%= ig %>" target="_blank" class="text-decoration-none">
+                📷 @<%= ig %>
+              </a>
+            </div>
+          <% end %>
+        </div>
+        <div class="mt-2">
+          <%= link_to "查看完整客戶資料 →", customer_path(@customer.id), target: "_blank",
+                class: "btn btn-outline-secondary btn-sm w-100" %>
+        </div>
+      </div>
+    </div>
+
+    <%# 旅程狀態卡 %>
+    <% if @journey %>
+      <% dl = @journey[:days_left]; dur = @journey[:days_until_reminder] %>
+      <% status_color = dl < -60 ? '#7c3aed' : dl < 0 ? '#b45309' : dur <= 0 ? '#dc3545' : '#6b7280' %>
+      <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid <%= status_color %> !important;">
+        <div class="card-body">
+          <div class="fw-bold mb-3" style="color:<%= status_color %>;">
+            <% if dl < -60 %>🟣 可能流失
+            <% elsif dl < 0 %>⚠️ 逾期未回購
+            <% elsif dur <= 0 %>🔴 提醒中
+            <% else %>⚪ 尚早
+            <% end %>
+          </div>
+          <div class="row g-2 text-center mb-3">
+            <div class="col-4">
+              <div class="text-muted" style="font-size:0.68rem;">吃完日</div>
+              <div class="fw-semibold small"><%= @journey[:estimated_finish_date]&.strftime("%m/%d") %></div>
+            </div>
+            <div class="col-4">
+              <div class="text-muted" style="font-size:0.68rem;">提醒日</div>
+              <div class="fw-semibold small" style="color:#dc3545;"><%= @journey[:suggested_reminder_date]&.strftime("%m/%d") %></div>
+            </div>
+            <div class="col-4">
+              <div class="text-muted" style="font-size:0.68rem;">回購日</div>
+              <div class="fw-semibold small"><%= @journey[:expected_return_date]&.strftime("%m/%d") %></div>
+            </div>
+          </div>
+          <div class="text-center">
+            <% if dl < 0 %>
+              <span class="badge bg-danger">逾期 <%= dl.abs %> 天</span>
+            <% elsif dur <= 0 %>
+              <span class="badge bg-warning text-dark">提醒中・<%= dl %> 天後回購</span>
+            <% else %>
+              <span class="badge bg-secondary">還有 <%= dur %> 天到提醒日</span>
+            <% end %>
+          </div>
+          <div class="text-muted mt-2" style="font-size:0.72rem;">
+            上次購買：<%= @journey[:bought_date]&.strftime("%Y/%m/%d") %>・<%= @journey[:bottles] %> 瓶
+            <% if @journey[:source_event] != "一般購買" %>
+              <span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">📺 <%= @journey[:source_event] %></span>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+  </div>
+
+  <%# ── 右欄：購買時間軸 + 聯絡紀錄 ── %>
+  <div class="col-md-8">
+
+    <%# 購買時間軸 %>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+        <span>📦 全能購買紀錄</span>
+        <span class="badge bg-primary"><%= @omni_orders.size %> 筆</span>
+      </div>
+      <div class="card-body py-2">
+        <% if @omni_orders.empty? %>
+          <p class="text-muted small mb-0">尚無全能購買紀錄。</p>
+        <% else %>
+          <div class="timeline" style="position:relative; padding-left:24px;">
+            <div style="position:absolute; left:8px; top:0; bottom:0; width:2px; background:#e5e7eb;"></div>
+            <% @omni_orders.each_with_index do |o, i| %>
+              <% is_latest = i == 0 %>
+              <div class="mb-3" style="position:relative;">
+                <div style="position:absolute; left:-20px; top:2px; width:12px; height:12px;
+                     border-radius:50%; background:<%= is_latest ? '#dc3545' : '#9ca3af' %>;
+                     border:2px solid white; box-shadow:0 0 0 1px <%= is_latest ? '#dc3545' : '#9ca3af' %>;"></div>
+                <div class="d-flex align-items-start justify-content-between">
+                  <div>
+                    <div class="fw-semibold small">
+                      <%= o[:order_date]&.strftime("%Y/%m/%d") %>
+                      <% if is_latest %><span class="badge bg-danger ms-1" style="font-size:0.65rem;">最新</span><% end %>
+                    </div>
+                    <div class="text-muted" style="font-size:0.78rem;"><%= o[:product_name] %></div>
+                    <div style="font-size:0.72rem;">
+                      <span class="text-muted"><%= o[:bottles] %> 瓶</span>
+                      <% if o[:source_event] != "一般購買" %>
+                        <span class="badge bg-warning text-dark ms-1" style="font-size:0.65rem;">📺 <%= o[:source_event] %></span>
+                      <% end %>
+                    </div>
+                  </div>
+                  <span class="text-muted" style="font-size:0.7rem;">訂單：<%= o[:order_number] %></span>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <%# 聯絡紀錄 %>
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+        <span>📋 聯絡紀錄</span>
+        <span class="badge bg-secondary"><%= @contact_history.size %> 筆</span>
+      </div>
+      <div class="card-body py-0">
+        <% if @contact_history.empty? %>
+          <p class="text-muted small p-3 mb-0">尚無聯絡紀錄。</p>
+        <% else %>
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" style="font-size:0.82rem;">
+              <thead class="table-light">
+                <tr>
+                  <th>參考日期</th>
+                  <th>狀態</th>
+                  <th>管道</th>
+                  <th>結果</th>
+                  <th>聯絡日</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @contact_history.each do |n| %>
+                  <% status_colors = { "未通知" => "secondary", "已通知" => "primary", "已回覆" => "success", "暫不需要" => "light" } %>
+                  <tr>
+                    <td class="text-muted small"><%= n.reference_date&.strftime("%Y/%m/%d") %></td>
+                    <td><span class="badge bg-<%= status_colors[n.status] %>"><%= n.status %></span></td>
+                    <td><%= n.channel.present? ? n.channel : '<span class="text-muted">—</span>'.html_safe %></td>
+                    <td>
+                      <% if n.result == "已訂購" %>
+                        <span class="badge bg-success"><%= n.result %></span>
+                      <% elsif n.result.present? %>
+                        <span class="text-muted small"><%= n.result %></span>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+                    <td class="text-muted small"><%= n.contacted_at&.strftime("%m/%d") || "—" %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+  </div>
+</div>
