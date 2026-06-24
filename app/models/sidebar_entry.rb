@@ -7,7 +7,8 @@ class SidebarEntry
   class << self
     include Rails.application.routes.url_helpers
 
-    def all
+    def all(product_key: nil)
+      effective_key = product_key || JourneyProducts::DEFAULT_PRODUCT_KEY
       [
         {
           group_title: "會員管理",
@@ -47,14 +48,14 @@ class SidebarEntry
         {
           group_title: "CRM",
           children: [
-            { href: crm_home_path,      title: "CRM 首頁",    icon: "fa-chart-pie" },
-            { href: crm_journey_path,   title: "客戶旅程管理", icon: "fa-route" },
-            { href: crm_broadcast_path, title: "直播戰情室",   icon: "fa-broadcast-tower" },
+            { href: crm_home_path(product: effective_key),      title: "CRM 首頁",    icon: "fa-chart-pie" },
+            { href: crm_journey_path(product: effective_key),   title: "客戶旅程管理", icon: "fa-route" },
+            { href: crm_broadcast_path(product: effective_key), title: "直播戰情室",   icon: "fa-broadcast-tower" },
             { href: "#", title: "CRM 效益分析", icon: "fa-chart-bar", children: [
-              { href: crm_roi_path,        title: "ROI Dashboard",  icon: "fa-dollar-sign" },
-              { href: crm_accuracy_path,   title: "Journey 預測驗證", icon: "fa-crosshairs" },
-              { href: crm_operations_path, title: "客服操作分析",     icon: "fa-headset" },
-              { href: crm_broadcasts_path, title: "直播來源分析",     icon: "fa-video" },
+              { href: crm_roi_path(product: effective_key),        title: "ROI Dashboard",  icon: "fa-dollar-sign" },
+              { href: crm_accuracy_path(product: effective_key),   title: "Journey 預測驗證", icon: "fa-crosshairs" },
+              { href: crm_operations_path(product: effective_key), title: "客服操作分析",     icon: "fa-headset" },
+              { href: crm_broadcasts_path(product: effective_key), title: "直播來源分析",     icon: "fa-video" },
             ]},
           ]
         },

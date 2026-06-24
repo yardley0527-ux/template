@@ -1,5 +1,5 @@
 <ul id="js-nav-menu" class="nav-menu">
-  <% SidebarEntry.all.each do |entry| %>
+  <% SidebarEntry.all(product_key: @product_key).each do |entry| %>
     <% if entry[:group_title].present? %>
       <li class="nav-title"><%= entry[:group_title]%></li>
     <% end %>
