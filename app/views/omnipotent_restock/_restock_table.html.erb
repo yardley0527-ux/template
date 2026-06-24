@@ -164,7 +164,7 @@
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
       body: JSON.stringify(Object.assign({ email: email, reference_date: refDate,
-                                          product_key: container.dataset.productKey || 'omnipotent' }, payload))
+                                          product_key: container.dataset.productKey || '<%= JourneyProducts::DEFAULT_PRODUCT_KEY %>' }, payload))
     })
     .then(function (res) { return res.json(); })
     .then(function (data) { if (data.success) onSuccess(data); });
