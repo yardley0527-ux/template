@@ -325,7 +325,11 @@ class OmnipotentRestockController < ApplicationController
       last_order_by_email[email] ||= { product_name: product_name, order_date: order_date.to_date }
     end
 
-    return (@restock_list = @remind_now = @overdue = @at_risk = @not_urgent = []) if last_order_by_email.empty?
+    if last_order_by_email.empty?
+      @restock_list = @remind_now = @overdue = @at_risk = @not_urgent = @today = []
+      @high_value_count = 0
+      return
+    end
 
     all_emails = last_order_by_email.keys
 
