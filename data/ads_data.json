@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-06-23",
+  "last_updated": "2026-06-24",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -50,7 +50,7 @@
         "type": "VIDEO",
         "ig_post_url": null,
         "ig_embed_url": null,
-        "thumbnail_url": "https://scontent-sea5-1.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=Np1VnfylXHUQ7kNvwEoF9W8&_nc_oc=Adodf67kl5BpNVFAO7cDqVxcdRcSZSPGoQ_y72CPC1EQ_8GM2U_pBlR95T7DzReSILI&_nc_zt=23&_nc_ht=scontent-sea5-1.xx&edm=AEZPnVgEAAAA&_nc_gid=B8zyT6B8tYthn1dpgl82_w&_nc_tpa=Q5bMBQHo6vHtskb-S4awDlhUj6WqcYv21ZpQjSyPxaWjZYfoaucq98tGW92gAVonIYKh81Dka7MunJSoEA&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af-zsRPtB6onqU52uac2ybNdxArlrqqoQLN-rV5hSsEt1g&oe=6A3FE62A",
+        "thumbnail_url": "https://scontent-sea5-1.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=AE2unJx45nEQ7kNvwFRPJi1&_nc_oc=AdpwgNtEzrvzLyUU55mE2PWTSUY6h23c-FYNtu0UXBqBf2YMw2qmS4At9eOX6Drs0L0&_nc_zt=23&_nc_ht=scontent-sea5-1.xx&edm=AEZPnVgEAAAA&_nc_gid=UvciziCd94N9QLJpvQJbZw&_nc_tpa=Q5bMBQEb2zyqltaxHGJFIs_yF6NYc5AdGqaOohK8ZgFRP4_hTQaWml_Lel739dXDkQQrWXqG73VAisIDeg&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af9Um164QWbcv-JLEnXmS21ru3SzcOw7rR-N2H9aoWVrfw&oe=6A40FF6A",
         "label": "Chloe 狀態廣告"
       },
       "daily_data": [
@@ -189,6 +189,23 @@
           "shares": 9,
           "thruplay": 4135,
           "ig_followers_gained": 82
+        },
+        {
+          "date": "2026-06-24",
+          "impressions": 17421,
+          "reach": 15635,
+          "clicks": 1478,
+          "ctr": 8.48,
+          "cpm": 100,
+          "spend": 1737,
+          "video_3s": 7038,
+          "video_25": 876,
+          "video_50": 277,
+          "video_75": 186,
+          "video_100": 94,
+          "shares": 4,
+          "thruplay": 1795,
+          "ig_followers_gained": null
         }
       ]
     },
@@ -495,6 +512,40 @@
           "shares": 4,
           "thruplay": 635,
           "ig_followers_gained": -5
+        }
+      ]
+    },
+    {
+      "id": "120251939544850022",
+      "name": "維生素b為什麼可以幫助找頭髮",
+      "objective": "流量",
+      "status": "ACTIVE",
+      "daily_budget": 6000,
+      "start_date": "2026-06-23",
+      "creative": {
+        "type": "VIDEO",
+        "ig_post_url": null,
+        "ig_embed_url": null,
+        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/730543337_3070284476501470_8603503543606145082_n.jpg?_nc_cat=100&ccb=1-7&_nc_ohc=v1BtTftweYYQ7kNvwF9vHr1&_nc_oc=AdrjMP3nPlZy3OWUqwgL_Cg2J92qIK3ORfOxBy1dkv-FoZdMhUMzO0LlEaeGJVqyvfw&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=UvciziCd94N9QLJpvQJbZw&_nc_tpa=Q5bMBQFQjY1U0yeU0JUkPjk9B3XXaMQdx3qpFMOODCZrwguj0AjNgYBCZVoOVKH0YMXXmugv-E9btvmepA&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af8fOyA1uD5NMu3O13ilqElO8C_uT8OyeZiOUw39espfcw&oe=6A411E75",
+        "label": "維生素b為什麼可以幫助找頭髮"
+      },
+      "daily_data": [
+        {
+          "date": "2026-06-24",
+          "impressions": 6262,
+          "reach": 5534,
+          "clicks": 316,
+          "ctr": 5.05,
+          "cpm": 205,
+          "spend": 1281,
+          "video_3s": 1872,
+          "video_25": 436,
+          "video_50": 207,
+          "video_75": 141,
+          "video_100": 108,
+          "shares": 1,
+          "thruplay": 393,
+          "ig_followers_gained": null
         }
       ]
     }
