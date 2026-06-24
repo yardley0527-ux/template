@@ -1,0 +1,186 @@
+<%# app/views/omnipotent_restock/roi_dashboard.html.erb %>
+<% content_for :page_title, "CRM ROI Dashboard" %>
+
+<% content_for :head_block do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<% end %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">CRM ROI Dashboard</h4>
+      <p class="text-muted small mb-0">
+        驗證旅程管理是否真的創造營收・通知後 <%= OmnipotentRestockController::ATTRIBUTION_WINDOW %> 天內有回購即歸因為 CRM 帶動
+      </p>
+    </div>
+    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<%# ── 核心 KPI ── %>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #6b7280 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">累計已通知</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1;"><%= @total_notified %></div>
+      <div class="text-muted" style="font-size:0.68rem;">人次</div>
+    </div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #0369a1 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">有回覆</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#0369a1;"><%= @total_replied %></div>
+      <div class="text-muted" style="font-size:0.68rem;">人次</div>
+    </div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #16a34a !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">歸因成交人次</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#16a34a;"><%= @total_attributed %></div>
+      <div class="text-muted" style="font-size:0.68rem;">通知後 <%= OmnipotentRestockController::ATTRIBUTION_WINDOW %> 天內回購</div>
+    </div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #dc3545 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">歸因成交金額</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#dc3545;">NT$<%= number_with_delimiter(@attributed_revenue) %></div>
+      <div class="text-muted" style="font-size:0.68rem;">CRM 帶動營收</div>
+    </div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #d97706 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">通知→成交轉換率</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#d97706;"><%= @conversion_rate %>%</div>
+      <div class="text-muted" style="font-size:0.68rem;">
+        <%= @total_attributed %> / <%= @total_notified %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <%# 月度趨勢圖 %>
+  <div class="col-md-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold">📈 月度歸因趨勢（過去 6 個月）</div>
+      <div class="card-body">
+        <canvas id="roiTrendChart" height="130"></canvas>
+      </div>
+    </div>
+  </div>
+  <%# 漏斗卡 %>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-bold">🔽 轉換漏斗</div>
+      <div class="card-body">
+        <% funnel = [
+             { label: "已通知", count: @total_notified, color: "#6b7280" },
+             { label: "有回覆", count: @total_replied,  color: "#0369a1" },
+             { label: "已成交", count: @total_attributed, color: "#16a34a" }
+           ]
+           max_count = funnel.map { |f| f[:count] }.max || 1
+        %>
+        <% funnel.each do |f| %>
+          <div class="mb-3">
+            <div class="d-flex justify-content-between small mb-1">
+              <span><%= f[:label] %></span>
+              <span class="fw-semibold" style="color:<%= f[:color] %>;">
+                <%= f[:count] %>
+                <% if funnel.first[:count] > 0 && f != funnel.first %>
+                  <span class="text-muted fw-normal">(<%= (f[:count].to_f / @total_notified * 100).round(1) %>%)</span>
+                <% end %>
+              </span>
+            </div>
+            <div class="progress" style="height:10px;">
+              <div class="progress-bar" style="width:<%= max_count > 0 ? (f[:count].to_f / max_count * 100).round : 0 %>%; background-color:<%= f[:color] %>;"></div>
+            </div>
+          </div>
+        <% end %>
+        <% if @total_attributed > 0 && @attributed_revenue > 0 %>
+          <hr class="my-2">
+          <div class="text-muted small">
+            平均每次成交：<strong>NT$<%= number_with_delimiter((@attributed_revenue.to_f / @total_attributed).round) %></strong>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# 歸因成交明細 %>
+<div class="card border-0 shadow-sm">
+  <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+    <span>✅ 歸因成交紀錄</span>
+    <span class="badge bg-success"><%= @attributed.size %> 筆</span>
+  </div>
+  <div class="card-body p-0">
+    <% if @attributed.empty? %>
+      <div class="text-muted small p-4 text-center">
+        尚無歸因成交紀錄。<br>
+        <span style="font-size:0.78rem;">系統會在有通知記錄且客戶於 <%= OmnipotentRestockController::ATTRIBUTION_WINDOW %> 天內回購後自動記入。</span>
+      </div>
+    <% else %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" style="font-size:0.82rem;">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Email</th>
+              <th>聯絡日</th>
+              <th>回購日</th>
+              <th>間隔天數</th>
+              <th>成交金額</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @attributed.sort_by { |a| -a[:contacted_at].to_time.to_i }.first(100).each_with_index do |a, i| %>
+              <tr>
+                <td class="text-muted small"><%= i + 1 %></td>
+                <td class="small"><%= a[:email] %></td>
+                <td class="small"><%= a[:contacted_at].strftime("%m/%d") %></td>
+                <td class="small fw-semibold text-success"><%= a[:return_date].strftime("%m/%d") %></td>
+                <td class="text-center small"><%= (a[:return_date] - a[:contacted_at]).to_i %> 天</td>
+                <td class="small fw-semibold">
+                  <% if a[:revenue] > 0 %>NT$<%= number_with_delimiter(a[:revenue]) %>
+                  <% else %><span class="text-muted">—</span><% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% content_for :scripts_block do %>
+<script>
+(function () {
+  var labels    = <%= raw @monthly_roi.map { |m| m[:label] }.to_json %>;
+  var notified  = <%= raw @monthly_roi.map { |m| m[:notified] }.to_json %>;
+  var attributed = <%= raw @monthly_roi.map { |m| m[:attributed] }.to_json %>;
+  var revenue   = <%= raw @monthly_roi.map { |m| m[:revenue] }.to_json %>;
+
+  new Chart(document.getElementById('roiTrendChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: '已通知', data: notified, backgroundColor: 'rgba(107,114,128,0.6)', borderRadius: 4, yAxisID: 'y' },
+        { label: '歸因成交', data: attributed, backgroundColor: 'rgba(22,163,74,0.8)', borderRadius: 4, yAxisID: 'y' },
+        { label: '歸因營收(NT$)', data: revenue, type: 'line', borderColor: '#dc3545',
+          backgroundColor: 'rgba(220,53,69,0.1)', tension: 0.3, yAxisID: 'y2', fill: false }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        y:  { beginAtZero: true, ticks: { stepSize: 1 } },
+        y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+})();
+</script>
+<% end %>

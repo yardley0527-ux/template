@@ -1,0 +1,167 @@
+<%# app/views/omnipotent_restock/broadcast_performance.html.erb %>
+<% content_for :page_title, "直播來源分析" %>
+
+<% content_for :head_block do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<% end %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">直播來源分析</h4>
+      <p class="text-muted small mb-0">
+        各場次全能購買人數・場次營收・後續回購率・客戶平均價值
+      </p>
+    </div>
+    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<%# ── 全場次摘要 KPI ── %>
+<% all_buyers   = @event_stats.sum { |e| e[:buyers] } %>
+<% all_revenue  = @event_stats.sum { |e| e[:revenue] } %>
+<% all_repurch  = @event_stats.sum { |e| e[:repurchased] } %>
+<% avg_repurch_rate = all_buyers > 0 ? (all_repurch.to_f / all_buyers * 100).round(1) : 0 %>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #6b7280 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">已分析場次</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1;"><%= @event_stats.size %></div>
+      <div class="text-muted" style="font-size:0.68rem;">有全能訂單的場次</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #0369a1 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">累計買家人數</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#0369a1;"><%= all_buyers %></div>
+      <div class="text-muted" style="font-size:0.68rem;">直播購買全能</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #dc3545 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">累計場次營收</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#dc3545;">NT$<%= number_with_delimiter(all_revenue) %></div>
+      <div class="text-muted" style="font-size:0.68rem;">直播期間全能訂單</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #16a34a !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">整體後續回購率</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#16a34a;"><%= avg_repurch_rate %>%</div>
+      <div class="text-muted" style="font-size:0.68rem;"><%= all_repurch %> / <%= all_buyers %> 人再購</div>
+    </div>
+  </div>
+</div>
+
+<%# 回購率趨勢圖 %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header fw-bold">📈 各場次回購率趨勢（依時間排序）</div>
+  <div class="card-body">
+    <% chart_events = @event_stats.sort_by { |e| e[:date] }.last(12) %>
+    <canvas id="repurchaseChart" height="110"></canvas>
+  </div>
+</div>
+
+<%# 場次明細表 %>
+<div class="card border-0 shadow-sm">
+  <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+    <span>📋 場次明細</span>
+    <span class="badge bg-secondary"><%= @event_stats.size %> 場</span>
+  </div>
+  <div class="card-body p-0">
+    <% if @event_stats.empty? %>
+      <p class="text-muted small p-4 text-center">無資料。</p>
+    <% else %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" style="font-size:0.82rem;">
+          <thead class="table-light">
+            <tr>
+              <th>場次</th>
+              <th>日期</th>
+              <th>主題</th>
+              <th class="text-center">買家數</th>
+              <th class="text-right">場次營收</th>
+              <th class="text-center">平均客單</th>
+              <th class="text-center">已再購</th>
+              <th class="text-center">回購率</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @event_stats.each do |ev| %>
+              <%# 找出回購率最高的場次標示 %>
+              <% is_top = ev[:repurchase_rate] == @event_stats.map { |e| e[:repurchase_rate] }.max && ev[:buyers] >= 5 %>
+              <tr class="<%= is_top ? 'table-success' : '' %>">
+                <td class="fw-semibold small">
+                  <%= ev[:label] %>
+                  <% if is_top %><span class="badge bg-success ms-1" style="font-size:0.6rem;">最高</span><% end %>
+                </td>
+                <td class="text-muted small"><%= ev[:date].strftime("%Y/%m/%d") %></td>
+                <td class="text-muted small" style="max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="<%= ev[:note] %>">
+                  <%= ev[:note] %>
+                </td>
+                <td class="text-center"><%= ev[:buyers] %></td>
+                <td class="text-right fw-semibold">NT$<%= number_with_delimiter(ev[:revenue]) %></td>
+                <td class="text-center text-muted small">NT$<%= number_with_delimiter(ev[:avg_value]) %></td>
+                <td class="text-center">
+                  <span class="fw-semibold <%= ev[:repurchased] > 0 ? 'text-success' : 'text-muted' %>"><%= ev[:repurchased] %></span>
+                </td>
+                <td class="text-center">
+                  <% rate = ev[:repurchase_rate] %>
+                  <% rate_color = rate >= 60 ? "#16a34a" : rate >= 40 ? "#d97706" : rate >= 20 ? "#0369a1" : "#9ca3af" %>
+                  <span class="fw-bold" style="color:<%= rate_color %>;"><%= rate %>%</span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td colspan="3" class="fw-bold text-muted small">合計 / 平均</td>
+              <td class="text-center fw-bold"><%= all_buyers %></td>
+              <td class="text-right fw-bold">NT$<%= number_with_delimiter(all_revenue) %></td>
+              <td class="text-center text-muted small">
+                NT$<%= all_buyers > 0 ? number_with_delimiter((all_revenue.to_f / @event_stats.size).round) : 0 %>
+              </td>
+              <td class="text-center fw-bold text-success"><%= all_repurch %></td>
+              <td class="text-center fw-bold text-success"><%= avg_repurch_rate %>%</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% content_for :scripts_block do %>
+<% if @event_stats.any? %>
+<script>
+(function () {
+  var chart_events = <%= raw @event_stats.sort_by { |e| e[:date] }.last(12).map { |e| { label: e[:label], rate: e[:repurchase_rate], buyers: e[:buyers], revenue: e[:revenue] } }.to_json %>;
+  var labels    = chart_events.map(function(e){ return e.label; });
+  var rates     = chart_events.map(function(e){ return e.rate; });
+  var revenues  = chart_events.map(function(e){ return e.revenue; });
+
+  new Chart(document.getElementById('repurchaseChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: '回購率(%)', data: rates,    backgroundColor: 'rgba(22,163,74,0.7)',  borderRadius: 4, yAxisID: 'y' },
+        { label: '場次營收',  data: revenues, type: 'line',  borderColor: '#dc3545',
+          backgroundColor: 'rgba(220,53,69,0.1)', tension: 0.3, yAxisID: 'y2', fill: false }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: {
+        y:  { beginAtZero: true, max: 100, ticks: { callback: function(v){ return v + '%'; } } },
+        y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false },
+              ticks: { callback: function(v){ return 'NT$' + v.toLocaleString(); } } }
+      }
+    }
+  });
+})();
+</script>
+<% end %>
+<% end %>

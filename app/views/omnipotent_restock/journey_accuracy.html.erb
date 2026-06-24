@@ -1,0 +1,205 @@
+<%# app/views/omnipotent_restock/journey_accuracy.html.erb %>
+<% content_for :page_title, "Journey 預測驗證" %>
+
+<% content_for :head_block do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<% end %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">Journey 預測驗證</h4>
+      <p class="text-muted small mb-0">
+        驗證「預計回購日」模型準確度・以實際訂單 vs 預測日期比較・準確 = 誤差 ≤ 7 天
+      </p>
+    </div>
+    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<%# ── KPI ── %>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #6b7280 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">追蹤旅程數</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1;"><%= @total_tracked %></div>
+      <div class="text-muted" style="font-size:0.68rem;">已建立通知記錄的購買</div>
+    </div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #0369a1 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">已驗證回購</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#0369a1;"><%= @total_returned %></div>
+      <div class="text-muted" style="font-size:0.68rem;">找到後續全能訂單</div>
+    </div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #d97706 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">回購率</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#d97706;"><%= @return_rate %>%</div>
+      <div class="text-muted" style="font-size:0.68rem;">追蹤後有再購比例</div>
+    </div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #16a34a !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">模型準確率(±7天)</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#16a34a;"><%= @accuracy_rate %>%</div>
+      <div class="text-muted" style="font-size:0.68rem;"><%= @within_14_days %> 筆在 7 天內</div>
+    </div>
+  </div>
+  <div class="col-6 col-md">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #7c3aed !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">平均偏差</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#7c3aed;">
+        <% if @avg_error %>
+          <%= @avg_error > 0 ? "+#{@avg_error}" : @avg_error %> 天
+        <% else %>—<% end %>
+      </div>
+      <div class="text-muted" style="font-size:0.68rem;">
+        正 = 實際晚於預測，負 = 提早回購
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <%# 誤差分佈圖 %>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold">📊 預測誤差分佈</div>
+      <div class="card-body">
+        <% if @total_returned == 0 %>
+          <p class="text-muted small text-center py-3">尚無足夠回購數據。</p>
+        <% else %>
+          <canvas id="errorBucketChart" height="160"></canvas>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# 模型解讀 %>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header fw-bold">🔍 模型解讀</div>
+      <div class="card-body" style="font-size:0.85rem;">
+        <% if @avg_error_abs %>
+          <div class="mb-3">
+            <div class="fw-semibold mb-1">平均絕對誤差：<%= @avg_error_abs %> 天</div>
+            <% quality = @avg_error_abs <= 7 ? "準確" : @avg_error_abs <= 14 ? "尚可" : "需改進" %>
+            <% quality_color = @avg_error_abs <= 7 ? "success" : @avg_error_abs <= 14 ? "warning" : "danger" %>
+            <span class="badge bg-<%= quality_color %>">模型品質：<%= quality %></span>
+          </div>
+          <% if @avg_error && @avg_error > 3 %>
+            <div class="alert alert-warning py-2 mb-2" style="font-size:0.78rem;">
+              ⚠️ 客戶平均比預測 <strong>晚 <%= @avg_error %> 天</strong> 回購，考慮將回購中位數調高。
+            </div>
+          <% elsif @avg_error && @avg_error < -3 %>
+            <div class="alert alert-info py-2 mb-2" style="font-size:0.78rem;">
+              ℹ️ 客戶平均比預測 <strong>早 <%= @avg_error.abs %> 天</strong> 回購，考慮將提醒日提前。
+            </div>
+          <% else %>
+            <div class="alert alert-success py-2 mb-2" style="font-size:0.78rem;">
+              ✅ 預測誤差在合理範圍內，模型運作正常。
+            </div>
+          <% end %>
+        <% end %>
+        <div class="text-muted" style="font-size:0.75rem;">
+          <div class="mb-1">使用中位數（天）：</div>
+          <% OmnipotentRestockController::REPURCHASE_MEDIANS.each do |b, d| %>
+            <span class="badge bg-light text-dark me-1"><%= b %>瓶→<%= d %>天</span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# 明細表 %>
+<div class="card border-0 shadow-sm">
+  <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+    <span>📋 預測 vs 實際回購明細</span>
+    <span class="badge bg-secondary"><%= @validations.size %> 筆</span>
+  </div>
+  <div class="card-body p-0">
+    <% if @validations.empty? %>
+      <p class="text-muted small p-4 text-center">尚無可驗證的旅程資料。</p>
+    <% else %>
+      <div class="table-responsive" data-paginate="true" data-page-size="25">
+        <table class="table table-hover mb-0" style="font-size:0.82rem;">
+          <thead class="table-light">
+            <tr>
+              <th>#</th>
+              <th>Email</th>
+              <th>購買日</th>
+              <th>瓶數</th>
+              <th>預測回購日</th>
+              <th>實際回購日</th>
+              <th>誤差</th>
+              <th>準確？</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @validations.each_with_index do |v, i| %>
+              <tr>
+                <td class="text-muted small"><%= i + 1 %></td>
+                <td class="small"><%= v[:email] %></td>
+                <td class="small"><%= v[:reference_date]&.strftime("%m/%d/%Y") %></td>
+                <td class="text-center"><%= v[:bottles] %></td>
+                <td class="small"><%= v[:predicted_return]&.strftime("%m/%d") %></td>
+                <td class="small">
+                  <% if v[:actual_return] %>
+                    <span class="fw-semibold text-success"><%= v[:actual_return].strftime("%m/%d") %></span>
+                  <% else %>
+                    <span class="text-muted">尚未回購</span>
+                  <% end %>
+                </td>
+                <td class="text-center">
+                  <% if v[:error_days] %>
+                    <% err_color = v[:error_days].abs <= 7 ? "success" : v[:error_days].abs <= 14 ? "warning" : "danger" %>
+                    <span class="badge bg-<%= err_color %>">
+                      <%= v[:error_days] > 0 ? "+#{v[:error_days]}" : v[:error_days] %> 天
+                    </span>
+                  <% else %>
+                    <span class="text-muted small">—</span>
+                  <% end %>
+                </td>
+                <td class="text-center">
+                  <% if v[:accurate] == true %><span class="text-success">✓</span>
+                  <% elsif v[:accurate] == false %><span class="text-danger">✗</span>
+                  <% else %><span class="text-muted">—</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% content_for :scripts_block do %>
+<% if @total_returned > 0 %>
+<script>
+(function () {
+  var labels = <%= raw @error_buckets.keys.to_json %>;
+  var data   = <%= raw @error_buckets.values.to_json %>;
+  var colors = ['rgba(220,53,69,0.7)','rgba(253,126,20,0.7)','rgba(22,163,74,0.8)','rgba(253,126,20,0.7)','rgba(220,53,69,0.7)'];
+  new Chart(document.getElementById('errorBucketChart'), {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ label: '筆數', data: data, backgroundColor: colors, borderRadius: 4 }] },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+})();
+</script>
+<% end %>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('[data-paginate="true"]:not([data-paginated])').forEach(initPaginate);
+});
+</script>
+<% end %>

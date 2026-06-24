@@ -69,6 +69,183 @@ class OmnipotentRestockController < ApplicationController
     @rescue_worthy = @at_risk.select { |r| r[:omni_count] >= 2 }
   end
 
+  ATTRIBUTION_WINDOW = 45
+
+  def roi_dashboard
+    @total_notified = OmnipotentNotificationStatus.where.not(status: "未通知").count
+    @total_replied  = OmnipotentNotificationStatus.where(status: "已回覆").count
+
+    # Attribution: 通知後 N 天內有新全能訂單
+    notif_rows = OmnipotentNotificationStatus.where.not(contacted_at: nil)
+      .pluck(:email, :contacted_at)
+
+    all_emails = notif_rows.map(&:first).uniq
+    orders_by_email = Hash.new { |h, k| h[k] = [] }
+    ShoplineOrder.where(OMNIPOTENT).where(email: all_emails)
+      .order(:email, :order_date)
+      .pluck(:email, :order_date, :order_number)
+      .each { |em, od, on_| orders_by_email[em] << { date: od.to_date, order_number: on_ } }
+
+    @attributed = []
+    notif_rows.each do |email, contacted_at|
+      cutoff = contacted_at.to_date
+      subsequent = orders_by_email[email].select { |o| o[:date] > cutoff && o[:date] <= cutoff + ATTRIBUTION_WINDOW }
+      next if subsequent.empty?
+      order_nums = subsequent.map { |o| o[:order_number] }.uniq.compact
+      @attributed << { email: email, contacted_at: cutoff, return_date: subsequent.first[:date], order_numbers: order_nums }
+    end
+
+    all_order_nums = @attributed.flat_map { |a| a[:order_numbers] }.uniq
+    revenue_by_order = {}
+    if all_order_nums.any?
+      ShoplineOrder.where(order_number: all_order_nums)
+        .group(:order_number)
+        .pluck(:order_number, Arel.sql("COALESCE(MAX(NULLIF(total_amount,0)), SUM(COALESCE(checkout_amount,0)))"))
+        .each { |on_, rev| revenue_by_order[on_] = rev.to_f }
+    end
+    @attributed.each { |a| a[:revenue] = a[:order_numbers].sum { |on_| revenue_by_order[on_] || 0 }.round }
+
+    @total_attributed   = @attributed.size
+    @attributed_revenue = @attributed.sum { |a| a[:revenue] }
+    @conversion_rate    = @total_notified > 0 ? (@total_attributed.to_f / @total_notified * 100).round(1) : 0
+
+    @monthly_roi = 5.downto(0).map do |i|
+      m  = Date.today << i
+      ms = m.beginning_of_month; me = m.end_of_month
+      mn = OmnipotentNotificationStatus.where(notified_at: ms..me).where.not(status: "未通知").count
+      ma = @attributed.select { |a| a[:contacted_at] >= ms && a[:contacted_at] <= me }
+      { label: m.strftime("%m月"), notified: mn, attributed: ma.size,
+        revenue: ma.sum { |a| a[:revenue] } }
+    end
+  end
+
+  def journey_accuracy
+    tracked_pairs = OmnipotentNotificationStatus.select(:email, :reference_date).distinct
+      .map { |n| [n.email, n.reference_date] }.uniq
+    emails = tracked_pairs.map(&:first).uniq
+
+    pn_by_key = {}
+    orders_by_email = Hash.new { |h, k| h[k] = [] }
+    ShoplineOrder.where(OMNIPOTENT).where(email: emails)
+      .order(:email, :order_date)
+      .pluck(:email, :product_name, :order_date)
+      .each do |em, pn, od|
+        date = od.to_date
+        pn_by_key[[em, date]] ||= pn
+        orders_by_email[em] << date
+      end
+
+    @validations = tracked_pairs.map do |email, ref_date|
+      pn = pn_by_key[[email, ref_date]]
+      next unless pn
+      bottles   = extract_bottles(pn)
+      predicted = ref_date + expected_days(bottles)
+      all_dates = orders_by_email[email].sort
+      actual    = all_dates.find { |d| d > ref_date }
+      error     = actual ? (actual - predicted).to_i : nil
+      { email: email, reference_date: ref_date, bottles: bottles,
+        predicted_return: predicted, actual_return: actual,
+        error_days: error, accurate: error ? error.abs <= 14 : nil }
+    end.compact.sort_by { |v| -v[:reference_date].to_time.to_i }
+
+    returned      = @validations.select { |v| v[:actual_return] }
+    @total_tracked    = @validations.size
+    @total_returned   = returned.size
+    @return_rate      = @total_tracked > 0 ? (@total_returned.to_f / @total_tracked * 100).round(1) : 0
+    @avg_error        = returned.any? ? (returned.sum { |v| v[:error_days] }.to_f / returned.size).round(1) : nil
+    @within_14_days   = returned.count { |v| v[:accurate] }
+    @accuracy_rate    = returned.any? ? (@within_14_days.to_f / returned.size * 100).round(1) : 0
+    @avg_error_abs    = returned.any? ? (returned.sum { |v| v[:error_days].abs }.to_f / returned.size).round(1) : nil
+
+    # Error bucket distribution
+    buckets = { "提早14天+" => 0, "提早7-13天" => 0, "準確(±7天)" => 0, "晚7-13天" => 0, "晚14天+" => 0 }
+    returned.each do |v|
+      e = v[:error_days]
+      if e <= -14 then buckets["提早14天+"] += 1
+      elsif e <= -7 then buckets["提早7-13天"] += 1
+      elsif e <= 7  then buckets["準確(±7天)"] += 1
+      elsif e <= 13 then buckets["晚7-13天"] += 1
+      else buckets["晚14天+"] += 1 end
+    end
+    @error_buckets = buckets
+  end
+
+  def crm_analysis
+    all_ns = OmnipotentNotificationStatus.all
+
+    @total_records     = all_ns.count
+    @status_breakdown  = all_ns.group(:status).count
+    @channel_breakdown = all_ns.where.not(channel: [nil, ""]).group(:channel).count
+    @result_breakdown  = all_ns.where.not(result:  [nil, ""]).group(:result).count
+
+    contacted = all_ns.where.not(contacted_at: nil).count
+    with_result = all_ns.where.not(result: [nil, ""]).count
+    ordered_count = all_ns.where(result: "已訂購").count
+    @contact_success_rate = contacted > 0 ? (with_result.to_f / contacted * 100).round(1) : 0
+    @order_rate = contacted > 0 ? (ordered_count.to_f / contacted * 100).round(1) : 0
+
+    @recent_activity = all_ns.where.not(status: "未通知").order(updated_at: :desc).limit(20)
+
+    @monthly_activity = 5.downto(0).map do |i|
+      m = Date.today << i; ms = m.beginning_of_month; me = m.end_of_month
+      ns = all_ns.where(notified_at: ms..me)
+      { label: m.strftime("%m月"), total: ns.count,
+        replied: ns.where(status: "已回覆").count,
+        ordered: ns.where(result: "已訂購").count }
+    end
+  end
+
+  def broadcast_performance
+    events = OmnipotentAnalysisController::OMNI_EVENTS.select { |e| e[:date] <= Date.today }
+
+    all_event_emails = []
+    events.each do |ev|
+      win_start = ev[:date]; win_end = ev[:date] + 3
+      emails = ShoplineOrder.where(OMNIPOTENT)
+        .where("order_date::date BETWEEN ? AND ?", win_start, win_end)
+        .where.not(email: [nil, ""]).distinct.pluck(:email)
+      all_event_emails.concat(emails)
+    end
+    all_event_emails.uniq!
+
+    all_later_orders = Hash.new { |h, k| h[k] = [] }
+    if all_event_emails.any?
+      ShoplineOrder.where(OMNIPOTENT).where(email: all_event_emails)
+        .order(:email, :order_date)
+        .pluck(:email, :order_date, :order_number)
+        .each { |em, od, on_| all_later_orders[em] << { date: od.to_date, order_number: on_ } }
+    end
+
+    @event_stats = events.map do |ev|
+      win_start = ev[:date]; win_end = ev[:date] + 3
+      event_orders = ShoplineOrder.where(OMNIPOTENT)
+        .where("order_date::date BETWEEN ? AND ?", win_start, win_end)
+        .where.not(email: [nil, ""])
+      buyer_emails = event_orders.distinct.pluck(:email)
+      next if buyer_emails.empty?
+
+      order_nums = event_orders.distinct.pluck(:order_number).compact
+      event_revenue = 0
+      if order_nums.any?
+        event_revenue = ShoplineOrder.where(order_number: order_nums)
+          .group(:order_number)
+          .pluck(Arel.sql("COALESCE(MAX(NULLIF(total_amount,0)), SUM(COALESCE(checkout_amount,0)))"))
+          .sum(&:to_f).round
+      end
+
+      repurchased_emails = buyer_emails.select do |em|
+        all_later_orders[em].any? { |o| o[:date] > win_end }
+      end
+
+      { label: "#{ev[:year]}/#{ev[:label]}", date: ev[:date], note: ev[:note],
+        buyers: buyer_emails.size,
+        revenue: event_revenue,
+        avg_value: buyer_emails.size > 0 ? (event_revenue.to_f / buyer_emails.size).round : 0,
+        repurchased: repurchased_emails.size,
+        repurchase_rate: buyer_emails.size > 0 ? (repurchased_emails.size.to_f / buyer_emails.size * 100).round(1) : 0 }
+    end.compact.sort_by { |e| -e[:date].to_time.to_i }
+  end
+
   def boss_dashboard
     build_restock_data
     @month_start      = Date.today.beginning_of_month

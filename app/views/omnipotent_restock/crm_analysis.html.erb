@@ -1,0 +1,204 @@
+<%# app/views/omnipotent_restock/crm_analysis.html.erb %>
+<% content_for :page_title, "客服操作分析" %>
+
+<% content_for :head_block do %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<% end %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">客服操作分析</h4>
+      <p class="text-muted small mb-0">整體通知效率、聯絡管道分佈、成交率追蹤</p>
+    </div>
+    <%= link_to "← 旅程管理", omnipotent_restock_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<%# ── KPI ── %>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #6b7280 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">累計通知記錄</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1;"><%= @total_records %></div>
+      <div class="text-muted" style="font-size:0.68rem;">筆</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #0369a1 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">有回覆</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#0369a1;"><%= @status_breakdown["已回覆"] || 0 %></div>
+      <div class="text-muted" style="font-size:0.68rem;">筆</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #16a34a !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">成交率</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#16a34a;"><%= @order_rate %>%</div>
+      <div class="text-muted" style="font-size:0.68rem;">已聯絡 → 成交</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #d97706 !important;">
+      <div class="text-muted mb-1" style="font-size:0.72rem;">聯絡有效率</div>
+      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#d97706;"><%= @contact_success_rate %>%</div>
+      <div class="text-muted" style="font-size:0.68rem;">有記錄結果 / 有聯絡</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <%# 狀態分佈 %>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold">📊 通知狀態分佈</div>
+      <div class="card-body">
+        <% status_colors = { "未通知" => "#9ca3af", "已通知" => "#3b82f6", "已回覆" => "#22c55e", "暫不需要" => "#f59e0b" } %>
+        <% OmnipotentNotificationStatus::STATUSES.each do |s| %>
+          <% cnt = @status_breakdown[s] || 0 %>
+          <% total_nz = [@total_records, 1].max %>
+          <div class="mb-2">
+            <div class="d-flex justify-content-between small mb-1">
+              <span><%= s %></span>
+              <span class="fw-semibold"><%= cnt %> (<%= (cnt.to_f / total_nz * 100).round %>%)</span>
+            </div>
+            <div class="progress" style="height:8px;">
+              <div class="progress-bar" style="width:<%= (cnt.to_f / total_nz * 100).round %>%; background-color:<%= status_colors[s] %>;"></div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# 管道分佈 %>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold">📱 聯絡管道分佈</div>
+      <div class="card-body">
+        <% if @channel_breakdown.empty? %>
+          <p class="text-muted small text-center py-3">尚無管道資料。</p>
+        <% else %>
+          <% ch_total = [@channel_breakdown.values.sum, 1].max %>
+          <% ch_colors = { "IG" => "#e1306c", "LINE" => "#00b900", "電話" => "#0369a1" } %>
+          <% @channel_breakdown.each do |ch, cnt| %>
+            <div class="mb-2">
+              <div class="d-flex justify-content-between small mb-1">
+                <span><%= ch %></span>
+                <span class="fw-semibold"><%= cnt %> (<%= (cnt.to_f / ch_total * 100).round %>%)</span>
+              </div>
+              <div class="progress" style="height:8px;">
+                <div class="progress-bar" style="width:<%= (cnt.to_f / ch_total * 100).round %>%; background-color:<%= ch_colors[ch] || '#6b7280' %>;"></div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# 結果分佈 %>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header fw-bold">🎯 聯絡結果分佈</div>
+      <div class="card-body">
+        <% if @result_breakdown.empty? %>
+          <p class="text-muted small text-center py-3">尚無結果資料。</p>
+        <% else %>
+          <% res_total = [@result_breakdown.values.sum, 1].max %>
+          <% res_colors = { "已讀未回" => "#9ca3af", "有回覆" => "#3b82f6", "已訂購" => "#22c55e", "暫不需要" => "#f59e0b" } %>
+          <% @result_breakdown.each do |res, cnt| %>
+            <div class="mb-2">
+              <div class="d-flex justify-content-between small mb-1">
+                <span><%= res %></span>
+                <span class="fw-semibold <%= res == '已訂購' ? 'text-success' : '' %>">
+                  <%= cnt %> (<%= (cnt.to_f / res_total * 100).round %>%)
+                </span>
+              </div>
+              <div class="progress" style="height:8px;">
+                <div class="progress-bar" style="width:<%= (cnt.to_f / res_total * 100).round %>%; background-color:<%= res_colors[res] || '#6b7280' %>;"></div>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# 月度活動趨勢 %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header fw-bold">📈 月度操作趨勢（過去 6 個月）</div>
+  <div class="card-body">
+    <canvas id="activityChart" height="100"></canvas>
+  </div>
+</div>
+
+<%# 最近操作記錄 %>
+<div class="card border-0 shadow-sm">
+  <div class="card-header fw-bold d-flex justify-content-between align-items-center">
+    <span>🕐 最近操作記錄</span>
+    <span class="badge bg-secondary"><%= @recent_activity.size %> 筆</span>
+  </div>
+  <div class="card-body p-0">
+    <% if @recent_activity.empty? %>
+      <p class="text-muted small p-4 text-center">尚無操作記錄。</p>
+    <% else %>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0" style="font-size:0.82rem;">
+          <thead class="table-light">
+            <tr><th>Email</th><th>狀態</th><th>管道</th><th>結果</th><th>聯絡日</th><th>通知時間</th></tr>
+          </thead>
+          <tbody>
+            <% status_colors = { "未通知" => "secondary", "已通知" => "primary", "已回覆" => "success", "暫不需要" => "light" } %>
+            <% @recent_activity.each do |n| %>
+              <tr>
+                <td class="small"><%= n.email %></td>
+                <td><span class="badge bg-<%= status_colors[n.status] %>"><%= n.status %></span></td>
+                <td class="small"><%= n.channel.present? ? n.channel : '<span class="text-muted">—</span>'.html_safe %></td>
+                <td class="small">
+                  <% if n.result == "已訂購" %>
+                    <span class="badge bg-success"><%= n.result %></span>
+                  <% elsif n.result.present? %>
+                    <%= n.result %>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td class="small text-muted"><%= n.contacted_at&.strftime("%m/%d") || "—" %></td>
+                <td class="small text-muted"><%= n.notified_at&.strftime("%m/%d %H:%M") || "—" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% content_for :scripts_block do %>
+<script>
+(function () {
+  var labels  = <%= raw @monthly_activity.map { |m| m[:label] }.to_json %>;
+  var total   = <%= raw @monthly_activity.map { |m| m[:total] }.to_json %>;
+  var replied = <%= raw @monthly_activity.map { |m| m[:replied] }.to_json %>;
+  var ordered = <%= raw @monthly_activity.map { |m| m[:ordered] }.to_json %>;
+  new Chart(document.getElementById('activityChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: '已通知',  data: total,   backgroundColor: 'rgba(107,114,128,0.5)', borderRadius: 4 },
+        { label: '有回覆',  data: replied, backgroundColor: 'rgba(59,130,246,0.7)',  borderRadius: 4 },
+        { label: '已訂購',  data: ordered, backgroundColor: 'rgba(34,197,94,0.85)',  borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'top' } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+})();
+</script>
+<% end %>

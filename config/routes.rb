@@ -64,9 +64,13 @@ Rails.application.routes.draw do
   get   '/omnipotent_restock/export_at_risk',          to: 'omnipotent_restock#export_at_risk',   as: :omnipotent_restock_export_at_risk
   get   '/omnipotent_restock/export_loyal',            to: 'omnipotent_restock#export_loyal',     as: :omnipotent_restock_export_loyal
   patch '/omnipotent_restock/update_status',           to: 'omnipotent_restock#update_status',    as: :omnipotent_restock_update_status
-  get   '/omnipotent_restock/broadcast_room',          to: 'omnipotent_restock#broadcast_room',   as: :omnipotent_restock_broadcast_room
-  get   '/omnipotent_restock/boss_dashboard',          to: 'omnipotent_restock#boss_dashboard',   as: :omnipotent_restock_boss_dashboard
-  get   '/omnipotent_restock/customer_journey/:id',    to: 'omnipotent_restock#customer_journey', as: :omnipotent_restock_customer_journey
+  get   '/omnipotent_restock/broadcast_room',          to: 'omnipotent_restock#broadcast_room',          as: :omnipotent_restock_broadcast_room
+  get   '/omnipotent_restock/boss_dashboard',          to: 'omnipotent_restock#boss_dashboard',          as: :omnipotent_restock_boss_dashboard
+  get   '/omnipotent_restock/roi_dashboard',           to: 'omnipotent_restock#roi_dashboard',           as: :omnipotent_restock_roi_dashboard
+  get   '/omnipotent_restock/journey_accuracy',        to: 'omnipotent_restock#journey_accuracy',        as: :omnipotent_restock_journey_accuracy
+  get   '/omnipotent_restock/crm_analysis',            to: 'omnipotent_restock#crm_analysis',            as: :omnipotent_restock_crm_analysis
+  get   '/omnipotent_restock/broadcast_performance',   to: 'omnipotent_restock#broadcast_performance',   as: :omnipotent_restock_broadcast_performance
+  get   '/omnipotent_restock/customer_journey/:id',    to: 'omnipotent_restock#customer_journey',        as: :omnipotent_restock_customer_journey
   get 'customers/export_inactive',         to: 'customers#export_inactive',         as: :export_inactive_customers
   get 'customers/export_credits_expiring', to: 'customers#export_credits_expiring', as: :export_credits_expiring_customers
 
