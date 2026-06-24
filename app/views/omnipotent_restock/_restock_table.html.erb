@@ -27,10 +27,10 @@
           <td>
             <div class="fw-semibold"><%= r[:bought_date]&.strftime("%m/%d") || "-" %> 買 <%= r[:bottles] %> 瓶</div>
             <div class="text-muted small">
-              預估 <%= r[:runout_date]&.strftime("%m/%d") || "-" %> 用完．
+              預計 <%= r[:expected_return_date]&.strftime("%m/%d") || "-" %> 回購．
               <% if dl < 0 %>
-                <span class="text-danger fw-semibold">已逾期 <%= dl.abs %> 天</span>
-              <% elsif dl <= 7 %>
+                <span class="text-danger fw-semibold">逾期 <%= dl.abs %> 天</span>
+              <% elsif dl <= 14 %>
                 <span class="text-warning fw-semibold">剩 <%= dl %> 天</span>
               <% else %>
                 剩 <%= dl %> 天

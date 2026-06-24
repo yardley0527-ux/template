@@ -1,7 +1,6 @@
 class OmnipotentRestockController < ApplicationController
   OMNIPOTENT      = "product_name LIKE '%全能%'"
-  DAYS_PER_BOTTLE = 30
-  LOYAL_THRESHOLD = 2 # 全能歷史購買次數達此門檻，視為常購客，每場直播前都該邀請
+  LOYAL_THRESHOLD = 2
 
   MEMBERSHIP_RANK = {
     "黑卡"    => 5,
@@ -11,12 +10,15 @@ class OmnipotentRestockController < ApplicationController
     "一般會員" => 1
   }.freeze
 
-  # 依優先度建議的下一步行動，僅供前台人員發送時參考，不是已建立的系統折扣碼
-  NEXT_ACTIONS = {
-    overdue:      "🔴 今天致電聯絡，發 85 折碼",
-    restock_soon: "🟠 直播前提醒，發 9 折碼",
-    not_urgent:   "⚪ 暫不用聯絡",
-    loyal:        "🔵 直播前邀請，發 9 折回饋碼"
+  # 實際回購中位數（天），由 DB 統計得出
+  REPURCHASE_MEDIANS = {
+    1  => 45,
+    2  => 50,
+    3  => 60,
+    4  => 67,
+    6  => 89,
+    10 => 106,
+    12 => 120
   }.freeze
 
   before_action :build_restock_data
@@ -78,24 +80,23 @@ class OmnipotentRestockController < ApplicationController
 
     @restock_list = customers.map do |c|
       order        = last_order_by_email[c.email]
-      bottles      = extract_bottles(order[:product_name])
-      runout_date  = order[:order_date] + bottles * DAYS_PER_BOTTLE
-      days_left    = (runout_date - today).to_i
+      bottles              = extract_bottles(order[:product_name])
+      expected_return_date = order[:order_date] + expected_days(bottles)
+      days_left            = (expected_return_date - today).to_i
 
       {
-        customer:     c,
-        product_name: order[:product_name],
-        bought_date:  order[:order_date],
-        bottles:      bottles,
-        runout_date:  runout_date,
-        days_left:    days_left,
-        next_action:  next_action_for(days_left)
+        customer:             c,
+        product_name:         order[:product_name],
+        bought_date:          order[:order_date],
+        bottles:              bottles,
+        expected_return_date: expected_return_date,
+        days_left:            days_left
       }
     end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
 
-    @overdue      = @restock_list.select { |r| r[:days_left] <= 7 }
-    @restock_soon = @restock_list.select { |r| r[:days_left].between?(8, 21) }
-    @not_urgent   = @restock_list.select { |r| r[:days_left] > 21 }
+    @overdue      = @restock_list.select { |r| r[:days_left] <= 0 }
+    @restock_soon = @restock_list.select { |r| r[:days_left].between?(1, 14) }
+    @not_urgent   = @restock_list.select { |r| r[:days_left] > 14 }
   end
 
   # 常購名單：不管目前是否該補貨，每場直播前都該邀請的全能老客戶
@@ -133,20 +134,20 @@ class OmnipotentRestockController < ApplicationController
         customer:    c,
         order_count: order_counts[c.email] || 0,
         total_spend: amounts[c.email] || 0,
-        last_date:   last_dates[c.email],
-        next_action: NEXT_ACTIONS[:loyal]
+        last_date:   last_dates[c.email]
       }
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:order_count], -r[:total_spend]] }
   end
 
-  def next_action_for(days_left)
-    if days_left <= 7
-      NEXT_ACTIONS[:overdue]
-    elsif days_left <= 21
-      NEXT_ACTIONS[:restock_soon]
-    else
-      NEXT_ACTIONS[:not_urgent]
-    end
+  # 依瓶數查實際回購中位數；無精確值時線性內插
+  def expected_days(bottles)
+    return REPURCHASE_MEDIANS[bottles] if REPURCHASE_MEDIANS.key?(bottles)
+    keys = REPURCHASE_MEDIANS.keys.sort
+    lo = keys.select { |k| k < bottles }.last
+    hi = keys.select { |k| k > bottles }.first
+    return REPURCHASE_MEDIANS[lo || hi] unless lo && hi
+    lo_v = REPURCHASE_MEDIANS[lo]; hi_v = REPURCHASE_MEDIANS[hi]
+    (lo_v + (hi_v - lo_v).to_f * (bottles - lo) / (hi - lo)).round
   end
 
   def extract_bottles(product_name)
@@ -158,19 +159,20 @@ class OmnipotentRestockController < ApplicationController
   def restock_csv(rows = @restock_list)
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["優先度", "姓名", "卡別", "電話", "IG", "上次購買", "瓶數", "預估用完日", "剩餘天數", "下一步"]
+      csv << ["狀態", "姓名", "卡別", "IG", "上次購買", "瓶數", "預計回購日", "距今天數"]
       rows.each do |r|
-        priority = r[:days_left] <= 7 ? "急需補貨" : r[:days_left] <= 21 ? "即將用完" : "暫不急"
-        csv << row_data(priority, r)
+        status = r[:days_left] <= 0 ? "逾期未回購" : r[:days_left] <= 14 ? "即將回購" : "尚早"
+        csv << row_data(status, r)
       end
     end
   end
 
-  def row_data(priority, r)
+  def row_data(status, r)
     c = r[:customer]
-    [priority, c.full_name, c.membership_level, c.mobile_phone,
-     c.instagram_account, r[:bought_date]&.strftime("%Y/%m/%d"),
-     r[:bottles], r[:runout_date]&.strftime("%Y/%m/%d"), r[:days_left], r[:next_action]]
+    ig = c.instagram_account&.gsub('@', '')&.strip
+    [status, c.full_name, c.membership_level, ig,
+     r[:bought_date]&.strftime("%Y/%m/%d"),
+     r[:bottles], r[:expected_return_date]&.strftime("%Y/%m/%d"), r[:days_left]]
   end
 
   def loyal_csv
