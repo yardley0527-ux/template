@@ -7,6 +7,7 @@
         <th>姓名</th>
         <th>卡別</th>
         <th>上次購買</th>
+        <th>全能累計</th>
         <th>IG</th>
       </tr>
     </thead>
@@ -41,6 +42,11 @@
                 剩 <%= dl %> 天
               <% end %>
             </div>
+          </td>
+          <td>
+            <% n = r[:omni_count] %>
+            <% color, label = if n >= 6 then ['#1d4ed8','fw-bold'] elsif n >= 3 then ['#0369a1','fw-semibold'] elsif n == 2 then ['#b45309',''] else ['#9ca3af',''] end %>
+            <span style="color:<%= color %>;" class="<%= label %> small"><%= n %> 次</span>
           </td>
           <td>
             <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>

@@ -67,8 +67,17 @@ class OmnipotentRestockController < ApplicationController
       e[:date].beginning_of_day..(e[:date] + 3).end_of_day
     end
 
+    all_emails = last_order_by_email.keys
+
+    # 每位客戶的全能歷史購買總次數（不限近一年）
+    omni_counts = ShoplineOrder
+      .where(OMNIPOTENT)
+      .where(email: all_emails)
+      .group(:email)
+      .count
+
     customers = ShoplineCustomer
-      .where(email: last_order_by_email.keys)
+      .where(email: all_emails)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
     @restock_list = customers.map do |c|
@@ -86,7 +95,8 @@ class OmnipotentRestockController < ApplicationController
         bottles:              bottles,
         expected_return_date: expected_return_date,
         days_left:            days_left,
-        from_broadcast:       from_broadcast
+        from_broadcast:       from_broadcast,
+        omni_count:           omni_counts[c.email] || 0
       }
     end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
 

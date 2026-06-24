@@ -18,6 +18,37 @@
   </div>
 </div>
 
+<%# ── 維護標準說明 ── %>
+<div class="card border-0 bg-light mb-4" style="border-left: 4px solid #374151 !important;">
+  <div class="card-body py-3">
+    <div class="fw-bold text-dark mb-2" style="font-size:0.85rem; letter-spacing:0.5px;">📋 維護標準（逾期名單判斷依據）</div>
+    <div class="row g-2" style="font-size:0.82rem;">
+      <div class="col-md-3">
+        <span class="fw-bold" style="color:#991b1b;">🔥 最優先聯繫</span>
+        <div class="text-muted">逾期 1–90 天＋買過 3 次以上</div>
+      </div>
+      <div class="col-md-3">
+        <span class="fw-bold" style="color:#b45309;">🟡 可以試試</span>
+        <div class="text-muted">逾期 1–60 天＋買過 2 次</div>
+      </div>
+      <div class="col-md-3">
+        <span class="fw-bold text-muted">⚪ 低優先</span>
+        <div class="text-muted">只買過 1 次（可能只是試用）</div>
+      </div>
+      <div class="col-md-3">
+        <span class="fw-bold text-muted">✖ 可能放棄</span>
+        <div class="text-muted">逾期 180 天以上（很可能已流失）</div>
+      </div>
+    </div>
+    <div class="text-muted mt-2" style="font-size:0.78rem;">
+      全能累計次數顏色：<span style="color:#1d4ed8;" class="fw-bold">深藍 = 6次以上</span>・
+      <span style="color:#0369a1;" class="fw-semibold">藍 = 3–5次</span>・
+      <span style="color:#b45309;">橘 = 2次</span>・
+      <span class="text-muted">灰 = 1次</span>
+    </div>
+  </div>
+</div>
+
 <%# ── 4 張卡片當 tab 切換 ── %>
 <div class="row g-3 mb-0" role="tablist">
   <div class="col-md-3">
