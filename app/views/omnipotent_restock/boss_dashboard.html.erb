@@ -105,32 +105,32 @@
         <div class="row g-3 text-center">
           <div class="col-6 col-md-2">
             <div class="text-muted small">追蹤中</div>
-            <div class="fw-bold" style="font-size:1.5rem;"><%= @restock_list.size %></div>
+            <div class="fw-bold" style="font-size:1.5rem;"><%= @daily_snapshot[:tracking_count] %></div>
             <div class="text-muted" style="font-size:0.68rem;">近一年<%= @product[:short] %>客戶</div>
           </div>
           <div class="col-6 col-md-2">
             <div class="text-muted small" style="color:#1d4ed8;">VIP 常購客</div>
-            <div class="fw-bold" style="font-size:1.5rem; color:#1d4ed8;"><%= @vip_count %></div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#1d4ed8;"><%= @daily_snapshot[:vip_count] %></div>
             <div class="text-muted" style="font-size:0.68rem;">2次+ 且 6瓶+</div>
           </div>
           <div class="col-6 col-md-2">
             <div class="text-muted small" style="color:#ea580c;">大套組客</div>
-            <div class="fw-bold" style="font-size:1.5rem; color:#ea580c;"><%= @big_count %></div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#ea580c;"><%= @daily_snapshot[:big_count] %></div>
             <div class="text-muted" style="font-size:0.68rem;">累計 6瓶+</div>
           </div>
           <div class="col-6 col-md-2">
             <div class="text-muted small" style="color:#dc3545;">今日應聯絡</div>
-            <div class="fw-bold" style="font-size:1.5rem; color:#dc3545;"><%= @today.size %></div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#dc3545;"><%= @daily_snapshot[:today_to_contact] %></div>
             <div class="text-muted" style="font-size:0.68rem;">提醒中 + 逾期</div>
           </div>
           <div class="col-6 col-md-2">
             <div class="text-muted small" style="color:#b45309;">逾期未回購</div>
-            <div class="fw-bold" style="font-size:1.5rem; color:#b45309;"><%= @overdue.size %></div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#b45309;"><%= @daily_snapshot[:overdue_count] %></div>
             <div class="text-muted" style="font-size:0.68rem;">0–60 天</div>
           </div>
           <div class="col-6 col-md-2">
             <div class="text-muted small" style="color:#7c3aed;">可能流失</div>
-            <div class="fw-bold" style="font-size:1.5rem; color:#7c3aed;"><%= @at_risk.size %></div>
+            <div class="fw-bold" style="font-size:1.5rem; color:#7c3aed;"><%= @daily_snapshot[:at_risk_count] %></div>
             <div class="text-muted" style="font-size:0.68rem;">超過 60 天</div>
           </div>
         </div>
@@ -141,10 +141,15 @@
 
 <%# ── 客戶類型分佈 ── %>
 <div class="row g-3">
-  <% type_counts = @restock_list.group_by { |r| r[:customer_type][:key] }.transform_values(&:size) %>
+  <% type_counts = {
+       vip:    @daily_snapshot[:vip_count],
+       big:    @daily_snapshot[:big_count],
+       small:  @daily_snapshot[:small_count],
+       single: @daily_snapshot[:single_count]
+     } %>
   <% OmnipotentRestockController::CUSTOMER_TYPES.each do |ct| %>
     <% count = type_counts[ct[:key]] || 0 %>
-    <% pct = @restock_list.size > 0 ? (count.to_f / @restock_list.size * 100).round(1) : 0 %>
+    <% pct = @daily_snapshot[:tracking_count] > 0 ? (count.to_f / @daily_snapshot[:tracking_count] * 100).round(1) : 0 %>
     <div class="col-6 col-md-3">
       <div class="card border-0 shadow-sm">
         <div class="card-body text-center py-3">

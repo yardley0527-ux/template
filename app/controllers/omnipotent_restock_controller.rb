@@ -39,7 +39,7 @@ class OmnipotentRestockController < ApplicationController
   end
 
   def boss_dashboard
-    build_restock_data
+    load_daily_snapshot
     @month_start      = Date.today.beginning_of_month
     @month_new_buyers = ShoplineOrder.where(@product[:sql])
       .where("order_date >= ?", @month_start).distinct.count(:email)
@@ -308,6 +308,45 @@ class OmnipotentRestockController < ApplicationController
   end
 
   private
+
+  # Stage 1 cutover (boss_dashboard only): reads today's crm_product_daily_stats
+  # row instead of recomputing build_restock_data on every request. Falls back to
+  # the live computation when the rollup row hasn't been refreshed yet for today,
+  # so the dashboard is always correct even if crm_rollup:refresh_all didn't run.
+  def load_daily_snapshot
+    conn = ActiveRecord::Base.connection
+    row = conn.select_one(<<~SQL)
+      SELECT * FROM crm_product_daily_stats
+      WHERE product_key = #{conn.quote(@product_key)}
+        AND stat_date = CURRENT_DATE
+    SQL
+
+    @daily_snapshot = if row
+      {
+        tracking_count:   row["not_urgent_count"] + row["remind_now_count"] + row["overdue_count"] + row["at_risk_count"],
+        vip_count:        row["vip_count"],
+        big_count:        row["big_count"],
+        small_count:      row["small_count"],
+        single_count:     row["single_count"],
+        today_to_contact: row["remind_now_count"] + row["overdue_count"],
+        overdue_count:    row["overdue_count"],
+        at_risk_count:    row["at_risk_count"]
+      }
+    else
+      build_restock_data
+      type_counts = @restock_list.group_by { |r| r[:customer_type][:key] }.transform_values(&:size)
+      {
+        tracking_count:   @restock_list.size,
+        vip_count:        type_counts[:vip]    || 0,
+        big_count:        type_counts[:big]    || 0,
+        small_count:      type_counts[:small]  || 0,
+        single_count:     type_counts[:single] || 0,
+        today_to_contact: @today.size,
+        overdue_count:    @overdue.size,
+        at_risk_count:    @at_risk.size
+      }
+    end
+  end
 
   def build_restock_data
     today      = Date.today
