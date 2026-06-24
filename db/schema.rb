@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_26_000000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_27_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -29,6 +29,58 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_26_000000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["shopline_customer_id"], name: "index_albums_on_shopline_customer_id"
+  end
+
+  create_table "crm_customer_product_trackings", force: :cascade do |t|
+    t.string "email", limit: 255, null: false
+    t.string "product_key", limit: 50, null: false
+    t.date "last_order_date", null: false
+    t.string "last_order_product_name", limit: 500
+    t.integer "last_order_bottles", null: false
+    t.date "expected_return_date", null: false
+    t.date "suggested_reminder_date", null: false
+    t.integer "order_count", default: 0, null: false
+    t.integer "total_bottles", default: 0, null: false
+    t.datetime "refreshed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email", "product_key"], name: "idx_crm_tracking_on_email_product", unique: true
+    t.index ["product_key", "expected_return_date"], name: "idx_crm_tracking_on_product_return_date"
+    t.index ["product_key", "last_order_date"], name: "idx_crm_tracking_on_product_last_order"
+  end
+
+  create_table "crm_product_daily_stats", force: :cascade do |t|
+    t.string "product_key", limit: 50, null: false
+    t.date "stat_date", null: false
+    t.integer "not_urgent_count", default: 0, null: false
+    t.integer "remind_now_count", default: 0, null: false
+    t.integer "overdue_count", default: 0, null: false
+    t.integer "at_risk_count", default: 0, null: false
+    t.integer "vip_count", default: 0, null: false
+    t.integer "big_count", default: 0, null: false
+    t.integer "small_count", default: 0, null: false
+    t.integer "single_count", default: 0, null: false
+    t.datetime "refreshed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["product_key", "stat_date"], name: "idx_crm_daily_stats_on_product_date", unique: true
+    t.index ["stat_date"], name: "idx_crm_daily_stats_on_date"
+  end
+
+  create_table "crm_product_monthly_stats", force: :cascade do |t|
+    t.string "product_key", limit: 50, null: false
+    t.date "stat_month", null: false
+    t.integer "new_buyers_count", default: 0, null: false
+    t.integer "notified_count", default: 0, null: false
+    t.integer "replied_count", default: 0, null: false
+    t.integer "ordered_count", default: 0, null: false
+    t.decimal "natural_revenue", precision: 14, scale: 2, default: "0.0", null: false
+    t.decimal "crm_attributed_revenue", precision: 14, scale: 2, default: "0.0", null: false
+    t.datetime "refreshed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["product_key", "stat_month"], name: "idx_crm_monthly_stats_on_product_month", unique: true
+    t.index ["stat_month"], name: "idx_crm_monthly_stats_on_month"
   end
 
   create_table "customer_edit_logs", force: :cascade do |t|
