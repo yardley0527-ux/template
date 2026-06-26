@@ -22,7 +22,12 @@ module ProductLivestreamAnalysis
   DAYS_PER_BOTTLE = 30
 
   included do
-    # 各 controller 設定：product_sql、product_label、product_regex、product_event_list
+    # Epic C Phase 2: product_key drives Registry-based lookup (ProductNameResolver.orders_for).
+    # product_sql is kept as a fallback for products with bundle SKUs (turmeric, metabolism)
+    # where a single-product mapping would undercount. Set product_key to enable the new path;
+    # leave nil to fall back to product_sql.
+    # TODO Epic C Phase 3: remove product_sql fallback once bundle SKUs support multi-product mapping.
+    class_attribute :product_key,        instance_writer: false
     class_attribute :product_sql,        instance_writer: false
     class_attribute :product_label,      instance_writer: false
     class_attribute :product_regex,      instance_writer: false
@@ -58,7 +63,7 @@ module ProductLivestreamAnalysis
 
     cache_key = "#{product_label}_prev_emails:#{@current_event[:date]}"
     all_prev_emails = Rails.cache.fetch(cache_key, expires_in: 30.minutes) do
-      ShoplineOrder.where(product_sql)
+      product_orders
         .where("order_date < ?", event_range.first)
         .where.not(email: [nil, ""])
         .distinct.pluck(:email)
@@ -96,8 +101,8 @@ module ProductLivestreamAnalysis
     missing_emails = all_prev_emails - @event_emails
     today          = Date.today
 
-    last_orders_raw = ShoplineOrder
-      .where(product_sql).where(email: missing_emails)
+    last_orders_raw = product_orders
+      .where(email: missing_emails)
       .where("order_date < ?", event_range.first)
       .order(:email, order_date: :desc)
       .pluck(:email, :product_name, :order_date)
@@ -107,8 +112,8 @@ module ProductLivestreamAnalysis
       last_order_by_email[email] ||= { product_name: pname, order_date: odate }
     end
 
-    history_counts  = ShoplineOrder.where(product_sql).where(email: missing_emails).group(:email).count
-    history_amounts = email_order_amounts(ShoplineOrder.where(product_sql).where(email: missing_emails))
+    history_counts  = product_orders.where(email: missing_emails).group(:email).count
+    history_amounts = email_order_amounts(product_orders.where(email: missing_emails))
 
     last_any_order_raw = ShoplineOrder.where(email: missing_emails)
       .order(:email, order_date: :desc)
@@ -157,8 +162,8 @@ module ProductLivestreamAnalysis
       }
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
 
-    event_order_lines = ShoplineOrder
-      .where(product_sql).where(email: @event_emails).where(order_date: event_range)
+    event_order_lines = product_orders
+      .where(email: @event_emails).where(order_date: event_range)
       .group(:email, :order_number)
       .pluck(
         :email, :order_number,
@@ -179,7 +184,7 @@ module ProductLivestreamAnalysis
       }
     end
 
-    h_counts = ShoplineOrder.where(product_sql).where(email: @event_emails).group(:email).count
+    h_counts = product_orders.where(email: @event_emails).group(:email).count
 
     @event_customers = ShoplineCustomer
       .where(email: @event_emails).where(membership_level: TARGET_MEMBERSHIPS)
@@ -249,7 +254,7 @@ module ProductLivestreamAnalysis
     window_start = all_events.first[:date].beginning_of_day
     window_end   = (all_events.last[:date] + 3).end_of_day
 
-    all_rows = ShoplineOrder.where(product_sql)
+    all_rows = product_orders
       .where(order_date: window_start..window_end)
       .where.not(email: [nil, ""])
       .pluck(:email, :order_date, :checkout_amount, :total_amount)
@@ -286,7 +291,7 @@ module ProductLivestreamAnalysis
     all_emails = all_event_emails.flatten.uniq
     today      = Date.today
 
-    last_orders_raw = ShoplineOrder.where(product_sql).where(email: all_emails)
+    last_orders_raw = product_orders.where(email: all_emails)
       .order(:email, order_date: :desc).pluck(:email, :product_name, :order_date)
 
     last_by_email = {}
@@ -352,7 +357,7 @@ module ProductLivestreamAnalysis
   end
 
   def product_emails(range)
-    ShoplineOrder.where(product_sql).where(order_date: range)
+    product_orders.where(order_date: range)
       .where.not(email: [nil, ""]).distinct.pluck(:email)
   end
 
@@ -384,6 +389,20 @@ module ProductLivestreamAnalysis
     end
     # 「送N」緊接數字才算同品項贈品（送全能1 等不計）
     base + (product_name.match(/送(\d+)/)&.[](1).to_i || 0)
+  end
+
+  # ── Epic C Phase 2: Registry-driven product scope ──────────────────
+  # Returns the base ShoplineOrder scope for the current product.
+  # Uses ProductNameResolver.orders_for(product_key) when the product_key is
+  # set (Registry path). Falls back to the legacy LIKE scope (product_sql)
+  # for products whose bundle SKUs are not yet fully resolved in the registry
+  # (turmeric, metabolism — see Phase 3 TODO above).
+  def product_orders
+    if product_key.present?
+      ProductNameResolver.orders_for(product_key)
+    else
+      ShoplineOrder.where(product_sql)
+    end
   end
 
   def pct(num, den)

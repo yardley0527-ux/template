@@ -1,6 +1,7 @@
 class ProbioticAnalysisController < ApplicationController
   include ProductLivestreamAnalysis
 
+  self.product_key        = "probiotic"    # Epic C Phase 2: Registry-driven (+8 rows vs LIKE = typo spelling now included ✓)
   self.product_sql        = "product_name LIKE '%益生菌%'"
   self.product_label      = "益生菌"
   self.product_regex      = /益生菌(\d+)/

@@ -3,6 +3,9 @@
 class TurmericAnalysisController < ApplicationController
   include ProductLivestreamAnalysis
 
+  # TODO Epic C Phase 3: set product_key = "turmeric" once bundle SKUs
+  # (代謝錠1薑黃1, 薑黃4全能3, etc. — 39 multi-product names) are resolved
+  # with multi-product mapping support. Currently -6,327 rows vs LIKE if switched.
   self.product_sql        = "product_name LIKE '%薑黃%'"
   self.product_label      = "薑黃"
   self.product_regex      = /薑黃(\d+)/
