@@ -156,9 +156,10 @@ class DailyOrdersController < ApplicationController
 
     groups = [["新客", new_rows]]
     TIERS.each do |tier|
-      groups << [tier, old_rows.select { |r| r.membership_level == tier }]
+      tier_rows = old_rows.select { |r| r.membership_level == tier }.sort_by { |r| -r.products.size }
+      groups << [tier, tier_rows]
     end
-    other = old_rows.reject { |r| TIERS.include?(r.membership_level) }
+    other = old_rows.reject { |r| TIERS.include?(r.membership_level) }.sort_by { |r| -r.products.size }
     groups << ["未分級", other] if other.any?
 
     groups
