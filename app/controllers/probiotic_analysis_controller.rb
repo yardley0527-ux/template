@@ -91,7 +91,7 @@ class ProbioticAnalysisController < ApplicationController
 
     @sku_by_event = all_events.map do |ev|
       range = ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day
-      rows  = ShoplineOrder.where(product_sql).where(order_date: range)
+      rows  = product_orders.where(order_date: range)
                 .where.not(email: [nil, ""])
                 .pluck(:product_name, :email, :checkout_amount, :total_amount)
 
@@ -132,8 +132,7 @@ class ProbioticAnalysisController < ApplicationController
   def build_all_buyers_expiring
     today = Date.today
 
-    last_orders_raw = ShoplineOrder
-      .where(product_sql)
+    last_orders_raw = product_orders
       .where.not(email: [nil, ""])
       .order(:email, order_date: :desc)
       .pluck(:email, :product_name, :order_date)
