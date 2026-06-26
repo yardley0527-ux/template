@@ -44,7 +44,9 @@ end %>
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
       <span class="fw-bold"><%= label %></span>
-      <span class="badge bg-secondary"><%= rows.size %></span>
+      <% unless label == "新客" %>
+        <span class="badge bg-secondary"><%= rows.size %></span>
+      <% end %>
     </div>
     <div class="card-body p-0 table-responsive">
       <table class="table align-middle mb-0" style="font-size:0.86rem; table-layout:fixed; width:100%; min-width:1000px;">
