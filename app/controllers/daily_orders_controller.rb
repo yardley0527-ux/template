@@ -1,6 +1,7 @@
 class DailyOrdersController < ApplicationController
   TIERS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
   TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig].freeze
+  PURCHASE_SUMMARY_FIELDS = %w[line_bound].freeze
 
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
     CASE
@@ -13,6 +14,7 @@ class DailyOrdersController < ApplicationController
     :order_number, :customer_name, :ig_account, :email, :order_total, :order_date,
     :is_new_customer, :membership_level, :products, :health_profile, :health_tags,
     :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
+    :line_bound,
     keyword_init: true
   )
 
@@ -26,11 +28,19 @@ class DailyOrdersController < ApplicationController
 
   def toggle_customer_flag
     field = params[:field].to_s
-    return head :bad_request unless TOGGLEABLE_FIELDS.include?(field)
+    return head :bad_request unless (TOGGLEABLE_FIELDS + PURCHASE_SUMMARY_FIELDS).include?(field)
 
     customer = ShoplineCustomer.find(params[:customer_id])
-    profile  = customer.customer_profile || customer.build_customer_profile
-    profile.update!(field => ActiveModel::Type::Boolean.new.cast(params[:value]))
+    value    = ActiveModel::Type::Boolean.new.cast(params[:value])
+
+    if PURCHASE_SUMMARY_FIELDS.include?(field)
+      summary = CustomerPurchaseSummary.find_by(email: customer.email)
+      return head :not_found unless summary
+      summary.update!(field => value)
+    else
+      profile = customer.customer_profile || customer.build_customer_profile
+      profile.update!(field => value)
+    end
 
     head :ok
   end
@@ -40,7 +50,7 @@ class DailyOrdersController < ApplicationController
     groups = build_groups(@date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "是否購買過同產品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG"]
+      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "是否購買過同產品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG", "綁定 LINE"]
       groups.each do |label, rows|
         rows.each do |row|
           csv << [
@@ -53,7 +63,8 @@ class DailyOrdersController < ApplicationController
             row.health_profile.presence,
             row.health_tags.join("、"),
             row.follows_chloe_ig ? "是" : "否",
-            row.invited_to_follow_product_ig ? "是" : "否"
+            row.invited_to_follow_product_ig ? "是" : "否",
+            row.line_bound ? "是" : "否"
           ]
         end
       end
@@ -107,10 +118,12 @@ class DailyOrdersController < ApplicationController
       .group(:email, :product_name).minimum(:order_date)
 
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
+    summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
 
     rows = raw_orders.map do |o|
       customer = customers_by_email[o.email_val]
       profile  = customer&.customer_profile
+      summary  = summaries_by_email[o.email_val]
 
       products = Array(o.product_names_arr).compact.map do |name|
         prior_date = prior_product_dates[[o.email_val, name]]
@@ -131,7 +144,8 @@ class DailyOrdersController < ApplicationController
         health_tags: profile&.health_tags || [],
         follows_chloe_ig: profile&.follows_chloe_ig || false,
         invited_to_follow_product_ig: profile&.invited_to_follow_product_ig || false,
-        shopline_customer_id: customer&.id
+        shopline_customer_id: customer&.id,
+        line_bound: summary&.line_bound || false
       )
     end
 
