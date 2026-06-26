@@ -28,7 +28,7 @@
           <% if blk.block_type == "text" %>
             <div class="d-flex align-items-start mb-1">
               <pre class="flex-grow-1 mb-0"
-                   style="white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:0.8rem;max-height:100px;overflow:hidden;background:#f8f9fa;padding:6px 8px;border-radius:4px;"><%= blk.content %></pre>
+                   style="white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:0.8rem;background:#f8f9fa;padding:6px 8px;border-radius:4px;"><%= blk.content %></pre>
               <button type="button"
                       class="btn btn-xs btn-outline-secondary ml-1 flex-shrink-0"
                       onclick="copyBlock('<%= j(blk.content.to_s) %>')"
