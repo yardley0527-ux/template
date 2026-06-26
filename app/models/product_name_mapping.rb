@@ -9,6 +9,10 @@ class ProductNameMapping < ApplicationRecord
   belongs_to :suggested_crm_product, class_name: "CrmProduct", optional: true
   belongs_to :reviewed_by, class_name: "User", foreign_key: :reviewed_by_user_id, optional: true
 
+  has_many :components, class_name: "ProductMappingComponent",
+           foreign_key: :product_name_mapping_id, dependent: :destroy
+  has_many :component_products, through: :components, source: :crm_product
+
   validates :raw_name, presence: true
   validates :source, presence: true, inclusion: { in: SOURCES }
   validates :mapping_status, presence: true, inclusion: { in: MAPPING_STATUSES }
@@ -17,6 +21,13 @@ class ProductNameMapping < ApplicationRecord
 
   scope :pending,   -> { where(mapping_status: "pending") }
   scope :confirmed, -> { where(mapping_status: "confirmed_alias") }
+  scope :bundles,   -> { joins(:components).distinct }
+
+  # True when this SKU has been decomposed into multiple component products.
+  # Uses a DB EXISTS check so it works correctly whether components are loaded or not.
+  def bundle?
+    components.exists?
+  end
 
   # ── Resolver helpers (used by ProductNameResolver service) ────────────
 
