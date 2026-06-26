@@ -14,7 +14,7 @@ class DailyOrdersController < ApplicationController
     :order_number, :customer_name, :ig_account, :email, :order_total, :order_date,
     :is_new_customer, :membership_level, :products, :health_profile, :health_tags,
     :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
-    :line_bound,
+    :line_bound, :total_quantity,
     keyword_init: true
   )
 
@@ -102,7 +102,8 @@ class DailyOrdersController < ApplicationController
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
         "MAX(o.order_date) AS ord_date",
         "#{ORDER_TOTAL_SQL} AS order_total",
-        "ARRAY_AGG(DISTINCT o.product_name) AS product_names_arr"
+        "ARRAY_AGG(DISTINCT o.product_name) AS product_names_arr",
+        "SUM(o.quantity) AS total_quantity"
       )
       .where("o.payment_status = '已付款'")
       .where("o.order_date >= ? AND o.order_date < ?", day_start, day_end)
@@ -145,7 +146,8 @@ class DailyOrdersController < ApplicationController
         follows_chloe_ig: profile&.follows_chloe_ig || false,
         invited_to_follow_product_ig: profile&.invited_to_follow_product_ig || false,
         shopline_customer_id: customer&.id,
-        line_bound: summary&.line_bound || false
+        line_bound: summary&.line_bound || false,
+        total_quantity: o.total_quantity.to_i
       )
     end
 
@@ -156,10 +158,10 @@ class DailyOrdersController < ApplicationController
 
     groups = [["新客", new_rows]]
     TIERS.each do |tier|
-      tier_rows = old_rows.select { |r| r.membership_level == tier }.sort_by { |r| -r.products.size }
+      tier_rows = old_rows.select { |r| r.membership_level == tier }.sort_by { |r| -r.total_quantity }
       groups << [tier, tier_rows]
     end
-    other = old_rows.reject { |r| TIERS.include?(r.membership_level) }.sort_by { |r| -r.products.size }
+    other = old_rows.reject { |r| TIERS.include?(r.membership_level) }.sort_by { |r| -r.total_quantity }
     groups << ["未分級", other] if other.any?
 
     groups
