@@ -77,6 +77,20 @@ class DailyOrdersController < ApplicationController
 
   private
 
+  def product_series(name)
+    name.to_s.match(/\A([^\d]+)/)&.captures&.first&.strip.presence || name.to_s
+  end
+
+  def build_prior_series_dates(emails, before)
+    raw = ShoplineOrder.where(email: emails).where("order_date < ?", before).pluck(:email, :product_name, :order_date)
+    result = {}
+    raw.each do |email, product_name, order_date|
+      key = [email, product_series(product_name)]
+      result[key] = order_date if result[key].nil? || order_date < result[key]
+    end
+    result
+  end
+
   def parse_date(value)
     Date.parse(value) if value.present?
   rescue ArgumentError
@@ -115,8 +129,7 @@ class DailyOrdersController < ApplicationController
 
     prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", day_start).distinct.pluck(:email).to_set
 
-    prior_product_dates = ShoplineOrder.where(email: emails).where("order_date < ?", day_start)
-      .group(:email, :product_name).minimum(:order_date)
+    prior_series_dates = build_prior_series_dates(emails, day_start)
 
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
     summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
@@ -127,7 +140,7 @@ class DailyOrdersController < ApplicationController
       summary  = summaries_by_email[o.email_val]
 
       products = Array(o.product_names_arr).compact.map do |name|
-        prior_date = prior_product_dates[[o.email_val, name]]
+        prior_date = prior_series_dates[[o.email_val, product_series(name)]]
         { name: name, prior_date: prior_date }
       end
 
