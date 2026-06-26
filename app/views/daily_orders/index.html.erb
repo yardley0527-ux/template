@@ -50,15 +50,18 @@ end %>
     </div>
     <div class="card-body p-0 table-responsive">
       <table class="table align-middle mb-0" style="font-size:0.86rem; table-layout:fixed; width:100%; min-width:1000px;">
+        <% is_new = label == "新客" %>
         <thead style="background-color:#4a4a4a; color:white;">
           <tr>
             <th class="ps-3" style="width:12%;">訂單號碼</th>
             <th style="width:9%;">姓名</th>
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
-            <th style="width:27%;">是否購買過同產品</th>
-            <th style="width:25%;">健康資料</th>
-            <th class="text-center" style="width:7%;">綁定 LINE</th>
+            <th style="width:<%= is_new ? 27 : 30 %>%;">是否購買過同產品</th>
+            <th style="width:<%= is_new ? 25 : 29 %>%;">健康資料</th>
+            <% if is_new %>
+              <th class="text-center" style="width:7%;">綁定 LINE</th>
+            <% end %>
           </tr>
         </thead>
         <tbody>
@@ -110,23 +113,25 @@ end %>
                   <% end %>
                 <% end %>
               </td>
-              <td class="text-center">
-                <% if row.shopline_customer_id %>
-                  <input type="checkbox"
-                    class="customer-flag-checkbox"
-                    data-customer-id="<%= row.shopline_customer_id %>"
-                    data-field="line_bound"
-                    <%= row.line_bound ? 'checked' : '' %>
-                    style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
-                <% else %>
-                  <span class="text-muted">—</span>
-                <% end %>
-              </td>
+              <% if is_new %>
+                <td class="text-center">
+                  <% if row.shopline_customer_id %>
+                    <input type="checkbox"
+                      class="customer-flag-checkbox"
+                      data-customer-id="<%= row.shopline_customer_id %>"
+                      data-field="line_bound"
+                      <%= row.line_bound ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+              <% end %>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="7" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="<%= is_new ? 7 : 6 %>" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
