@@ -133,7 +133,20 @@
       </div>
 
       <div class="profile-block">
-        <span class="profile-block-title">產品標籤</span>
+        <span class="profile-block-title">購買過苼莛的產品</span>
+        <% if @profile.shengting_product_tags.present? %>
+          <div class="product-tag-display-list">
+            <% @profile.shengting_product_tags.each do |tag| %>
+              <span class="product-tag-display-chip"><%= tag %></span>
+            <% end %>
+          </div>
+        <% else %>
+          <p class="profile-block-text">（尚未選擇）</p>
+        <% end %>
+      </div>
+
+      <div class="profile-block">
+        <span class="profile-block-title">產品偏好</span>
         <% if @profile.product_tags.present? %>
           <div class="product-tag-display-list">
             <% @profile.product_tags.each do |tag| %>
