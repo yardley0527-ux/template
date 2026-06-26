@@ -64,7 +64,6 @@ class SidebarEntry
           children: [
             { href: product_strategy_path,      title: "產品策略報表",   icon: "fa-chart-line" },
             { href: products_path,              title: "年度 Top 產品排行", icon: "fa-trophy" },
-            { href: subscription_strategy_path, title: "定期購策略分析", icon: "fa-sync-alt" },
           ]
         },
         {
