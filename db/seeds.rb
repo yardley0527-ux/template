@@ -7,3 +7,4 @@
 #   Character.create(name: 'Luke', movie: movies.first)
 
 load Rails.root.join("db/seeds/livestreams.rb")
+load Rails.root.join("db/seeds/message_templates.rb")

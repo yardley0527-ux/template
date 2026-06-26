@@ -2,7 +2,6 @@ class MessageTemplate < ApplicationRecord
   has_many :message_template_blocks, -> { order(:position) }, dependent: :destroy
 
   validates :category_key, presence: true
-  validates :content, presence: true
 
   scope :in_category, ->(key, sub = nil) {
     where(category_key: key, subcategory: sub).order(:position)
