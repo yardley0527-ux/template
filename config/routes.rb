@@ -106,6 +106,12 @@ Rails.application.routes.draw do
   get '/shopping_credits',    to: 'shopping_credits#index',    as: :shopping_credits
   get '/livestream_strategy', to: 'livestream_strategy#index', as: :livestream_strategy
 
+  # ── Product Registry Review UI (Epic B2-0C) ─────────────────────────
+  get   '/product_registry',                    to: 'product_registry#index',          as: :product_registry
+  patch '/product_registry/:id/confirm',         to: 'product_registry#confirm',        as: :confirm_product_registry_mapping
+  patch '/product_registry/:id/ignore',          to: 'product_registry#ignore',         as: :ignore_product_registry_mapping
+  post  '/product_registry/:id/create_product',  to: 'product_registry#create_product', as: :create_product_registry_mapping
+
   resources :products, only: [:index, :show], param: :id
   resources :customers, only: [:index, :show] do
     collection do
