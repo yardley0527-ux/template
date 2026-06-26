@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_27_000003) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_27_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -81,6 +81,23 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000003) do
     t.datetime "updated_at", null: false
     t.index ["product_key", "stat_month"], name: "idx_crm_monthly_stats_on_product_month", unique: true
     t.index ["stat_month"], name: "idx_crm_monthly_stats_on_month"
+  end
+
+  create_table "crm_products", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "label", null: false
+    t.string "status", default: "candidate", null: false
+    t.boolean "include_in_analysis", default: false, null: false
+    t.string "source"
+    t.string "regex_pattern"
+    t.string "sql_pattern"
+    t.datetime "reviewed_at"
+    t.bigint "reviewed_by_user_id"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_crm_products_on_key", unique: true
+    t.index ["status"], name: "index_crm_products_on_status"
   end
 
   create_table "customer_edit_logs", force: :cascade do |t|
@@ -353,7 +370,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000003) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "analysis_note"
+    t.string "product_keys", default: [], null: false, array: true
+    t.integer "total_orders", default: 0, null: false
+    t.decimal "total_revenue", precision: 14, scale: 2, default: "0.0", null: false
+    t.integer "level_black_count", default: 0, null: false
+    t.decimal "level_black_amount", precision: 14, scale: 2, default: "0.0", null: false
+    t.integer "level_gold_count", default: 0, null: false
+    t.decimal "level_gold_amount", precision: 14, scale: 2, default: "0.0", null: false
+    t.integer "level_silver_count", default: 0, null: false
+    t.decimal "level_silver_amount", precision: 14, scale: 2, default: "0.0", null: false
+    t.integer "level_white_count", default: 0, null: false
+    t.decimal "level_white_amount", precision: 14, scale: 2, default: "0.0", null: false
+    t.integer "level_normal_count", default: 0, null: false
+    t.decimal "level_normal_amount", precision: 14, scale: 2, default: "0.0", null: false
     t.index ["date"], name: "index_livestreams_on_date", unique: true
+    t.index ["product_keys"], name: "index_livestreams_on_product_keys", using: :gin
   end
 
   create_table "membership_level_changes", force: :cascade do |t|
@@ -417,6 +449,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000003) do
     t.datetime "updated_at", null: false
     t.index ["album_id", "position"], name: "index_photos_on_album_id_and_position"
     t.index ["album_id"], name: "index_photos_on_album_id"
+  end
+
+  create_table "product_name_mappings", force: :cascade do |t|
+    t.string "raw_name", null: false
+    t.string "source", null: false
+    t.integer "occurrence_count", default: 0, null: false
+    t.bigint "crm_product_id"
+    t.string "mapping_status", default: "pending", null: false
+    t.bigint "suggested_crm_product_id"
+    t.string "suggested_confidence"
+    t.datetime "reviewed_at"
+    t.bigint "reviewed_by_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["crm_product_id"], name: "index_product_name_mappings_on_crm_product_id"
+    t.index ["mapping_status"], name: "index_product_name_mappings_on_mapping_status"
+    t.index ["raw_name", "source"], name: "index_product_name_mappings_on_raw_name_and_source", unique: true
+    t.index ["source"], name: "index_product_name_mappings_on_source"
+    t.index ["suggested_crm_product_id"], name: "index_product_name_mappings_on_suggested_crm_product_id"
   end
 
   create_table "products", force: :cascade do |t|
@@ -746,6 +797,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000003) do
   end
 
   add_foreign_key "albums", "shopline_customers"
+  add_foreign_key "crm_products", "users", column: "reviewed_by_user_id"
   add_foreign_key "health_assessment_products", "products"
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"
   add_foreign_key "ig_posts", "ig_profiles"
@@ -755,6 +807,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000003) do
   add_foreign_key "livestream_products", "livestreams"
   add_foreign_key "membership_level_changes", "import_runs"
   add_foreign_key "photos", "albums"
+  add_foreign_key "product_name_mappings", "crm_products"
+  add_foreign_key "product_name_mappings", "crm_products", column: "suggested_crm_product_id"
+  add_foreign_key "product_name_mappings", "users", column: "reviewed_by_user_id"
   add_foreign_key "shopline_customer_health_assessments", "shopline_customers"
   add_foreign_key "shopline_customer_health_questionnaires", "shopline_customers"
   add_foreign_key "shopline_orders", "shopline_customers"
