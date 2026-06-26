@@ -23,9 +23,11 @@ class CustomersController < ApplicationController
     @product_tag      = params[:product_tag].to_s.strip
     @health_tag      = params[:health_tag].to_s.strip
 
+    @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員 非會員]
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level)
       .map { |l| l.presence || "非會員" }
-      .uniq.sort
+      .uniq
+      .sort_by { |l| @membership_order.index(l) || 99 }
 
     @product_tag_options = CustomerProfile::SHENGTING_PRODUCT_OPTIONS
     @health_tag_options = CustomerProfile::HEALTH_TAG_OPTIONS
@@ -42,8 +44,6 @@ class CustomersController < ApplicationController
       .each_with_object(Hash.new { |h, k| h[k] = {} }) do |((level, city), cnt), h|
         h[level][city] = cnt
       end
-
-    @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員]
 
     scope = ShoplineCustomer.includes(:customer_profile).all
 
