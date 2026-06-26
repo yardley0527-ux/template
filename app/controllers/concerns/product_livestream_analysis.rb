@@ -66,26 +66,7 @@ module ProductLivestreamAnalysis
     @prev_returned_count = (all_prev_emails & @event_emails).size
     @prev_return_rate    = pct(@prev_returned_count, @prev_count)
 
-    level_counts = ShoplineCustomer
-      .where.not(shopline_id: nil)
-      .where(membership_level: TARGET_MEMBERSHIPS)
-      .group(:membership_level).count
-
-    emails_by_level = ShoplineCustomer
-      .where(membership_level: TARGET_MEMBERSHIPS)
-      .where.not(email: [nil, ""])
-      .pluck(:membership_level, :email)
-      .group_by(&:first)
-      .transform_values { |pairs| pairs.map(&:last) }
-
-    @level_stats = TARGET_MEMBERSHIPS.filter_map do |level|
-      total = level_counts[level] || 0
-      next if total.zero?
-      emails   = emails_by_level[level] || []
-      attended = (emails & @event_emails).size
-      { level: level, total: total, attended: attended, rate: pct(attended, total) }
-    end
-
+    @level_stats      = MembershipLevelStatsService.call(event_emails: @event_emails)
     black_stat        = @level_stats.find { |s| s[:level] == "黑卡" } || {}
     gold_stat         = @level_stats.find { |s| s[:level] == "金卡" } || {}
     @black_event_rate = black_stat[:rate].to_f
