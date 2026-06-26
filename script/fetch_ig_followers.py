@@ -69,10 +69,14 @@ def main():
         request_timeout=30,
     )
 
-    ig_user = os.environ.get("IG_USERNAME")
-    ig_pass = os.environ.get("IG_PASSWORD")
-    if ig_user and ig_pass:
-        login(L, ig_user, ig_pass)
+    if os.path.exists(SESSION_FILE):
+        ig_user = os.environ.get("IG_USERNAME")
+        if ig_user:
+            try:
+                L.load_session_from_file(ig_user, SESSION_FILE)
+                print("Loaded cached session")
+            except Exception:
+                pass
 
     data = load_data()
     today = str(date.today())
