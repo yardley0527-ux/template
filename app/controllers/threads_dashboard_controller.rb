@@ -1,10 +1,9 @@
 class ThreadsDashboardController < ApplicationController
   def index
     scope = ThreadsPost.recent
-      .where(keyword: ThreadsScraperService::KEYWORDS)
+      .where(keyword: ThreadsScraperService::CATEGORIES)
       .where(hidden: false)
-      .where("like_count + reply_count + repost_count >= 10")
-      .order(Arel.sql("like_count + reply_count * 2 + repost_count DESC"))
+      .order(Arel.sql("reply_count * 5 + like_count DESC"))
 
     if params[:keyword].present?
       scope = scope.where(keyword: params[:keyword])
@@ -16,9 +15,9 @@ class ThreadsDashboardController < ApplicationController
       scope = scope.where(commented: false)
     end
 
-    @posts             = scope.limit(60)
-    @keyword_categories = ThreadsScraperService::KEYWORD_CATEGORIES
-    @keywords           = ThreadsScraperService::KEYWORDS
+    @posts              = scope.limit(60)
+    @keyword_categories = ThreadsScraperService::KEYWORD_CONFIG
+    @keywords           = ThreadsScraperService::ALL_LOCAL_KEYWORDS
     @active_keyword     = params[:keyword]
     @active_commented   = params[:commented]
     @last_fetched       = ThreadsPost.maximum(:updated_at)
@@ -27,10 +26,14 @@ class ThreadsDashboardController < ApplicationController
   end
 
   def refresh
-    scrape_success = ThreadsScraperService.run
+    category = params[:category].presence
+    scrape_success = ThreadsScraperService.run(category: category)
     if scrape_success
-      ThreadsAnalysisService.run(Date.today)
-      redirect_to threads_dashboard_path, notice: "資料已更新，共抓取 #{ThreadsPost.today.count} 則貼文，AI 分析已產生"
+      ThreadsAnalysisService.run(Date.today) if category.blank?
+      msg = category.present? ?
+        "「#{category}」已更新，共抓取 #{ThreadsPost.today.count} 則貼文" :
+        "全部分類已更新，共抓取 #{ThreadsPost.today.count} 則貼文，AI 分析已產生"
+      redirect_to threads_dashboard_path(keyword: category), notice: msg
     else
       redirect_to threads_dashboard_path, alert: "爬蟲失敗，請確認 APIFY_API_KEY 設定是否正確"
     end
