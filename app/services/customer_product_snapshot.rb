@@ -1,15 +1,19 @@
 class CustomerProductSnapshot
   DAYS_PER_BOTTLE = 30
 
-  attr_reader :email, :product_key, :last_product_name, :last_order_date, :bottles, :reference_date
+  attr_reader :email, :product_key, :last_product_name, :last_order_date, :bottles,
+              :reference_date, :order_count, :total_amount
 
-  def initialize(email:, product_key:, last_product_name:, last_order_date:, bottles:, reference_date:)
+  def initialize(email:, product_key:, last_product_name:, last_order_date:, bottles:,
+                 reference_date:, order_count: 0, total_amount: 0.0)
     @email             = email
     @product_key       = product_key
     @last_product_name = last_product_name
     @last_order_date   = last_order_date
     @bottles           = bottles
     @reference_date    = reference_date
+    @order_count       = order_count
+    @total_amount      = total_amount
   end
 
   def expected_return_date

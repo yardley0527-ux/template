@@ -75,19 +75,12 @@ module ProductLivestreamAnalysis
     missing_emails = all_prev_emails - @event_emails
     today          = Date.today
 
-    last_orders_raw = product_orders
-      .where(email: missing_emails)
-      .where("order_date < ?", event_range.first)
-      .order(:email, order_date: :desc)
-      .pluck(:email, :product_name, :order_date)
-
-    last_order_by_email = {}
-    last_orders_raw.each do |email, pname, odate|
-      last_order_by_email[email] ||= { product_name: pname, order_date: odate }
-    end
-
-    history_counts  = product_orders.where(email: missing_emails).group(:email).count
-    history_amounts = email_order_amounts(product_orders.where(email: missing_emails))
+    snapshots = CustomerProductSnapshotService.call(
+      emails:         missing_emails,
+      product_key:    product_key,
+      reference_date: today,
+      before_date:    event_range.first
+    )
 
     last_any_order_raw = ShoplineOrder.where(email: missing_emails)
       .order(:email, order_date: :desc)
@@ -103,31 +96,28 @@ module ProductLivestreamAnalysis
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
     @missing_customers = customers.filter_map do |c|
-      last          = last_order_by_email[c.email]
-      last_date     = last&.dig(:order_date)&.to_date
-      next if last_date.nil?
+      snapshot = snapshots[c.email]
+      next if snapshot.nil?
+      last_date = snapshot.last_order_date
       next if last_date < today - 180            # 超過半年沒買，近期無活躍
-      bottles       = extract_bottles(last&.dig(:product_name))
-      expected_days = bottles * DAYS_PER_BOTTLE
-      overdue_days  = (today - last_date).to_i - expected_days
-      next if overdue_days <= 0                  # 手上還有存貨，不需要追
-      next if overdue_days > 90                  # 逾期太久，已非追蹤目標
-      history_count  = history_counts[c.email]  || 0
+      next if snapshot.overdue_days <= 0         # 手上還有存貨，不需要追
+      next if snapshot.overdue_days > 90         # 逾期太久，已非追蹤目標
+      history_count = snapshot.order_count
       next if history_count < 2                  # 只買過一次，不算有回購習慣
-      history_amount    = history_amounts[c.email] || 0
-      last_any_date     = last_any_order[c.email]&.dig(:order_date)
-      last_any_product  = last_any_order[c.email]&.dig(:product_name)
+      history_amount   = snapshot.total_amount
+      last_any_date    = last_any_order[c.email]&.dig(:order_date)
+      last_any_product = last_any_order[c.email]&.dig(:product_name)
       membership_rank = MEMBERSHIP_RANK[c.membership_level] || 0
-      overdue_score   = [overdue_days, 0].max / 10.0
+      overdue_score   = snapshot.overdue_days / 10.0
       priority_score  = (membership_rank * 3) + overdue_score + (history_count * 0.5)
 
       {
         customer:       c,
-        last_product:   last&.dig(:product_name),
-        last_date:      last_date,
-        bottles:        bottles,
-        expected_days:  expected_days,
-        overdue_days:   overdue_days,
+        last_product:   snapshot.last_product_name,
+        last_date:      snapshot.last_order_date,
+        bottles:        snapshot.bottles,
+        expected_days:  snapshot.bottles * DAYS_PER_BOTTLE,
+        overdue_days:   snapshot.overdue_days,
         history_count:  history_count,
         history_amount: history_amount,
         last_any_date:    last_any_date,
@@ -330,22 +320,6 @@ module ProductLivestreamAnalysis
   def product_emails(range)
     product_orders.where(order_date: range)
       .where.not(email: [nil, ""]).distinct.pluck(:email)
-  end
-
-  # total_amount 是整張訂單的付款總額（同一訂單每個商品行都重複同一值，逐行 SUM 會灌水），
-  # 需先以 order_number 分組取一筆，再依 email 加總，避免多商品行訂單被重複計入。
-  def email_order_amounts(scope)
-    order_totals = scope
-      .group(:email, :order_number)
-      .pluck(
-        :email,
-        Arel.sql("MAX(NULLIF(total_amount, 0)) AS max_total"),
-        Arel.sql("SUM(COALESCE(checkout_amount, 0)) AS sum_checkout")
-      )
-
-    order_totals.each_with_object(Hash.new(0.0)) do |(email, max_total, sum_checkout), acc|
-      acc[email] += (max_total || sum_checkout).to_f
-    end
   end
 
   def extract_bottles(product_name)
