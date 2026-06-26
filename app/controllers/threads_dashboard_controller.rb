@@ -24,6 +24,7 @@ class ThreadsDashboardController < ApplicationController
     @today_count        = ThreadsPost.today.count
     @analysis           = ThreadsAnalysis.latest_record
     @fetch_cached       = fetch_cached?(@active_keyword)
+    @analysis_cached    = @analysis&.updated_at&.> 6.hours.ago
   end
 
   def refresh
