@@ -4,21 +4,6 @@ class CustomerProfile < ApplicationRecord
   belongs_to :shopline_customer, class_name: "ShoplineCustomer"
 
   PRODUCT_TAG_OPTIONS = [
-    "代謝錠",
-    "全能",
-    "薑黃",
-    "膠原蛋白",
-    "白藜蘆醇",
-    "蝦紅素",
-    "魚油",
-    "清纖粉",
-    "私密粉",
-    "維DK鈣",
-    "益生菌",
-    "穀胱甘肽"
-  ].freeze
-
-  SHENGTING_PRODUCT_OPTIONS = [
     "維生素A", "維生素E", "維生素D", "維生素B", "維生素C",
     "鋅", "維生素D3", "鈣", "鎂", "鐵",
     "魚油", "Q10",
@@ -39,6 +24,21 @@ class CustomerProfile < ApplicationRecord
     "乳清蛋白",
     "肌酸",
     "瘦身產品"
+  ].freeze
+
+  SHENGTING_PRODUCT_OPTIONS = [
+    "代謝錠",
+    "全能",
+    "薑黃",
+    "膠原蛋白",
+    "白藜蘆醇",
+    "蝦紅素",
+    "魚油",
+    "清纖粉",
+    "私密粉",
+    "維DK鈣",
+    "益生菌",
+    "穀胱甘肽"
   ].freeze
 
   HEALTH_TAG_OPTIONS = [
