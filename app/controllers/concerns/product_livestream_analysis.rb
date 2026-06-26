@@ -265,22 +265,19 @@ module ProductLivestreamAnalysis
     all_emails = all_event_emails.flatten.uniq
     today      = Date.today
 
-    last_orders_raw = product_orders.where(email: all_emails)
-      .order(:email, order_date: :desc).pluck(:email, :product_name, :order_date)
-
-    last_by_email = {}
-    last_orders_raw.each { |e, p, d| last_by_email[e] ||= { product_name: p, order_date: d } }
+    snapshots = CustomerProductSnapshotService.call(
+      emails:         all_emails,
+      product_key:    product_key,
+      reference_date: today
+    )
 
     @expiring_soon = ShoplineCustomer.where(email: all_emails)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
       .filter_map do |c|
-        last = last_by_email[c.email]
-        next unless last
-        bottles   = extract_bottles(last[:product_name])
-        last_date = last[:order_date].to_date
-        days_left = (bottles * DAYS_PER_BOTTLE) - (today - last_date).to_i
-        next unless days_left >= -7 && days_left <= 21
-        { customer: c, days_left: days_left, last_product: last[:product_name], last_date: last_date }
+        snapshot = snapshots[c.email]
+        next unless snapshot
+        next unless snapshot.days_until_return >= -7 && snapshot.days_until_return <= 21
+        { customer: c, days_left: snapshot.days_until_return, last_product: snapshot.last_product_name, last_date: snapshot.last_order_date }
       end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
 
     iron_emails = all_event_emails.reduce(:&)

@@ -130,27 +130,26 @@ class ProbioticAnalysisController < ApplicationController
   def build_all_buyers_expiring
     today = Date.today
 
-    last_orders_raw = product_orders
+    all_product_emails = product_orders
       .where.not(email: [nil, ""])
-      .order(:email, order_date: :desc)
-      .pluck(:email, :product_name, :order_date)
+      .distinct.pluck(:email)
 
-    last_by_email = {}
-    last_orders_raw.each { |e, p, d| last_by_email[e] ||= { product_name: p, order_date: d } }
+    snapshots = CustomerProductSnapshotService.call(
+      emails:         all_product_emails,
+      product_key:    product_key,
+      reference_date: today
+    )
 
     customers = ShoplineCustomer
-      .where(email: last_by_email.keys)
+      .where(email: snapshots.keys)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
     @all_expiring_soon = customers.filter_map do |c|
-      last      = last_by_email[c.email]
-      next unless last
-      bottles   = extract_bottles(last[:product_name])
-      last_date = last[:order_date].to_date
-      days_left = (bottles * DAYS_PER_BOTTLE) - (today - last_date).to_i
-      next unless days_left >= -7 && days_left <= 30
-      { customer: c, days_left: days_left, last_product: last[:product_name],
-        last_date: last_date, bottles: bottles }
+      snapshot = snapshots[c.email]
+      next unless snapshot
+      next unless snapshot.days_until_return >= -7 && snapshot.days_until_return <= 30
+      { customer: c, days_left: snapshot.days_until_return, last_product: snapshot.last_product_name,
+        last_date: snapshot.last_order_date, bottles: snapshot.bottles }
     end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
   end
 
