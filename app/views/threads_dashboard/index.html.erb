@@ -38,9 +38,14 @@
 
 <% if @posts.none? %>
   <div class="card border-0 shadow-sm">
-    <div class="card-body text-center py-5">
-      <p class="text-muted mb-2">尚無資料，請按右上角「更新資料」按鈕先爬取一次。</p>
-      <p class="text-muted small">需先設定環境變數 <code>APIFY_API_KEY</code>。</p>
+    <div class="card-body text-center py-4">
+      <p class="text-muted mb-0">
+        <% if @active_keyword.present? %>
+          「<%= @active_keyword %>」目前無資料，請按右上角更新按鈕抓取。
+        <% else %>
+          尚無資料，請按右上角「更新全部」按鈕先爬取一次。
+        <% end %>
+      </p>
     </div>
   </div>
 <% else %>
