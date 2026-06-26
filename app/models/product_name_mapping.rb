@@ -15,5 +15,26 @@ class ProductNameMapping < ApplicationRecord
   validates :suggested_confidence, inclusion: { in: CONFIDENCES }, allow_nil: true
   validates :raw_name, uniqueness: { scope: :source }
 
-  scope :pending, -> { where(mapping_status: "pending") }
+  scope :pending,   -> { where(mapping_status: "pending") }
+  scope :confirmed, -> { where(mapping_status: "confirmed_alias") }
+
+  # ── Resolver helpers (used by ProductNameResolver service) ────────────
+
+  # Returns the CrmProduct for a single raw name, or nil if unmapped.
+  def self.resolve(raw_name)
+    return nil if raw_name.blank?
+    includes(:crm_product)
+      .find_by(raw_name: raw_name.to_s.strip, mapping_status: "confirmed_alias")
+      &.crm_product
+  end
+
+  # Returns { raw_name => CrmProduct } for a collection of names.
+  # Names with no confirmed mapping are absent from the result hash.
+  def self.resolve_batch(raw_names)
+    return {} if raw_names.blank?
+    normalized = raw_names.map { |n| n.to_s.strip }.uniq.reject(&:blank?)
+    includes(:crm_product)
+      .where(raw_name: normalized, mapping_status: "confirmed_alias")
+      .each_with_object({}) { |m, h| h[m.raw_name] = m.crm_product }
+  end
 end
