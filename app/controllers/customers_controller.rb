@@ -27,7 +27,7 @@ class CustomersController < ApplicationController
       .map { |l| l.presence || "非會員" }
       .uniq.sort
 
-    @product_tag_options = CustomerProfile::PRODUCT_TAG_OPTIONS
+    @product_tag_options = CustomerProfile::SHENGTING_PRODUCT_OPTIONS
     @health_tag_options = CustomerProfile::HEALTH_TAG_OPTIONS
 
     @page = params[:page].to_i
@@ -70,7 +70,7 @@ class CustomersController < ApplicationController
 
     if @product_tag.present?
       scope = scope.joins(:customer_profile)
-                   .where("? = ANY(customer_profiles.product_tags)", @product_tag)
+                   .where("? = ANY(customer_profiles.shengting_product_tags)", @product_tag)
     end
 
     if @health_tag.present?
