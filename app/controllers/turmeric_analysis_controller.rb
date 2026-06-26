@@ -4,7 +4,6 @@ class TurmericAnalysisController < ApplicationController
   include ProductLivestreamAnalysis
 
   self.product_key        = "turmeric"
-  self.product_sql        = "product_name LIKE '%薑黃%'"
   self.product_label      = "薑黃"
   self.product_event_list = LivestreamAnalysisController::ALL_EVENTS
     .select { |e| e[:note]&.include?("薑黃") }.freeze

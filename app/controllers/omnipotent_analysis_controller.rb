@@ -2,7 +2,6 @@ class OmnipotentAnalysisController < ApplicationController
   include ProductLivestreamAnalysis
 
   self.product_key        = "omnipotent"   # Epic C Phase 2: Registry-driven (0 diff vs LIKE ✓)
-  self.product_sql        = "product_name LIKE '%全能%'"
   self.product_label      = "全能"
   self.product_event_list = LivestreamAnalysisController::ALL_EVENTS
     .select { |e| e[:note]&.include?("全能") }.freeze
@@ -95,7 +94,7 @@ class OmnipotentAnalysisController < ApplicationController
     window_start = all_events.first[:date].beginning_of_day
     window_end   = (all_events.last[:date] + 3).end_of_day
 
-    all_omni_rows = ShoplineOrder.where(product_sql)
+    all_omni_rows = product_orders
       .where(order_date: window_start..window_end)
       .where.not(email: [nil, ""])
       .pluck(:email, :order_date, :checkout_amount, :total_amount)
@@ -132,7 +131,7 @@ class OmnipotentAnalysisController < ApplicationController
     all_emails = all_event_emails.flatten.uniq
     today      = Date.today
 
-    last_orders_raw = ShoplineOrder.where(product_sql).where(email: all_emails)
+    last_orders_raw = product_orders.where(email: all_emails)
       .order(:email, order_date: :desc).pluck(:email, :product_name, :order_date)
 
     last_by_email = {}

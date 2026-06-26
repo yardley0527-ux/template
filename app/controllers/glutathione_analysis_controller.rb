@@ -2,7 +2,6 @@ class GlutathioneAnalysisController < ApplicationController
   include ProductLivestreamAnalysis
 
   self.product_key        = "glutathione"  # Epic C Phase 2: Registry-driven (+29 rows vs LIKE = typo spellings now included ✓)
-  self.product_sql        = "product_name LIKE '%穀胱甘肽%'"
   self.product_label      = "穀胱甘肽"
   self.product_event_list = LivestreamAnalysisController::ALL_EVENTS
     .select { |e| e[:note]&.include?("穀胱甘肽") }.freeze

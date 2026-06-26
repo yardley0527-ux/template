@@ -22,13 +22,7 @@ module ProductLivestreamAnalysis
   DAYS_PER_BOTTLE = 30
 
   included do
-    # Epic C Phase 2: product_key drives Registry-based lookup (ProductNameResolver.orders_for).
-    # product_sql is kept as a fallback for products with bundle SKUs (turmeric, metabolism)
-    # where a single-product mapping would undercount. Set product_key to enable the new path;
-    # leave nil to fall back to product_sql.
-    # TODO Epic C Phase 3: remove product_sql fallback once bundle SKUs support multi-product mapping.
     class_attribute :product_key,        instance_writer: false
-    class_attribute :product_sql,        instance_writer: false
     class_attribute :product_label,      instance_writer: false
     class_attribute :product_event_list, instance_writer: false
 
@@ -380,18 +374,8 @@ module ProductLivestreamAnalysis
     BottleExtractor.call(product_name, product_key)
   end
 
-  # ── Epic C Phase 2: Registry-driven product scope ──────────────────
-  # Returns the base ShoplineOrder scope for the current product.
-  # Uses ProductNameResolver.orders_for(product_key) when the product_key is
-  # set (Registry path). Falls back to the legacy LIKE scope (product_sql)
-  # for products whose bundle SKUs are not yet fully resolved in the registry
-  # (turmeric, metabolism — see Phase 3 TODO above).
   def product_orders
-    if product_key.present?
-      ProductNameResolver.orders_for(product_key)
-    else
-      ShoplineOrder.where(product_sql)
-    end
+    ProductNameResolver.orders_for(product_key)
   end
 
   def pct(num, den)

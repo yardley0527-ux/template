@@ -2,7 +2,6 @@ class MetabolismAnalysisController < ApplicationController
   include ProductLivestreamAnalysis
 
   self.product_key        = "metabolism"
-  self.product_sql        = "product_name LIKE '%代謝%'"
   self.product_label      = "代謝錠"
   self.product_event_list = LivestreamAnalysisController::ALL_EVENTS
     .select { |e| e[:note]&.include?("代謝") }.freeze
