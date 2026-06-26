@@ -100,17 +100,9 @@ class ThreadsAnalysisService
   end
 
   def category_summary(stats)
-    stats_by_keyword = stats.index_by { |s| s[:keyword] }
-
-    ThreadsScraperService::KEYWORD_CATEGORIES.filter_map do |category, keywords|
-      kw_stats = keywords.filter_map { |kw| stats_by_keyword[kw] }
-      next if kw_stats.empty?
-
-      total_count      = kw_stats.sum { |s| s[:count] }
-      total_engagement = kw_stats.sum { |s| s[:total_engagement] }
-      top              = kw_stats.max_by { |s| s[:total_engagement] }
-
-      "#{category}（#{keywords.join('/')}）：共 #{total_count} 篇、總互動 #{total_engagement}，本週最熱關鍵字是「#{top[:keyword]}」（互動 #{top[:total_engagement]}）"
+    stats.map do |s|
+      local_kws = ThreadsScraperService::KEYWORD_CONFIG.dig(s[:keyword], :local_keywords)&.first(5)&.join("/") || ""
+      "#{s[:keyword]}（#{local_kws}…）：共 #{s[:count]} 篇、總互動 #{s[:total_engagement]}"
     end.join("\n")
   end
 

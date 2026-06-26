@@ -90,10 +90,16 @@ class ThreadsDashboardController < ApplicationController
 
     request = Net::HTTP::Post.new(uri)
     request["Content-Type"] = "application/json"
-    request.body = { mode: "search", searchQueries: ["probiotics"], maxPosts: 3 }.to_json
+    request.body = { mode: "search", searchQueries: ["減肥", "水腫"], maxPosts: 5 }.to_json
 
     response = http.request(request)
-    render json: { status: response.code, key_prefix: api_key.to_s.first(6), body: JSON.parse(response.body) }
+    body = JSON.parse(response.body)
+    render json: {
+      status:      response.code,
+      key_prefix:  api_key.to_s.first(6),
+      post_count:  body.is_a?(Array) ? body.size : "not array",
+      keywords_found: body.is_a?(Array) ? body.map { |p| [p["text"].to_s.first(30), p["likeCount"], p["replyCount"]] } : body
+    }
   rescue => e
     render json: { error: e.class.to_s, message: e.message }
   end
