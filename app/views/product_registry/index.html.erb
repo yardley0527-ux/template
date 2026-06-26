@@ -1,0 +1,241 @@
+<% content_for :heading do %>產品 Registry Review<% end %>
+<% content_for :pagedescription do %>Product Name Mapping 審查<% end %>
+<% content_for :category_1 do %>CRM<% end %>
+<% content_for :title do %>Product Registry<% end %>
+
+<% prev_page = [@page - 1, 1].max %>
+<% next_page = [@page + 1, @total_pages].min %>
+
+<div class="row">
+  <div class="col-12">
+
+    <%# ── Filter ──────────────────────────────────────────────── %>
+    <div class="panel">
+      <div class="panel-hdr"><h2>篩選</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <%= form_with url: product_registry_path, method: :get, local: true,
+                        class: "row gx-3 gy-2 align-items-end" do %>
+            <div class="col-sm-6 col-md-5">
+              <label class="form-label">搜尋 Raw Name</label>
+              <%= text_field_tag :q, @q, class: "form-control",
+                    placeholder: "搜尋原始品名..." %>
+            </div>
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label">Mapping Status</label>
+              <%= select_tag :status,
+                    options_for_select([["全部", ""]] + @status_options.map { |s| [s, s] }, @status),
+                    class: "form-control" %>
+            </div>
+            <div class="col-auto">
+              <%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>
+              <%= link_to "清除", product_registry_path, class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# ── Mapping Table ────────────────────────────────────────── %>
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2>
+          Product Name Mappings
+          <span class="badge badge-secondary ml-2"><%= @total %></span>
+        </h2>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content">
+
+          <%# Pagination top %>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="text-muted small">
+              共 <%= @total %> 筆　每頁 <%= ProductRegistryController::PER_PAGE %>
+              頁數 <%= @page %> / <%= @total_pages %>
+            </div>
+            <div class="btn-group">
+              <%= link_to "← 上一頁",
+                    product_registry_path(request.query_parameters.merge(page: prev_page)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page <= 1}" %>
+              <%= link_to "下一頁 →",
+                    product_registry_path(request.query_parameters.merge(page: next_page)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm table-hover">
+              <thead class="thead-light">
+                <tr>
+                  <th style="min-width:160px">Raw Name</th>
+                  <th>Source</th>
+                  <th class="text-end">次數</th>
+                  <th style="min-width:130px">建議產品</th>
+                  <th>信心</th>
+                  <th style="min-width:130px">已對應</th>
+                  <th style="min-width:120px">Status</th>
+                  <th>審查時間</th>
+                  <th style="min-width:160px">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @mappings.each do |m| %>
+                  <tr>
+                    <td class="fw-500 align-middle"><%= m.raw_name %></td>
+
+                    <td class="align-middle">
+                      <span class="badge badge-secondary"><%= m.source %></span>
+                    </td>
+
+                    <td class="text-end align-middle"><%= m.occurrence_count %></td>
+
+                    <td class="align-middle">
+                      <% if m.suggested_crm_product %>
+                        <span class="text-primary fw-500"><%= m.suggested_crm_product.label %></span>
+                        <br><small class="text-muted"><%= m.suggested_crm_product.key %></small>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+
+                    <td class="align-middle">
+                      <% case m.suggested_confidence
+                         when "High" %>
+                        <span class="badge badge-success">High</span>
+                      <% when "Medium" %>
+                        <span class="badge badge-warning text-dark">Medium</span>
+                      <% when "Low" %>
+                        <span class="badge badge-secondary">Low</span>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+
+                    <td class="align-middle">
+                      <% if m.crm_product %>
+                        <span class="text-success fw-500"><%= m.crm_product.label %></span>
+                        <br><small class="text-muted"><%= m.crm_product.key %></small>
+                      <% else %>
+                        <span class="text-muted">—</span>
+                      <% end %>
+                    </td>
+
+                    <td class="align-middle">
+                      <% case m.mapping_status
+                         when "pending" %>
+                        <span class="badge badge-secondary">pending</span>
+                      <% when "confirmed_alias" %>
+                        <span class="badge badge-success">confirmed_alias</span>
+                      <% when "new_key_needed" %>
+                        <span class="badge badge-primary">new_key_needed</span>
+                      <% when "ignored" %>
+                        <span class="badge badge-danger">ignored</span>
+                      <% else %>
+                        <span class="badge badge-light"><%= m.mapping_status %></span>
+                      <% end %>
+                    </td>
+
+                    <td class="align-middle small text-muted">
+                      <%= m.reviewed_at&.strftime("%m/%d %H:%M") || "—" %>
+                    </td>
+
+                    <td class="align-middle">
+                      <% if m.mapping_status == "pending" %>
+                        <div class="d-flex flex-column gap-1">
+                          <% if m.suggested_crm_product_id.present? %>
+                            <%= button_to "✓ Confirm",
+                                  confirm_product_registry_mapping_path(m),
+                                  method: :patch,
+                                  class: "btn btn-success btn-sm",
+                                  form: {
+                                    style: "display:inline",
+                                    data: { confirm: "確認對應「#{m.raw_name}」→「#{m.suggested_crm_product&.label}」？" }
+                                  } %>
+                          <% end %>
+                          <%= button_to "✕ Ignore",
+                                ignore_product_registry_mapping_path(m),
+                                method: :patch,
+                                class: "btn btn-outline-danger btn-sm",
+                                form: {
+                                  style: "display:inline",
+                                  data: { confirm: "略過「#{m.raw_name}」？此筆將標記為 ignored。" }
+                                } %>
+                          <button type="button"
+                                  class="btn btn-outline-primary btn-sm"
+                                  data-toggle="modal"
+                                  data-target="#modal-create-<%= m.id %>">
+                            + 建立新產品
+                          </button>
+                        </div>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <%# Pagination bottom %>
+          <div class="d-flex justify-content-end mt-2">
+            <div class="btn-group">
+              <%= link_to "← 上一頁",
+                    product_registry_path(request.query_parameters.merge(page: prev_page)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page <= 1}" %>
+              <%= link_to "下一頁 →",
+                    product_registry_path(request.query_parameters.merge(page: next_page)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<%# ── Create Product Modals (one per pending row) ─────────────── %>
+<% @mappings.select { |m| m.mapping_status == "pending" }.each do |m| %>
+  <div class="modal fade" id="modal-create-<%= m.id %>"
+       tabindex="-1" role="dialog" aria-labelledby="modal-create-label-<%= m.id %>">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-create-label-<%= m.id %>">建立新產品並指派</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <%= form_with url: create_product_registry_mapping_path(m),
+                      method: :post, local: true do %>
+          <div class="modal-body">
+            <p class="text-muted small mb-3">
+              為 <strong><%= m.raw_name %></strong> 建立一個新的 CRM 產品，並直接指派給此筆 mapping。
+            </p>
+            <div class="form-group">
+              <label>
+                Product Key
+                <small class="text-muted">（英文小寫 + 數字 + 底線，首字母必須是字母）</small>
+              </label>
+              <%= text_field_tag :product_key, "",
+                    class: "form-control",
+                    placeholder: "e.g. collagen_2",
+                    required: true %>
+            </div>
+            <div class="form-group mb-0">
+              <label>Label <small class="text-muted">（顯示名稱，中英文均可）</small></label>
+              <%= text_field_tag :product_label, "",
+                    class: "form-control",
+                    placeholder: "e.g. 膠原蛋白飲",
+                    required: true %>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary">建立並指派</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
