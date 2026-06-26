@@ -82,6 +82,12 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "小編工具",
+          children: [
+            { href: message_templates_path, title: "訊息公版", icon: "fa-copy" },
+          ]
+        },
+        {
           group_title: "系統",
           children: [
             { href: monitoring_path, title: "功能使用監控", icon: "fa-chart-line" }

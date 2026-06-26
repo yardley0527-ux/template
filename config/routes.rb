@@ -3,6 +3,14 @@ Rails.application.routes.draw do
 
   root 'welcome#index'
 
+  resources :message_templates, only: [:index, :create, :update, :destroy] do
+    collection { patch :reorder }
+  end
+  resources :message_template_blocks, only: [:create, :update, :destroy] do
+    collection { patch :reorder }
+  end
+  resources :message_template_images, only: [:create, :destroy]
+
   resources :livestreams, only: [:index, :new, :create, :edit, :update, :destroy] do
     resources :livestream_images, only: [:create, :destroy]
     resources :livestream_products, only: [:create, :update, :destroy]

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_27_000007) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_27_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -404,6 +404,37 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000007) do
     t.index ["shopline_id"], name: "index_membership_level_changes_on_shopline_id"
   end
 
+  create_table "message_template_blocks", force: :cascade do |t|
+    t.bigint "message_template_id", null: false
+    t.string "block_type", default: "text", null: false
+    t.text "content"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_template_id", "position"], name: "idx_on_message_template_id_position_4cfb0334a7"
+    t.index ["message_template_id"], name: "index_message_template_blocks_on_message_template_id"
+  end
+
+  create_table "message_template_images", force: :cascade do |t|
+    t.string "cloudinary_public_id", null: false
+    t.string "url", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "message_template_block_id"
+    t.index ["message_template_block_id"], name: "index_message_template_images_on_message_template_block_id"
+  end
+
+  create_table "message_templates", force: :cascade do |t|
+    t.string "category_key", null: false
+    t.string "subcategory"
+    t.string "title"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_key", "subcategory", "position"], name: "idx_on_category_key_subcategory_position_4bbf348cdd"
+  end
+
   create_table "omnipotent_notification_statuses", force: :cascade do |t|
     t.string "email", null: false
     t.date "reference_date", null: false
@@ -450,6 +481,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000007) do
     t.datetime "updated_at", null: false
     t.index ["album_id", "position"], name: "index_photos_on_album_id_and_position"
     t.index ["album_id"], name: "index_photos_on_album_id"
+  end
+
+  create_table "product_mapping_components", force: :cascade do |t|
+    t.bigint "product_name_mapping_id", null: false
+    t.bigint "crm_product_id", null: false
+    t.integer "quantity", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["crm_product_id", "product_name_mapping_id"], name: "idx_pmc_product_mapping", unique: true
+    t.index ["crm_product_id"], name: "index_product_mapping_components_on_crm_product_id"
+    t.index ["product_name_mapping_id"], name: "idx_pmc_mapping_id"
   end
 
   create_table "product_name_mappings", force: :cascade do |t|
@@ -822,7 +864,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000007) do
   add_foreign_key "livestream_images", "livestreams"
   add_foreign_key "livestream_products", "livestreams"
   add_foreign_key "membership_level_changes", "import_runs"
+  add_foreign_key "message_template_blocks", "message_templates"
+  add_foreign_key "message_template_images", "message_template_blocks"
   add_foreign_key "photos", "albums"
+  add_foreign_key "product_mapping_components", "crm_products"
+  add_foreign_key "product_mapping_components", "product_name_mappings"
   add_foreign_key "product_name_mappings", "crm_products"
   add_foreign_key "product_name_mappings", "crm_products", column: "suggested_crm_product_id"
   add_foreign_key "product_name_mappings", "users", column: "reviewed_by_user_id"
