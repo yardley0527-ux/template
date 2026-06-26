@@ -30,7 +30,6 @@ module ProductLivestreamAnalysis
     class_attribute :product_key,        instance_writer: false
     class_attribute :product_sql,        instance_writer: false
     class_attribute :product_label,      instance_writer: false
-    class_attribute :product_regex,      instance_writer: false
     class_attribute :product_event_list, instance_writer: false
 
     before_action :build_analysis_data, only: [:index, :export_missing, :export_event]
@@ -378,17 +377,7 @@ module ProductLivestreamAnalysis
   end
 
   def extract_bottles(product_name)
-    return 1 if product_name.nil?
-    m = product_name.match(product_regex)
-    base = if m
-      m[1].to_i
-    elsif (m2 = product_name.match(/[（(](\d+)[瓶盒]/))
-      m2[1].to_i
-    else
-      1
-    end
-    # 「送N」緊接數字才算同品項贈品（送全能1 等不計）
-    base + (product_name.match(/送(\d+)/)&.[](1).to_i || 0)
+    BottleExtractor.call(product_name, product_key)
   end
 
   # ── Epic C Phase 2: Registry-driven product scope ──────────────────

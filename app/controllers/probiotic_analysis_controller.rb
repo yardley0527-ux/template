@@ -4,7 +4,6 @@ class ProbioticAnalysisController < ApplicationController
   self.product_key        = "probiotic"    # Epic C Phase 2: Registry-driven (+8 rows vs LIKE = typo spelling now included ✓)
   self.product_sql        = "product_name LIKE '%益生菌%'"
   self.product_label      = "益生菌"
-  self.product_regex      = /益生菌(\d+)/
   PROBIOTIC_EVENT_DATES = [Date.new(2026, 2, 6), Date.new(2026, 3, 20)].freeze
 
   self.product_event_list = LivestreamAnalysisController::ALL_EVENTS
@@ -156,16 +155,4 @@ class ProbioticAnalysisController < ApplicationController
     end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
   end
 
-  def extract_bottles(product_name)
-    return 1 if product_name.nil?
-    m = product_name.match(product_regex)
-    base = if m
-      m[1].to_i
-    elsif (m2 = product_name.match(/[（(](\d+)[瓶盒]/))
-      m2[1].to_i
-    else
-      1
-    end
-    base + (product_name.match(/送(\d+)/)&.[](1).to_i || 0)
-  end
 end

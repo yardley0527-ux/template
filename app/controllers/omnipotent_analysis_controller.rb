@@ -4,7 +4,6 @@ class OmnipotentAnalysisController < ApplicationController
   self.product_key        = "omnipotent"   # Epic C Phase 2: Registry-driven (0 diff vs LIKE ✓)
   self.product_sql        = "product_name LIKE '%全能%'"
   self.product_label      = "全能"
-  self.product_regex      = /全能(\d+)/
   self.product_event_list = LivestreamAnalysisController::ALL_EVENTS
     .select { |e| e[:note]&.include?("全能") }.freeze
 
