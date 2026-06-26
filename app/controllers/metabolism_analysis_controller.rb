@@ -1,9 +1,7 @@
 class MetabolismAnalysisController < ApplicationController
   include ProductLivestreamAnalysis
 
-  # TODO Epic C Phase 3: set product_key = "metabolism" once bundle SKUs
-  # (代謝錠1全能1, 代謝錠2薑黃2, etc. — 42 multi-product names) are resolved
-  # with multi-product mapping support. Currently -3,902 rows vs LIKE if switched.
+  self.product_key        = "metabolism"
   self.product_sql        = "product_name LIKE '%代謝%'"
   self.product_label      = "代謝錠"
   self.product_regex      = /代謝錠?(\d+)/
