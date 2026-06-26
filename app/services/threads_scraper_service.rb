@@ -2,8 +2,8 @@ require 'net/http'
 require 'json'
 
 class ThreadsScraperService
-  API_BASE             = "https://api.apify.com/v2/acts/automation-lab~threads-scraper/run-sync-get-dataset-items"
-  API_KEY              = ENV['APIFY_API_KEY']
+  API_BASE               = "https://api.apify.com/v2/acts/automation-lab~threads-scraper/run-sync-get-dataset-items"
+  API_KEY                = ENV['APIFY_API_KEY']
   MAX_POSTS_PER_CATEGORY = 30
 
   KEYWORD_CONFIG = {
@@ -54,6 +54,8 @@ class ThreadsScraperService
 
   EXCLUDE_KEYWORDS = %w[抽獎 業配 團購 折扣碼 私訊我 下單 連結在首頁 政治 選舉 政黨 吵架].freeze
 
+  QUESTION_WORDS = %w[有人 怎麼辦 有推薦嗎 正常嗎 有救嗎 大家都 怎麼改善].freeze
+
   def self.run(category: nil)
     new.call(category: category)
   end
@@ -88,6 +90,11 @@ class ThreadsScraperService
   private
 
   def fetch_and_save_category(category, config, today)
+    if ThreadsFetchLog.recently_fetched?(category)
+      Rails.logger.info("[ThreadsScraperService] category=#{category} cache hit，跳過")
+      return 0
+    end
+
     posts     = fetch_seeds(config[:search_seeds])
     local_kws = config[:local_keywords]
     saved     = 0
@@ -97,25 +104,34 @@ class ThreadsScraperService
 
       next unless relevant?(text, local_kws)
       next if excluded?(text)
-      next unless item["replyCount"].to_i >= 3 && item["likeCount"].to_i >= 10
+
+      like_count  = item["likeCount"].to_i
+      reply_count = item["replyCount"].to_i
+      next unless reply_count >= 3 && like_count >= 10
 
       post_id = item["postId"].to_s
       next if post_id.blank?
 
-      username = item["username"]
-      code     = item["code"]
+      matched_kws = local_kws.select { |kw| text.include?(kw) }
+      posted_at   = parse_time(item["date"] || item["timestamp"])
+      score       = compute_score(text, like_count, reply_count, matched_kws, posted_at)
+      username    = item["username"]
+      code        = item["code"]
 
       ThreadsPost.find_or_initialize_by(post_id: post_id).tap do |p|
-        p.username     = username
-        p.full_name    = item["fullName"].to_s.presence || username
-        p.text_content = text.slice(0, 500)
-        p.like_count   = item["likeCount"].to_i
-        p.reply_count  = item["replyCount"].to_i
-        p.repost_count = item["repostCount"].to_i
-        p.post_url     = item["url"].presence || (code.present? && username.present? ? "https://www.threads.net/@#{username}/post/#{code}" : nil)
-        p.keyword      = category
-        p.posted_at    = parse_time(item["date"] || item["timestamp"])
-        p.fetched_on   = today
+        p.username           = username
+        p.full_name          = item["fullName"].to_s.presence || username
+        p.text_content       = text.slice(0, 500)
+        p.like_count         = like_count
+        p.reply_count        = reply_count
+        p.repost_count       = item["repostCount"].to_i
+        p.post_url           = item["url"].presence || (code.present? && username.present? ? "https://www.threads.net/@#{username}/post/#{code}" : nil)
+        p.keyword            = p.keyword.presence || category
+        p.matched_keywords   = ((p.matched_keywords   || []) + matched_kws).uniq
+        p.matched_categories = ((p.matched_categories || []) + [category]).uniq
+        p.interaction_score  = score
+        p.posted_at          = posted_at
+        p.fetched_on         = today
         p.save!
         saved += 1
       end
@@ -123,8 +139,15 @@ class ThreadsScraperService
       Rails.logger.warn("[ThreadsScraperService] skip post: #{e.message}")
     end
 
+    log_fetch(category, config[:search_seeds], saved)
     Rails.logger.info("[ThreadsScraperService] category=#{category} seeds=#{config[:search_seeds].join(',')} raw=#{posts.size} saved=#{saved}")
     saved
+  end
+
+  def compute_score(text, like_count, reply_count, matched_kws, posted_at)
+    question_bonus  = QUESTION_WORDS.any? { |w| text.include?(w) } ? 20 : 0
+    freshness_bonus = (posted_at && posted_at >= 24.hours.ago) ? 10 : 0
+    reply_count * 5 + like_count + matched_kws.size * 10 + question_bonus + freshness_bonus
   end
 
   def fetch_seeds(seeds)
@@ -148,6 +171,18 @@ class ThreadsScraperService
   rescue => e
     Rails.logger.warn("[ThreadsScraperService] fetch error seeds=#{seeds.join(',')}: #{e.message}")
     []
+  end
+
+  def log_fetch(category, seeds, result_count)
+    ThreadsFetchLog.create!(
+      category:      category,
+      search_queries: seeds,
+      fetched_at:    Time.current,
+      result_count:  result_count,
+      status:        "success"
+    )
+  rescue => e
+    Rails.logger.warn("[ThreadsScraperService] log_fetch failed: #{e.message}")
   end
 
   def relevant?(text, local_keywords)

@@ -140,6 +140,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000005) do
     t.date "renewal_confirmed_for"
     t.boolean "follows_chloe_ig", default: false, null: false
     t.boolean "invited_to_follow_product_ig", default: false, null: false
+    t.string "shengting_product_tags", default: [], null: false, array: true
     t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin
     t.index ["product_tags"], name: "index_customer_profiles_on_product_tags", using: :gin
     t.index ["shopline_customer_id"], name: "index_customer_profiles_on_shopline_customer_id"
@@ -749,6 +750,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000005) do
     t.index ["fetched_on"], name: "index_threads_analyses_on_fetched_on", unique: true
   end
 
+  create_table "threads_fetch_logs", force: :cascade do |t|
+    t.string "category", null: false
+    t.string "search_queries", default: [], null: false, array: true
+    t.datetime "fetched_at", null: false
+    t.integer "result_count", default: 0, null: false
+    t.string "status", default: "success", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category", "fetched_at"], name: "index_threads_fetch_logs_on_category_and_fetched_at"
+  end
+
   create_table "threads_posts", force: :cascade do |t|
     t.string "post_id", null: false
     t.string "username"
@@ -765,8 +777,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_000005) do
     t.datetime "updated_at", null: false
     t.boolean "hidden", default: false, null: false
     t.boolean "commented", default: false, null: false
+    t.integer "interaction_score", default: 0, null: false
+    t.string "matched_keywords", default: [], null: false, array: true
+    t.string "matched_categories", default: [], null: false, array: true
     t.index ["fetched_on"], name: "index_threads_posts_on_fetched_on"
     t.index ["hidden"], name: "index_threads_posts_on_hidden"
+    t.index ["interaction_score"], name: "index_threads_posts_on_interaction_score"
     t.index ["keyword"], name: "index_threads_posts_on_keyword"
     t.index ["post_id"], name: "index_threads_posts_on_post_id", unique: true
   end

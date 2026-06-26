@@ -3,7 +3,7 @@ class ThreadsDashboardController < ApplicationController
     scope = ThreadsPost.recent
       .where(keyword: ThreadsScraperService::CATEGORIES)
       .where(hidden: false)
-      .order(Arel.sql("reply_count * 5 + like_count DESC"))
+      .order(interaction_score: :desc)
 
     if params[:keyword].present?
       scope = scope.where(keyword: params[:keyword])
