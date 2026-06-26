@@ -120,6 +120,41 @@
           </div>
 
           <div class="edit-field">
+            <label class="edit-label product-pref-label">🛍 購買過苼莛的產品 — 點擊切換</label>
+
+            <div class="product-tag-selector" id="shengting-product-selector">
+              <%= hidden_field_tag "customer_profile[shengting_product_tags][]", "" %>
+
+              <div class="product-tag-list">
+                <% @shengting_product_options.each do |tag| %>
+                  <% checked = @profile.shengting_product_tags.include?(tag) %>
+
+                  <button
+                    type="button"
+                    class="product-tag-chip <%= 'is-selected' if checked %>"
+                    data-tag-value="<%= tag %>">
+                    <%= tag %>
+                  </button>
+
+                  <%= check_box_tag "customer_profile[shengting_product_tags][]",
+                                    tag,
+                                    checked,
+                                    id: "customer_profile_shengting_product_tags_#{tag.parameterize}",
+                                    class: "shengting-product-checkbox d-none",
+                                    data: { tag_value: tag } %>
+                <% end %>
+              </div>
+
+              <div class="product-tag-selected">
+                <span class="product-tag-selected-label">已選：</span>
+                <span id="shengting-product-summary">
+                  <%= @profile.shengting_product_tags.present? ? @profile.shengting_product_tags.join("、") : "（尚未選擇）" %>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="edit-field">
             <label class="edit-label product-pref-label">🏷 產品偏好 — 點擊切換</label>
 
             <div class="product-tag-selector" id="product-tag-selector">
@@ -212,6 +247,7 @@
 
     bindTagSelector("product-tag-selector", "product-tag-checkbox", "product-tag-summary");
     bindTagSelector("health-tag-selector", "health-tag-checkbox", "health-tag-summary");
+    bindTagSelector("shengting-product-selector", "shengting-product-checkbox", "shengting-product-summary");
   });
 </script>
 

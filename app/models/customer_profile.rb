@@ -18,6 +18,21 @@ class CustomerProfile < ApplicationRecord
     "穀胱甘肽"
   ].freeze
 
+  SHENGTING_PRODUCT_OPTIONS = [
+    "代謝錠",
+    "全能",
+    "薑黃",
+    "膠原蛋白",
+    "白藜蘆醇",
+    "蝦紅素",
+    "魚油",
+    "清纖粉",
+    "私密粉",
+    "維DK鈣",
+    "益生菌",
+    "穀胱甘肽"
+  ].freeze
+
   HEALTH_TAG_OPTIONS = [
     "睡眠",
     "腸胃",
@@ -41,8 +56,9 @@ class CustomerProfile < ApplicationRecord
   private
 
   def normalize_tag_fields
-    self.product_tags = normalize_array(product_tags)
-    self.health_tags  = normalize_array(health_tags)
+    self.product_tags          = normalize_array(product_tags)
+    self.health_tags           = normalize_array(health_tags)
+    self.shengting_product_tags = normalize_array(shengting_product_tags)
   end
 
   def normalize_array(value)
