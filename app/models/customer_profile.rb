@@ -25,6 +25,7 @@ class CustomerProfile < ApplicationRecord
     "脹氣",
     "經期不規律",
     "囊腫",
+    "肌瘤",
     "減重",
     "代謝",
     "血糖",

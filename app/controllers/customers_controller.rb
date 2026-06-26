@@ -359,20 +359,15 @@ class CustomersController < ApplicationController
     respond_to do |format|
       format.csv do
         csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-          csv << ["客戶ID", "Shopline連結", "姓名", "Email", "手機", "城市", "會員等級", "累積消費", "訂單數", "購物金", "最後購買日", "未購天數"]
+          csv << ["Shopline連結", "姓名", "Email", "會員等級", "購物金", "最後購買日", "未購天數"]
           customers.each do |c|
             last_date = c.cps_last_order_date&.to_date
             days = last_date ? (Date.today - last_date).to_i : nil
             csv << [
-              c.shopline_id,
               "https://admin.shoplineapp.com/admin/yardley/users/#{c.shopline_id}",
               c.full_name,
               c.email,
-              c.mobile_phone,
-              c.city,
               c.membership_level,
-              c.total_amount,
-              c.order_count,
               c.current_shopping_credits,
               last_date&.strftime("%Y/%m/%d"),
               days
