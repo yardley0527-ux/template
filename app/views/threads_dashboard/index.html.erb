@@ -13,12 +13,18 @@
     </div>
     <div class="d-flex gap-2">
       <%= link_to "🗑 已刪除貼文", threads_dashboard_hidden_path, class: "btn btn-outline-secondary btn-sm" %>
-      <%= button_to (@active_keyword.present? ? "🔄 更新「#{@active_keyword}」" : "🔄 更新全部"),
-            threads_dashboard_refresh_path,
-            method: :post,
-            params: { category: @active_keyword },
-            class: "btn btn-primary btn-sm",
-            form: { data: { confirm: (@active_keyword.present? ? "只抓「#{@active_keyword}」分類，約需 10–20 秒，確認繼續？" : "抓取全部 10 個分類，約需 60–120 秒，確認繼續？") } } %>
+      <% if @fetch_cached %>
+        <button class="btn btn-outline-secondary btn-sm" disabled>
+          ✓ 已更新（6h 內）
+        </button>
+      <% else %>
+        <%= button_to (@active_keyword.present? ? "🔄 更新「#{@active_keyword}」" : "🔄 更新全部"),
+              threads_dashboard_refresh_path,
+              method: :post,
+              params: { category: @active_keyword },
+              class: "btn btn-primary btn-sm",
+              form: { data: { confirm: (@active_keyword.present? ? "只抓「#{@active_keyword}」分類，約需 10–20 秒，確認繼續？" : "抓取全部 10 個分類，約需 60–120 秒，確認繼續？") } } %>
+      <% end %>
     </div>
   </div>
 </div>
