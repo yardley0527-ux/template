@@ -9,6 +9,36 @@
   grand_amount = ns[:new_amount] + ns[:old_amount]
 %>
 
+<%# ── 今日提醒 ── %>
+<% if @alerts.any? %>
+<%
+  warn_count = @alerts.count { |a| a[:type] == :warning }
+  hi_count   = @alerts.count { |a| a[:type] == :highlight }
+%>
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid <%= warn_count > 0 ? '#e74c6f' : '#28a745' %>;">
+  <div class="card-header py-2 d-flex align-items-center" style="gap:8px; background:<%= warn_count > 0 ? '#fff5f7' : '#f0fdf4' %>; border-bottom:1px solid <%= warn_count > 0 ? '#fdd' : '#d1fae5' %>;">
+    <span class="fw-bold" style="font-size:0.85rem; letter-spacing:0.04em;">今日提醒</span>
+    <% if warn_count > 0 %>
+      <span class="badge" style="background:#e74c6f; font-size:0.72rem;"><%= warn_count %> 項警示</span>
+    <% end %>
+    <% if hi_count > 0 %>
+      <span class="badge" style="background:#f0a500; font-size:0.72rem;"><%= hi_count %> 項亮點</span>
+    <% end %>
+  </div>
+  <div class="card-body py-2 px-3" style="background:<%= warn_count > 0 ? '#fffbfc' : '#fafff8' %>;">
+    <% @alerts.each_with_index do |alert, idx| %>
+      <div class="d-flex align-items-baseline py-1 <%= idx < @alerts.size - 1 ? 'border-bottom' : '' %>" style="gap:8px; font-size:0.88rem; border-color:#f5f5f5;">
+        <span style="font-size:1rem; flex-shrink:0; line-height:1.4;"><%= alert[:icon] %></span>
+        <span class="<%= alert[:type] == :warning ? 'text-danger fw-semibold' : alert[:type] == :highlight ? 'fw-bold' : 'text-success fw-semibold' %>"
+              style="<%= alert[:type] == :highlight ? 'color:#1a1a1a;' : '' %>">
+          <%= alert[:text] %>
+        </span>
+      </div>
+    <% end %>
+  </div>
+</div>
+<% end %>
+
 <%# ── Header ── %>
 <div class="d-flex align-items-start justify-content-between flex-wrap mb-3" style="gap:12px;">
   <div>
