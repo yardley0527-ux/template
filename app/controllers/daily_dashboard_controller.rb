@@ -52,35 +52,38 @@ class DailyDashboardController < ApplicationController
       weekly_nc  = fetch_weekly_new_customer_avg(end_date)
       period_label = nil
     else
-      # 多日（例如週一含五六日）：比較前一個相同天數的區間
+      # 多日（例如週一含五六日）：比較上週同期（往前推 7 天）
       today      = fetch_range_summary(start_date, end_date)
-      prev_end   = start_date - 1
-      prev_start = prev_end - days_count + 1
+      prev_start = start_date - 7
+      prev_end   = end_date - 7
       prev       = fetch_range_summary(prev_start, prev_end)
       week_stats = fetch_product_week_stats(end_date)
       weekly_nc  = fetch_weekly_new_customer_avg(end_date)
       period_label = "#{start_date.strftime('%-m/%-d')}～#{end_date.strftime('%-m/%-d')}"
+      prev_label_text = "#{prev_start.strftime('%-m/%-d')}～#{prev_end.strftime('%-m/%-d')}"
     end
 
     missing_products = (week_stats.keys.to_set - today[:product_names].to_set).sort
+    prev_label_text  = defined?(prev_label_text) ? prev_label_text : nil
 
     {
-      critical:       build_critical_alerts(today, prev, weekly_nc, period_label).first(3),
-      highlights:     build_highlight_alerts(today, prev, period_label).first(3),
+      critical:       build_critical_alerts(today, prev, weekly_nc, period_label, prev_label_text).first(3),
+      highlights:     build_highlight_alerts(today, prev, period_label, prev_label_text).first(3),
       product_alerts: missing_products.map { |name|
         h = week_stats[name] || {}
         { name: name, today: 0, yesterday: h[:yesterday].to_i,
           week_avg: h[:week_avg] || 0.0, week_total: h[:week_total].to_i }
       },
-      period_label: period_label
+      period_label:   period_label,
+      prev_label:     prev_label_text
     }
   end
 
-  def build_critical_alerts(today, prev, weekly_nc = 0, period_label = nil)
+  def build_critical_alerts(today, prev, weekly_nc = 0, period_label = nil, prev_label_text = nil)
     alerts = []
 
     cur_label  = period_label || "昨日"
-    prev_label = period_label ? "前期" : "前日"
+    prev_label = prev_label_text || (period_label ? "前期" : "前日")
 
     # 未達標
     daily_target = period_label ? DAILY_TARGET * ((today[:days] || 1)) : DAILY_TARGET
@@ -129,11 +132,11 @@ class DailyDashboardController < ApplicationController
     alerts
   end
 
-  def build_highlight_alerts(today, prev, period_label = nil)
+  def build_highlight_alerts(today, prev, period_label = nil, prev_label_text = nil)
     alerts = []
 
     cur_label  = period_label || "昨日"
-    prev_label = period_label ? "前期" : "前日"
+    prev_label = prev_label_text || (period_label ? "前期" : "前日")
     hi_target  = period_label ? HIGH_REVENUE_TARGET * (today[:days] || 1) : HIGH_REVENUE_TARGET
 
     # 高營收
