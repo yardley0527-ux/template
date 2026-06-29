@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-06-26",
+  "last_updated": "2026-06-29",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -239,6 +239,23 @@
           "video_100": 115,
           "shares": 5,
           "thruplay": 2193,
+          "ig_followers_gained": null
+        },
+        {
+          "date": "2026-06-29",
+          "impressions": 10268,
+          "reach": 10067,
+          "clicks": 687,
+          "ctr": 6.69,
+          "cpm": 130,
+          "spend": 1333,
+          "video_3s": 4229,
+          "video_25": 581,
+          "video_50": 192,
+          "video_75": 125,
+          "video_100": 61,
+          "shares": 3,
+          "thruplay": 1148,
           "ig_followers_gained": null
         }
       ]
