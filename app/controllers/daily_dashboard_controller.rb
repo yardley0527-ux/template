@@ -60,23 +60,23 @@ class DailyDashboardController < ApplicationController
       pct_change = prev[:total] > 0 ? ((today[:total] - prev[:total]) / prev[:total].to_f * 100).round : nil
       vs_label   = pct_change ? arrow_pct(pct_change) : "—"
       alerts << {
-        title: "今日營收未達標",
+        title: "昨日營收未達標",
         lines: [
-          { label: "今日",   value: "NT$#{fmt(today[:total])}" },
+          { label: "昨日",   value: "NT$#{fmt(today[:total])}" },
           { label: "目標",   value: "NT$#{fmt(DAILY_TARGET)}" },
-          { label: "較昨日", value: vs_label, down: pct_change&.<(0) }
+          { label: "較前日", value: vs_label, down: pct_change&.<(0) }
         ]
       }
     end
 
     # 新客人數不足
     if today[:new_customers] < NEW_CUSTOMER_MIN
-      title = today[:new_customers] == 0 ? "今日沒有新客" : "今日新客只有 #{today[:new_customers]} 人"
+      title = today[:new_customers] == 0 ? "昨日沒有新客" : "昨日新客只有 #{today[:new_customers]} 人"
       alerts << {
         title: title,
         lines: [
-          { label: "今日",        value: "#{today[:new_customers]} 人" },
-          { label: "昨日",        value: "#{prev[:new_customers]} 人" },
+          { label: "昨日",        value: "#{today[:new_customers]} 人" },
+          { label: "前日",        value: "#{prev[:new_customers]} 人" },
           { label: "近 7 日平均", value: "#{weekly_nc} 人" }
         ]
       }
@@ -87,10 +87,10 @@ class DailyDashboardController < ApplicationController
       pct = ((today[:total] - prev[:total]) / prev[:total].to_f * 100).round
       if pct <= -REVENUE_DROP_PCT
         alerts << {
-          title: "今日營收較昨日大幅下降",
+          title: "昨日營收較前日大幅下降",
           lines: [
-            { label: "今日",   value: "NT$#{fmt(today[:total])}" },
-            { label: "昨日",   value: "NT$#{fmt(prev[:total])}" },
+            { label: "昨日",   value: "NT$#{fmt(today[:total])}" },
+            { label: "前日",   value: "NT$#{fmt(prev[:total])}" },
             { label: "變化",   value: arrow_pct(pct), down: true }
           ]
         }
@@ -107,20 +107,20 @@ class DailyDashboardController < ApplicationController
     if today[:total] >= HIGH_REVENUE_TARGET
       pct = prev[:total] > 0 ? ((today[:total] - prev[:total]) / prev[:total].to_f * 100).round : nil
       alerts << {
-        title: "今日高營收達成",
+        title: "昨日高營收達成",
         lines: [
-          { label: "今日營收", value: "NT$#{fmt(today[:total])}", up: true },
-          { label: "較昨日",   value: pct ? arrow_pct(pct) : "—", up: pct&.>(0), down: pct&.<(0) }
+          { label: "昨日營收", value: "NT$#{fmt(today[:total])}", up: true },
+          { label: "較前日",   value: pct ? arrow_pct(pct) : "—", up: pct&.>(0), down: pct&.<(0) }
         ]
       }
     elsif today[:total] >= DAILY_TARGET && prev[:total] > 0
       pct = ((today[:total] - prev[:total]) / prev[:total].to_f * 100).round
       if pct >= REVENUE_DROP_PCT
         alerts << {
-          title: "今日營收顯著成長",
+          title: "昨日營收顯著成長",
           lines: [
-            { label: "今日",   value: "NT$#{fmt(today[:total])}", up: true },
-            { label: "較昨日", value: arrow_pct(pct), up: true }
+            { label: "昨日",   value: "NT$#{fmt(today[:total])}", up: true },
+            { label: "較前日", value: arrow_pct(pct), up: true }
           ]
         }
       end
@@ -131,13 +131,13 @@ class DailyDashboardController < ApplicationController
       tp    = today[:top_product_detail]
       share = today[:total] > 0 ? (tp[:amount] / today[:total] * 100).round : 0
       alerts << {
-        title:      "今日 Top1 商品",
-        kind:       :top_product,
+        title:        "昨日 Top1 商品",
+        kind:         :top_product,
         product_name: tp[:name],
         lines: [
           { label: "訂單數",    value: "#{tp[:count]} 單" },
           { label: "營業額",    value: "NT$#{fmt(tp[:amount])}" },
-          { label: "佔今日營收", value: "#{share}%" }
+          { label: "佔昨日營收", value: "#{share}%" }
         ]
       }
     end
@@ -155,12 +155,12 @@ class DailyDashboardController < ApplicationController
             ((top_tier[:amount] - prev_tier[:amount]) / prev_tier[:amount].to_f * 100).round
           end
           alerts << {
-            title: "今日最高貢獻會員卡",
+            title: "昨日最高貢獻會員卡",
             lines: [
               { label: "卡別",       value: top_tier[:label] },
               { label: "營收",       value: "NT$#{fmt(top_tier[:amount])}" },
               { label: "佔舊客營收", value: "#{pct_old}%" },
-              { label: "較昨日",     value: vs_prev ? arrow_pct(vs_prev) : "—",
+              { label: "較前日",     value: vs_prev ? arrow_pct(vs_prev) : "—",
                 up: vs_prev&.>(0), down: vs_prev&.<(0) }
             ]
           }
