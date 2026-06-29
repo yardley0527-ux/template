@@ -1,6 +1,8 @@
 class DailyDashboardController < ApplicationController
   TIERS        = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  DAILY_TARGET = 150_000
+  DAILY_TARGET          = 150_000
+  NEW_DAILY_THRESHOLD   =  10_000
+  OLD_DAILY_THRESHOLD   = 100_000
 
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
     CASE
@@ -13,9 +15,10 @@ class DailyDashboardController < ApplicationController
     @start_date    = parse_date(params[:start_date]) || Date.yesterday
     @end_date      = parse_date(params[:end_date]) || @start_date
     @end_date      = @start_date if @end_date < @start_date
-    @summary       = build_summary(@start_date, @end_date)
-    @product_stats = build_product_stats(@start_date, @end_date)
-    @daily_stats   = build_daily_stats(@start_date, @end_date)
+    @summary              = build_summary(@start_date, @end_date)
+    @product_stats        = build_product_stats(@start_date, @end_date)
+    @daily_stats          = build_daily_stats(@start_date, @end_date)
+    @daily_customer_stats = build_daily_customer_stats(@start_date, @end_date)
   end
 
   private
@@ -146,6 +149,71 @@ class DailyDashboardController < ApplicationController
       .sort_by { |p| -p[:amount] }
       .first(5)
       .each_with_index.map { |p, i| p.merge(rank: i + 1) }
+  end
+
+  def build_daily_customer_stats(start_date, end_date)
+    range_start = start_date.beginning_of_day
+    range_end   = end_date.end_of_day
+
+    raw = ShoplineOrder.from("shopline_orders o")
+      .select(
+        "o.order_number",
+        "DATE(MAX(o.order_date)) AS order_day",
+        "MAX(COALESCE(o.email, '')) AS email_val",
+        "#{ORDER_TOTAL_SQL} AS order_total"
+      )
+      .where("o.payment_status = '已付款'")
+      .where("o.order_date >= ? AND o.order_date <= ?", range_start, range_end)
+      .group("o.order_number")
+      .to_a
+
+    return (start_date..end_date).map { |d| empty_day(d) } if raw.empty?
+
+    emails       = raw.map(&:email_val).reject(&:blank?).uniq
+    prior_emails = ShoplineOrder.where(email: emails)
+      .where("order_date < ?", range_start)
+      .distinct.pluck(:email).to_set
+
+    by_day = {}
+    raw.each do |o|
+      day = o.order_day.to_date
+      by_day[day] ||= {
+        new: { emails: Set.new, orders: 0, amount: 0.0 },
+        old: { emails: Set.new, orders: 0, amount: 0.0 }
+      }
+      is_new = o.email_val.blank? || !prior_emails.include?(o.email_val)
+      bucket = is_new ? :new : :old
+      by_day[day][bucket][:emails] << o.email_val unless o.email_val.blank?
+      by_day[day][bucket][:orders] += 1
+      by_day[day][bucket][:amount] += o.order_total.to_f
+    end
+
+    (start_date..end_date).map do |date|
+      d = by_day[date]
+      next empty_day(date) unless d
+
+      new_d = d[:new]
+      old_d = d[:old]
+      new_avg = new_d[:orders] > 0 ? (new_d[:amount] / new_d[:orders]) : nil
+      old_avg = old_d[:orders] > 0 ? (old_d[:amount] / old_d[:orders]) : nil
+
+      {
+        date:          date,
+        new_customers: new_d[:emails].size,
+        new_orders:    new_d[:orders],
+        new_amount:    new_d[:amount],
+        new_avg:       new_avg,
+        old_customers: old_d[:emails].size,
+        old_orders:    old_d[:orders],
+        old_amount:    old_d[:amount],
+        old_avg:       old_avg
+      }
+    end
+  end
+
+  def empty_day(date)
+    { date: date, new_customers: 0, new_orders: 0, new_amount: 0.0, new_avg: nil,
+      old_customers: 0, old_orders: 0, old_amount: 0.0, old_avg: nil }
   end
 
   def build_daily_stats(start_date, end_date)
