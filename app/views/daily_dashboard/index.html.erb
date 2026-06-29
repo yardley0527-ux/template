@@ -9,34 +9,127 @@
   grand_amount = ns[:new_amount] + ns[:old_amount]
 %>
 
-<%# ── 今日提醒 ── %>
-<% if @alerts.any? %>
-<%
-  warn_count = @alerts.count { |a| a[:type] == :warning }
-  hi_count   = @alerts.count { |a| a[:type] == :highlight }
-%>
-<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid <%= warn_count > 0 ? '#e74c6f' : '#28a745' %>;">
-  <div class="card-header py-2 d-flex align-items-center" style="gap:8px; background:<%= warn_count > 0 ? '#fff5f7' : '#f0fdf4' %>; border-bottom:1px solid <%= warn_count > 0 ? '#fdd' : '#d1fae5' %>;">
-    <span class="fw-bold" style="font-size:0.85rem; letter-spacing:0.04em;">今日提醒</span>
-    <% if warn_count > 0 %>
-      <span class="badge" style="background:#e74c6f; font-size:0.72rem;"><%= warn_count %> 項警示</span>
-    <% end %>
-    <% if hi_count > 0 %>
-      <span class="badge" style="background:#f0a500; font-size:0.72rem;"><%= hi_count %> 項亮點</span>
-    <% end %>
+<%# ── 今日提醒（三區塊）── %>
+<% has_alerts = @alerts[:critical].any? || @alerts[:highlights].any? || @alerts[:product_alerts].any? %>
+<% if has_alerts %>
+
+<%# 🚨 今日重點 %>
+<% if @alerts[:critical].any? %>
+<div class="card border-0 shadow-sm mb-2" style="border-left:4px solid #e74c6f;">
+  <div class="card-header py-2 px-3 d-flex align-items-center" style="background:#fde8ec; border-bottom:1px solid #f5c0c8; gap:8px;">
+    <span class="fw-bold" style="font-size:0.82rem; color:#c0392b;">🚨 今日重點</span>
+    <span class="badge" style="background:#e74c6f; font-size:0.7rem;"><%= @alerts[:critical].size %> 則</span>
   </div>
-  <div class="card-body py-2 px-3" style="background:<%= warn_count > 0 ? '#fffbfc' : '#fafff8' %>;">
-    <% @alerts.each_with_index do |alert, idx| %>
-      <div class="d-flex align-items-baseline py-1 <%= idx < @alerts.size - 1 ? 'border-bottom' : '' %>" style="gap:8px; font-size:0.88rem; border-color:#f5f5f5;">
-        <span style="font-size:1rem; flex-shrink:0; line-height:1.4;"><%= alert[:icon] %></span>
-        <span class="<%= alert[:type] == :warning ? 'text-danger fw-semibold' : alert[:type] == :highlight ? 'fw-bold' : 'text-success fw-semibold' %>"
-              style="<%= alert[:type] == :highlight ? 'color:#1a1a1a;' : '' %>">
-          <%= alert[:text] %>
-        </span>
+  <div class="card-body p-2" style="background:#fff9fa;">
+    <div class="d-flex flex-wrap" style="gap:8px;">
+      <% @alerts[:critical].each do |alert| %>
+        <div class="flex-fill" style="min-width:170px; background:white; border-radius:6px; padding:10px 14px; border:1px solid #fdd0d8;">
+          <div class="fw-bold mb-2" style="font-size:0.8rem; color:#c0392b;"><%= alert[:title] %></div>
+          <% alert[:lines].each do |line| %>
+            <div class="d-flex justify-content-between align-items-center" style="font-size:0.8rem; line-height:1.8;">
+              <span style="font-size:0.75rem; color:#999;"><%= line[:label] %></span>
+              <span class="fw-semibold" style="color:<%= line[:down] ? '#e74c6f' : '#222' %>;">
+                <%= line[:value] %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+<% end %>
+
+<%# 🔥 今日亮點 %>
+<% if @alerts[:highlights].any? %>
+<div class="card border-0 shadow-sm mb-2" style="border-left:4px solid #f0a500;">
+  <div class="card-header py-2 px-3 d-flex align-items-center" style="background:#fff8e1; border-bottom:1px solid #ffe082; gap:8px;">
+    <span class="fw-bold" style="font-size:0.82rem; color:#b7770d;">🔥 今日亮點</span>
+    <span class="badge" style="background:#f0a500; font-size:0.7rem;"><%= @alerts[:highlights].size %> 則</span>
+  </div>
+  <div class="card-body p-2" style="background:#fffdf5;">
+    <div class="d-flex flex-wrap" style="gap:8px;">
+      <% @alerts[:highlights].each do |alert| %>
+        <div class="flex-fill" style="min-width:170px; background:white; border-radius:6px; padding:10px 14px; border:1px solid #ffe5a0;">
+          <div class="fw-bold mb-1" style="font-size:0.78rem; color:#b7770d; text-transform:uppercase; letter-spacing:0.04em;">
+            <%= alert[:kind] == :top_product ? "🏆 #{alert[:title]}" : alert[:title] %>
+          </div>
+          <% if alert[:kind] == :top_product %>
+            <div class="fw-bold mb-2" style="font-size:0.95rem; color:#1a1a1a; line-height:1.3;"><%= alert[:product_name] %></div>
+          <% end %>
+          <% alert[:lines].each do |line| %>
+            <div class="d-flex justify-content-between align-items-center" style="font-size:0.8rem; line-height:1.8;">
+              <span style="font-size:0.75rem; color:#999;"><%= line[:label] %></span>
+              <span class="fw-semibold" style="color:<%= line[:down] ? '#e74c6f' : line[:up] ? '#27ae60' : '#222' %>;">
+                <%= line[:value] %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+<% end %>
+
+<%# ⚠ 商品提醒 %>
+<% if @alerts[:product_alerts].any? %>
+<%
+  visible_products = @alerts[:product_alerts].first(5)
+  hidden_products  = @alerts[:product_alerts][5..] || []
+%>
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #adb5bd;">
+  <div class="card-header py-2 px-3 d-flex align-items-center" style="background:#f8f9fa; border-bottom:1px solid #e9ecef; gap:8px;">
+    <span class="fw-bold" style="font-size:0.82rem; color:#555;">⚠ 商品提醒</span>
+    <span class="badge bg-secondary" style="font-size:0.7rem;"><%= @alerts[:product_alerts].size %> 個商品</span>
+  </div>
+  <div class="card-body p-0">
+    <% visible_products.each_with_index do |p, idx| %>
+      <div class="px-3 py-2 <%= (idx < visible_products.size - 1 || hidden_products.any?) ? 'border-bottom' : '' %>">
+        <div class="fw-bold mb-1" style="font-size:0.84rem; color:#333;"><%= p[:name] %></div>
+        <div class="d-flex flex-wrap" style="gap:20px;">
+          <div>
+            <div style="font-size:0.72rem; color:#999;">今日</div>
+            <div class="fw-bold text-danger" style="font-size:0.82rem;">0 單</div>
+          </div>
+          <div>
+            <div style="font-size:0.72rem; color:#999;">昨日</div>
+            <div class="fw-semibold" style="font-size:0.82rem; color:#333;"><%= p[:yesterday] %> 單</div>
+          </div>
+          <div>
+            <div style="font-size:0.72rem; color:#999;">近 7 日平均</div>
+            <div class="fw-semibold" style="font-size:0.82rem; color:#333;"><%= p[:week_avg] %> 單</div>
+          </div>
+          <div>
+            <div style="font-size:0.72rem; color:#999;">近 7 日合計</div>
+            <div class="fw-semibold" style="font-size:0.82rem; color:#555;"><%= p[:week_total] %> 單</div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    <% if hidden_products.any? %>
+      <div id="hidden-product-alerts" style="display:none;">
+        <% hidden_products.each do |p| %>
+          <div class="px-3 py-2 border-bottom">
+            <div class="fw-bold mb-1" style="font-size:0.84rem; color:#333;"><%= p[:name] %></div>
+            <div class="d-flex flex-wrap" style="gap:20px;">
+              <div><div style="font-size:0.72rem; color:#999;">今日</div><div class="fw-bold text-danger" style="font-size:0.82rem;">0 單</div></div>
+              <div><div style="font-size:0.72rem; color:#999;">昨日</div><div class="fw-semibold" style="font-size:0.82rem; color:#333;"><%= p[:yesterday] %> 單</div></div>
+              <div><div style="font-size:0.72rem; color:#999;">近 7 日平均</div><div class="fw-semibold" style="font-size:0.82rem; color:#333;"><%= p[:week_avg] %> 單</div></div>
+              <div><div style="font-size:0.72rem; color:#999;">近 7 日合計</div><div class="fw-semibold" style="font-size:0.82rem; color:#555;"><%= p[:week_total] %> 單</div></div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+      <div id="expand-product-wrap" class="px-3 py-2 text-center border-top" style="background:#fafafa;">
+        <span class="text-muted" style="font-size:0.8rem;">還有 <%= hidden_products.size %> 則提醒</span>
+        <button id="expand-product-btn" class="btn btn-sm btn-link text-decoration-none ms-2" style="font-size:0.8rem;">【展開更多】</button>
       </div>
     <% end %>
   </div>
 </div>
+<% end %>
+
 <% end %>
 
 <%# ── Header ── %>
@@ -310,6 +403,14 @@
 <% content_for :scripts_block do %>
 <script>
 (function() {
+  var expandBtn = document.getElementById('expand-product-btn');
+  if (expandBtn) {
+    expandBtn.addEventListener('click', function() {
+      document.getElementById('hidden-product-alerts').style.display = 'block';
+      document.getElementById('expand-product-wrap').style.display = 'none';
+    });
+  }
+
   document.querySelectorAll('.prod-toggle').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var panel = document.getElementById(this.dataset.target);
