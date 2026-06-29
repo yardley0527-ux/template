@@ -19,9 +19,15 @@ class DailyDashboardController < ApplicationController
   SQL
 
   def index
-    @start_date    = parse_date(params[:start_date]) || Date.yesterday
-    @end_date      = parse_date(params[:end_date]) || @start_date
-    @end_date      = @start_date if @end_date < @start_date
+    if params[:start_date].blank? && params[:end_date].blank?
+      @end_date   = Time.zone.yesterday
+      # 週一自動帶入週五～週日（上班日沒進訂單，週末三天一起看）
+      @start_date = Time.zone.today.monday? ? @end_date - 2 : @end_date
+    else
+      @start_date = parse_date(params[:start_date]) || Time.zone.yesterday
+      @end_date   = parse_date(params[:end_date])   || @start_date
+      @end_date   = @start_date if @end_date < @start_date
+    end
     @summary              = build_summary(@start_date, @end_date)
     @product_stats        = build_product_stats(@start_date, @end_date)
     @daily_stats          = build_daily_stats(@start_date, @end_date)

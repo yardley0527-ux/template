@@ -19,7 +19,7 @@ class DailyOrdersController < ApplicationController
   )
 
   def index
-    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Date.yesterday
+    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
     @end_date   = parse_date(params[:end_date]) || @start_date
     @end_date   = @start_date if @end_date < @start_date
     @tab = %w[new old].include?(params[:tab]) ? params[:tab] : "new"
@@ -48,7 +48,7 @@ class DailyOrdersController < ApplicationController
   end
 
   def export
-    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Date.yesterday
+    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
     @end_date   = parse_date(params[:end_date]) || @start_date
     @end_date   = @start_date if @end_date < @start_date
     groups = build_groups(@start_date, @end_date)
