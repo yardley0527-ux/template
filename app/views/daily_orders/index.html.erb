@@ -37,65 +37,89 @@ end %>
 </p>
 
 <%
-  new_stat  = { label: "新客", count: @groups.first.last.size, amount: @groups.first.last.sum { |r| r.order_total.to_f } }
+  new_stat  = { count: @groups.first.last.size, amount: @groups.first.last.sum { |r| r.order_total.to_f } }
   old_stats = @groups.drop(1).map { |label, rows| { label: label, count: rows.size, amount: rows.sum { |r| r.order_total.to_f } } }
   old_count  = old_stats.sum { |s| s[:count] }
   old_amount = old_stats.sum { |s| s[:amount] }
   grand_count  = new_stat[:count] + old_count
   grand_amount = new_stat[:amount] + old_amount
+  fmt_avg = ->(amount, count) { count > 0 ? "均 NT$#{number_with_delimiter((amount / count).to_i)}" : "—" }
+  fmt_amt = ->(amount, count) { count > 0 ? "NT$#{number_with_delimiter(amount.to_i)}" : "—" }
 %>
 
-<%# 總計 %>
-<div class="mb-3 d-flex align-items-baseline" style="gap:12px;">
-  <span class="fw-bold" style="font-size:1rem;">總計</span>
-  <span class="fw-bold" style="font-size:1.2rem;"><%= grand_count %> 單</span>
-  <span class="fw-bold text-danger" style="font-size:1.2rem;">NT$<%= number_with_delimiter(grand_amount.to_i) %></span>
+<%# ── 第一區：總覽 ── %>
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #adb5bd;">
+      <div class="card-body py-3 px-3">
+        <div class="text-muted mb-1" style="font-size:0.78rem;">今日訂單</div>
+        <div class="fw-bold" style="font-size:1.6rem; line-height:1.1;"><%= grand_count %></div>
+        <div class="text-muted small">單</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #e74c6f;">
+      <div class="card-body py-3 px-3">
+        <div class="text-muted mb-1" style="font-size:0.78rem;">今日營收</div>
+        <div class="fw-bold text-danger" style="font-size:1.2rem; line-height:1.2;">NT$<%= number_with_delimiter(grand_amount.to_i) %></div>
+        <div class="text-muted small"><%= fmt_avg.call(grand_amount, grand_count) %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #4a6fa5;">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <span class="badge" style="background-color:#4a6fa5; font-size:0.7rem;">新客</span>
+        </div>
+        <div class="fw-bold" style="font-size:1.3rem;"><%= new_stat[:count] %> 單</div>
+        <div class="fw-semibold small <%= new_stat[:count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(new_stat[:amount], new_stat[:count]) %></div>
+        <div class="text-muted small"><%= fmt_avg.call(new_stat[:amount], new_stat[:count]) %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6c5f4e;">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <span class="badge" style="background-color:#6c5f4e; font-size:0.7rem;">舊客</span>
+        </div>
+        <div class="fw-bold" style="font-size:1.3rem;"><%= old_count %> 單</div>
+        <div class="fw-semibold small <%= old_count > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(old_amount, old_count) %></div>
+        <div class="text-muted small"><%= fmt_avg.call(old_amount, old_count) %></div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div class="card border-0 shadow-sm mb-3" style="overflow-x:auto;">
+<%# ── 第二區：舊客會員分布 ── %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white d-flex align-items-center py-2" style="border-bottom:2px solid #f0ede9;">
+    <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">舊客會員分布</span>
+  </div>
   <div class="card-body p-0">
-    <table class="table table-bordered mb-0 text-center" style="font-size:0.85rem; min-width:520px;">
-      <thead>
+    <table class="table table-bordered mb-0" style="font-size:0.85rem;">
+      <thead style="background-color:#6c5f4e; color:white;">
         <tr>
-          <th style="background-color:#4a6fa5; color:white; white-space:nowrap;" class="fw-semibold py-2">新客</th>
-          <% old_stats.each do |s| %>
-            <th style="background-color:#6c5f4e; color:white; white-space:nowrap;" class="fw-semibold py-2"><%= s[:label] %></th>
-          <% end %>
-          <th style="background-color:#3a3a3a; color:white; white-space:nowrap;" class="fw-bold py-2">總計</th>
+          <th class="py-2 ps-3" style="width:20%;">卡別</th>
+          <th class="py-2 text-center" style="width:20%;">訂單數</th>
+          <th class="py-2 text-center" style="width:30%;">營收</th>
+          <th class="py-2 text-center" style="width:30%;">平均客單</th>
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td class="py-2"><%= new_stat[:count] %> 單</td>
-          <% old_stats.each do |s| %>
-            <td class="py-2"><%= s[:count] %> 單</td>
-          <% end %>
-          <td class="py-2 fw-bold"><%= grand_count %> 單</td>
-        </tr>
-        <tr>
-          <td class="py-2 fw-semibold <%= new_stat[:count] > 0 ? 'text-danger' : 'text-muted' %>">
-            <%= new_stat[:count] > 0 ? "NT$#{number_with_delimiter(new_stat[:amount].to_i)}" : "—" %>
-          </td>
-          <% old_stats.each do |s| %>
-            <td class="py-2 fw-semibold <%= s[:count] > 0 ? 'text-danger' : 'text-muted' %>">
-              <%= s[:count] > 0 ? "NT$#{number_with_delimiter(s[:amount].to_i)}" : "—" %>
+        <% old_stats.each do |s| %>
+          <% zero = s[:count] == 0 %>
+          <tr style="<%= zero ? 'opacity:0.45; background:#fafafa;' : '' %>">
+            <td class="py-2 ps-3 fw-semibold"><%= s[:label] %></td>
+            <td class="py-2 text-center"><%= s[:count] %> 單</td>
+            <td class="py-2 text-center fw-semibold <%= zero ? 'text-muted' : 'text-danger' %>">
+              <%= fmt_amt.call(s[:amount], s[:count]) %>
             </td>
-          <% end %>
-          <td class="py-2 fw-bold text-danger">NT$<%= number_with_delimiter(grand_amount.to_i) %></td>
-        </tr>
-        <tr style="background-color:#fafafa;">
-          <td class="py-2 text-muted small">
-            <%= new_stat[:count] > 0 ? "均 NT$#{number_with_delimiter((new_stat[:amount] / new_stat[:count]).to_i)}" : "—" %>
-          </td>
-          <% old_stats.each do |s| %>
-            <td class="py-2 text-muted small">
-              <%= s[:count] > 0 ? "均 NT$#{number_with_delimiter((s[:amount] / s[:count]).to_i)}" : "—" %>
-            </td>
-          <% end %>
-          <td class="py-2 text-muted small fw-semibold">
-            <%= grand_count > 0 ? "均 NT$#{number_with_delimiter((grand_amount / grand_count).to_i)}" : "—" %>
-          </td>
-        </tr>
+            <td class="py-2 text-center text-muted small"><%= fmt_avg.call(s[:amount], s[:count]) %></td>
+          </tr>
+        <% end %>
       </tbody>
     </table>
   </div>
