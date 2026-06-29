@@ -52,14 +52,14 @@ end %>
   <span class="fw-bold text-danger" style="font-size:1.2rem;">NT$<%= number_with_delimiter(grand_amount.to_i) %></span>
 </div>
 
-<div class="d-flex align-items-start mb-3" style="gap:16px;">
+<div class="d-flex flex-column flex-lg-row align-items-start mb-3" style="gap:16px;">
 
-  <%# 舊客業績表（左） %>
-  <div style="flex:1; min-width:0;">
+  <%# 舊客業績表 %>
+  <div class="w-100" style="min-width:0; flex:1;">
     <p class="fw-semibold mb-1" style="font-size:0.85rem; color:#6c757d;">舊客業績</p>
     <div class="card border-0 shadow-sm" style="overflow-x:auto;">
       <div class="card-body p-0">
-        <table class="table table-bordered mb-0 text-center" style="font-size:0.85rem; min-width:100%;">
+        <table class="table table-bordered mb-0 text-center" style="font-size:0.85rem; min-width:480px;">
           <thead style="background-color:#6c5f4e; color:white;">
             <tr>
               <% old_stats.each do |s| %>
@@ -99,7 +99,7 @@ end %>
     </div>
   </div>
 
-  <%# 新客業績表（右） %>
+  <%# 新客業績表 %>
   <div style="flex-shrink:0; width:140px;">
     <p class="fw-semibold mb-1" style="font-size:0.85rem; color:#6c757d;">新客業績</p>
     <div class="card border-0 shadow-sm">
