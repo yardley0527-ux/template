@@ -14,27 +14,34 @@ end %>
       <p class="text-muted small mb-0">依新客／舊客卡別分類，協助出貨備貨</p>
     </div>
     <div class="d-flex align-items-center" style="gap:8px;">
-      <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center", style: "gap:8px;" do %>
+      <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
         <%= hidden_field_tag :tab, @tab %>
-        <input type="date" name="date" value="<%= @date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <input type="date" name="start_date" value="<%= @start_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <span class="text-muted small">至</span>
+        <input type="date" name="end_date" value="<%= @end_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
         <button type="submit" class="btn btn-sm btn-primary">查詢</button>
       <% end %>
-      <%= link_to "匯出 CSV", export_daily_orders_path(date: @date), class: "btn btn-sm btn-outline-secondary" %>
+      <%= link_to "匯出 CSV", export_daily_orders_path(start_date: @start_date, end_date: @end_date), class: "btn btn-sm btn-outline-secondary" %>
     </div>
   </div>
 </div>
 
 <% total_count = @groups.sum { |_, rows| rows.size } %>
 <p class="text-muted small mb-3">
-  <%= @date.strftime('%Y/%m/%d') %> 共 <%= total_count %> 筆訂單
+  <% if @start_date == @end_date %>
+    <%= @start_date.strftime('%Y/%m/%d') %>
+  <% else %>
+    <%= @start_date.strftime('%Y/%m/%d') %> ～ <%= @end_date.strftime('%Y/%m/%d') %>
+  <% end %>
+  共 <%= total_count %> 筆訂單
 </p>
 
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
-    <%= link_to "新客（#{@new_count}）", daily_orders_path(date: @date, tab: "new"), class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
+    <%= link_to "新客（#{@new_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "new"), class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
   </li>
   <li class="nav-item">
-    <%= link_to "舊客（#{@old_count}）", daily_orders_path(date: @date, tab: "old"), class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
+    <%= link_to "舊客（#{@old_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "old"), class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
   </li>
 </ul>
 

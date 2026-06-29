@@ -19,9 +19,11 @@ class DailyOrdersController < ApplicationController
   )
 
   def index
-    @date = parse_date(params[:date]) || Date.yesterday
+    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Date.yesterday
+    @end_date   = parse_date(params[:end_date]) || @start_date
+    @end_date   = @start_date if @end_date < @start_date
     @tab = %w[new old].include?(params[:tab]) ? params[:tab] : "new"
-    @groups = build_groups(@date)
+    @groups = build_groups(@start_date, @end_date)
     @new_count = @groups.first.last.size
     @old_count = @groups.drop(1).sum { |_, rows| rows.size }
   end
@@ -46,8 +48,10 @@ class DailyOrdersController < ApplicationController
   end
 
   def export
-    @date = parse_date(params[:date]) || Date.yesterday
-    groups = build_groups(@date)
+    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Date.yesterday
+    @end_date   = parse_date(params[:end_date]) || @start_date
+    @end_date   = @start_date if @end_date < @start_date
+    groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
       csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "是否購買過同產品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG", "綁定 LINE"]
@@ -70,8 +74,9 @@ class DailyOrdersController < ApplicationController
       end
     end
 
+    filename = @start_date == @end_date ? "每日訂單報表_#{@start_date}.csv" : "訂單報表_#{@start_date}_#{@end_date}.csv"
     send_data "\xEF\xBB\xBF" + csv_data,
-      filename: "每日訂單報表_#{@date}.csv",
+      filename: filename,
       type: "text/csv; charset=utf-8"
   end
 
@@ -102,9 +107,9 @@ class DailyOrdersController < ApplicationController
   end
   helper_method :same_product_text
 
-  def build_groups(date)
-    day_start = date.beginning_of_day
-    day_end   = date.end_of_day
+  def build_groups(start_date, end_date)
+    range_start = start_date.beginning_of_day
+    range_end   = end_date.end_of_day
 
     raw_orders = ShoplineOrder.from("shopline_orders o")
       .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
@@ -120,16 +125,16 @@ class DailyOrdersController < ApplicationController
         "SUM(o.quantity) AS total_quantity"
       )
       .where("o.payment_status = '已付款'")
-      .where("o.order_date >= ? AND o.order_date < ?", day_start, day_end)
+      .where("o.order_date >= ? AND o.order_date <= ?", range_start, range_end)
       .group("o.order_number")
       .order(Arel.sql("MAX(o.order_date) ASC"))
       .to_a
 
     emails = raw_orders.map(&:email_val).compact.uniq
 
-    prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", day_start).distinct.pluck(:email).to_set
+    prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
 
-    prior_series_dates = build_prior_series_dates(emails, day_start)
+    prior_series_dates = build_prior_series_dates(emails, range_start)
 
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
     summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
