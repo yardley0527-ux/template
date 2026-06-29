@@ -36,6 +36,45 @@ end %>
   共 <%= total_count %> 筆訂單
 </p>
 
+<%
+  all_stats = @groups.map { |label, rows|
+    { label: label, count: rows.size, amount: rows.sum { |r| r.order_total.to_f } }
+  }
+  grand_count  = all_stats.sum { |s| s[:count] }
+  grand_amount = all_stats.sum { |s| s[:amount] }
+%>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body p-0">
+    <table class="table table-bordered mb-0 text-center" style="font-size:0.85rem;">
+      <thead style="background-color:#f8f9fa;">
+        <tr>
+          <% all_stats.each do |s| %>
+            <th class="fw-semibold py-2" style="white-space:nowrap;"><%= s[:label] %></th>
+          <% end %>
+          <th class="fw-bold py-2" style="white-space:nowrap; background-color:#f0f4ff;">合計</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <% all_stats.each do |s| %>
+            <td class="py-2"><%= s[:count] %> 單</td>
+          <% end %>
+          <td class="py-2 fw-bold" style="background-color:#f0f4ff;"><%= grand_count %> 單</td>
+        </tr>
+        <tr>
+          <% all_stats.each do |s| %>
+            <td class="py-2 fw-semibold <%= s[:count] > 0 ? 'text-danger' : 'text-muted' %>">
+              <%= s[:count] > 0 ? "NT$#{number_with_delimiter(s[:amount].to_i)}" : "—" %>
+            </td>
+          <% end %>
+          <td class="py-2 fw-bold text-danger" style="background-color:#f0f4ff;">NT$<%= number_with_delimiter(grand_amount.to_i) %></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
     <%= link_to "新客（#{@new_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "new"), class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
@@ -46,33 +85,6 @@ end %>
 </ul>
 
 <% visible_groups = @tab == "new" ? @groups.first(1) : @groups.drop(1) %>
-
-<%
-  summary_total_count  = visible_groups.sum { |_, rows| rows.size }
-  summary_total_amount = visible_groups.sum { |_, rows| rows.sum { |r| r.order_total.to_f } }
-  tier_stats = @tab == "old" ? visible_groups.map { |label, rows|
-    { label: label, count: rows.size, amount: rows.sum { |r| r.order_total.to_f } }
-  } : []
-%>
-
-<div class="d-flex align-items-center flex-wrap mb-3" style="gap:8px; font-size:0.85rem;">
-  <div class="px-3 py-2 rounded" style="background:#f0f4ff; border:1px solid #c8d5f5; white-space:nowrap;">
-    <span class="text-muted me-1">總計</span>
-    <strong class="me-2"><%= summary_total_count %> 單</strong>
-    <span class="fw-bold text-danger">NT$<%= number_with_delimiter(summary_total_amount.to_i) %></span>
-  </div>
-  <% tier_stats.each do |stat| %>
-    <div class="px-3 py-2 rounded" style="background:#fafafa; border:1px solid #e0e0e0; white-space:nowrap;">
-      <span class="fw-semibold me-1"><%= stat[:label] %></span>
-      <span class="text-muted me-1"><%= stat[:count] %> 單</span>
-      <% if stat[:count] > 0 %>
-        <span class="text-danger">NT$<%= number_with_delimiter(stat[:amount].to_i) %></span>
-      <% else %>
-        <span class="text-muted">—</span>
-      <% end %>
-    </div>
-  <% end %>
-</div>
 
 <% visible_groups.each do |label, rows| %>
   <div class="card border-0 shadow-sm mb-4">
