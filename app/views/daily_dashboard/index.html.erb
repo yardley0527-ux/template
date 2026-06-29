@@ -1,0 +1,238 @@
+<%# app/views/daily_dashboard/index.html.erb %>
+<% content_for :page_title, "每日營收儀表板" %>
+
+<%
+  ns  = @summary
+  fmt_avg = ->(amount, count) { count > 0 ? "均 NT$#{number_with_delimiter((amount / count).to_i)}" : "—" }
+  fmt_amt = ->(amount, count) { count > 0 ? "NT$#{number_with_delimiter(amount.to_i)}" : "—" }
+  grand_count  = ns[:new_count]  + ns[:old_count]
+  grand_amount = ns[:new_amount] + ns[:old_amount]
+%>
+
+<%# ── Header ── %>
+<div class="d-flex align-items-start justify-content-between flex-wrap mb-3" style="gap:12px;">
+  <div>
+    <h4 class="fw-bold mb-0">每日營收儀表板</h4>
+    <p class="text-muted small mb-0">管理者快覽・適合截圖回報</p>
+  </div>
+  <%= form_tag daily_dashboard_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+    <input type="date" name="start_date" value="<%= @start_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+    <span class="text-muted small">至</span>
+    <input type="date" name="end_date" value="<%= @end_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+    <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+  <% end %>
+</div>
+
+<p class="text-muted small mb-3">
+  <% if @start_date == @end_date %>
+    <%= @start_date.strftime('%Y/%m/%d') %>
+  <% else %>
+    <%= @start_date.strftime('%Y/%m/%d') %> ～ <%= @end_date.strftime('%Y/%m/%d') %>
+  <% end %>
+  共 <%= grand_count %> 筆訂單
+</p>
+
+<%# ── 第一區：總覽 ── %>
+<div class="row g-2 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #adb5bd;">
+      <div class="card-body py-3 px-3">
+        <div class="text-muted mb-1" style="font-size:0.78rem;">訂單數</div>
+        <div class="fw-bold" style="font-size:1.6rem; line-height:1.1;"><%= grand_count %></div>
+        <div class="text-muted small">單</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #e74c6f;">
+      <div class="card-body py-3 px-3">
+        <div class="text-muted mb-1" style="font-size:0.78rem;">總營收</div>
+        <div class="fw-bold text-danger" style="font-size:1.2rem; line-height:1.2;">NT$<%= number_with_delimiter(grand_amount.to_i) %></div>
+        <div style="font-size:0.78rem; color:#666;"><%= fmt_avg.call(grand_amount, grand_count) %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #4a6fa5;">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <span class="badge" style="background-color:#4a6fa5; font-size:0.7rem;">新客</span>
+        </div>
+        <div class="fw-bold" style="font-size:1.3rem;"><%= ns[:new_count] %> 單</div>
+        <div class="fw-semibold small <%= ns[:new_count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(ns[:new_amount], ns[:new_count]) %></div>
+        <div style="font-size:0.78rem; color:#666;"><%= fmt_avg.call(ns[:new_amount], ns[:new_count]) %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6c5f4e;">
+      <div class="card-body py-3 px-3">
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <span class="badge" style="background-color:#6c5f4e; font-size:0.7rem;">舊客</span>
+        </div>
+        <div class="fw-bold" style="font-size:1.3rem;"><%= ns[:old_count] %> 單</div>
+        <div class="fw-semibold small <%= ns[:old_count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(ns[:old_amount], ns[:old_count]) %></div>
+        <div style="font-size:0.78rem; color:#666;"><%= fmt_avg.call(ns[:old_amount], ns[:old_count]) %></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 第二區：舊客會員分布 ── %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white d-flex align-items-center py-2" style="border-bottom:2px solid #f0ede9;">
+    <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">舊客會員分布</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-bordered mb-0" style="font-size:0.85rem;">
+      <thead style="background-color:#6c5f4e; color:white;">
+        <tr>
+          <th class="py-2 ps-3" style="width:20%;">卡別</th>
+          <th class="py-2 text-center" style="width:20%;">訂單數</th>
+          <th class="py-2 text-center" style="width:30%;">營收</th>
+          <th class="py-2 text-center" style="width:30%;">平均客單</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% ns[:old_by_tier].each do |s| %>
+          <% zero = s[:count] == 0 %>
+          <tr style="<%= zero ? 'opacity:0.45; background:#fafafa;' : '' %>">
+            <td class="py-2 ps-3 fw-semibold"><%= s[:label] %></td>
+            <td class="py-2 text-center"><%= s[:count] %> 單</td>
+            <td class="py-2 text-center fw-semibold <%= zero ? 'text-muted' : 'text-danger' %>">
+              <%= fmt_amt.call(s[:amount], s[:count]) %>
+            </td>
+            <td class="py-2 text-center" style="font-size:0.82rem; color:#666;"><%= fmt_avg.call(s[:amount], s[:count]) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%# ── 第三區：熱銷商品 TOP 5 ── %>
+<% if @product_stats.any? %>
+<%
+  rank_colors = { 1 => "#c9a227", 2 => "#9e9e9e", 3 => "#a0673a" }
+  rank_bg     = ->(r) { rank_colors[r] || "#6c757d" }
+%>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white py-2" style="border-bottom:2px solid #f0ede9;">
+    <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">熱銷商品 TOP 5</span>
+  </div>
+  <div class="card-body p-0">
+    <% @product_stats.each_with_index do |p, idx| %>
+      <% pid = "prod_breakdown_#{p[:rank]}" %>
+      <div class="<%= idx < @product_stats.size - 1 ? 'border-bottom' : '' %>">
+        <div class="d-flex align-items-center px-3 py-2" style="gap:10px;">
+          <div class="flex-shrink-0 fw-bold text-white text-center rounded-circle"
+               style="width:26px;height:26px;line-height:26px;font-size:0.78rem;background:<%= rank_bg.call(p[:rank]) %>;">
+            <%= p[:rank] %>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div class="fw-semibold text-truncate" style="font-size:0.88rem;" title="<%= p[:name] %>"><%= p[:name] %></div>
+            <div class="text-muted" style="font-size:0.74rem;">數量 <%= p[:quantity] %> | 訂單 <%= p[:order_count] %> 單</div>
+            <div style="background:#f0f0f0; border-radius:2px; height:3px; margin-top:3px;">
+              <div style="background:#e74c6f; border-radius:2px; height:3px; width:<%= [p[:share], 100].min %>%;"></div>
+            </div>
+          </div>
+          <div class="text-end flex-shrink-0" style="min-width:90px;">
+            <div class="fw-bold text-danger" style="font-size:0.88rem;">NT$<%= number_with_delimiter(p[:amount].to_i) %></div>
+            <div class="text-muted" style="font-size:0.74rem;"><%= p[:share] %>%</div>
+          </div>
+          <button class="prod-toggle btn btn-sm border flex-shrink-0"
+                  data-target="<%= pid %>"
+                  style="font-size:0.72rem; padding:2px 8px; color:#6c757d; white-space:nowrap;">
+            展開 ▼
+          </button>
+        </div>
+        <div id="<%= pid %>" style="display:none; background:#f9f8f7;">
+          <table class="table table-sm mb-0" style="font-size:0.8rem;">
+            <thead>
+              <tr style="background:#ede9e4;">
+                <th class="ps-4 py-1 fw-normal text-muted" style="width:35%;">客戶類型</th>
+                <th class="py-1 text-center fw-normal text-muted" style="width:25%;">訂單數</th>
+                <th class="py-1 text-end pe-3 fw-normal text-muted" style="width:40%;">營業額</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% p[:by_type].each do |bt| %>
+                <% zero = bt[:order_count] == 0 %>
+                <tr style="<%= zero ? 'opacity:0.4;' : '' %>">
+                  <td class="ps-4 py-1 fw-semibold"><%= bt[:type] %></td>
+                  <td class="py-1 text-center"><%= bt[:order_count] %> 單</td>
+                  <td class="py-1 text-end pe-3 fw-semibold <%= zero ? 'text-muted' : 'text-danger' %>">
+                    <%= zero ? "—" : "NT$#{number_with_delimiter(bt[:amount].to_i)}" %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+<% end %>
+
+<%# ── 第四區：每日業績概況 ── %>
+<% if @daily_stats.size > 0 %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white py-2" style="border-bottom:2px solid #f0ede9;">
+    <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">每日業績概況</span>
+    <span class="text-muted ms-2" style="font-size:0.75rem;">目標 NT$150,000／日</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table mb-0" style="font-size:0.85rem;">
+      <thead style="background-color:#f8f9fa;">
+        <tr>
+          <th class="py-2 ps-3" style="width:22%;">日期</th>
+          <th class="py-2 text-center" style="width:15%;">訂單數</th>
+          <th class="py-2 text-center" style="width:25%;">平均客單</th>
+          <th class="py-2 text-center" style="width:25%;">總營業額</th>
+          <th class="py-2 text-center" style="width:13%;">狀態</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @daily_stats.each do |d| %>
+          <% miss = !d[:met_target] %>
+          <tr style="<%= miss ? 'background:#fff5f5; border-left:3px solid #e74c6f;' : '' %>">
+            <td class="py-2 ps-3 fw-semibold"><%= d[:date].strftime('%m/%d（%a）') %></td>
+            <td class="py-2 text-center"><%= d[:order_count] %> 單</td>
+            <td class="py-2 text-center" style="color:#666;">
+              <%= d[:order_count] > 0 ? "NT$#{number_with_delimiter(d[:avg_amount].to_i)}" : "—" %>
+            </td>
+            <td class="py-2 text-center fw-bold <%= miss ? 'text-danger' : 'text-dark' %>">
+              <%= d[:order_count] > 0 ? "NT$#{number_with_delimiter(d[:total_amount].to_i)}" : "—" %>
+            </td>
+            <td class="py-2 text-center">
+              <% if d[:order_count] == 0 %>
+                <span class="text-muted small">無訂單</span>
+              <% elsif miss %>
+                <span class="badge" style="background:#ffe0e0; color:#c0392b; font-size:0.72rem;">未達標</span>
+              <% else %>
+                <span class="badge" style="background:#e6f4ea; color:#2e7d32; font-size:0.72rem;">達標</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  document.querySelectorAll('.prod-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var panel = document.getElementById(this.dataset.target);
+      var open = panel.style.display !== 'none' && panel.style.display !== '';
+      panel.style.display = open ? 'none' : 'block';
+      this.innerHTML = open ? '展開 ▼' : '收合 ▲';
+    });
+  });
+})();
+</script>
+<% end %>

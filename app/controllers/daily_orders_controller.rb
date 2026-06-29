@@ -26,7 +26,6 @@ class DailyOrdersController < ApplicationController
     @groups = build_groups(@start_date, @end_date)
     @new_count = @groups.first.last.size
     @old_count = @groups.drop(1).sum { |_, rows| rows.size }
-    @product_stats = build_product_stats(@start_date, @end_date)
   end
 
   def toggle_customer_flag
@@ -186,77 +185,4 @@ class DailyOrdersController < ApplicationController
     groups
   end
 
-  def build_product_stats(start_date, end_date)
-    range_start = start_date.beginning_of_day
-    range_end   = end_date.end_of_day
-
-    raw = ShoplineOrder.from("shopline_orders o")
-      .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
-      .select(
-        "o.order_number",
-        "o.product_name",
-        "o.quantity",
-        "COALESCE(o.checkout_amount, 0) AS checkout_amount",
-        "COALESCE(sc.email, o.email) AS email_val",
-        "COALESCE(sc.membership_level, o.membership_level) AS membership_level_col"
-      )
-      .where("o.payment_status = '已付款'")
-      .where("o.order_date >= ? AND o.order_date <= ?", range_start, range_end)
-      .to_a
-
-    return [] if raw.empty?
-
-    emails = raw.map(&:email_val).compact.uniq
-    prior_emails = ShoplineOrder.where(email: emails)
-      .where("order_date < ?", range_start)
-      .distinct.pluck(:email).to_set
-
-    order_type = {}
-    raw.each do |r|
-      next if order_type.key?(r.order_number)
-      email = r.email_val
-      if email.blank? || !prior_emails.include?(email)
-        order_type[r.order_number] = "新客"
-      else
-        level = r.membership_level_col.to_s.presence
-        order_type[r.order_number] = TIERS.include?(level) ? level : "未分級"
-      end
-    end
-
-    all_types = ["新客", *TIERS, "未分級"]
-    buckets = Hash.new do |h, k|
-      h[k] = {
-        orders: Set.new, quantity: 0, amount: 0.0,
-        by_type: all_types.index_with { { orders: Set.new, amount: 0.0 } }
-      }
-    end
-
-    raw.each do |r|
-      name = r.product_name.to_s.strip
-      next if name.blank?
-      b = buckets[name]
-      b[:orders] << r.order_number
-      b[:quantity] += r.quantity.to_i
-      b[:amount]   += r.checkout_amount.to_f
-      ctype = order_type[r.order_number] || "未分級"
-      b[:by_type][ctype][:orders] << r.order_number
-      b[:by_type][ctype][:amount] += r.checkout_amount.to_f
-    end
-
-    total = buckets.values.sum { |b| b[:amount] }
-
-    buckets.map do |name, b|
-      {
-        name:        name,
-        quantity:    b[:quantity],
-        order_count: b[:orders].size,
-        amount:      b[:amount],
-        share:       total > 0 ? (b[:amount] / total * 100).round(1) : 0.0,
-        by_type:     all_types.map { |t| bt = b[:by_type][t]; { type: t, order_count: bt[:orders].size, amount: bt[:amount] } }
-      }
-    end
-      .sort_by { |p| -p[:amount] }
-      .first(5)
-      .each_with_index.map { |p, i| p.merge(rank: i + 1) }
-  end
 end

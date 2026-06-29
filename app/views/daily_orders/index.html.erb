@@ -1,5 +1,5 @@
 <%# app/views/daily_orders/index.html.erb %>
-<% content_for :page_title, "每日訂單報表" %>
+<% content_for :page_title, "每日訂單明細" %>
 
 <% def daily_orders_ig_link(account)
   return nil if account.blank?
@@ -7,22 +7,20 @@
   handle.present? ? "https://www.instagram.com/#{handle}/" : nil
 end %>
 
-<div class="row g-3 mb-3">
-  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
-    <div>
-      <h4 class="fw-bold mb-0">每日訂單報表</h4>
-      <p class="text-muted small mb-0">依新客／舊客卡別分類，協助出貨備貨</p>
-    </div>
-    <div class="d-flex align-items-center" style="gap:8px;">
-      <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
-        <%= hidden_field_tag :tab, @tab %>
-        <input type="date" name="start_date" value="<%= @start_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
-        <span class="text-muted small">至</span>
-        <input type="date" name="end_date" value="<%= @end_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
-        <button type="submit" class="btn btn-sm btn-primary">查詢</button>
-      <% end %>
-      <%= link_to "匯出 CSV", export_daily_orders_path(start_date: @start_date, end_date: @end_date), class: "btn btn-sm btn-outline-secondary" %>
-    </div>
+<div class="d-flex align-items-start justify-content-between flex-wrap mb-3" style="gap:12px;">
+  <div>
+    <h4 class="fw-bold mb-0">每日訂單明細</h4>
+    <p class="text-muted small mb-0">依新客／舊客卡別分類，協助出貨備貨</p>
+  </div>
+  <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+    <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+      <%= hidden_field_tag :tab, @tab %>
+      <input type="date" name="start_date" value="<%= @start_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+      <span class="text-muted small">至</span>
+      <input type="date" name="end_date" value="<%= @end_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+      <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+    <% end %>
+    <%= link_to "匯出 CSV", export_daily_orders_path(start_date: @start_date, end_date: @end_date), class: "btn btn-sm btn-outline-secondary" %>
   </div>
 </div>
 
@@ -34,163 +32,10 @@ end %>
     <%= @start_date.strftime('%Y/%m/%d') %> ～ <%= @end_date.strftime('%Y/%m/%d') %>
   <% end %>
   共 <%= total_count %> 筆訂單
+  <span class="ms-3">
+    <%= link_to "→ 查看營收儀表板", daily_dashboard_path(start_date: @start_date, end_date: @end_date), class: "text-muted small" %>
+  </span>
 </p>
-
-<%
-  new_stat  = { count: @groups.first.last.size, amount: @groups.first.last.sum { |r| r.order_total.to_f } }
-  old_stats = @groups.drop(1).map { |label, rows| { label: label, count: rows.size, amount: rows.sum { |r| r.order_total.to_f } } }
-  old_count  = old_stats.sum { |s| s[:count] }
-  old_amount = old_stats.sum { |s| s[:amount] }
-  grand_count  = new_stat[:count] + old_count
-  grand_amount = new_stat[:amount] + old_amount
-  fmt_avg = ->(amount, count) { count > 0 ? "均 NT$#{number_with_delimiter((amount / count).to_i)}" : "—" }
-  fmt_amt = ->(amount, count) { count > 0 ? "NT$#{number_with_delimiter(amount.to_i)}" : "—" }
-%>
-
-<%# ── 第一區：總覽 ── %>
-<div class="row g-2 mb-3">
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #adb5bd;">
-      <div class="card-body py-3 px-3">
-        <div class="text-muted mb-1" style="font-size:0.78rem;">今日訂單</div>
-        <div class="fw-bold" style="font-size:1.6rem; line-height:1.1;"><%= grand_count %></div>
-        <div class="text-muted small">單</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #e74c6f;">
-      <div class="card-body py-3 px-3">
-        <div class="text-muted mb-1" style="font-size:0.78rem;">今日營收</div>
-        <div class="fw-bold text-danger" style="font-size:1.2rem; line-height:1.2;">NT$<%= number_with_delimiter(grand_amount.to_i) %></div>
-        <div style="font-size:0.78rem; color:#666;"><%= fmt_avg.call(grand_amount, grand_count) %></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #4a6fa5;">
-      <div class="card-body py-3 px-3">
-        <div class="d-flex align-items-center gap-1 mb-1">
-          <span class="badge" style="background-color:#4a6fa5; font-size:0.7rem;">新客</span>
-        </div>
-        <div class="fw-bold" style="font-size:1.3rem;"><%= new_stat[:count] %> 單</div>
-        <div class="fw-semibold small <%= new_stat[:count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(new_stat[:amount], new_stat[:count]) %></div>
-        <div style="font-size:0.78rem; color:#666;"><%= fmt_avg.call(new_stat[:amount], new_stat[:count]) %></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6c5f4e;">
-      <div class="card-body py-3 px-3">
-        <div class="d-flex align-items-center gap-1 mb-1">
-          <span class="badge" style="background-color:#6c5f4e; font-size:0.7rem;">舊客</span>
-        </div>
-        <div class="fw-bold" style="font-size:1.3rem;"><%= old_count %> 單</div>
-        <div class="fw-semibold small <%= old_count > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(old_amount, old_count) %></div>
-        <div style="font-size:0.78rem; color:#666;"><%= fmt_avg.call(old_amount, old_count) %></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<%# ── 第二區：舊客會員分布 ── %>
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-header bg-white d-flex align-items-center py-2" style="border-bottom:2px solid #f0ede9;">
-    <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">舊客會員分布</span>
-  </div>
-  <div class="card-body p-0">
-    <table class="table table-bordered mb-0" style="font-size:0.85rem;">
-      <thead style="background-color:#6c5f4e; color:white;">
-        <tr>
-          <th class="py-2 ps-3" style="width:20%;">卡別</th>
-          <th class="py-2 text-center" style="width:20%;">訂單數</th>
-          <th class="py-2 text-center" style="width:30%;">營收</th>
-          <th class="py-2 text-center" style="width:30%;">平均客單</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% old_stats.each do |s| %>
-          <% zero = s[:count] == 0 %>
-          <tr style="<%= zero ? 'opacity:0.45; background:#fafafa;' : '' %>">
-            <td class="py-2 ps-3 fw-semibold"><%= s[:label] %></td>
-            <td class="py-2 text-center"><%= s[:count] %> 單</td>
-            <td class="py-2 text-center fw-semibold <%= zero ? 'text-muted' : 'text-danger' %>">
-              <%= fmt_amt.call(s[:amount], s[:count]) %>
-            </td>
-            <td class="py-2 text-center text-muted small"><%= fmt_avg.call(s[:amount], s[:count]) %></td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<%# ── 第三區：熱銷商品 TOP 5 ── %>
-<% if @product_stats.any? %>
-<%
-  rank_colors = { 1 => "#c9a227", 2 => "#9e9e9e", 3 => "#a0673a" }
-  rank_bg     = ->(r) { rank_colors[r] || "#6c757d" }
-%>
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-header bg-white py-2" style="border-bottom:2px solid #f0ede9;">
-    <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">熱銷商品 TOP 5</span>
-  </div>
-  <div class="card-body p-0">
-    <% @product_stats.each_with_index do |p, idx| %>
-      <% pid = "prod_breakdown_#{p[:rank]}" %>
-      <div class="<%= idx < @product_stats.size - 1 ? 'border-bottom' : '' %>">
-        <%# 商品摘要列 %>
-        <div class="d-flex align-items-center px-3 py-2" style="gap:10px;">
-          <div class="flex-shrink-0 fw-bold text-white text-center rounded-circle"
-               style="width:26px;height:26px;line-height:26px;font-size:0.78rem;background:<%= rank_bg.call(p[:rank]) %>;">
-            <%= p[:rank] %>
-          </div>
-          <div style="flex:1; min-width:0;">
-            <div class="fw-semibold text-truncate" style="font-size:0.88rem;" title="<%= p[:name] %>"><%= p[:name] %></div>
-            <div class="text-muted" style="font-size:0.74rem;">數量 <%= p[:quantity] %> | 訂單 <%= p[:order_count] %> 單</div>
-            <div style="background:#f0f0f0; border-radius:2px; height:3px; margin-top:3px; width:100%;">
-              <div style="background:#e74c6f; border-radius:2px; height:3px; width:<%= [p[:share], 100].min %>%;"></div>
-            </div>
-          </div>
-          <div class="text-end flex-shrink-0" style="min-width:90px;">
-            <div class="fw-bold text-danger" style="font-size:0.88rem;">NT$<%= number_with_delimiter(p[:amount].to_i) %></div>
-            <div class="text-muted" style="font-size:0.74rem;"><%= p[:share] %>%</div>
-          </div>
-          <button class="prod-toggle btn btn-sm border flex-shrink-0"
-                  data-target="<%= pid %>"
-                  style="font-size:0.72rem; padding:2px 8px; color:#6c757d; white-space:nowrap;">
-            展開 ▼
-          </button>
-        </div>
-        <%# 客戶類型分布（預設隱藏） %>
-        <div id="<%= pid %>" style="display:none; background:#f9f8f7;">
-          <table class="table table-sm mb-0" style="font-size:0.8rem;">
-            <thead>
-              <tr style="background:#ede9e4;">
-                <th class="ps-4 py-1 fw-normal text-muted" style="width:35%;">客戶類型</th>
-                <th class="py-1 text-center fw-normal text-muted" style="width:25%;">訂單數</th>
-                <th class="py-1 text-end pe-3 fw-normal text-muted" style="width:40%;">營業額</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% p[:by_type].each do |bt| %>
-                <% zero = bt[:order_count] == 0 %>
-                <tr style="<%= zero ? 'opacity:0.4;' : '' %>">
-                  <td class="ps-4 py-1 fw-semibold"><%= bt[:type] %></td>
-                  <td class="py-1 text-center"><%= bt[:order_count] %> 單</td>
-                  <td class="py-1 text-end pe-3 fw-semibold <%= zero ? 'text-muted' : 'text-danger' %>">
-                    <%= zero ? "—" : "NT$#{number_with_delimiter(bt[:amount].to_i)}" %>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    <% end %>
-  </div>
-</div>
-<% end %>
 
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
@@ -306,16 +151,6 @@ end %>
 <% content_for :scripts_block do %>
 <script>
 (function() {
-  // 熱銷商品展開/收合
-  document.querySelectorAll('.prod-toggle').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var panel = document.getElementById(this.dataset.target);
-      var open = panel.style.display !== 'none' && panel.style.display !== '';
-      panel.style.display = open ? 'none' : 'block';
-      this.innerHTML = open ? '展開 ▼' : '收合 ▲';
-    });
-  });
-
   var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
   var URL = "<%= toggle_daily_orders_customer_flag_path %>";
 
