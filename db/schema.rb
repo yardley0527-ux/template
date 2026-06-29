@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_27_110000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_29_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -169,6 +169,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_110000) do
     t.boolean "line_bound", default: false, null: false
     t.string "follow_up_product"
     t.index ["email"], name: "index_customer_purchase_summaries_on_email"
+    t.index ["first_amount", "first_date"], name: "index_cps_on_first_amount_and_first_date"
+    t.index ["first_amount"], name: "index_cps_on_first_amount"
     t.index ["first_date"], name: "index_customer_purchase_summaries_on_first_date"
     t.index ["first_order_number"], name: "index_customer_purchase_summaries_on_first_order_number"
     t.index ["first_series"], name: "index_customer_purchase_summaries_on_first_series"
