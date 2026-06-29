@@ -38,8 +38,10 @@
     <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #adb5bd;">
       <div class="card-body py-3 px-3">
         <div class="text-muted mb-1" style="font-size:0.78rem;">訂單數</div>
-        <div class="fw-bold" style="font-size:1.6rem; line-height:1.1;"><%= grand_count %></div>
-        <div class="text-muted small">單</div>
+        <div class="d-flex align-items-baseline" style="gap:4px;">
+          <span class="fw-bold" style="font-size:1.6rem; line-height:1.1;"><%= grand_count %></span>
+          <span style="font-size:0.88rem; color:#666;">單</span>
+        </div>
       </div>
     </div>
   </div>
@@ -48,7 +50,7 @@
       <div class="card-body py-3 px-3">
         <div class="text-muted mb-1" style="font-size:0.78rem;">總營收</div>
         <div class="fw-bold text-danger" style="font-size:1.2rem; line-height:1.2;">NT$<%= number_with_delimiter(grand_amount.to_i) %></div>
-        <div style="font-size:0.78rem; color:#666;"><%= fmt_avg.call(grand_amount, grand_count) %></div>
+        <div style="font-size:0.8rem; color:#555;"><%= fmt_avg.call(grand_amount, grand_count) %></div>
       </div>
     </div>
   </div>
@@ -60,7 +62,7 @@
         </div>
         <div class="fw-bold" style="font-size:1.3rem;"><%= ns[:new_count] %> 單</div>
         <div class="fw-semibold small <%= ns[:new_count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(ns[:new_amount], ns[:new_count]) %></div>
-        <div style="font-size:0.78rem; color:#666;"><%= fmt_avg.call(ns[:new_amount], ns[:new_count]) %></div>
+        <div style="font-size:0.8rem; color:#555;"><%= fmt_avg.call(ns[:new_amount], ns[:new_count]) %></div>
       </div>
     </div>
   </div>
@@ -72,7 +74,7 @@
         </div>
         <div class="fw-bold" style="font-size:1.3rem;"><%= ns[:old_count] %> 單</div>
         <div class="fw-semibold small <%= ns[:old_count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(ns[:old_amount], ns[:old_count]) %></div>
-        <div style="font-size:0.78rem; color:#666;"><%= fmt_avg.call(ns[:old_amount], ns[:old_count]) %></div>
+        <div style="font-size:0.8rem; color:#555;"><%= fmt_avg.call(ns[:old_amount], ns[:old_count]) %></div>
       </div>
     </div>
   </div>
