@@ -84,10 +84,9 @@
 
           <%# ── 顧客跟進名單（分層）── %>
           <%
-            tier_order = [:this_week, :waiting, :lost, :repurchased]
+            tier_order = [:this_week, :lost, :repurchased]
             tier_meta  = {
               this_week:  { label: "本週跟進",   hint: "距回購週期 70–100%，現在聯繫最有效", css: "hs-tier-thisweek",   collapsible: false },
-              waiting:    { label: "待跟進",     hint: "週期未到，暫不需要行動",              css: "hs-tier-waiting",    collapsible: false },
               lost:       { label: "可能已流失", hint: "已超過回購週期",                      css: "hs-tier-lost",       collapsible: true  },
               repurchased:{ label: "已回購",     hint: "已完成第二次購買",                    css: "hs-tier-repurchased", collapsible: true  },
             }
