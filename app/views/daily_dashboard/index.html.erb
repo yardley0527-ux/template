@@ -204,6 +204,59 @@
 </div>
 <% end %>
 
+<%# ── 每日新舊客營收比較 ── %>
+<% if @daily_customer_stats.any? { |d| d[:new_orders] > 0 || d[:old_orders] > 0 } %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-header bg-white py-2" style="border-bottom:2px solid #f0ede9;">
+    <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">每日新舊客營收比較</span>
+  </div>
+  <div class="card-body p-0" style="overflow-x:auto;">
+    <table class="table mb-0" style="font-size:0.82rem; min-width:560px;">
+      <thead>
+        <tr>
+          <th class="py-2 ps-3" rowspan="2" style="vertical-align:middle; width:110px; border-right:1px solid #dee2e6; white-space:nowrap;">日期</th>
+          <th colspan="3" class="py-1 text-center fw-semibold" style="background:#e8f5e9; color:#2e7d32; border-right:1px solid #dee2e6;">舊客</th>
+          <th colspan="3" class="py-1 text-center fw-semibold" style="background:#fffde7; color:#7a6200;">新客</th>
+        </tr>
+        <tr>
+          <th class="py-1 text-center fw-normal" style="background:#f1faf2; font-size:0.76rem; white-space:nowrap;">人數／單數</th>
+          <th class="py-1 text-end pe-2 fw-normal" style="background:#f1faf2; font-size:0.76rem; white-space:nowrap;">營業額</th>
+          <th class="py-1 text-end pe-2 fw-normal" style="background:#f1faf2; font-size:0.76rem; border-right:1px solid #dee2e6; white-space:nowrap;">均單</th>
+          <th class="py-1 text-center fw-normal" style="background:#fffef0; font-size:0.76rem; white-space:nowrap;">人數／單數</th>
+          <th class="py-1 text-end pe-2 fw-normal" style="background:#fffef0; font-size:0.76rem; white-space:nowrap;">營業額</th>
+          <th class="py-1 text-end pe-3 fw-normal" style="background:#fffef0; font-size:0.76rem; white-space:nowrap;">均單</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @daily_customer_stats.each do |d| %>
+          <tr>
+            <td class="py-2 ps-3 fw-semibold" style="border-right:1px solid #dee2e6; white-space:nowrap;"><%= d[:date].strftime('%m/%d（%a）') %></td>
+            <td class="py-2 text-center">
+              <%= d[:old_orders] > 0 ? "#{d[:old_customers]}人 / #{d[:old_orders]}單" : "—" %>
+            </td>
+            <td class="py-2 text-end pe-2 fw-semibold" style="color:<%= d[:old_orders] > 0 ? '#222' : '#aaa' %>;">
+              <%= d[:old_orders] > 0 ? "NT$#{number_with_delimiter(d[:old_amount].to_i)}" : "—" %>
+            </td>
+            <td class="py-2 text-end pe-2" style="color:#555; border-right:1px solid #dee2e6;">
+              <%= d[:old_avg] ? "NT$#{number_with_delimiter(d[:old_avg].to_i)}" : "—" %>
+            </td>
+            <td class="py-2 text-center">
+              <%= d[:new_orders] > 0 ? "#{d[:new_customers]}人 / #{d[:new_orders]}單" : "—" %>
+            </td>
+            <td class="py-2 text-end pe-2 fw-semibold" style="color:<%= d[:new_orders] > 0 ? '#222' : '#aaa' %>;">
+              <%= d[:new_orders] > 0 ? "NT$#{number_with_delimiter(d[:new_amount].to_i)}" : "—" %>
+            </td>
+            <td class="py-2 text-end pe-3" style="color:#555;">
+              <%= d[:new_avg] ? "NT$#{number_with_delimiter(d[:new_avg].to_i)}" : "—" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% end %>
+
 <%# ── 舊客會員分布 ── %>
 <div class="card border-0 shadow-sm mb-3">
   <div class="card-header bg-white d-flex align-items-center py-2" style="border-bottom:2px solid #f0ede9;">
@@ -339,59 +392,6 @@
               <% else %>
                 <span class="badge" style="background:#e6f4ea; color:#2e7d32; font-size:0.72rem;">達標</span>
               <% end %>
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  </div>
-</div>
-<% end %>
-
-<%# ── 每日新舊客營收比較 ── %>
-<% if @daily_customer_stats.any? { |d| d[:new_orders] > 0 || d[:old_orders] > 0 } %>
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-header bg-white py-2" style="border-bottom:2px solid #f0ede9;">
-    <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">每日新舊客營收比較</span>
-  </div>
-  <div class="card-body p-0" style="overflow-x:auto;">
-    <table class="table mb-0" style="font-size:0.82rem; min-width:560px;">
-      <thead>
-        <tr>
-          <th class="py-2 ps-3" rowspan="2" style="vertical-align:middle; width:110px; border-right:1px solid #dee2e6; white-space:nowrap;">日期</th>
-          <th colspan="3" class="py-1 text-center fw-semibold" style="background:#e8f5e9; color:#2e7d32; border-right:1px solid #dee2e6;">舊客</th>
-          <th colspan="3" class="py-1 text-center fw-semibold" style="background:#fffde7; color:#7a6200;">新客</th>
-        </tr>
-        <tr>
-          <th class="py-1 text-center fw-normal" style="background:#f1faf2; font-size:0.76rem; white-space:nowrap;">人數／單數</th>
-          <th class="py-1 text-end pe-2 fw-normal" style="background:#f1faf2; font-size:0.76rem; white-space:nowrap;">營業額</th>
-          <th class="py-1 text-end pe-2 fw-normal" style="background:#f1faf2; font-size:0.76rem; border-right:1px solid #dee2e6; white-space:nowrap;">均單</th>
-          <th class="py-1 text-center fw-normal" style="background:#fffef0; font-size:0.76rem; white-space:nowrap;">人數／單數</th>
-          <th class="py-1 text-end pe-2 fw-normal" style="background:#fffef0; font-size:0.76rem; white-space:nowrap;">營業額</th>
-          <th class="py-1 text-end pe-3 fw-normal" style="background:#fffef0; font-size:0.76rem; white-space:nowrap;">均單</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% @daily_customer_stats.each do |d| %>
-          <tr>
-            <td class="py-2 ps-3 fw-semibold" style="border-right:1px solid #dee2e6; white-space:nowrap;"><%= d[:date].strftime('%m/%d（%a）') %></td>
-            <td class="py-2 text-center">
-              <%= d[:old_orders] > 0 ? "#{d[:old_customers]}人 / #{d[:old_orders]}單" : "—" %>
-            </td>
-            <td class="py-2 text-end pe-2 fw-semibold" style="color:<%= d[:old_orders] > 0 ? '#222' : '#aaa' %>;">
-              <%= d[:old_orders] > 0 ? "NT$#{number_with_delimiter(d[:old_amount].to_i)}" : "—" %>
-            </td>
-            <td class="py-2 text-end pe-2" style="color:#555; border-right:1px solid #dee2e6;">
-              <%= d[:old_avg] ? "NT$#{number_with_delimiter(d[:old_avg].to_i)}" : "—" %>
-            </td>
-            <td class="py-2 text-center">
-              <%= d[:new_orders] > 0 ? "#{d[:new_customers]}人 / #{d[:new_orders]}單" : "—" %>
-            </td>
-            <td class="py-2 text-end pe-2 fw-semibold" style="color:<%= d[:new_orders] > 0 ? '#222' : '#aaa' %>;">
-              <%= d[:new_orders] > 0 ? "NT$#{number_with_delimiter(d[:new_amount].to_i)}" : "—" %>
-            </td>
-            <td class="py-2 text-end pe-3" style="color:#555;">
-              <%= d[:new_avg] ? "NT$#{number_with_delimiter(d[:new_avg].to_i)}" : "—" %>
             </td>
           </tr>
         <% end %>
