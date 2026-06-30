@@ -1,6 +1,6 @@
 class DailyOrdersController < ApplicationController
   TIERS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig].freeze
+  TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig health_inquiry_declined].freeze
   PURCHASE_SUMMARY_FIELDS = %w[line_bound].freeze
 
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
@@ -14,7 +14,7 @@ class DailyOrdersController < ApplicationController
     :order_number, :customer_name, :ig_account, :email, :order_total, :order_date,
     :is_new_customer, :membership_level, :products, :health_profile, :health_tags,
     :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
-    :line_bound, :total_quantity,
+    :line_bound, :total_quantity, :health_inquiry_declined,
     keyword_init: true
   )
 
@@ -172,7 +172,8 @@ class DailyOrdersController < ApplicationController
         invited_to_follow_product_ig: profile&.invited_to_follow_product_ig || false,
         shopline_customer_id: customer&.id,
         line_bound: summary&.line_bound || false,
-        total_quantity: o.total_quantity.to_i
+        total_quantity: o.total_quantity.to_i,
+        health_inquiry_declined: profile&.health_inquiry_declined || false
       )
     end
 
