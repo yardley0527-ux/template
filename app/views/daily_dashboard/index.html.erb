@@ -9,6 +9,73 @@
   grand_amount = ns[:new_amount] + ns[:old_amount]
 %>
 
+<%# ── Header ── %>
+<div class="d-flex align-items-start justify-content-between flex-wrap mb-3" style="gap:12px;">
+  <div>
+    <h4 class="fw-bold mb-0">每日營收儀表板</h4>
+    <p class="text-muted small mb-0">管理者快覽・適合截圖回報</p>
+  </div>
+  <%= form_tag daily_dashboard_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+    <input type="date" name="start_date" value="<%= @start_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+    <span class="text-muted small">至</span>
+    <input type="date" name="end_date" value="<%= @end_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+    <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+  <% end %>
+</div>
+
+<p class="text-muted small mb-3">
+  <% if @start_date == @end_date %>
+    <%= @start_date.strftime('%Y/%m/%d') %>
+  <% else %>
+    <%= @start_date.strftime('%Y/%m/%d') %> ～ <%= @end_date.strftime('%Y/%m/%d') %>
+  <% end %>
+  共 <%= grand_count %> 筆訂單
+</p>
+
+<%# ── 總覽卡片 ── %>
+<div class="row g-2 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #adb5bd;">
+      <div class="card-body py-3 px-3">
+        <div class="text-muted mb-1" style="font-size:0.78rem;">訂單數</div>
+        <div class="d-flex align-items-baseline" style="gap:4px;">
+          <span class="fw-bold" style="font-size:1.6rem; line-height:1.1;"><%= grand_count %></span>
+          <span style="font-size:0.88rem; color:#666;">單</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #e74c6f;">
+      <div class="card-body py-3 px-3">
+        <div class="text-muted mb-1" style="font-size:0.78rem;">總營收</div>
+        <div class="fw-bold text-danger" style="font-size:1.2rem; line-height:1.2;">NT$<%= number_with_delimiter(grand_amount.to_i) %></div>
+        <div style="font-size:0.8rem; color:#555;"><%= fmt_avg.call(grand_amount, grand_count) %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #4a6fa5;">
+      <div class="card-body py-3 px-3">
+        <div class="text-muted mb-1" style="font-size:0.78rem;">新客</div>
+        <div class="fw-bold" style="font-size:1.3rem;"><%= ns[:new_count] %> 單</div>
+        <div class="fw-semibold small <%= ns[:new_count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(ns[:new_amount], ns[:new_count]) %></div>
+        <div style="font-size:0.8rem; color:#555;"><%= fmt_avg.call(ns[:new_amount], ns[:new_count]) %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6c5f4e;">
+      <div class="card-body py-3 px-3">
+        <div class="text-muted mb-1" style="font-size:0.78rem;">舊客</div>
+        <div class="fw-bold" style="font-size:1.3rem;"><%= ns[:old_count] %> 單</div>
+        <div class="fw-semibold small <%= ns[:old_count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(ns[:old_amount], ns[:old_count]) %></div>
+        <div style="font-size:0.8rem; color:#555;"><%= fmt_avg.call(ns[:old_amount], ns[:old_count]) %></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <%# ── 昨日訂單洞察 ── %>
 <% if @yesterday_insights %>
 <% yi = @yesterday_insights %>
@@ -136,73 +203,6 @@
   </div>
 </div>
 <% end %>
-
-<%# ── Header ── %>
-<div class="d-flex align-items-start justify-content-between flex-wrap mb-3" style="gap:12px;">
-  <div>
-    <h4 class="fw-bold mb-0">每日營收儀表板</h4>
-    <p class="text-muted small mb-0">管理者快覽・適合截圖回報</p>
-  </div>
-  <%= form_tag daily_dashboard_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
-    <input type="date" name="start_date" value="<%= @start_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
-    <span class="text-muted small">至</span>
-    <input type="date" name="end_date" value="<%= @end_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
-    <button type="submit" class="btn btn-sm btn-primary">查詢</button>
-  <% end %>
-</div>
-
-<p class="text-muted small mb-3">
-  <% if @start_date == @end_date %>
-    <%= @start_date.strftime('%Y/%m/%d') %>
-  <% else %>
-    <%= @start_date.strftime('%Y/%m/%d') %> ～ <%= @end_date.strftime('%Y/%m/%d') %>
-  <% end %>
-  共 <%= grand_count %> 筆訂單
-</p>
-
-<%# ── 總覽卡片 ── %>
-<div class="row g-2 mb-3">
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #adb5bd;">
-      <div class="card-body py-3 px-3">
-        <div class="text-muted mb-1" style="font-size:0.78rem;">訂單數</div>
-        <div class="d-flex align-items-baseline" style="gap:4px;">
-          <span class="fw-bold" style="font-size:1.6rem; line-height:1.1;"><%= grand_count %></span>
-          <span style="font-size:0.88rem; color:#666;">單</span>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #e74c6f;">
-      <div class="card-body py-3 px-3">
-        <div class="text-muted mb-1" style="font-size:0.78rem;">總營收</div>
-        <div class="fw-bold text-danger" style="font-size:1.2rem; line-height:1.2;">NT$<%= number_with_delimiter(grand_amount.to_i) %></div>
-        <div style="font-size:0.8rem; color:#555;"><%= fmt_avg.call(grand_amount, grand_count) %></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #4a6fa5;">
-      <div class="card-body py-3 px-3">
-        <div class="text-muted mb-1" style="font-size:0.78rem;">新客</div>
-        <div class="fw-bold" style="font-size:1.3rem;"><%= ns[:new_count] %> 單</div>
-        <div class="fw-semibold small <%= ns[:new_count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(ns[:new_amount], ns[:new_count]) %></div>
-        <div style="font-size:0.8rem; color:#555;"><%= fmt_avg.call(ns[:new_amount], ns[:new_count]) %></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6c5f4e;">
-      <div class="card-body py-3 px-3">
-        <div class="text-muted mb-1" style="font-size:0.78rem;">舊客</div>
-        <div class="fw-bold" style="font-size:1.3rem;"><%= ns[:old_count] %> 單</div>
-        <div class="fw-semibold small <%= ns[:old_count] > 0 ? 'text-danger' : 'text-muted' %>"><%= fmt_amt.call(ns[:old_amount], ns[:old_count]) %></div>
-        <div style="font-size:0.8rem; color:#555;"><%= fmt_avg.call(ns[:old_amount], ns[:old_count]) %></div>
-      </div>
-    </div>
-  </div>
-</div>
 
 <%# ── 舊客會員分布 ── %>
 <div class="card border-0 shadow-sm mb-3">
