@@ -113,7 +113,7 @@ class OmnipotentAnalysisController < ApplicationController
       .where(email: lapsed_whitening_emails).where(membership_level: %w[黑卡 金卡])
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
       .map { |c| { customer: c, omni_count: omni_count_by_email[c.email] || 0 } }
-      .sort_by { |r| [-ProductLivestreamAnalysis::MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
+      .sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
   end
 
   def whitening_csv
