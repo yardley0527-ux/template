@@ -72,8 +72,13 @@ end %>
       <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
       <div>
         <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
-        <div class="fw-bold <%= @health_missing_count > 0 ? 'text-danger' : 'text-success' %>" style="font-size:1rem;">
-          <%= @health_missing_count > 0 ? "#{@health_missing_count} 人未填" : "✓ 全員已填" %>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span id="new-health-missing-badge"
+            class="<%= @health_missing_count > 0 ? 'text-danger' : 'text-success' %>"
+            data-count="<%= @health_missing_count %>"
+            style="<%= @health_missing_count > 0 ? 'cursor:pointer;' : '' %>">
+            <%= @health_missing_count > 0 ? "#{@health_missing_count} 人未填" : "✓ 全員已填" %>
+          </span>
         </div>
       </div>
     </div>
@@ -93,8 +98,13 @@ end %>
       <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
       <div>
         <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
-        <div class="fw-bold <%= @old_health_missing_count > 0 ? 'text-danger' : 'text-success' %>" style="font-size:1rem;">
-          <%= @old_health_missing_count > 0 ? "#{@old_health_missing_count} 人未填" : "✓ 全員已填" %>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span id="old-health-missing-badge"
+            class="<%= @old_health_missing_count > 0 ? 'text-danger' : 'text-success' %>"
+            data-count="<%= @old_health_missing_count %>"
+            style="<%= @old_health_missing_count > 0 ? 'cursor:pointer;' : '' %>">
+            <%= @old_health_missing_count > 0 ? "#{@old_health_missing_count} 人未填" : "✓ 全員已填" %>
+          </span>
         </div>
       </div>
     </div>
@@ -132,7 +142,8 @@ end %>
         <tbody>
           <% rows.each do |row| %>
             <% url = daily_orders_ig_link(row.ig_account) %>
-            <tr>
+            <% health_filled = row.health_profile.present? || row.health_tags.present? %>
+            <tr data-health-filled="<%= health_filled %>">
               <td class="ps-3 text-muted small"><%= row.order_number %></td>
               <td class="fw-semibold"><%= row.customer_name %></td>
               <td style="overflow:hidden;">
@@ -267,6 +278,26 @@ end %>
       updateLineSummary();
     });
   }
+
+  // 健康資料篩選（新客 & 舊客共用邏輯）
+  var healthFilterActive = false;
+  function applyHealthFilter() {
+    document.querySelectorAll('tr[data-health-filled]').forEach(function(tr) {
+      tr.style.display = (healthFilterActive && tr.dataset.healthFilled === 'true') ? 'none' : '';
+    });
+  }
+  ['new-health-missing-badge', 'old-health-missing-badge'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', function() {
+      var count = parseInt(el.dataset.count);
+      if (count === 0) return;
+      healthFilterActive = !healthFilterActive;
+      applyHealthFilter();
+      el.style.textDecoration = healthFilterActive ? 'underline' : '';
+      el.textContent = healthFilterActive ? '篩選中：' + count + ' 人未填 ✕' : count + ' 人未填';
+    });
+  });
 
   document.querySelectorAll('.customer-flag-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
