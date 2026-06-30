@@ -211,7 +211,7 @@ class OmnipotentAnalysisController < ApplicationController
         c = r[:customer]
         csv << [r[:value_tier], c.full_name, c.membership_level, c.mobile_phone,
                 r[:last_product], r[:bottles], r[:order_amount].to_i,
-                r[:total_spend].to_i, r[:product_count], c.instagram_account]
+                r[:total_spend].to_i, r[:omni_count], c.instagram_account]
       end
     end
   end
