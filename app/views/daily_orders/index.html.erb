@@ -181,12 +181,8 @@ end %>
                     <% end %>
                   </div>
                 <% end %>
-                <% if row.health_profile.blank? && row.health_tags.blank? %>
-                  <% if row.shopline_customer_id && (is_new || row.order_total.to_f >= 10_000) %>
-                    <%= link_to "+ 填寫健康資料", edit_customer_path(row.shopline_customer_id, section: "health"), target: "_blank", class: "small text-decoration-none" %>
-                  <% else %>
-                    <span class="text-muted small">—</span>
-                  <% end %>
+                <% if row.health_profile.blank? && row.health_tags.blank? && row.shopline_customer_id && (is_new || row.order_total.to_f >= 10_000) %>
+                  <%= link_to "+ 填寫健康資料", edit_customer_path(row.shopline_customer_id, section: "health"), target: "_blank", class: "small text-decoration-none" %>
                 <% end %>
               </td>
               <% if is_new %>
