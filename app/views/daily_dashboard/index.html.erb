@@ -156,23 +156,62 @@
       <table class="table table-sm mb-0" style="font-size:0.83rem;">
         <thead style="background:#f8f6f3;">
           <tr>
-            <th class="ps-3 py-2 fw-normal text-muted" style="width:5%;">#</th>
+            <th class="ps-3 py-2 fw-normal text-muted" style="width:4%;">#</th>
             <th class="py-2 fw-normal text-muted">商品名稱</th>
-            <th class="py-2 text-center fw-normal text-muted" style="width:12%;">數量</th>
-            <th class="py-2 text-center fw-normal text-muted" style="width:12%;">訂單數</th>
-            <th class="py-2 text-end pe-2 fw-normal text-muted" style="width:20%;">營業額</th>
-            <th class="py-2 text-end pe-3 fw-normal text-muted" style="width:12%;">佔比</th>
+            <th class="py-2 text-center fw-normal text-muted" style="width:10%;">數量</th>
+            <th class="py-2 text-center fw-normal text-muted" style="width:10%;">訂單數</th>
+            <th class="py-2 text-end pe-2 fw-normal text-muted" style="width:18%;">營業額</th>
+            <th class="py-2 text-end pe-2 fw-normal text-muted" style="width:10%;">佔比</th>
+            <th class="py-2 text-center fw-normal text-muted" style="width:8%;"></th>
           </tr>
         </thead>
         <tbody>
           <% yi[:top_products].each do |p| %>
+          <% pid = "yp_#{p[:rank]}" %>
           <tr>
             <td class="ps-3 py-2 fw-semibold" style="color:#b5966b;"><%= p[:rank] %></td>
             <td class="py-2 fw-semibold" style="color:#333;"><%= p[:name] %></td>
             <td class="py-2 text-center"><%= p[:quantity] %></td>
             <td class="py-2 text-center text-muted"><%= p[:order_count] %> 單</td>
             <td class="py-2 text-end pe-2">NT$<%= number_with_delimiter(p[:amount].to_i) %></td>
-            <td class="py-2 text-end pe-3 text-muted"><%= p[:share] %>%</td>
+            <td class="py-2 text-end pe-2 text-muted"><%= p[:share] %>%</td>
+            <td class="py-2 text-center">
+              <button class="yp-toggle btn btn-sm border" data-target="<%= pid %>"
+                      style="font-size:0.7rem; padding:1px 7px; color:#6c757d; white-space:nowrap;">
+                展開 ▼
+              </button>
+            </td>
+          </tr>
+          <tr id="<%= pid %>" style="display:none;">
+            <td colspan="7" class="p-0">
+              <table class="table table-sm mb-0" style="font-size:0.8rem; background:#f9f8f7;">
+                <thead>
+                  <tr style="background:#ede9e4;">
+                    <th class="ps-4 py-1 fw-normal text-muted" style="width:40%;">客戶類型</th>
+                    <th class="py-1 text-center fw-normal text-muted" style="width:20%;">人數</th>
+                    <th class="py-1 text-center fw-normal text-muted" style="width:20%;">訂單數</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% bct = p[:by_customer_type] || {} %>
+                  <tr>
+                    <td class="ps-4 py-1 fw-semibold">新客</td>
+                    <td class="py-1 text-center"><%= bct.dig(:new_customer, :customers).to_i %></td>
+                    <td class="py-1 text-center"><%= bct.dig(:new_customer, :orders).to_i %> 單</td>
+                  </tr>
+                  <tr>
+                    <td class="ps-4 py-1 fw-semibold">舊客首購此商品</td>
+                    <td class="py-1 text-center"><%= bct.dig(:returning_first, :customers).to_i %></td>
+                    <td class="py-1 text-center"><%= bct.dig(:returning_first, :orders).to_i %> 單</td>
+                  </tr>
+                  <tr>
+                    <td class="ps-4 py-1 fw-semibold">舊客回購</td>
+                    <td class="py-1 text-center"><%= bct.dig(:repurchase, :customers).to_i %></td>
+                    <td class="py-1 text-center"><%= bct.dig(:repurchase, :orders).to_i %> 單</td>
+                  </tr>
+                </tbody>
+              </table>
+            </td>
           </tr>
           <% end %>
         </tbody>
@@ -403,13 +442,17 @@
 <% content_for :scripts_block do %>
 <script>
 (function() {
+  function togglePanel(btn) {
+    var panel = document.getElementById(btn.dataset.target);
+    var open = panel.style.display !== 'none' && panel.style.display !== '';
+    panel.style.display = open ? 'none' : 'table-row';
+    btn.innerHTML = open ? '展開 ▼' : '收合 ▲';
+  }
   document.querySelectorAll('.prod-toggle').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var panel = document.getElementById(this.dataset.target);
-      var open = panel.style.display !== 'none' && panel.style.display !== '';
-      panel.style.display = open ? 'none' : 'block';
-      this.innerHTML = open ? '展開 ▼' : '收合 ▲';
-    });
+    btn.addEventListener('click', function() { togglePanel(this); });
+  });
+  document.querySelectorAll('.yp-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function() { togglePanel(this); });
   });
 })();
 </script>

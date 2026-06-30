@@ -86,6 +86,66 @@ class DailyDashboardController < ApplicationController
       }
     end
 
+    # 昨日主力商品：客戶類型細分（新客 / 舊客首購 / 舊客回購）
+    if top_products.any?
+      top_names  = top_products.map { |p| p[:name] }
+      old_emails = emails.select { |e| prior_emails.include?(e) }
+
+      # 舊客中，昨日前曾買過這些商品的 email 集合（依商品）
+      prior_product_buyers = Hash.new { |h, k| h[k] = Set.new }
+      if old_emails.any?
+        ShoplineOrder
+          .where(email: old_emails)
+          .where("order_date < ?", rs)
+          .where(product_name: top_names)
+          .distinct.pluck(:email, :product_name)
+          .each { |(email, product)| prior_product_buyers[product.to_s.strip] << email }
+      end
+
+      # 昨日各訂單 × 商品的 email（用於分類）
+      li_rows = ShoplineOrder.from("shopline_orders o")
+        .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
+        .where("o.payment_status = '已付款'")
+        .where("o.order_date >= ? AND o.order_date <= ?", rs, re)
+        .where(product_name: top_names)
+        .select(
+          "o.order_number",
+          "o.product_name",
+          "MAX(COALESCE(sc.email, o.email)) AS email_val"
+        )
+        .group("o.order_number, o.product_name")
+        .to_a
+
+      li_by_product = li_rows.group_by { |li| li.product_name.to_s.strip }
+
+      top_products = top_products.map do |p|
+        buckets = {
+          new_customer:    { emails: Set.new, orders: Set.new },
+          returning_first: { emails: Set.new, orders: Set.new },
+          repurchase:      { emails: Set.new, orders: Set.new }
+        }
+
+        (li_by_product[p[:name]] || []).each do |li|
+          email = li.email_val.to_s.strip
+          type  = if email.blank? || !prior_emails.include?(email)
+            :new_customer
+          elsif prior_product_buyers[p[:name]].include?(email)
+            :repurchase
+          else
+            :returning_first
+          end
+          buckets[type][:emails] << email if email.present?
+          buckets[type][:orders] << li.order_number
+        end
+
+        p.merge(
+          by_customer_type: buckets.transform_values { |b|
+            { customers: b[:emails].size, orders: b[:orders].size }
+          }
+        )
+      end
+    end
+
     # B. 昨日主要購買卡別
     tier_data = Hash.new { |h, k| h[k] = { emails: Set.new, orders: 0, amount: 0.0 } }
 
