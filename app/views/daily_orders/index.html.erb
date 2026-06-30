@@ -80,6 +80,27 @@ end %>
   </div>
 <% end %>
 
+<% if @tab == "old" %>
+  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-users" style="color:#6c757d; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">今日舊客</div>
+        <div class="fw-bold" style="font-size:1rem;"><%= @old_count %> 人</div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="fw-bold <%= @old_health_missing_count > 0 ? 'text-danger' : 'text-success' %>" style="font-size:1rem;">
+          <%= @old_health_missing_count > 0 ? "#{@old_health_missing_count} 人未填" : "✓ 全員已填" %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
 <% visible_groups = @tab == "new" ? @groups.first(1) : @groups.drop(1) %>
 
 <% visible_groups.each do |label, rows| %>
