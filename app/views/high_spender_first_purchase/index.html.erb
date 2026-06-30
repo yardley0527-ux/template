@@ -134,7 +134,6 @@
                     <tr>
                       <th>年份</th>
                       <th>破萬新客</th>
-                      <th>90天回購率</th>
                       <th>曾回購率</th>
                     </tr>
                   </thead>
@@ -143,17 +142,6 @@
                       <tr>
                         <td><%= row[:year] %></td>
                         <td><%= number_with_delimiter(row[:total]) %></td>
-                        <td>
-                          <% if row[:immature_90d] %>
-                            <span class="fp-badge-neutral" title="部分 cohort 尚未滿 90 天">⚠️ 尚未成熟</span>
-                          <% elsif row[:repurchase_rate_90d] %>
-                            <span class="<%= row[:repurchase_rate_90d] >= 55 ? 'fp-badge-ok' : row[:repurchase_rate_90d] >= 35 ? 'fp-badge-mid' : 'fp-badge-warn' %>">
-                              <%= row[:repurchase_rate_90d] %>%
-                            </span>
-                          <% else %>
-                            <span class="fp-muted">—</span>
-                          <% end %>
-                        </td>
                         <td>
                           <span class="fp-badge-neutral">
                             <%= row[:repurchase_rate] %>%
@@ -174,7 +162,6 @@
                     <tr>
                       <th>系列</th>
                       <th>人數</th>
-                      <th>90天回購率</th>
                       <th>曾回購率</th>
                       <th>平均首筆</th>
                       <th>第二次最常買</th>
@@ -196,11 +183,6 @@
                           </strong>
                         </td>
                         <td><%= number_with_delimiter(row[:total]) %></td>
-                        <td>
-                          <span class="<%= row[:repurchase_rate_90d] >= 55 ? 'fp-badge-ok' : row[:repurchase_rate_90d] >= 35 ? 'fp-badge-mid' : 'fp-badge-warn' %>">
-                            <%= row[:repurchase_rate_90d] %>%
-                          </span>
-                        </td>
                         <td>
                           <span class="fp-badge-neutral">
                             <%= row[:repurchase_rate] %>%
@@ -271,7 +253,6 @@
                     <th>月份</th>
                     <th>破萬新客數</th>
                     <th>平均首筆金額</th>
-                    <th>90天回購率</th>
                     <th>當月回購率</th>
                     <th>首購商品分布（Top 4）</th>
                   </tr>
@@ -284,17 +265,6 @@
                       <td><%= row[:month] %></td>
                       <td><%= number_with_delimiter(row[:total]) %></td>
                       <td class="fp-amount">$<%= number_with_delimiter(row[:avg_first_amount]) %></td>
-                      <td>
-                        <% if row[:immature_90d] %>
-                          <span class="fp-badge-neutral" title="此月份最後一天距今未滿 90 天，回購率尚不完整">⚠️ 尚未成熟</span>
-                        <% elsif row[:repurchase_rate_90d] %>
-                          <span class="<%= row[:repurchase_rate_90d] >= 55 ? 'fp-badge-ok' : row[:repurchase_rate_90d] >= 35 ? 'fp-badge-mid' : 'fp-badge-warn' %>">
-                            <%= row[:repurchase_rate_90d] %>%
-                          </span>
-                        <% else %>
-                          <span class="fp-muted">—</span>
-                        <% end %>
-                      </td>
                       <td>
                         <span class="fp-badge-neutral"><%= row[:repurchase_rate_same_month] %>%</span>
                       </td>

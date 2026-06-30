@@ -11,7 +11,6 @@ class HighSpenderFirstPurchaseAnalytics
   def summary_cards
     total              = filtered_base_scope.count
     repurchased        = filtered_base_scope.where("purchase_count > 1").count
-    repurchased_90d    = filtered_base_scope.where("purchase_count > 1 AND second_date IS NOT NULL AND second_date <= first_date + INTERVAL '90 days'").count
     silent             = total - repurchased
     avg_first_amount   = filtered_base_scope.average(:first_amount).to_f.round
     avg_purchase_count = filtered_base_scope.average(:purchase_count).to_f.round(2)
@@ -23,14 +22,14 @@ class HighSpenderFirstPurchaseAnalytics
         note: "首筆消費 >= #{@threshold}"
       },
       {
-        label: "90天回購人數",
-        value: repurchased_90d,
-        note: total.zero? ? "0%" : "#{((repurchased_90d.to_f / total) * 100).round(1)}%"
-      },
-      {
-        label: "曾回購人數（終身）",
+        label: "曾回購人數",
         value: repurchased,
         note: total.zero? ? "0%" : "#{((repurchased.to_f / total) * 100).round(1)}%"
+      },
+      {
+        label: "未回購人數",
+        value: silent,
+        note: total.zero? ? "0%" : "#{((silent.to_f / total) * 100).round(1)}%"
       },
       {
         label: "平均首筆金額",
@@ -47,24 +46,17 @@ class HighSpenderFirstPurchaseAnalytics
       .pluck(
         Arel.sql("EXTRACT(YEAR FROM first_date)::int"),
         Arel.sql("COUNT(*)"),
-        Arel.sql("SUM(CASE WHEN purchase_count > 1 THEN 1 ELSE 0 END)"),
-        Arel.sql("SUM(CASE WHEN purchase_count > 1 AND second_date IS NOT NULL AND second_date <= first_date + INTERVAL '90 days' THEN 1 ELSE 0 END)")
+        Arel.sql("SUM(CASE WHEN purchase_count > 1 THEN 1 ELSE 0 END)")
       )
 
-    rows.map do |year, total, repurchased, repurchased_90d|
-      total          = total.to_i
-      repurchased    = repurchased.to_i
-      repurchased_90d = repurchased_90d.to_i
-      # Year is immature for 90d if the last cohort (Dec 31) hasn't cleared 90 days yet
-      immature_90d   = Date.today < Date.new(year + 1, 1, 1) + 90
+    rows.map do |year, total, repurchased|
+      total       = total.to_i
+      repurchased = repurchased.to_i
       {
-        year:               year,
-        total:              total,
-        repurchased:        repurchased,
-        repurchase_rate:    total.zero? ? 0 : ((repurchased.to_f / total) * 100).round(1),
-        repurchased_90d:    repurchased_90d,
-        repurchase_rate_90d: (immature_90d || total.zero?) ? nil : ((repurchased_90d.to_f / total) * 100).round(1),
-        immature_90d:       immature_90d
+        year:            year,
+        total:           total,
+        repurchased:     repurchased,
+        repurchase_rate: total.zero? ? 0 : ((repurchased.to_f / total) * 100).round(1)
       }
     end.sort_by { |h| h[:year] }
   end
@@ -77,24 +69,17 @@ class HighSpenderFirstPurchaseAnalytics
         Arel.sql("DATE_TRUNC('month', first_date)"),
         Arel.sql("COUNT(*)"),
         Arel.sql("AVG(first_amount)"),
-        Arel.sql("SUM(CASE WHEN purchase_count > 1 AND second_date IS NOT NULL AND DATE_TRUNC('month', second_date) = DATE_TRUNC('month', first_date) THEN 1 ELSE 0 END)"),
-        Arel.sql("SUM(CASE WHEN purchase_count > 1 AND second_date IS NOT NULL AND second_date <= first_date + INTERVAL '90 days' THEN 1 ELSE 0 END)")
+        Arel.sql("SUM(CASE WHEN purchase_count > 1 AND second_date IS NOT NULL AND DATE_TRUNC('month', second_date) = DATE_TRUNC('month', first_date) THEN 1 ELSE 0 END)")
       )
 
-    rows.map do |month_date, total, avg_first_amount, repurchased_same_month, repurchased_90d|
-      total                = total.to_i
+    rows.map do |month_date, total, avg_first_amount, repurchased_same_month|
+      total                  = total.to_i
       repurchased_same_month = repurchased_same_month.to_i
-      repurchased_90d      = repurchased_90d.to_i
-      month_end            = month_date.to_date.end_of_month
-      immature_90d         = Date.today < (month_end + 90)
       {
         month:                      month_date.strftime("%Y-%m"),
         total:                      total,
         avg_first_amount:           avg_first_amount.to_f.round,
-        repurchase_rate_same_month: total.zero? ? 0 : ((repurchased_same_month.to_f / total) * 100).round(1),
-        repurchased_90d:            repurchased_90d,
-        repurchase_rate_90d:        (immature_90d || total.zero?) ? nil : ((repurchased_90d.to_f / total) * 100).round(1),
-        immature_90d:               immature_90d
+        repurchase_rate_same_month: total.zero? ? 0 : ((repurchased_same_month.to_f / total) * 100).round(1)
       }
     end.sort_by { |h| h[:month] }.reverse
   end
@@ -127,22 +112,18 @@ class HighSpenderFirstPurchaseAnalytics
           :first_series,
           Arel.sql("COUNT(*)"),
           Arel.sql("SUM(CASE WHEN purchase_count > 1 THEN 1 ELSE 0 END)"),
-          Arel.sql("AVG(first_amount)"),
-          Arel.sql("SUM(CASE WHEN purchase_count > 1 AND second_date IS NOT NULL AND second_date <= first_date + INTERVAL '90 days' THEN 1 ELSE 0 END)")
+          Arel.sql("AVG(first_amount)")
         )
 
-      rows.map do |series, total, repurchased, avg_first_amount, repurchased_90d|
-        total           = total.to_i
-        repurchased     = repurchased.to_i
-        repurchased_90d = repurchased_90d.to_i
+      rows.map do |series, total, repurchased, avg_first_amount|
+        total       = total.to_i
+        repurchased = repurchased.to_i
         {
-          series:              series,
-          total:               total,
-          repurchased:         repurchased,
-          repurchase_rate:     total.zero? ? 0 : ((repurchased.to_f / total) * 100).round(1),
-          avg_first_amount:    avg_first_amount.to_f.round,
-          repurchased_90d:     repurchased_90d,
-          repurchase_rate_90d: total.zero? ? 0 : ((repurchased_90d.to_f / total) * 100).round(1)
+          series:           series,
+          total:            total,
+          repurchased:      repurchased,
+          repurchase_rate:  total.zero? ? 0 : ((repurchased.to_f / total) * 100).round(1),
+          avg_first_amount: avg_first_amount.to_f.round
         }
       end.sort_by { |h| -h[:total] }
     end
