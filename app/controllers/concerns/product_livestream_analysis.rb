@@ -287,6 +287,15 @@ module ProductLivestreamAnalysis
           .map { |ev, _| "#{ev[:year]}/#{ev[:label]}" }
         { customer: c, attended_labels: attended }
       end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
+
+    after_build_comprehensive_data(
+      all_events:       all_events,
+      all_event_emails: all_event_emails,
+      all_emails:       all_emails
+    )
+  end
+
+  def after_build_comprehensive_data(all_events:, all_event_emails:, all_emails:)
   end
 
   def missing_csv
