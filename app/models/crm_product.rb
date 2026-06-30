@@ -23,6 +23,14 @@ class CrmProduct < ApplicationRecord
     for_analysis.order(:id).pluck(:label)
   end
 
+  # Compatibility layer: 舊系統預設產品清單。
+  # series_labels_for_filter 在 crm_products 尚未 seed 時自動回傳此清單，
+  # 確保所有 controller 的下拉選單和 SQL 在 deploy 後不因空表而 500。
+  # crm_products seeded 後此常數不再被使用（Registry 路徑接管）。
+  LEGACY_SERIES_OPTIONS = %w[
+    代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣
+  ].freeze
+
   # Bridge for controllers that filter against customer_series_loyalties.series or
   # customer_purchase_summaries.first_series (written by refresh services using legacy
   # labels). Maps two diverged CrmProduct labels back to the values the DB stores.
@@ -33,7 +41,9 @@ class CrmProduct < ApplicationRecord
   }.freeze
 
   def self.series_labels_for_filter
-    series_labels.map { |l| SERIES_FILTER_OVERRIDES.fetch(l, l) }
+    labels = series_labels
+    return LEGACY_SERIES_OPTIONS if labels.empty?
+    labels.map { |l| SERIES_FILTER_OVERRIDES.fetch(l, l) }
   end
 
   # Keys in id order.

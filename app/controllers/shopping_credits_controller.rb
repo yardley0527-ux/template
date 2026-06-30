@@ -51,7 +51,10 @@ class ShoppingCreditsController < ApplicationController
   private
 
   def top_series_sql(emails)
-    series_case = CrmProduct.series_labels_for_filter.map { |kw|
+    keywords = CrmProduct.series_labels_for_filter
+    return {} if keywords.empty?
+
+    series_case = keywords.map { |kw|
       "WHEN product_name LIKE #{ActiveRecord::Base.connection.quote("%#{kw}%")} THEN #{ActiveRecord::Base.connection.quote(kw)}"
     }.join(" ")
 

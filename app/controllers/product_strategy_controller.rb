@@ -8,7 +8,7 @@ class ProductStrategyController < ApplicationController
 
     @overview = {
       total_customers:  @report.sum { |r| r[:total] },
-      avg_return_rate:  (@report.sum { |r| r[:return_rate] } / @report.size).round(1),
+      avg_return_rate:  @report.any? ? (@report.sum { |r| r[:return_rate] }.to_f / @report.size).round(1) : 0.0,
       total_silent:     @report.sum { |r| r[:silent].to_i + r[:watching].to_i },
       total_iron:       @report.sum { |r| r[:iron] },
       best_retention:   @report.max_by { |r| r[:return_rate] }
