@@ -1,15 +1,8 @@
 class DailyDashboardController < ApplicationController
   include ActionView::Helpers::NumberHelper
 
-  TIERS                = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  DAILY_TARGET         = 150_000
-  HIGH_REVENUE_TARGET  = 500_000
-  NEW_DAILY_THRESHOLD  =  10_000
-  OLD_DAILY_THRESHOLD  = 100_000
-  NEW_CUSTOMER_MIN     =       3   # 新客少於此數觸發 critical
-  TIER_HIGHLIGHT_PCT   =      40   # 卡別佔比超過此 % 顯示 highlight
-  MISSING_PRODUCT_DAYS =       7   # 幾天內有售但今天無單 = 商品提醒
-  REVENUE_DROP_PCT     =      20   # 較昨日下降超過此 % 觸發 critical
+  TIERS        = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
+  DAILY_TARGET = 150_000
 
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
     CASE
@@ -21,198 +14,27 @@ class DailyDashboardController < ApplicationController
   def index
     if params[:start_date].blank? && params[:end_date].blank?
       @end_date   = Time.zone.yesterday
-      # 週一自動帶入週五～週日（上班日沒進訂單，週末三天一起看）
       @start_date = Time.zone.today.monday? ? @end_date - 2 : @end_date
     else
       @start_date = parse_date(params[:start_date]) || Time.zone.yesterday
       @end_date   = parse_date(params[:end_date])   || @start_date
       @end_date   = @start_date if @end_date < @start_date
     end
+    @yesterday_insights   = build_yesterday_insights
     @summary              = build_summary(@start_date, @end_date)
     @product_stats        = build_product_stats(@start_date, @end_date)
     @daily_stats          = build_daily_stats(@start_date, @end_date)
     @daily_customer_stats = build_daily_customer_stats(@start_date, @end_date)
-    @alerts               = build_alerts(@start_date, @end_date)
   end
 
   private
 
-  # ── 今日提醒（三區塊）────────────────────────────────────────────────────
+  # ── 昨日訂單洞察 ──────────────────────────────────────────────────────────
 
-  # start_date == end_date → 單日模式（與前一天比）
-  # start_date < end_date  → 區間模式（週一跨週末等，與前一個相同天數比）
-  def build_alerts(start_date, end_date)
-    days_count = (end_date - start_date).to_i + 1
-
-    if days_count == 1
-      # 單日：比較前一天
-      today      = fetch_day_summary(end_date)
-      prev       = fetch_day_summary(end_date - 1)
-      week_stats = fetch_product_week_stats(end_date)
-      weekly_nc  = fetch_weekly_new_customer_avg(end_date)
-      period_label = nil
-    else
-      # 多日（例如週一含五六日）：比較上週同期（往前推 7 天）
-      today      = fetch_range_summary(start_date, end_date)
-      prev_start = start_date - 7
-      prev_end   = end_date - 7
-      prev       = fetch_range_summary(prev_start, prev_end)
-      week_stats = fetch_product_week_stats(end_date)
-      weekly_nc  = fetch_weekly_new_customer_avg(end_date)
-      period_label = "#{start_date.strftime('%-m/%-d')}～#{end_date.strftime('%-m/%-d')}"
-      prev_label_text = "#{prev_start.strftime('%-m/%-d')}～#{prev_end.strftime('%-m/%-d')}"
-    end
-
-    missing_products = (week_stats.keys.to_set - today[:product_names].to_set).sort
-    prev_label_text  = defined?(prev_label_text) ? prev_label_text : nil
-
-    {
-      critical:       build_critical_alerts(today, prev, weekly_nc, period_label, prev_label_text).first(3),
-      highlights:     build_highlight_alerts(today, prev, period_label, prev_label_text).first(3),
-      product_alerts: missing_products.map { |name|
-        h = week_stats[name] || {}
-        { name: name, today: 0, yesterday: h[:yesterday].to_i,
-          week_avg: h[:week_avg] || 0.0, week_total: h[:week_total].to_i }
-      },
-      period_label:   period_label,
-      prev_label:     prev_label_text
-    }
-  end
-
-  def build_critical_alerts(today, prev, weekly_nc = 0, period_label = nil, prev_label_text = nil)
-    alerts = []
-
-    cur_label  = period_label || "昨日"
-    prev_label = prev_label_text || (period_label ? "前期" : "前日")
-
-    # 未達標
-    daily_target = period_label ? DAILY_TARGET * ((today[:days] || 1)) : DAILY_TARGET
-    if today[:total] < daily_target
-      pct_change = prev[:total] > 0 ? ((today[:total] - prev[:total]) / prev[:total].to_f * 100).round : nil
-      vs_label   = pct_change ? arrow_pct(pct_change) : "—"
-      alerts << {
-        title: "#{cur_label}營收未達標",
-        lines: [
-          { label: cur_label,   value: "NT$#{fmt(today[:total])}" },
-          { label: "目標",      value: "NT$#{fmt(daily_target)}" },
-          { label: "較#{prev_label}", value: vs_label, down: pct_change&.<(0) }
-        ]
-      }
-    end
-
-    # 新客人數不足
-    new_min = period_label ? NEW_CUSTOMER_MIN * (today[:days] || 1) : NEW_CUSTOMER_MIN
-    if today[:new_customers] < new_min
-      title = today[:new_customers] == 0 ? "#{cur_label}沒有新客" : "#{cur_label}新客只有 #{today[:new_customers]} 人"
-      alerts << {
-        title: title,
-        lines: [
-          { label: cur_label,        value: "#{today[:new_customers]} 人" },
-          { label: prev_label,       value: "#{prev[:new_customers]} 人" },
-          { label: "近 7 日平均", value: "#{weekly_nc} 人" }
-        ]
-      }
-    end
-
-    # 達標但大幅下滑
-    if today[:total] >= daily_target && prev[:total] > 0
-      pct = ((today[:total] - prev[:total]) / prev[:total].to_f * 100).round
-      if pct <= -REVENUE_DROP_PCT
-        alerts << {
-          title: "#{cur_label}營收較#{prev_label}大幅下降",
-          lines: [
-            { label: cur_label,   value: "NT$#{fmt(today[:total])}" },
-            { label: prev_label,  value: "NT$#{fmt(prev[:total])}" },
-            { label: "變化",      value: arrow_pct(pct), down: true }
-          ]
-        }
-      end
-    end
-
-    alerts
-  end
-
-  def build_highlight_alerts(today, prev, period_label = nil, prev_label_text = nil)
-    alerts = []
-
-    cur_label  = period_label || "昨日"
-    prev_label = prev_label_text || (period_label ? "前期" : "前日")
-    hi_target  = period_label ? HIGH_REVENUE_TARGET * (today[:days] || 1) : HIGH_REVENUE_TARGET
-
-    # 高營收
-    if today[:total] >= hi_target
-      pct = prev[:total] > 0 ? ((today[:total] - prev[:total]) / prev[:total].to_f * 100).round : nil
-      alerts << {
-        title: "#{cur_label}高營收達成",
-        lines: [
-          { label: "#{cur_label}營收", value: "NT$#{fmt(today[:total])}", up: true },
-          { label: "較#{prev_label}",  value: pct ? arrow_pct(pct) : "—", up: pct&.>(0), down: pct&.<(0) }
-        ]
-      }
-    elsif today[:total] >= DAILY_TARGET && prev[:total] > 0
-      pct = ((today[:total] - prev[:total]) / prev[:total].to_f * 100).round
-      if pct >= REVENUE_DROP_PCT
-        alerts << {
-          title: "#{cur_label}營收顯著成長",
-          lines: [
-            { label: cur_label,          value: "NT$#{fmt(today[:total])}", up: true },
-            { label: "較#{prev_label}",  value: arrow_pct(pct), up: true }
-          ]
-        }
-      end
-    end
-
-    # Top 1 商品（訂單數優先，金額為副）
-    if today[:top_product_detail]
-      tp    = today[:top_product_detail]
-      share = today[:total] > 0 ? (tp[:amount] / today[:total] * 100).round : 0
-      alerts << {
-        title:        "#{cur_label} Top1 商品",
-        kind:         :top_product,
-        product_name: tp[:name],
-        lines: [
-          { label: "訂單數",          value: "#{tp[:count]} 單" },
-          { label: "營業額",          value: "NT$#{fmt(tp[:amount])}" },
-          { label: "佔#{cur_label}營收", value: "#{share}%" }
-        ]
-      }
-    end
-
-    # 最高貢獻卡別（佔整體 >= TIER_HIGHLIGHT_PCT%）
-    if today[:total] > 0
-      top_tier = today[:tiers].select { |t| t[:amount] > 0 }.max_by { |t| t[:amount] }
-      if top_tier
-        pct_total = (top_tier[:amount] / today[:total] * 100).round
-        if pct_total >= TIER_HIGHLIGHT_PCT
-          old_total = today[:old_total]
-          pct_old   = old_total > 0 ? (top_tier[:amount] / old_total * 100).round : pct_total
-          prev_tier = prev[:tiers].find { |t| t[:label] == top_tier[:label] }
-          vs_prev   = if prev[:total] > 0 && prev_tier && prev_tier[:amount] > 0
-            ((top_tier[:amount] - prev_tier[:amount]) / prev_tier[:amount].to_f * 100).round
-          end
-          alerts << {
-            title: "#{cur_label}最高貢獻會員卡",
-            lines: [
-              { label: "卡別",            value: top_tier[:label] },
-              { label: "營收",            value: "NT$#{fmt(top_tier[:amount])}" },
-              { label: "佔舊客營收",      value: "#{pct_old}%" },
-              { label: "較#{prev_label}", value: vs_prev ? arrow_pct(vs_prev) : "—",
-                up: vs_prev&.>(0), down: vs_prev&.<(0) }
-            ]
-          }
-        end
-      end
-    end
-
-    alerts
-  end
-
-  # ── 查詢輔助 ──────────────────────────────────────────────────────────────
-
-  def fetch_range_summary(start_date, end_date)
-    rs = start_date.beginning_of_day
-    re = end_date.end_of_day
-    days = (end_date - start_date).to_i + 1
+  def build_yesterday_insights
+    yesterday = Time.zone.yesterday
+    rs = yesterday.beginning_of_day
+    re = yesterday.end_of_day
 
     raw = ShoplineOrder.from("shopline_orders o")
       .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
@@ -220,168 +42,130 @@ class DailyDashboardController < ApplicationController
         "o.order_number",
         "MAX(COALESCE(sc.email, o.email)) AS email_val",
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
-        "#{ORDER_TOTAL_SQL} AS order_total",
-        "ARRAY_AGG(DISTINCT o.product_name) FILTER (WHERE o.product_name IS NOT NULL) AS product_names_arr"
+        "MAX(sc.birthdate) AS birthdate_val",
+        "#{ORDER_TOTAL_SQL} AS order_total"
       )
       .where("o.payment_status = '已付款'")
       .where("o.order_date >= ? AND o.order_date <= ?", rs, re)
       .group("o.order_number")
       .to_a
 
+    return nil if raw.empty?
+
+    total_revenue = raw.sum { |o| o.order_total.to_f }
+
     emails = raw.map(&:email_val).compact.reject(&:blank?).uniq
     prior_emails = emails.any? ? ShoplineOrder.where(email: emails)
       .where("order_date < ?", rs)
       .distinct.pluck(:email).to_set : Set.new
 
-    new_rows  = raw.select { |o| o.email_val.blank? || !prior_emails.include?(o.email_val) }
-    old_rows  = raw - new_rows
-    total     = raw.sum { |o| o.order_total.to_f }
-    old_total = old_rows.sum { |o| o.order_total.to_f }
-
-    tiers = TIERS.map do |tier|
-      matched = old_rows.select { |o| o.membership_level_col == tier }
-      { label: tier, amount: matched.sum { |o| o.order_total.to_f } }
-    end
-
-    product_names = raw.flat_map { |o| Array(o.product_names_arr).compact.map(&:strip) }
-                       .reject(&:blank?).uniq
-
-    product_revenues = ShoplineOrder.where(payment_status: "已付款")
+    # A. 昨日主力商品 Top 5（依銷售數量排序）
+    product_rows = ShoplineOrder
+      .where(payment_status: "已付款")
       .where("order_date >= ? AND order_date <= ?", rs, re)
       .where.not(product_name: [nil, ""])
-      .select("product_name, COUNT(DISTINCT order_number) AS cnt, SUM(COALESCE(checkout_amount, 0)) AS revenue")
-      .group(:product_name)
-      .map { |r| { name: r.product_name.to_s.strip, count: r.cnt.to_i, amount: r.revenue.to_f } }
-      .sort_by { |r| [-r[:count], -r[:amount]] }
-
-    {
-      order_count:        raw.size,
-      total:              total,
-      old_total:          old_total,
-      new_customers:      new_rows.map { |o| o.email_val.presence }.compact.uniq.size +
-                          new_rows.count { |o| o.email_val.blank? },
-      old_customers:      old_rows.map { |o| o.email_val.presence }.compact.uniq.size,
-      tiers:              tiers,
-      product_names:      product_names,
-      top_product_detail: product_revenues.first,
-      days:               days
-    }
-  end
-
-  def fetch_day_summary(date)
-    rs = date.beginning_of_day
-    re = date.end_of_day
-
-    raw = ShoplineOrder.from("shopline_orders o")
-      .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
       .select(
-        "o.order_number",
-        "MAX(COALESCE(sc.email, o.email)) AS email_val",
-        "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
-        "#{ORDER_TOTAL_SQL} AS order_total",
-        "ARRAY_AGG(DISTINCT o.product_name) FILTER (WHERE o.product_name IS NOT NULL) AS product_names_arr"
+        "product_name",
+        "SUM(COALESCE(quantity, 1)) AS total_qty",
+        "COUNT(DISTINCT order_number) AS order_cnt",
+        "SUM(COALESCE(checkout_amount, 0)) AS revenue"
       )
-      .where("o.payment_status = '已付款'")
-      .where("o.order_date >= ? AND o.order_date <= ?", rs, re)
-      .group("o.order_number")
-      .to_a
-
-    emails = raw.map(&:email_val).compact.reject(&:blank?).uniq
-    prior_emails = emails.any? ? ShoplineOrder.where(email: emails)
-      .where("order_date < ?", rs)
-      .distinct.pluck(:email).to_set : Set.new
-
-    new_rows  = raw.select { |o| o.email_val.blank? || !prior_emails.include?(o.email_val) }
-    old_rows  = raw - new_rows
-    total     = raw.sum { |o| o.order_total.to_f }
-    old_total = old_rows.sum { |o| o.order_total.to_f }
-
-    tiers = TIERS.map do |tier|
-      matched = old_rows.select { |o| o.membership_level_col == tier }
-      { label: tier, amount: matched.sum { |o| o.order_total.to_f } }
-    end
-
-    product_names = raw.flat_map { |o| Array(o.product_names_arr).compact.map(&:strip) }
-                       .reject(&:blank?).uniq
-
-    # 依營業額排行的商品（用 checkout_amount 做 line-item 統計）
-    product_revenues = ShoplineOrder.where(payment_status: "已付款")
-      .where("order_date >= ? AND order_date <= ?", rs, re)
-      .where.not(product_name: [nil, ""])
-      .select("product_name, COUNT(DISTINCT order_number) AS cnt, SUM(COALESCE(checkout_amount, 0)) AS revenue")
       .group(:product_name)
-      .map { |r| { name: r.product_name.to_s.strip, count: r.cnt.to_i, amount: r.revenue.to_f } }
-      .sort_by { |r| [-r[:count], -r[:amount]] }
-
-    {
-      order_count:        raw.size,
-      total:              total,
-      old_total:          old_total,
-      new_customers:      new_rows.map { |o| o.email_val.presence }.compact.uniq.size +
-                          new_rows.count { |o| o.email_val.blank? },
-      old_customers:      old_rows.map { |o| o.email_val.presence }.compact.uniq.size,
-      tiers:              tiers,
-      product_names:      product_names,
-      top_product_detail: product_revenues.first
-    }
-  end
-
-  def fetch_product_week_stats(target_date)
-    window_start = (target_date - MISSING_PRODUCT_DAYS).beginning_of_day
-    window_end   = (target_date - 1).end_of_day
-    return {} if window_end < window_start
-
-    raw = ShoplineOrder.where(payment_status: "已付款")
-      .where("order_date >= ? AND order_date <= ?", window_start, window_end)
-      .where.not(product_name: [nil, ""])
-      .select("product_name, DATE(order_date) AS order_day, COUNT(DISTINCT order_number) AS cnt")
-      .group("product_name, DATE(order_date)")
+      .order("total_qty DESC")
+      .limit(5)
       .to_a
 
-    by_product = raw.group_by { |r| r.product_name.to_s.strip }.reject { |k, _| k.blank? }
-
-    by_product.transform_values do |rows|
-      yesterday_cnt = rows.find { |r| r.order_day.to_date == target_date - 1 }&.cnt.to_i || 0
-      week_total    = rows.sum { |r| r.cnt.to_i }
+    top_products = product_rows.each_with_index.map do |r, i|
       {
-        yesterday:  yesterday_cnt,
-        week_avg:   (week_total / MISSING_PRODUCT_DAYS.to_f).round(1),
-        week_total: week_total
+        rank:        i + 1,
+        name:        r.product_name.to_s.strip,
+        quantity:    r.total_qty.to_i,
+        order_count: r.order_cnt.to_i,
+        amount:      r.revenue.to_f,
+        share:       total_revenue > 0 ? (r.revenue.to_f / total_revenue * 100).round(1) : 0
       }
     end
-  end
 
-  def fetch_weekly_new_customer_avg(target_date)
-    window_start = (target_date - 7).beginning_of_day
-    window_end   = (target_date - 1).end_of_day
+    # B. 昨日主要購買卡別
+    tier_data = Hash.new { |h, k| h[k] = { emails: Set.new, orders: 0, amount: 0.0 } }
 
-    raw = ShoplineOrder.where(payment_status: "已付款")
-      .where("order_date >= ? AND order_date <= ?", window_start, window_end)
-      .select("order_number, MAX(email) AS email, DATE(MAX(order_date)) AS order_day")
-      .group(:order_number)
-      .to_a
-
-    emails = raw.map(&:email).compact.reject(&:blank?).uniq
-    prior_emails = emails.any? ? ShoplineOrder.where(email: emails)
-      .where("order_date < ?", window_start)
-      .distinct.pluck(:email).to_set : Set.new
-
-    by_day = Hash.new { |h, k| h[k] = Set.new }
     raw.each do |o|
-      next if o.email.present? && prior_emails.include?(o.email)
-      by_day[o.order_day.to_date] << (o.email.presence || o.order_number)
+      is_new = o.email_val.blank? || !prior_emails.include?(o.email_val)
+      tier = if is_new
+        "新客"
+      else
+        level = o.membership_level_col.to_s.presence
+        TIERS.include?(level) ? level : "未分級"
+      end
+      tier_data[tier][:emails] << o.email_val if o.email_val.present?
+      tier_data[tier][:orders]  += 1
+      tier_data[tier][:amount]  += o.order_total.to_f
     end
 
-    total = by_day.values.sum { |s| s.size }
-    (total / 7.0).round(1)
+    by_tier = ["新客", *TIERS, "未分級"].filter_map do |tier|
+      b = tier_data[tier]
+      next if b[:orders] == 0
+      {
+        tier:           tier,
+        customer_count: b[:emails].size,
+        order_count:    b[:orders],
+        amount:         b[:amount],
+        avg_order:      (b[:amount] / b[:orders]).round
+      }
+    end.sort_by { |t| -t[:amount] }
+
+    # C. 昨日主要年齡層
+    today_year = Date.today.year
+    age_data = Hash.new { |h, k| h[k] = { emails: Set.new, orders: 0, amount: 0.0 } }
+
+    raw.each do |o|
+      bd_raw = o.birthdate_val
+      bd     = bd_raw ? (Date.parse(bd_raw.to_s) rescue nil) : nil
+      band   = bd ? age_band_for(today_year - bd.year) : "未知"
+      age_data[band][:emails] << o.email_val if o.email_val.present?
+      age_data[band][:orders]  += 1
+      age_data[band][:amount]  += o.order_total.to_f
+    end
+
+    by_age = ["未知", "20以下", "20-29", "30-39", "40-49", "50-59", "60+"].map do |band|
+      b = age_data[band]
+      {
+        band:           band,
+        customer_count: b[:emails].size,
+        order_count:    b[:orders],
+        amount:         b[:amount],
+        avg_order:      b[:orders] > 0 ? (b[:amount] / b[:orders]).round : 0
+      }
+    end
+
+    # 自動摘要
+    top_old_tier = by_tier.reject { |t| t[:tier] == "新客" }.first
+    top_product  = top_products.first
+    top_age      = by_age.reject { |a| a[:band] == "未知" }.max_by { |a| a[:order_count] }
+
+    parts = []
+    parts << "昨日訂單主要來自【#{top_old_tier[:tier]}】"        if top_old_tier
+    parts << "熱賣商品為【#{top_product[:name]}】"              if top_product
+    parts << "主要購買年齡層集中在【#{top_age[:band]}歲】"        if top_age && top_age[:order_count] > 0
+
+    {
+      date:         yesterday,
+      top_products: top_products,
+      by_tier:      by_tier,
+      by_age:       by_age,
+      summary_text: parts.any? ? parts.join("，") + "。" : nil
+    }
   end
 
-  def fmt(n)
-    number_with_delimiter(n.to_i)
-  end
-
-  def arrow_pct(pct)
-    pct >= 0 ? "▲#{pct}%" : "▼#{pct.abs}%"
+  def age_band_for(age)
+    case age
+    when 0..19  then "20以下"
+    when 20..29 then "20-29"
+    when 30..39 then "30-39"
+    when 40..49 then "40-49"
+    when 50..59 then "50-59"
+    else             "60+"
+    end
   end
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -557,19 +341,16 @@ class DailyDashboardController < ApplicationController
 
       new_d = d[:new]
       old_d = d[:old]
-      new_avg = new_d[:orders] > 0 ? (new_d[:amount] / new_d[:orders]) : nil
-      old_avg = old_d[:orders] > 0 ? (old_d[:amount] / old_d[:orders]) : nil
-
       {
         date:          date,
         new_customers: new_d[:emails].size,
         new_orders:    new_d[:orders],
         new_amount:    new_d[:amount],
-        new_avg:       new_avg,
+        new_avg:       new_d[:orders] > 0 ? (new_d[:amount] / new_d[:orders]) : nil,
         old_customers: old_d[:emails].size,
         old_orders:    old_d[:orders],
         old_amount:    old_d[:amount],
-        old_avg:       old_avg
+        old_avg:       old_d[:orders] > 0 ? (old_d[:amount] / old_d[:orders]) : nil
       }
     end
   end
