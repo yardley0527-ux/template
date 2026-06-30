@@ -77,24 +77,24 @@ class HighSpenderFirstPurchaseAnalytics
         Arel.sql("DATE_TRUNC('month', first_date)"),
         Arel.sql("COUNT(*)"),
         Arel.sql("AVG(first_amount)"),
-        Arel.sql("SUM(CASE WHEN purchase_count > 1 THEN 1 ELSE 0 END)"),
+        Arel.sql("SUM(CASE WHEN purchase_count > 1 AND second_date IS NOT NULL AND DATE_TRUNC('month', second_date) = DATE_TRUNC('month', first_date) THEN 1 ELSE 0 END)"),
         Arel.sql("SUM(CASE WHEN purchase_count > 1 AND second_date IS NOT NULL AND second_date <= first_date + INTERVAL '90 days' THEN 1 ELSE 0 END)")
       )
 
-    rows.map do |month_date, total, avg_first_amount, repurchased, repurchased_90d|
-      total           = total.to_i
-      repurchased     = repurchased.to_i
-      repurchased_90d = repurchased_90d.to_i
-      month_end       = month_date.to_date.end_of_month
-      immature_90d    = Date.today < (month_end + 90)
+    rows.map do |month_date, total, avg_first_amount, repurchased_same_month, repurchased_90d|
+      total                = total.to_i
+      repurchased_same_month = repurchased_same_month.to_i
+      repurchased_90d      = repurchased_90d.to_i
+      month_end            = month_date.to_date.end_of_month
+      immature_90d         = Date.today < (month_end + 90)
       {
-        month:               month_date.strftime("%Y-%m"),
-        total:               total,
-        avg_first_amount:    avg_first_amount.to_f.round,
-        repurchase_rate:     total.zero? ? 0 : ((repurchased.to_f / total) * 100).round(1),
-        repurchased_90d:     repurchased_90d,
-        repurchase_rate_90d: (immature_90d || total.zero?) ? nil : ((repurchased_90d.to_f / total) * 100).round(1),
-        immature_90d:        immature_90d
+        month:                      month_date.strftime("%Y-%m"),
+        total:                      total,
+        avg_first_amount:           avg_first_amount.to_f.round,
+        repurchase_rate_same_month: total.zero? ? 0 : ((repurchased_same_month.to_f / total) * 100).round(1),
+        repurchased_90d:            repurchased_90d,
+        repurchase_rate_90d:        (immature_90d || total.zero?) ? nil : ((repurchased_90d.to_f / total) * 100).round(1),
+        immature_90d:               immature_90d
       }
     end.sort_by { |h| h[:month] }.reverse
   end

@@ -272,7 +272,7 @@
                     <th>破萬新客數</th>
                     <th>平均首筆金額</th>
                     <th>90天回購率</th>
-                    <th>曾回購率</th>
+                    <th>當月回購率</th>
                     <th>首購商品分布（Top 4）</th>
                   </tr>
                 </thead>
@@ -296,7 +296,7 @@
                         <% end %>
                       </td>
                       <td>
-                        <span class="fp-badge-neutral"><%= row[:repurchase_rate] %>%</span>
+                        <span class="fp-badge-neutral"><%= row[:repurchase_rate_same_month] %>%</span>
                       </td>
                       <td>
                         <% if series_breakdown.any? %>
