@@ -107,7 +107,7 @@ class DailyDashboardController < ApplicationController
         .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
         .where("o.payment_status = '已付款'")
         .where("o.order_date >= ? AND o.order_date <= ?", rs, re)
-        .where(product_name: top_names)
+        .where("o.product_name IN (?)", top_names)
         .select(
           "o.order_number",
           "o.product_name",
