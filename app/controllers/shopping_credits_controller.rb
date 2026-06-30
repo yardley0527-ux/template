@@ -3,8 +3,6 @@
 class ShoppingCreditsController < ApplicationController
   LEVELS = %w[黑卡 金卡 銀卡 白卡].freeze
   HC_PER_PAGE = 10
-  SERIES_KEYWORDS = %w[穀胱甘肽 代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 維DK鈣].freeze
-
   def index
     base = ShoplineCustomer
       .where("current_shopping_credits > 0")
@@ -53,7 +51,7 @@ class ShoppingCreditsController < ApplicationController
   private
 
   def top_series_sql(emails)
-    series_case = SERIES_KEYWORDS.map { |kw|
+    series_case = CrmProduct.series_labels_for_filter.map { |kw|
       "WHEN product_name LIKE #{ActiveRecord::Base.connection.quote("%#{kw}%")} THEN #{ActiveRecord::Base.connection.quote(kw)}"
     }.join(" ")
 

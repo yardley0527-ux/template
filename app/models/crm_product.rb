@@ -23,6 +23,19 @@ class CrmProduct < ApplicationRecord
     for_analysis.order(:id).pluck(:label)
   end
 
+  # Bridge for controllers that filter against customer_series_loyalties.series or
+  # customer_purchase_summaries.first_series (written by refresh services using legacy
+  # labels). Maps two diverged CrmProduct labels back to the values the DB stores.
+  # TODO: remove after aligning CrmProduct labels + migrating DB series columns.
+  SERIES_FILTER_OVERRIDES = {
+    "B群／全能" => "全能",
+    "膠原飲"   => "膠原蛋白"
+  }.freeze
+
+  def self.series_labels_for_filter
+    series_labels.map { |l| SERIES_FILTER_OVERRIDES.fetch(l, l) }
+  end
+
   # Keys in id order.
   def self.all_keys
     for_analysis.order(:id).pluck(:key)
