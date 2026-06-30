@@ -28,6 +28,8 @@
         <th>首購日期</th>
         <th>首購金額</th>
         <th>距首購</th>
+        <th>回購日期</th>
+        <th>回購系列</th>
         <th>LINE 綁定</th>
         <th>催單產品</th>
       </tr>
@@ -68,6 +70,24 @@
               <% if status[:cycle] %>
                 <div class="hs-cycle-hint">週期 <%= status[:cycle] %> 天</div>
               <% end %>
+            <% else %>
+              <span class="fp-muted">—</span>
+            <% end %>
+          </td>
+          <td>
+            <% if c.second_date %>
+              <span class="fp-muted"><%= c.second_date.to_date.strftime("%Y-%m-%d") %></span>
+              <% if c.first_date %>
+                <div class="hs-cycle-hint"><%= (c.second_date.to_date - c.first_date.to_date).to_i %> 天後</div>
+              <% end %>
+            <% else %>
+              <span class="fp-muted">—</span>
+            <% end %>
+          </td>
+          <td>
+            <% if c.second_series.present? %>
+              <span class="hs-series-dot" style="background:<%= hs_series_color(c.second_series) %>"></span>
+              <%= c.second_series %>
             <% else %>
               <span class="fp-muted">—</span>
             <% end %>
