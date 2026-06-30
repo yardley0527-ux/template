@@ -32,7 +32,7 @@ class DailyOrdersController < ApplicationController
     @health_missing_count = new_rows.count { |r| r.health_profile.blank? && r.health_tags.blank? }
 
     old_rows = @groups.drop(1).flat_map { |_, rows| rows }
-    @old_health_missing_count = old_rows.count { |r| r.health_profile.blank? && r.health_tags.blank? }
+    @old_health_missing_count = old_rows.count { |r| r.order_total.to_f >= 10_000 && r.health_profile.blank? && r.health_tags.blank? }
   end
 
   def toggle_customer_flag
