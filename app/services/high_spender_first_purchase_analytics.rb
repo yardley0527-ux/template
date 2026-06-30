@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class HighSpenderFirstPurchaseAnalytics
+  # True repurchase: second order exists and is on a different calendar day
+  REPURCHASED_SQL = "purchase_count > 1 AND second_date IS NOT NULL AND DATE_TRUNC('day', second_date) != DATE_TRUNC('day', first_date)"
   def initialize(threshold:, year: nil, series: nil, repurchase_only: false)
     @threshold = threshold
     @year = year
@@ -10,7 +12,7 @@ class HighSpenderFirstPurchaseAnalytics
 
   def summary_cards
     total              = filtered_base_scope.count
-    repurchased        = filtered_base_scope.where("purchase_count > 1").count
+    repurchased        = filtered_base_scope.where(REPURCHASED_SQL).count
     silent             = total - repurchased
     avg_first_amount   = filtered_base_scope.average(:first_amount).to_f.round
     avg_purchase_count = filtered_base_scope.average(:purchase_count).to_f.round(2)
@@ -46,7 +48,7 @@ class HighSpenderFirstPurchaseAnalytics
       .pluck(
         Arel.sql("EXTRACT(YEAR FROM first_date)::int"),
         Arel.sql("COUNT(*)"),
-        Arel.sql("SUM(CASE WHEN purchase_count > 1 THEN 1 ELSE 0 END)")
+        Arel.sql("SUM(CASE WHEN #{REPURCHASED_SQL} THEN 1 ELSE 0 END)")
       )
 
     rows.map do |year, total, repurchased|
@@ -69,7 +71,7 @@ class HighSpenderFirstPurchaseAnalytics
         Arel.sql("DATE_TRUNC('month', first_date)"),
         Arel.sql("COUNT(*)"),
         Arel.sql("AVG(first_amount)"),
-        Arel.sql("SUM(CASE WHEN purchase_count > 1 AND second_date IS NOT NULL AND DATE_TRUNC('month', second_date) = DATE_TRUNC('month', first_date) THEN 1 ELSE 0 END)")
+        Arel.sql("SUM(CASE WHEN #{REPURCHASED_SQL} AND DATE_TRUNC('month', second_date) = DATE_TRUNC('month', first_date) THEN 1 ELSE 0 END)")
       )
 
     rows.map do |month_date, total, avg_first_amount, repurchased_same_month|
@@ -111,7 +113,7 @@ class HighSpenderFirstPurchaseAnalytics
         .pluck(
           :first_series,
           Arel.sql("COUNT(*)"),
-          Arel.sql("SUM(CASE WHEN purchase_count > 1 THEN 1 ELSE 0 END)"),
+          Arel.sql("SUM(CASE WHEN #{REPURCHASED_SQL} THEN 1 ELSE 0 END)"),
           Arel.sql("AVG(first_amount)")
         )
 
@@ -131,7 +133,7 @@ class HighSpenderFirstPurchaseAnalytics
 
   def second_purchase_map
     base = filtered_base_scope
-      .where("purchase_count > 1")
+      .where(REPURCHASED_SQL)
       .where.not(first_series: [nil, ""], second_series: [nil, ""])
 
     rows = base.group(:first_series, :second_series).count
@@ -203,7 +205,7 @@ class HighSpenderFirstPurchaseAnalytics
       scope = scope.where(first_date: year_start...year_start.next_year)
     end
     scope = scope.where(first_series: @series) if @series.present?
-    scope = scope.where("purchase_count > 1") if @repurchase_only
+    scope = scope.where(REPURCHASED_SQL) if @repurchase_only
 
     scope
   end

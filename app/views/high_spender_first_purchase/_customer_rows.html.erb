@@ -75,12 +75,9 @@
             <% end %>
           </td>
           <td>
-            <% if c.second_date %>
+            <% if c.second_date.present? && c.second_date.to_date != c.first_date.to_date %>
               <span class="fp-muted"><%= c.second_date.to_date.strftime("%Y-%m-%d") %></span>
-              <% if c.first_date %>
-                <% days_to_second = (c.second_date.to_date - c.first_date.to_date).to_i %>
-                <div class="hs-cycle-hint"><%= days_to_second == 0 ? "同日" : "#{days_to_second} 天後" %></div>
-              <% end %>
+              <div class="hs-cycle-hint"><%= (c.second_date.to_date - c.first_date.to_date).to_i %> 天後</div>
             <% else %>
               <span class="fp-muted">—</span>
             <% end %>
