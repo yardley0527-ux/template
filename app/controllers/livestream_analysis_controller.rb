@@ -1,15 +1,7 @@
 # frozen_string_literal: true
 
 class LivestreamAnalysisController < ApplicationController
-  MEMBERSHIP_RANK = {
-    "黑卡"    => 5,
-    "金卡"    => 4,
-    "銀卡"    => 3,
-    "白卡"    => 2,
-    "一般會員" => 1
-  }.freeze
-
-  ALL_LEVELS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
+  include MembershipLevels
 
   # 2024 場次（8/9 ~ 12/23，部分無營業額資料）
   EVENTS_2024 = [

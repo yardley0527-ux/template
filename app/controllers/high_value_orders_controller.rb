@@ -2,8 +2,6 @@ class HighValueOrdersController < ApplicationController
   THRESHOLD      = 10_000
   LEVELS         = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
   ALL_TABS       = (LEVELS + ['新客']).freeze
-  SERIES_OPTIONS = %w[代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣 面膜].freeze
-
   # total_amount 是整張訂單的付款總額（同一訂單每個商品行都重複同一值，需取 MAX）；
   # checkout_amount 是逐行商品金額，只有在 total_amount 缺失時才需要 SUM 全部商品行回推訂單總額。
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
@@ -14,6 +12,7 @@ class HighValueOrdersController < ApplicationController
   SQL
 
   def index
+    @series_options = CrmProduct.series_labels_for_filter
     @period         = params[:period].presence || 'month'
     @level          = params[:level].presence || LEVELS.first
     @levels         = ALL_TABS

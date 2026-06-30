@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 class ProductStrategyController < ApplicationController
-  SERIES_OPTIONS = %w[
-    代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣
-  ].freeze
-
   def index
     @report = Rails.cache.fetch("product_strategy:report:v2", expires_in: 1.hour) do
       build_report
@@ -12,7 +8,7 @@ class ProductStrategyController < ApplicationController
 
     @overview = {
       total_customers:  @report.sum { |r| r[:total] },
-      avg_return_rate:  (@report.sum { |r| r[:return_rate] } / @report.size).round(1),
+      avg_return_rate:  @report.any? ? (@report.sum { |r| r[:return_rate] }.to_f / @report.size).round(1) : 0.0,
       total_silent:     @report.sum { |r| r[:silent].to_i + r[:watching].to_i },
       total_iron:       @report.sum { |r| r[:iron] },
       best_retention:   @report.max_by { |r| r[:return_rate] }
@@ -74,7 +70,7 @@ class ProductStrategyController < ApplicationController
              .first(3)
       end
 
-    SERIES_OPTIONS.map do |series|
+    CrmProduct.series_labels_for_filter.map do |series|
       stat    = series_stats[series] || {}
       loyalty = loyalty_stats[series] || { loyal: 0, iron: 0, avg_count: 0 }
       second  = second_purchase[series] || []

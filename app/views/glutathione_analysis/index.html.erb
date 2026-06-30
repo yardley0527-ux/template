@@ -342,7 +342,7 @@
                     <td class="text-center"><%= r[:bottles] %> 瓶</td>
                     <td>NT$<%= number_with_delimiter(r[:order_amount].to_i) %></td>
                     <td class="fw-semibold">NT$<%= number_with_delimiter(r[:total_spend].to_i) %></td>
-                    <td class="text-center text-muted"><%= r[:glut_count] %> 次</td>
+                    <td class="text-center text-muted"><%= r[:omni_count] %> 次</td>
                     <td>
                       <% if c.mobile_phone.present? %>
                         <a href="tel:<%= c.mobile_phone %>" class="text-decoration-none text-muted small">

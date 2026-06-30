@@ -1,9 +1,8 @@
 class ProbioticAnalysisController < ApplicationController
   include ProductLivestreamAnalysis
 
-  self.product_sql        = "product_name LIKE '%益生菌%'"
+  self.product_key        = "probiotic"    # Epic C Phase 2: Registry-driven (+8 rows vs LIKE = typo spelling now included ✓)
   self.product_label      = "益生菌"
-  self.product_regex      = /益生菌(\d+)/
   PROBIOTIC_EVENT_DATES = [Date.new(2026, 2, 6), Date.new(2026, 3, 20)].freeze
 
   self.product_event_list = LivestreamAnalysisController::ALL_EVENTS
@@ -90,7 +89,7 @@ class ProbioticAnalysisController < ApplicationController
 
     @sku_by_event = all_events.map do |ev|
       range = ev[:date].beginning_of_day..(ev[:date] + 3).end_of_day
-      rows  = ShoplineOrder.where(product_sql).where(order_date: range)
+      rows  = product_orders.where(order_date: range)
                 .where.not(email: [nil, ""])
                 .pluck(:product_name, :email, :checkout_amount, :total_amount)
 
@@ -131,41 +130,27 @@ class ProbioticAnalysisController < ApplicationController
   def build_all_buyers_expiring
     today = Date.today
 
-    last_orders_raw = ShoplineOrder
-      .where(product_sql)
+    all_product_emails = product_orders
       .where.not(email: [nil, ""])
-      .order(:email, order_date: :desc)
-      .pluck(:email, :product_name, :order_date)
+      .distinct.pluck(:email)
 
-    last_by_email = {}
-    last_orders_raw.each { |e, p, d| last_by_email[e] ||= { product_name: p, order_date: d } }
+    snapshots = CustomerProductSnapshotService.call(
+      emails:         all_product_emails,
+      product_key:    product_key,
+      reference_date: today
+    )
 
     customers = ShoplineCustomer
-      .where(email: last_by_email.keys)
+      .where(email: snapshots.keys)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
     @all_expiring_soon = customers.filter_map do |c|
-      last      = last_by_email[c.email]
-      next unless last
-      bottles   = extract_bottles(last[:product_name])
-      last_date = last[:order_date].to_date
-      days_left = (bottles * DAYS_PER_BOTTLE) - (today - last_date).to_i
-      next unless days_left >= -7 && days_left <= 30
-      { customer: c, days_left: days_left, last_product: last[:product_name],
-        last_date: last_date, bottles: bottles }
+      snapshot = snapshots[c.email]
+      next unless snapshot
+      next unless snapshot.days_until_return >= -7 && snapshot.days_until_return <= 30
+      { customer: c, days_left: snapshot.days_until_return, last_product: snapshot.last_product_name,
+        last_date: snapshot.last_order_date, bottles: snapshot.bottles }
     end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
   end
 
-  def extract_bottles(product_name)
-    return 1 if product_name.nil?
-    m = product_name.match(product_regex)
-    base = if m
-      m[1].to_i
-    elsif (m2 = product_name.match(/[（(](\d+)[瓶盒]/))
-      m2[1].to_i
-    else
-      1
-    end
-    base + (product_name.match(/送(\d+)/)&.[](1).to_i || 0)
-  end
 end

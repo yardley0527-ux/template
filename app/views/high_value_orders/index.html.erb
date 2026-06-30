@@ -29,7 +29,7 @@ end %>
         <label class="text-muted small mb-0" style="white-space:nowrap;">系列</label>
         <select name="series_filter" class="form-control form-control-sm" style="width:auto;">
           <option value="">全部系列</option>
-          <% HighValueOrdersController::SERIES_OPTIONS.each do |s| %>
+          <% @series_options.each do |s| %>
             <option value="<%= s %>" <%= @series_filter == s ? 'selected' : '' %>><%= s %></option>
           <% end %>
         </select>
@@ -153,7 +153,7 @@ end %>
                     data-url="<%= upsert_order_gift_record_path %>"
                     style="font-size:0.8rem; flex:1; min-width:0;">
                     <option value="">— 選擇贈品 —</option>
-                    <% HighValueOrdersController::SERIES_OPTIONS.each do |s| %>
+                    <% @series_options.each do |s| %>
                       <option value="<%= s %>" <%= gift&.gift_note == s ? 'selected' : '' %>><%= s %></option>
                     <% end %>
                   </select>
