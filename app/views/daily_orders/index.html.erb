@@ -46,6 +46,40 @@ end %>
   </li>
 </ul>
 
+<% if @tab == "new" %>
+  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-user-plus" style="color:#6c757d; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">今日新客</div>
+        <div class="fw-bold" style="font-size:1rem;"><%= @new_count %> 人</div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-comment-lines" style="color:#28a745; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">已綁定 LINE</div>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span id="line-bound-count"><%= @line_bound_count %></span> / <%= @new_count %> 人
+          <% unbound = @new_count - @line_bound_count %>
+          <span id="line-unbound-badge" class="<%= unbound > 0 ? 'text-danger' : 'text-success' %>" style="font-size:0.78rem;">
+            <%= unbound > 0 ? "（還有 #{unbound} 人未綁）" : "✓ 全員已綁" %>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="fw-bold <%= @health_missing_count > 0 ? 'text-danger' : 'text-success' %>" style="font-size:1rem;">
+          <%= @health_missing_count > 0 ? "#{@health_missing_count} 人未填" : "✓ 全員已填" %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
 <% visible_groups = @tab == "new" ? @groups.first(1) : @groups.drop(1) %>
 
 <% visible_groups.each do |label, rows| %>
@@ -154,6 +188,25 @@ end %>
   var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
   var URL = "<%= toggle_daily_orders_customer_flag_path %>";
 
+  function updateLineSummary() {
+    var total = <%= @new_count %>;
+    var bound = document.querySelectorAll('.customer-flag-checkbox[data-field="line_bound"]:checked').length;
+    var unbound = total - bound;
+    var countEl = document.getElementById('line-bound-count');
+    var badgeEl = document.getElementById('line-unbound-badge');
+    if (!countEl) return;
+    countEl.textContent = bound;
+    if (badgeEl) {
+      if (unbound > 0) {
+        badgeEl.textContent = '（還有 ' + unbound + ' 人未綁）';
+        badgeEl.className = 'text-danger';
+      } else {
+        badgeEl.textContent = '✓ 全員已綁';
+        badgeEl.className = 'text-success';
+      }
+    }
+  }
+
   document.querySelectorAll('.customer-flag-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
       fetch(URL, {
@@ -162,6 +215,7 @@ end %>
         body: JSON.stringify({ customer_id: cb.dataset.customerId, field: cb.dataset.field, value: cb.checked })
       }).then(function(r) {
         if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
+        if (cb.dataset.field === 'line_bound') updateLineSummary();
       });
     });
   });

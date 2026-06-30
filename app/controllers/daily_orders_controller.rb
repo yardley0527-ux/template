@@ -26,6 +26,10 @@ class DailyOrdersController < ApplicationController
     @groups = build_groups(@start_date, @end_date)
     @new_count = @groups.first.last.size
     @old_count = @groups.drop(1).sum { |_, rows| rows.size }
+
+    new_rows = @groups.first.last
+    @line_bound_count   = new_rows.count(&:line_bound)
+    @health_missing_count = new_rows.count { |r| r.health_profile.blank? && r.health_tags.blank? }
   end
 
   def toggle_customer_flag
