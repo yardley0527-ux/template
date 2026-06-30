@@ -47,43 +47,58 @@ class CustomerPurchaseSummaryRefreshService
     SQL
 
     sql = <<~SQL
-      WITH normalized_orders AS (
+      WITH valid_order_rows AS (
+        -- Deduplicate identical rows from CSV import artifacts (early 2024 data has
+        -- duplicate line-item rows per order, causing SUM(checkout_amount) to double).
+        -- total_amount is an order-level total repeated on only some rows; MAX() is correct.
+        SELECT DISTINCT
+          order_number,
+          email,
+          order_date,
+          payment_status,
+          total_amount,
+          checkout_amount,
+          product_name
+        FROM shopline_orders
+        WHERE order_number IS NOT NULL
+          AND TRIM(order_number) <> ''
+          AND email IS NOT NULL
+          AND TRIM(email) <> ''
+          AND order_date IS NOT NULL
+          AND payment_status = '已付款'
+      ),
+
+      normalized_orders AS (
         SELECT
           COALESCE(
             NULLIF(TRIM(sc.mobile_phone), ''),
-            LOWER(TRIM(so.email))
+            LOWER(TRIM(vor.email))
           ) AS identity_key,
           NULLIF(TRIM(sc.mobile_phone), '') AS mobile_phone,
-          LOWER(TRIM(MIN(so.email)))        AS email,
-          so.order_number,
-          MIN(so.order_date) AS order_date,
+          LOWER(TRIM(MIN(vor.email)))        AS email,
+          vor.order_number,
+          MIN(vor.order_date) AS order_date,
           CASE
-            WHEN MAX(NULLIF(so.total_amount, 0)) IS NOT NULL
-            THEN MAX(NULLIF(so.total_amount, 0))
+            WHEN MAX(NULLIF(vor.total_amount, 0)) IS NOT NULL
+            THEN MAX(NULLIF(vor.total_amount, 0))
 
-            WHEN NULLIF(SUM(COALESCE(so.checkout_amount, 0)), 0) IS NOT NULL
-            THEN SUM(COALESCE(so.checkout_amount, 0))
+            WHEN NULLIF(SUM(COALESCE(vor.checkout_amount, 0)), 0) IS NOT NULL
+            THEN SUM(COALESCE(vor.checkout_amount, 0))
 
             ELSE 0
           END AS order_amount
-        FROM shopline_orders so
+        FROM valid_order_rows vor
         LEFT JOIN shopline_customers sc
-          ON LOWER(TRIM(sc.email)) = LOWER(TRIM(so.email))
-        AND sc.mobile_phone IS NOT NULL
-        AND TRIM(sc.mobile_phone) <> ''
-        WHERE so.order_number IS NOT NULL
-          AND TRIM(so.order_number) <> ''
-          AND so.email IS NOT NULL
-          AND TRIM(so.email) <> ''
-          AND so.order_date IS NOT NULL
-          AND so.payment_status = '已付款'
+          ON LOWER(TRIM(sc.email)) = LOWER(TRIM(vor.email))
+          AND sc.mobile_phone IS NOT NULL
+          AND TRIM(sc.mobile_phone) <> ''
         GROUP BY
           COALESCE(
             NULLIF(TRIM(sc.mobile_phone), ''),
-            LOWER(TRIM(so.email))
+            LOWER(TRIM(vor.email))
           ),
           NULLIF(TRIM(sc.mobile_phone), ''),
-          so.order_number
+          vor.order_number
       ),
 
       ranked_orders AS (
