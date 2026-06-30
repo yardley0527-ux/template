@@ -142,7 +142,7 @@ end %>
         <tbody>
           <% rows.each do |row| %>
             <% url = daily_orders_ig_link(row.ig_account) %>
-            <% health_filled = row.health_profile.present? || row.health_tags.present? %>
+            <% health_filled = (row.health_profile.present? || row.health_tags.present?) || (!is_new && row.order_total.to_f < 10_000) %>
             <tr data-health-filled="<%= health_filled %>">
               <td class="ps-3 text-muted small"><%= row.order_number %></td>
               <td class="fw-semibold"><%= row.customer_name %></td>
