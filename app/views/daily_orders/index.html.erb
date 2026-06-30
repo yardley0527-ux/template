@@ -186,7 +186,15 @@ end %>
 <script>
 (function() {
   var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-  var URL = "<%= toggle_daily_orders_customer_flag_path %>";
+  var TOGGLE_URL = "<%= toggle_daily_orders_customer_flag_path %>";
+  var filterActive = false;
+
+  function applyFilter() {
+    document.querySelectorAll('.customer-flag-checkbox[data-field="line_bound"]').forEach(function(cb) {
+      var row = cb.closest('tr');
+      if (row) row.style.display = (filterActive && cb.checked) ? 'none' : '';
+    });
+  }
 
   function updateLineSummary() {
     var total = <%= @new_count %>;
@@ -198,24 +206,44 @@ end %>
     countEl.textContent = bound;
     if (badgeEl) {
       if (unbound > 0) {
-        badgeEl.textContent = '（還有 ' + unbound + ' 人未綁）';
+        badgeEl.textContent = filterActive ? '篩選中：' + unbound + ' 人未綁 ✕' : '（還有 ' + unbound + ' 人未綁）';
         badgeEl.className = 'text-danger';
+        badgeEl.style.cursor = 'pointer';
+        badgeEl.style.textDecoration = filterActive ? 'underline' : '';
       } else {
+        if (filterActive) { filterActive = false; applyFilter(); }
         badgeEl.textContent = '✓ 全員已綁';
         badgeEl.className = 'text-success';
+        badgeEl.style.cursor = 'default';
+        badgeEl.style.textDecoration = '';
       }
     }
   }
 
+  var badge = document.getElementById('line-unbound-badge');
+  if (badge) {
+    badge.style.cursor = 'pointer';
+    badge.addEventListener('click', function() {
+      var unbound = <%= @new_count %> - document.querySelectorAll('.customer-flag-checkbox[data-field="line_bound"]:checked').length;
+      if (unbound === 0) return;
+      filterActive = !filterActive;
+      applyFilter();
+      updateLineSummary();
+    });
+  }
+
   document.querySelectorAll('.customer-flag-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
-      fetch(URL, {
+      fetch(TOGGLE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
         body: JSON.stringify({ customer_id: cb.dataset.customerId, field: cb.dataset.field, value: cb.checked })
       }).then(function(r) {
         if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
-        if (cb.dataset.field === 'line_bound') updateLineSummary();
+        if (cb.dataset.field === 'line_bound') {
+          if (filterActive && cb.checked) cb.closest('tr').style.display = 'none';
+          updateLineSummary();
+        }
       });
     });
   });
