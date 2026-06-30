@@ -1,6 +1,6 @@
 class DailyOrdersController < ApplicationController
   TIERS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig].freeze
+  TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig health_inquiry_declined].freeze
   PURCHASE_SUMMARY_FIELDS = %w[line_bound].freeze
 
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
@@ -14,16 +14,25 @@ class DailyOrdersController < ApplicationController
     :order_number, :customer_name, :ig_account, :email, :order_total, :order_date,
     :is_new_customer, :membership_level, :products, :health_profile, :health_tags,
     :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
-    :line_bound,
+    :line_bound, :total_quantity, :health_inquiry_declined,
     keyword_init: true
   )
 
   def index
-    @date = parse_date(params[:date]) || Date.yesterday
+    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
+    @end_date   = parse_date(params[:end_date]) || @start_date
+    @end_date   = @start_date if @end_date < @start_date
     @tab = %w[new old].include?(params[:tab]) ? params[:tab] : "new"
-    @groups = build_groups(@date)
+    @groups = build_groups(@start_date, @end_date)
     @new_count = @groups.first.last.size
     @old_count = @groups.drop(1).sum { |_, rows| rows.size }
+
+    new_rows = @groups.first.last
+    @line_bound_count     = new_rows.count(&:line_bound)
+    @health_missing_count = new_rows.count { |r| r.health_profile.blank? && r.health_tags.blank? }
+
+    old_rows = @groups.drop(1).flat_map { |_, rows| rows }
+    @old_health_missing_count = old_rows.count { |r| r.order_total.to_f >= 10_000 && r.health_profile.blank? && r.health_tags.blank? }
   end
 
   def toggle_customer_flag
@@ -46,8 +55,10 @@ class DailyOrdersController < ApplicationController
   end
 
   def export
-    @date = parse_date(params[:date]) || Date.yesterday
-    groups = build_groups(@date)
+    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
+    @end_date   = parse_date(params[:end_date]) || @start_date
+    @end_date   = @start_date if @end_date < @start_date
+    groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
       csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "是否購買過同產品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG", "綁定 LINE"]
@@ -70,12 +81,27 @@ class DailyOrdersController < ApplicationController
       end
     end
 
+    filename = @start_date == @end_date ? "每日訂單報表_#{@start_date}.csv" : "訂單報表_#{@start_date}_#{@end_date}.csv"
     send_data "\xEF\xBB\xBF" + csv_data,
-      filename: "每日訂單報表_#{@date}.csv",
+      filename: filename,
       type: "text/csv; charset=utf-8"
   end
 
   private
+
+  def product_series(name)
+    name.to_s.match(/\A([^\d]+)/)&.captures&.first&.strip.presence || name.to_s
+  end
+
+  def build_prior_series_dates(emails, before)
+    raw = ShoplineOrder.where(email: emails).where("order_date < ?", before).pluck(:email, :product_name, :order_date)
+    result = {}
+    raw.each do |email, product_name, order_date|
+      key = [email, product_series(product_name)]
+      result[key] = order_date if result[key].nil? || order_date < result[key]
+    end
+    result
+  end
 
   def parse_date(value)
     Date.parse(value) if value.present?
@@ -88,9 +114,9 @@ class DailyOrdersController < ApplicationController
   end
   helper_method :same_product_text
 
-  def build_groups(date)
-    day_start = date.beginning_of_day
-    day_end   = date.end_of_day
+  def build_groups(start_date, end_date)
+    range_start = start_date.beginning_of_day
+    range_end   = end_date.end_of_day
 
     raw_orders = ShoplineOrder.from("shopline_orders o")
       .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
@@ -102,20 +128,20 @@ class DailyOrdersController < ApplicationController
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
         "MAX(o.order_date) AS ord_date",
         "#{ORDER_TOTAL_SQL} AS order_total",
-        "ARRAY_AGG(DISTINCT o.product_name) AS product_names_arr"
+        "ARRAY_AGG(DISTINCT o.product_name) AS product_names_arr",
+        "SUM(o.quantity) AS total_quantity"
       )
       .where("o.payment_status = '已付款'")
-      .where("o.order_date >= ? AND o.order_date < ?", day_start, day_end)
+      .where("o.order_date >= ? AND o.order_date <= ?", range_start, range_end)
       .group("o.order_number")
       .order(Arel.sql("MAX(o.order_date) ASC"))
       .to_a
 
     emails = raw_orders.map(&:email_val).compact.uniq
 
-    prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", day_start).distinct.pluck(:email).to_set
+    prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
 
-    prior_product_dates = ShoplineOrder.where(email: emails).where("order_date < ?", day_start)
-      .group(:email, :product_name).minimum(:order_date)
+    prior_series_dates = build_prior_series_dates(emails, range_start)
 
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
     summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
@@ -126,7 +152,7 @@ class DailyOrdersController < ApplicationController
       summary  = summaries_by_email[o.email_val]
 
       products = Array(o.product_names_arr).compact.map do |name|
-        prior_date = prior_product_dates[[o.email_val, name]]
+        prior_date = prior_series_dates[[o.email_val, product_series(name)]]
         { name: name, prior_date: prior_date }
       end
 
@@ -145,7 +171,9 @@ class DailyOrdersController < ApplicationController
         follows_chloe_ig: profile&.follows_chloe_ig || false,
         invited_to_follow_product_ig: profile&.invited_to_follow_product_ig || false,
         shopline_customer_id: customer&.id,
-        line_bound: summary&.line_bound || false
+        line_bound: summary&.line_bound || false,
+        total_quantity: o.total_quantity.to_i,
+        health_inquiry_declined: profile&.health_inquiry_declined || false
       )
     end
 
@@ -156,11 +184,13 @@ class DailyOrdersController < ApplicationController
 
     groups = [["新客", new_rows]]
     TIERS.each do |tier|
-      groups << [tier, old_rows.select { |r| r.membership_level == tier }]
+      tier_rows = old_rows.select { |r| r.membership_level == tier }.sort_by { |r| -r.total_quantity }
+      groups << [tier, tier_rows]
     end
-    other = old_rows.reject { |r| TIERS.include?(r.membership_level) }
+    other = old_rows.reject { |r| TIERS.include?(r.membership_level) }.sort_by { |r| -r.total_quantity }
     groups << ["未分級", other] if other.any?
 
     groups
   end
+
 end

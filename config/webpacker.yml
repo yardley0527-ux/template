@@ -8,7 +8,7 @@ development:
   check_yarn_integrity: false
   webpack_compile_output: true
   resolved_paths: []
-  cache_manifest: false
+  cache_manifest: true
   extract_css: false
   static_assets_extensions:
     - .jpg

@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-06-26",
+  "last_updated": "2026-06-30",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -50,7 +50,7 @@
         "type": "VIDEO",
         "ig_post_url": null,
         "ig_embed_url": null,
-        "thumbnail_url": "https://scontent-sea1-1.xx.fbcdn.net/v/t15.5256-10/726900119_3539193146239016_4437701386702021640_n.jpg?_nc_cat=106&ccb=1-7&_nc_ohc=OgYoIBxMol8Q7kNvwEmgXP-&_nc_oc=AdqyYjrHPBZqplz7QwvvFORBjxeodwM338jjo3QdC_9itAhni6DYXTe37tO4KFBqlVc&_nc_zt=23&_nc_ht=scontent-sea1-1.xx&edm=AEZPnVgEAAAA&_nc_gid=lroLwCeI7l_LFMm4KG7A9g&_nc_tpa=Q5bMBQH7_GamrX6z_RanmVIT45qmzHPBUQDXu-8xxKuP0xGBbzqKZ4HDxgnget_m06kwbdJbMzsXTl2blA&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_Af_4P30ZUbPzgvzwaCYwtbGmR_KKwjQwgZ9FjedZA7eJCw&oe=6A43D5A0",
+        "thumbnail_url": "https://scontent-iad3-2.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=kuAhFAz5-_wQ7kNvwHzERar&_nc_oc=AdopkgKgQWEz_8vEqu3sMCu6meyfkTSbI-4WmwPdMwOx2yefqM8_nhwvxcGL1-n8Z1I&_nc_zt=23&_nc_ht=scontent-iad3-2.xx&edm=AEZPnVgEAAAA&_nc_gid=aDaMg_qmgNGMQqkNbG9ryw&_nc_tpa=Q5bMBQEP_EfWwck_50nT2_DfJvj3icnyxrOakJnHrB2MM07uis3goDFpWkNZ15GpG1dVeTDuqE41WRargg&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_AQBCJhAvGJjdRVGS6gpsqbKIrOvACGgKON4GkjMAsTtmAQ&oe=6A48E86A",
         "label": "Chloe 狀態廣告"
       },
       "daily_data": [
@@ -239,6 +239,40 @@
           "video_100": 115,
           "shares": 5,
           "thruplay": 2193,
+          "ig_followers_gained": null
+        },
+        {
+          "date": "2026-06-29",
+          "impressions": 10268,
+          "reach": 10067,
+          "clicks": 687,
+          "ctr": 6.69,
+          "cpm": 130,
+          "spend": 1333,
+          "video_3s": 4229,
+          "video_25": 581,
+          "video_50": 192,
+          "video_75": 125,
+          "video_100": 61,
+          "shares": 3,
+          "thruplay": 1148,
+          "ig_followers_gained": null
+        },
+        {
+          "date": "2026-06-30",
+          "impressions": 11164,
+          "reach": 10587,
+          "clicks": 777,
+          "ctr": 6.96,
+          "cpm": 134,
+          "spend": 1491,
+          "video_3s": 4936,
+          "video_25": 709,
+          "video_50": 261,
+          "video_75": 163,
+          "video_100": 87,
+          "shares": 3,
+          "thruplay": 1437,
           "ig_followers_gained": null
         }
       ]

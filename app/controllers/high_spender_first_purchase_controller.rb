@@ -62,6 +62,17 @@ class HighSpenderFirstPurchaseController < ApplicationController
       )
       .order(Arel.sql("CASE WHEN customer_purchase_summaries.purchase_count >= 2 THEN 1 ELSE 0 END, customer_purchase_summaries.first_date ASC"))
 
+    # Deduplicate by email — same person can have multiple summaries (email key vs phone key)
+    seen_emails = {}
+    @customers = @customers.to_a
+      .sort_by { |c| [-c.purchase_count.to_i, c.email == c.identity_key ? 0 : 1] }
+      .select do |c|
+        key = c.email&.downcase&.strip
+        next true if key.blank?
+        seen_emails.key?(key) ? false : (seen_emails[key] = true)
+      end
+      .sort_by { |c| [c.purchase_count >= 2 ? 1 : 0, c.first_date] }
+
     @last_snapshot_week = CustomerPurchaseSummary.where.not(follow_up_week: nil).maximum(:follow_up_week)
   end
 

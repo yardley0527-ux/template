@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_27_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_30_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -141,6 +141,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_100000) do
     t.boolean "follows_chloe_ig", default: false, null: false
     t.boolean "invited_to_follow_product_ig", default: false, null: false
     t.string "shengting_product_tags", default: [], null: false, array: true
+    t.boolean "health_inquiry_declined", default: false, null: false
     t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin
     t.index ["product_tags"], name: "index_customer_profiles_on_product_tags", using: :gin
     t.index ["shopline_customer_id"], name: "index_customer_profiles_on_shopline_customer_id"
@@ -169,6 +170,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_100000) do
     t.boolean "line_bound", default: false, null: false
     t.string "follow_up_product"
     t.index ["email"], name: "index_customer_purchase_summaries_on_email"
+    t.index ["first_amount", "first_date"], name: "index_cps_on_first_amount_and_first_date"
+    t.index ["first_amount"], name: "index_cps_on_first_amount"
     t.index ["first_date"], name: "index_customer_purchase_summaries_on_first_date"
     t.index ["first_order_number"], name: "index_customer_purchase_summaries_on_first_order_number"
     t.index ["first_series"], name: "index_customer_purchase_summaries_on_first_series"
@@ -404,21 +407,31 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_100000) do
     t.index ["shopline_id"], name: "index_membership_level_changes_on_shopline_id"
   end
 
-  create_table "message_template_images", force: :cascade do |t|
+  create_table "message_template_blocks", force: :cascade do |t|
     t.bigint "message_template_id", null: false
+    t.string "block_type", default: "text", null: false
+    t.text "content"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_template_id", "position"], name: "idx_on_message_template_id_position_4cfb0334a7"
+    t.index ["message_template_id"], name: "index_message_template_blocks_on_message_template_id"
+  end
+
+  create_table "message_template_images", force: :cascade do |t|
     t.string "cloudinary_public_id", null: false
     t.string "url", null: false
     t.integer "position", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["message_template_id"], name: "index_message_template_images_on_message_template_id"
+    t.bigint "message_template_block_id"
+    t.index ["message_template_block_id"], name: "index_message_template_images_on_message_template_block_id"
   end
 
   create_table "message_templates", force: :cascade do |t|
     t.string "category_key", null: false
     t.string "subcategory"
     t.string "title"
-    t.text "content"
     t.integer "position", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -854,7 +867,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_27_100000) do
   add_foreign_key "livestream_images", "livestreams"
   add_foreign_key "livestream_products", "livestreams"
   add_foreign_key "membership_level_changes", "import_runs"
-  add_foreign_key "message_template_images", "message_templates"
+  add_foreign_key "message_template_blocks", "message_templates"
+  add_foreign_key "message_template_images", "message_template_blocks"
   add_foreign_key "photos", "albums"
   add_foreign_key "product_mapping_components", "crm_products"
   add_foreign_key "product_mapping_components", "product_name_mappings"

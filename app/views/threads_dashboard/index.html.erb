@@ -13,12 +13,18 @@
     </div>
     <div class="d-flex gap-2">
       <%= link_to "🗑 已刪除貼文", threads_dashboard_hidden_path, class: "btn btn-outline-secondary btn-sm" %>
-      <%= button_to (@active_keyword.present? ? "🔄 更新「#{@active_keyword}」" : "🔄 更新全部"),
-            threads_dashboard_refresh_path,
-            method: :post,
-            params: { category: @active_keyword },
-            class: "btn btn-primary btn-sm",
-            form: { data: { confirm: (@active_keyword.present? ? "只抓「#{@active_keyword}」分類，約需 10–20 秒，確認繼續？" : "抓取全部 10 個分類，約需 60–120 秒，確認繼續？") } } %>
+      <% if @fetch_cached %>
+        <button class="btn btn-outline-secondary btn-sm" disabled>
+          ✓ 已更新（6h 內）
+        </button>
+      <% else %>
+        <%= button_to (@active_keyword.present? ? "🔄 更新「#{@active_keyword}」" : "🔄 更新全部"),
+              threads_dashboard_refresh_path,
+              method: :post,
+              params: { category: @active_keyword },
+              class: "btn btn-primary btn-sm",
+              form: { data: { confirm: (@active_keyword.present? ? "只抓「#{@active_keyword}」分類，約需 10–20 秒，確認繼續？" : "抓取全部 10 個分類，約需 60–120 秒，確認繼續？") } } %>
+      <% end %>
     </div>
   </div>
 </div>
@@ -82,9 +88,13 @@
           <span class="fw-semibold" style="font-size:0.9rem;">🤖 AI 分析摘要</span>
           <span class="text-muted small ml-1">(<%= @analysis.fetched_on.strftime("%m/%d") %>)</span>
         </div>
-        <%= button_to "重新產生", threads_dashboard_reanalyze_path, method: :post,
-              class: "btn btn-outline-secondary btn-sm",
-              style: "font-size:0.75rem; padding:2px 8px;" %>
+        <% if @analysis_cached %>
+          <button class="btn btn-outline-secondary btn-sm" disabled style="font-size:0.75rem; padding:2px 8px;">✓ 已產生</button>
+        <% else %>
+          <%= button_to "重新產生", threads_dashboard_reanalyze_path, method: :post,
+                class: "btn btn-outline-secondary btn-sm",
+                style: "font-size:0.75rem; padding:2px 8px;" %>
+        <% end %>
       </div>
       <div class="card-body pt-2 px-3 pb-3">
         <% sections = @analysis.ai_summary.to_s.split(/\n\s*\n/).map(&:strip).reject(&:blank?) %>

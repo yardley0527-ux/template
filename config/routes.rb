@@ -3,6 +3,14 @@ Rails.application.routes.draw do
 
   root 'welcome#index'
 
+  resources :message_templates, only: [:index, :create, :update, :destroy] do
+    collection { patch :reorder }
+  end
+  resources :message_template_blocks, only: [:create, :update, :destroy] do
+    collection { patch :reorder }
+  end
+  resources :message_template_images, only: [:create, :destroy]
+
   resources :livestreams, only: [:index, :new, :create, :edit, :update, :destroy] do
     resources :livestream_images, only: [:create, :destroy]
     resources :livestream_products, only: [:create, :update, :destroy]
@@ -10,6 +18,7 @@ Rails.application.routes.draw do
   end
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
+  get  '/daily_dashboard',           to: 'daily_dashboard#index',      as: :daily_dashboard
   get  '/daily_orders',             to: 'daily_orders#index',         as: :daily_orders
   get  '/daily_orders/export',      to: 'daily_orders#export',        as: :export_daily_orders
   post '/daily_orders/toggle_customer_flag', to: 'daily_orders#toggle_customer_flag', as: :toggle_daily_orders_customer_flag

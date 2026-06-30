@@ -23,6 +23,8 @@ class ThreadsDashboardController < ApplicationController
     @last_fetched       = ThreadsPost.maximum(:updated_at)
     @today_count        = ThreadsPost.today.count
     @analysis           = ThreadsAnalysis.latest_record
+    @fetch_cached       = fetch_cached?(@active_keyword)
+    @analysis_cached    = @analysis&.updated_at&.> 6.hours.ago
   end
 
   def refresh
@@ -102,5 +104,17 @@ class ThreadsDashboardController < ApplicationController
     }
   rescue => e
     render json: { error: e.class.to_s, message: e.message }
+  end
+
+  private
+
+  def fetch_cached?(category)
+    if category.present?
+      ThreadsFetchLog.recently_fetched?(category)
+    else
+      ThreadsScraperService::CATEGORIES.all? { |cat| ThreadsFetchLog.recently_fetched?(cat) }
+    end
+  rescue
+    false
   end
 end

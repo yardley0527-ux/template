@@ -25,7 +25,8 @@ class SidebarEntry
         {
           group_title: "高消費分析",
           children: [
-            { href: daily_orders_path,                title: "每日訂單報表",   icon: "fa-calendar-alt" },
+            { href: daily_dashboard_path,             title: "每日營收儀表板", icon: "fa-tachometer-alt" },
+            { href: daily_orders_path,               title: "每日訂單明細",   icon: "fa-list-alt" },
             { href: high_spender_first_purchase_path, title: "破萬新客分析",   icon: "fa-gem" },
             { href: high_value_orders_path,           title: "破萬訂單速覽",   icon: "fa-fire" },
             { href: first_purchase_index_path,        title: "首購總覽",       icon: "fa-shopping-bag" },
@@ -64,7 +65,6 @@ class SidebarEntry
           children: [
             { href: product_strategy_path,      title: "產品策略報表",   icon: "fa-chart-line" },
             { href: products_path,              title: "年度 Top 產品排行", icon: "fa-trophy" },
-            { href: subscription_strategy_path, title: "定期購策略分析", icon: "fa-sync-alt" },
           ]
         },
         {
@@ -80,6 +80,12 @@ class SidebarEntry
                 { href: relove_kocs_path, title: "Relove 業配名單", icon: "fa-star" },
               ]
             },
+          ]
+        },
+        {
+          group_title: "小編工具",
+          children: [
+            { href: message_templates_path, title: "訊息公版", icon: "fa-copy" },
           ]
         },
         {

@@ -140,14 +140,16 @@ class CustomersController < ApplicationController
 
     emails = @customers.map(&:email).compact.uniq
 
-    orders_by_email = ShoplineOrder
+    # Single query for all per-customer order data (replaces two separate queries)
+    all_orders_by_email = ShoplineOrder
       .where(email: emails)
       .where.not(product_name: [nil, ""])
-      .select(:email, :product_name, :quantity)
+      .select(:email, :product_name, :quantity, :order_date)
       .group_by(&:email)
 
     @top_products = {}
-    orders_by_email.each do |email, orders|
+    @inactive_info = {}
+    all_orders_by_email.each do |email, orders|
       series_counts = Hash.new { |h, k| h[k] = { qty: 0, count: 0 } }
       orders.each do |o|
         series, bottles_per_unit = parse_product(o.product_name)
@@ -155,22 +157,14 @@ class CustomersController < ApplicationController
         series_counts[series][:count] += 1
       end
       @top_products[email] = series_counts.max_by { |_, v| [v[:qty], v[:count]] }&.first
-    end
 
-    last_order_by_email = ShoplineOrder
-      .where(email: emails)
-      .where.not(product_name: [nil, ""])
-      .select(:email, :product_name, :order_date)
-      .group_by(&:email)
-      .transform_values { |orders| orders.max_by(&:order_date) }
-
-    @inactive_info = {}
-    last_order_by_email.each do |email, last_order|
-      next unless last_order.order_date
-      days_ago = (Date.today - last_order.order_date.to_date).to_i
-      if days_ago >= 60
-        series, _ = parse_product(last_order.product_name)
-        @inactive_info[email] = { days: days_ago, last_product: series }
+      last_order = orders.max_by(&:order_date)
+      if last_order&.order_date
+        days_ago = (Date.today - last_order.order_date.to_date).to_i
+        if days_ago >= 60
+          series, _ = parse_product(last_order.product_name)
+          @inactive_info[email] = { days: days_ago, last_product: series }
+        end
       end
     end
 
@@ -182,18 +176,18 @@ class CustomersController < ApplicationController
 
     @big_first_orders = {}
     first_orders_by_email.each do |email, order|
-      if order.total_amount.to_f >= 10_000
-        @big_first_orders[email] = order.order_date
-      end
+      @big_first_orders[email] = order.order_date if order.total_amount.to_f >= 10_000
     end
 
-    @credits_expiring_count = ShoplineOrder
-      .where.not(product_name: [nil, ""])
-      .group(:email)
-      .having("MAX(order_date::date) BETWEEN ? AND ?", Date.today - 358, Date.today - 355)
-      .joins("JOIN shopline_customers sc ON sc.email = shopline_orders.email")
-      .where("sc.current_shopping_credits > 0")
-      .count.size
+    @credits_expiring_count = Rails.cache.fetch("credits_expiring_count:#{Date.today}", expires_in: 12.hours) do
+      ShoplineOrder
+        .where.not(product_name: [nil, ""])
+        .group(:email)
+        .having("MAX(order_date::date) BETWEEN ? AND ?", Date.today - 358, Date.today - 355)
+        .joins("JOIN shopline_customers sc ON sc.email = shopline_orders.email")
+        .where("sc.current_shopping_credits > 0")
+        .count.size
+    end
   end
 
   def show

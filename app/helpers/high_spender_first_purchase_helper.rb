@@ -34,7 +34,10 @@ module HighSpenderFirstPurchaseHelper
   end
 
   def hs_follow_up_status(customer)
-    return { label: "已回購", css: "fp-badge-ok", tier: :repurchased, urgent: false } if customer.purchase_count >= 2
+    truly_repurchased = customer.purchase_count >= 2 &&
+                        customer.second_date.present? &&
+                        customer.second_date.to_date != customer.first_date.to_date
+    return { label: "已回購", css: "fp-badge-ok", tier: :repurchased, urgent: false } if truly_repurchased
 
     days_since = (Date.today - customer.first_date.to_date).to_i
     cycle      = SERIES_CYCLE_DAYS.fetch(customer.first_series.to_s, 90)

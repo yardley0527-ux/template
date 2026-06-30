@@ -1,5 +1,5 @@
 <%# app/views/daily_orders/index.html.erb %>
-<% content_for :page_title, "每日訂單報表" %>
+<% content_for :page_title, "每日訂單明細" %>
 
 <% def daily_orders_ig_link(account)
   return nil if account.blank?
@@ -7,36 +7,109 @@
   handle.present? ? "https://www.instagram.com/#{handle}/" : nil
 end %>
 
-<div class="row g-3 mb-3">
-  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
-    <div>
-      <h4 class="fw-bold mb-0">每日訂單報表</h4>
-      <p class="text-muted small mb-0">依新客／舊客卡別分類，協助出貨備貨</p>
-    </div>
-    <div class="d-flex align-items-center" style="gap:8px;">
-      <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center", style: "gap:8px;" do %>
-        <%= hidden_field_tag :tab, @tab %>
-        <input type="date" name="date" value="<%= @date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
-        <button type="submit" class="btn btn-sm btn-primary">查詢</button>
-      <% end %>
-      <%= link_to "匯出 CSV", export_daily_orders_path(date: @date), class: "btn btn-sm btn-outline-secondary" %>
-    </div>
+<div class="d-flex align-items-start justify-content-between flex-wrap mb-3" style="gap:12px;">
+  <div>
+    <h4 class="fw-bold mb-0">每日訂單明細</h4>
+    <p class="text-muted small mb-0">依新客／舊客卡別分類，協助出貨備貨</p>
+  </div>
+  <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+    <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+      <%= hidden_field_tag :tab, @tab %>
+      <input type="date" name="start_date" value="<%= @start_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+      <span class="text-muted small">至</span>
+      <input type="date" name="end_date" value="<%= @end_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+      <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+    <% end %>
+    <%= link_to "匯出 CSV", export_daily_orders_path(start_date: @start_date, end_date: @end_date), class: "btn btn-sm btn-outline-secondary" %>
   </div>
 </div>
 
 <% total_count = @groups.sum { |_, rows| rows.size } %>
 <p class="text-muted small mb-3">
-  <%= @date.strftime('%Y/%m/%d') %> 共 <%= total_count %> 筆訂單
+  <% if @start_date == @end_date %>
+    <%= @start_date.strftime('%Y/%m/%d') %>
+  <% else %>
+    <%= @start_date.strftime('%Y/%m/%d') %> ～ <%= @end_date.strftime('%Y/%m/%d') %>
+  <% end %>
+  共 <%= total_count %> 筆訂單
+  <span class="ms-3">
+    <%= link_to "→ 查看營收儀表板", daily_dashboard_path(start_date: @start_date, end_date: @end_date), class: "text-muted small" %>
+  </span>
 </p>
 
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
-    <%= link_to "新客（#{@new_count}）", daily_orders_path(date: @date, tab: "new"), class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
+    <%= link_to "新客（#{@new_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "new"), class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
   </li>
   <li class="nav-item">
-    <%= link_to "舊客（#{@old_count}）", daily_orders_path(date: @date, tab: "old"), class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
+    <%= link_to "舊客（#{@old_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "old"), class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
   </li>
 </ul>
+
+<% if @tab == "new" %>
+  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-user-plus" style="color:#6c757d; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">今日新客</div>
+        <div class="fw-bold" style="font-size:1rem;"><%= @new_count %> 人</div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-comment-lines" style="color:#28a745; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">已綁定 LINE</div>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span id="line-bound-count"><%= @line_bound_count %></span> / <%= @new_count %> 人
+          <% unbound = @new_count - @line_bound_count %>
+          <span id="line-unbound-badge" class="<%= unbound > 0 ? 'text-danger' : 'text-success' %>" style="font-size:0.78rem;">
+            <%= unbound > 0 ? "（還有 #{unbound} 人未綁）" : "✓ 全員已綁" %>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span id="new-health-missing-badge"
+            class="<%= @health_missing_count > 0 ? 'text-danger' : 'text-success' %>"
+            data-count="<%= @health_missing_count %>"
+            style="<%= @health_missing_count > 0 ? 'cursor:pointer;' : '' %>">
+            <%= @health_missing_count > 0 ? "#{@health_missing_count} 人未填" : "✓ 全員已填" %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<% if @tab == "old" %>
+  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-users" style="color:#6c757d; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">今日舊客</div>
+        <div class="fw-bold" style="font-size:1rem;"><%= @old_count %> 人</div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span id="old-health-missing-badge"
+            class="<%= @old_health_missing_count > 0 ? 'text-danger' : 'text-success' %>"
+            data-count="<%= @old_health_missing_count %>"
+            style="<%= @old_health_missing_count > 0 ? 'cursor:pointer;' : '' %>">
+            <%= @old_health_missing_count > 0 ? "#{@old_health_missing_count} 人未填" : "✓ 全員已填" %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
 
 <% visible_groups = @tab == "new" ? @groups.first(1) : @groups.drop(1) %>
 
@@ -50,23 +123,27 @@ end %>
     </div>
     <div class="card-body p-0 table-responsive">
       <table class="table align-middle mb-0" style="font-size:0.86rem; table-layout:fixed; width:100%; min-width:1000px;">
+        <% is_new = label == "新客" %>
         <thead style="background-color:#4a4a4a; color:white;">
           <tr>
-            <th class="ps-3" style="width:10%;">訂單號碼</th>
-            <th style="width:7%;">姓名</th>
-            <th style="width:9%;">IG</th>
-            <th class="text-end" style="width:7%;">消費金額</th>
-            <th style="width:22%;">是否購買過同產品</th>
-            <th style="width:22%;">健康資料</th>
-            <th class="text-center" style="width:6%;">追蹤 Chloe IG</th>
-            <th class="text-center" style="width:6%;">已邀請追蹤產品IG</th>
-            <th class="text-center" style="width:6%;">綁定 LINE</th>
+            <th class="ps-3" style="width:12%;">訂單號碼</th>
+            <th style="width:9%;">姓名</th>
+            <th style="width:11%;">IG</th>
+            <th class="text-end" style="width:9%;">消費金額</th>
+            <th style="width:<%= is_new ? 27 : 27 %>%;">是否購買過同產品</th>
+            <th style="width:<%= is_new ? 25 : 25 %>%;">健康資料</th>
+            <% if is_new %>
+              <th class="text-center" style="width:7%;">綁定 LINE</th>
+            <% else %>
+              <th class="text-center" style="width:9%; font-size:0.78rem; line-height:1.3;">已詢問<br>無意願回覆</th>
+            <% end %>
           </tr>
         </thead>
         <tbody>
           <% rows.each do |row| %>
             <% url = daily_orders_ig_link(row.ig_account) %>
-            <tr>
+            <% health_filled = (row.health_profile.present? || row.health_tags.present?) || (!is_new && row.order_total.to_f < 10_000) %>
+            <tr data-health-filled="<%= health_filled %>">
               <td class="ps-3 text-muted small"><%= row.order_number %></td>
               <td class="fw-semibold"><%= row.customer_name %></td>
               <td style="overflow:hidden;">
@@ -104,55 +181,42 @@ end %>
                     <% end %>
                   </div>
                 <% end %>
-                <% if row.health_profile.blank? && row.health_tags.blank? %>
+                <% if row.health_profile.blank? && row.health_tags.blank? && row.shopline_customer_id && (is_new || row.order_total.to_f >= 10_000) %>
+                  <%= link_to "+ 填寫健康資料", edit_customer_path(row.shopline_customer_id, section: "health"), target: "_blank", class: "small text-decoration-none" %>
+                <% end %>
+              </td>
+              <% if is_new %>
+                <td class="text-center">
                   <% if row.shopline_customer_id %>
-                    <%= link_to "+ 填寫健康資料", edit_customer_path(row.shopline_customer_id, section: "health"), target: "_blank", class: "small text-decoration-none" %>
+                    <input type="checkbox"
+                      class="customer-flag-checkbox"
+                      data-customer-id="<%= row.shopline_customer_id %>"
+                      data-field="line_bound"
+                      <%= row.line_bound ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
                   <% else %>
-                    <span class="text-muted small">—</span>
+                    <span class="text-muted">—</span>
                   <% end %>
-                <% end %>
-              </td>
-              <td class="text-center">
-                <% if row.shopline_customer_id %>
-                  <input type="checkbox"
-                    class="customer-flag-checkbox"
-                    data-customer-id="<%= row.shopline_customer_id %>"
-                    data-field="follows_chloe_ig"
-                    <%= row.follows_chloe_ig ? 'checked' : '' %>
-                    style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
-                <% else %>
-                  <span class="text-muted">—</span>
-                <% end %>
-              </td>
-              <td class="text-center">
-                <% if row.shopline_customer_id %>
-                  <input type="checkbox"
-                    class="customer-flag-checkbox"
-                    data-customer-id="<%= row.shopline_customer_id %>"
-                    data-field="invited_to_follow_product_ig"
-                    <%= row.invited_to_follow_product_ig ? 'checked' : '' %>
-                    style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
-                <% else %>
-                  <span class="text-muted">—</span>
-                <% end %>
-              </td>
-              <td class="text-center">
-                <% if row.shopline_customer_id %>
-                  <input type="checkbox"
-                    class="customer-flag-checkbox"
-                    data-customer-id="<%= row.shopline_customer_id %>"
-                    data-field="line_bound"
-                    <%= row.line_bound ? 'checked' : '' %>
-                    style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
-                <% else %>
-                  <span class="text-muted">—</span>
-                <% end %>
-              </td>
+                </td>
+              <% else %>
+                <td class="text-center">
+                  <% if row.shopline_customer_id %>
+                    <input type="checkbox"
+                      class="customer-flag-checkbox"
+                      data-customer-id="<%= row.shopline_customer_id %>"
+                      data-field="health_inquiry_declined"
+                      <%= row.health_inquiry_declined ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#6c757d;">
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+              <% end %>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="9" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="7" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
@@ -165,16 +229,84 @@ end %>
 <script>
 (function() {
   var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-  var URL = "<%= toggle_daily_orders_customer_flag_path %>";
+  var TOGGLE_URL = "<%= toggle_daily_orders_customer_flag_path %>";
+  var filterActive = false;
+
+  function applyFilter() {
+    document.querySelectorAll('.customer-flag-checkbox[data-field="line_bound"]').forEach(function(cb) {
+      var row = cb.closest('tr');
+      if (row) row.style.display = (filterActive && cb.checked) ? 'none' : '';
+    });
+  }
+
+  function updateLineSummary() {
+    var total = <%= @new_count %>;
+    var bound = document.querySelectorAll('.customer-flag-checkbox[data-field="line_bound"]:checked').length;
+    var unbound = total - bound;
+    var countEl = document.getElementById('line-bound-count');
+    var badgeEl = document.getElementById('line-unbound-badge');
+    if (!countEl) return;
+    countEl.textContent = bound;
+    if (badgeEl) {
+      if (unbound > 0) {
+        badgeEl.textContent = filterActive ? '篩選中：' + unbound + ' 人未綁 ✕' : '（還有 ' + unbound + ' 人未綁）';
+        badgeEl.className = 'text-danger';
+        badgeEl.style.cursor = 'pointer';
+        badgeEl.style.textDecoration = filterActive ? 'underline' : '';
+      } else {
+        if (filterActive) { filterActive = false; applyFilter(); }
+        badgeEl.textContent = '✓ 全員已綁';
+        badgeEl.className = 'text-success';
+        badgeEl.style.cursor = 'default';
+        badgeEl.style.textDecoration = '';
+      }
+    }
+  }
+
+  var badge = document.getElementById('line-unbound-badge');
+  if (badge) {
+    badge.style.cursor = 'pointer';
+    badge.addEventListener('click', function() {
+      var unbound = <%= @new_count %> - document.querySelectorAll('.customer-flag-checkbox[data-field="line_bound"]:checked').length;
+      if (unbound === 0) return;
+      filterActive = !filterActive;
+      applyFilter();
+      updateLineSummary();
+    });
+  }
+
+  // 健康資料篩選（新客 & 舊客共用邏輯）
+  var healthFilterActive = false;
+  function applyHealthFilter() {
+    document.querySelectorAll('tr[data-health-filled]').forEach(function(tr) {
+      tr.style.display = (healthFilterActive && tr.dataset.healthFilled === 'true') ? 'none' : '';
+    });
+  }
+  ['new-health-missing-badge', 'old-health-missing-badge'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('click', function() {
+      var count = parseInt(el.dataset.count);
+      if (count === 0) return;
+      healthFilterActive = !healthFilterActive;
+      applyHealthFilter();
+      el.style.textDecoration = healthFilterActive ? 'underline' : '';
+      el.textContent = healthFilterActive ? '篩選中：' + count + ' 人未填 ✕' : count + ' 人未填';
+    });
+  });
 
   document.querySelectorAll('.customer-flag-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
-      fetch(URL, {
+      fetch(TOGGLE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
         body: JSON.stringify({ customer_id: cb.dataset.customerId, field: cb.dataset.field, value: cb.checked })
       }).then(function(r) {
         if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
+        if (cb.dataset.field === 'line_bound') {
+          if (filterActive && cb.checked) cb.closest('tr').style.display = 'none';
+          updateLineSummary();
+        }
       });
     });
   });

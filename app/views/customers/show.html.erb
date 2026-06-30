@@ -185,6 +185,14 @@
         <% end %>
       </div>
 
+      <div class="d-flex align-items-center" style="gap:10px; margin-bottom:12px;">
+        <input type="checkbox"
+          id="health-inquiry-declined-cb"
+          <%= @profile&.health_inquiry_declined ? 'checked' : '' %>
+          style="width:16px; height:16px; cursor:pointer; accent-color:#6c757d;">
+        <label for="health-inquiry-declined-cb" class="mb-0 small text-muted" style="cursor:pointer;">已詢問無意願回覆</label>
+      </div>
+
       <div>
         <%= link_to "✏️ 編輯健康資料", edit_customer_path(@customer, section: "health"), class: "btn btn-outline-secondary btn-sm" %>
       </div>
@@ -764,3 +772,24 @@
     }
   }
 </style>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var cb = document.getElementById('health-inquiry-declined-cb');
+  if (!cb) return;
+  var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var URL = "<%= toggle_daily_orders_customer_flag_path %>";
+  var customerId = "<%= @customer.id %>";
+  cb.addEventListener('change', function() {
+    fetch(URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ customer_id: customerId, field: 'health_inquiry_declined', value: cb.checked })
+    }).then(function(r) {
+      if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
+    });
+  });
+})();
+</script>
+<% end %>
