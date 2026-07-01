@@ -44,6 +44,7 @@ class SidebarEntry
             { href: metabolism_analysis_path,   title: "直播分析 - 代謝錠",       icon: "fa-video" },
             { href: glutathione_analysis_path,  title: "直播分析 - 穀胱甘肽",     icon: "fa-video" },
             { href: livestream_strategy_path,   title: "直播策略報表",             icon: "fa-chart-line" },
+            { href: crm_broadcasts_path(product: effective_key), title: "直播來源分析", icon: "fa-video" },
           ]
         },
         {
@@ -56,7 +57,6 @@ class SidebarEntry
               { href: crm_roi_path(product: effective_key),        title: "ROI Dashboard",  icon: "fa-dollar-sign" },
               { href: crm_accuracy_path(product: effective_key),   title: "Journey 預測驗證", icon: "fa-crosshairs" },
               { href: crm_operations_path(product: effective_key), title: "客服操作分析",     icon: "fa-headset" },
-              { href: crm_broadcasts_path(product: effective_key), title: "直播來源分析",     icon: "fa-video" },
             ]},
           ]
         },
@@ -83,15 +83,10 @@ class SidebarEntry
           ]
         },
         {
-          group_title: "小編工具",
+          group_title: "工具 & 系統",
           children: [
-            { href: message_templates_path, title: "訊息公版", icon: "fa-copy" },
-          ]
-        },
-        {
-          group_title: "系統",
-          children: [
-            { href: monitoring_path, title: "功能使用監控", icon: "fa-chart-line" }
+            { href: message_templates_path, title: "訊息公版",     icon: "fa-copy" },
+            { href: monitoring_path,        title: "功能使用監控", icon: "fa-chart-line" },
           ]
         },
       ]
