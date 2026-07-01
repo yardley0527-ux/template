@@ -1,0 +1,119 @@
+<%# app/views/monthly_business_summary/index.html.erb %>
+<% content_for :page_title, "月度營運總覽" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-calendar-check"></i>
+    月度營運總覽
+    <small>依月份即時彙總的成交金額、回購率、新舊客分析</small>
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-container show">
+        <div class="panel-content">
+
+          <%# 年份切換 %>
+          <div class="d-flex gap-2 flex-wrap mb-4">
+            <% @years.each do |y| %>
+              <%= link_to y,
+                    crm_monthly_summary_path(year: y),
+                    class: "btn btn-sm #{y == @year ? 'btn-primary' : 'btn-outline-secondary'}" %>
+            <% end %>
+          </div>
+
+          <%# 月度總覽 %>
+          <h5 class="fw-bold mb-3"><%= @year %> 月度總覽</h5>
+          <div class="mbs-table-wrap mb-5">
+            <table class="mbs-table">
+              <thead>
+                <tr>
+                  <th>月份</th>
+                  <th>成交總額</th>
+                  <th>總營業額</th>
+                  <th>成交訂單數</th>
+                  <th>總消費顧客數</th>
+                  <th>平均訂單金額</th>
+                  <th>回購率</th>
+                  <th>新增會員數</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @overview_rows.each do |row| %>
+                  <tr>
+                    <td><%= Date.parse("#{row[:month]}-01").strftime("%-m 月") %></td>
+                    <td>NT$ <%= number_with_delimiter(row[:gross_amount].round) %></td>
+                    <td>NT$ <%= number_with_delimiter(row[:net_amount].round) %></td>
+                    <td><%= row[:paid_order_count] %></td>
+                    <td><%= row[:total_customers] %></td>
+                    <td><%= row[:avg_order_amount] ? "NT$ #{number_with_delimiter(row[:avg_order_amount].round)}" : "—" %></td>
+                    <td><%= row[:repurchase_rate] ? "#{row[:repurchase_rate]}%" : "—" %></td>
+                    <td><%= row[:new_member_count] %></td>
+                  </tr>
+                <% end %>
+                <% if @overview_rows.blank? %>
+                  <tr><td colspan="8" class="mbs-empty">該年度尚無資料</td></tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <%# 新舊客分析 %>
+          <h5 class="fw-bold mb-3"><%= @year %> 新舊客分析</h5>
+          <div class="mbs-table-wrap">
+            <table class="mbs-table">
+              <thead>
+                <tr>
+                  <th>月份</th>
+                  <th>總消費顧客數</th>
+                  <th>新客人數</th>
+                  <th>新客消費額</th>
+                  <th>新客平均消費</th>
+                  <th>舊客人數</th>
+                  <th>舊客消費額</th>
+                  <th>舊客平均消費</th>
+                  <th>新舊比例</th>
+                  <th>新客回購人數</th>
+                  <th>新客回購(金額)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @breakdown_rows.each do |row| %>
+                  <tr>
+                    <td><%= Date.parse("#{row[:month]}-01").strftime("%-m 月") %></td>
+                    <td><%= row[:total_customers] %></td>
+                    <td><%= row[:new_count] %></td>
+                    <td>NT$ <%= number_with_delimiter(row[:new_revenue].round) %></td>
+                    <td><%= row[:new_avg_amount] ? "NT$ #{number_with_delimiter(row[:new_avg_amount].round)}" : "—" %></td>
+                    <td><%= row[:old_count] %></td>
+                    <td>NT$ <%= number_with_delimiter(row[:old_revenue].round) %></td>
+                    <td><%= row[:old_avg_amount] ? "NT$ #{number_with_delimiter(row[:old_avg_amount].round)}" : "—" %></td>
+                    <td><%= row[:new_old_ratio] || "—" %></td>
+                    <td><%= row[:new_repeat_count] %></td>
+                    <td>NT$ <%= number_with_delimiter(row[:new_repeat_revenue].round) %></td>
+                  </tr>
+                <% end %>
+                <% if @breakdown_rows.blank? %>
+                  <tr><td colspan="11" class="mbs-empty">該年度尚無資料</td></tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.mbs-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; }
+.mbs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mbs-table thead th { background: #886ab5; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.mbs-table tbody td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
+.mbs-table tbody tr:last-child td { border-bottom: none; }
+.mbs-table tbody tr:hover td { background: #faf9ff; }
+.mbs-empty { text-align: center; color: #9ca3af; padding: 40px; white-space: normal; }
+</style>
