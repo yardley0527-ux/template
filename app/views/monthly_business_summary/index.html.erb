@@ -35,7 +35,6 @@
                   <thead>
                     <tr>
                       <th>月份</th>
-                      <th>成交總額</th>
                       <th>總營業額</th>
                       <th>成交訂單數</th>
                       <th>總消費顧客數</th>
@@ -48,7 +47,6 @@
                     <% @overview_rows.each_with_index do |row, i| %>
                       <tr class="<%= "mbs-year-start" if i.positive? && row[:month].end_with?("-01") %>">
                         <td><%= row[:month].sub("-", "/") %></td>
-                        <td class="<%= "mbs-best" if @overview_best[:gross_amount] == i %>">NT$ <%= number_with_delimiter(row[:gross_amount].round) %></td>
                         <td class="<%= "mbs-best" if @overview_best[:net_amount] == i %>">NT$ <%= number_with_delimiter(row[:net_amount].round) %></td>
                         <td class="<%= "mbs-best" if @overview_best[:paid_order_count] == i %>"><%= row[:paid_order_count] %></td>
                         <td class="<%= "mbs-best" if @overview_best[:total_customers] == i %>"><%= row[:total_customers] %></td>
@@ -58,7 +56,7 @@
                       </tr>
                     <% end %>
                     <% if @overview_rows.blank? %>
-                      <tr><td colspan="8" class="mbs-empty">尚無資料</td></tr>
+                      <tr><td colspan="7" class="mbs-empty">尚無資料</td></tr>
                     <% end %>
                   </tbody>
                 </table>

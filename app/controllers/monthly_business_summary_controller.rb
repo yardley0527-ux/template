@@ -1,6 +1,6 @@
 class MonthlyBusinessSummaryController < ApplicationController
   OVERVIEW_HIGHLIGHT_KEYS = %i[
-    gross_amount net_amount paid_order_count total_customers
+    net_amount paid_order_count total_customers
     avg_order_amount repurchase_rate new_member_count
   ].freeze
 

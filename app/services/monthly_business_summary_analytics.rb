@@ -29,7 +29,6 @@ class MonthlyBusinessSummaryAnalytics
 
       {
         month:              month,
-        gross_amount:       rows.sum(&:order_total),
         net_amount:         net,
         paid_order_count:   rows.map(&:order_number).uniq.size,
         total_customers:    total_customers,
