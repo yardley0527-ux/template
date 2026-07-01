@@ -5,7 +5,7 @@
   <h1 class="subheader-title">
     <i class="subheader-icon fal fa-calendar-check"></i>
     月度營運總覽
-    <small>依月份即時彙總的成交金額、回購率、新舊客分析</small>
+    <small>依月份即時彙總的成交金額、回購率、新舊客分析（黃色為各欄位歷史最佳值）</small>
   </h1>
 </div>
 
@@ -15,91 +15,97 @@
       <div class="panel-container show">
         <div class="panel-content">
 
-          <%# 年份切換 %>
-          <div class="d-flex gap-2 flex-wrap mb-4">
-            <% @years.each do |y| %>
-              <%= link_to y,
-                    crm_monthly_summary_path(year: y),
-                    class: "btn btn-sm #{y == @year ? 'btn-primary' : 'btn-outline-secondary'}" %>
-            <% end %>
-          </div>
+          <ul class="nav nav-tabs" id="mbsTabs">
+            <li class="nav-item">
+              <a class="nav-link active" href="#" onclick="switchTab('overview-tab', this); return false;">
+                月度總覽
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" onclick="switchTab('breakdown-tab', this); return false;">
+                新舊客分析
+              </a>
+            </li>
+          </ul>
 
-          <%# 月度總覽 %>
-          <h5 class="fw-bold mb-3"><%= @year %> 月度總覽</h5>
-          <div class="mbs-table-wrap mb-5">
-            <table class="mbs-table">
-              <thead>
-                <tr>
-                  <th>月份</th>
-                  <th>成交總額</th>
-                  <th>總營業額</th>
-                  <th>成交訂單數</th>
-                  <th>總消費顧客數</th>
-                  <th>平均訂單金額</th>
-                  <th>回購率</th>
-                  <th>新增會員數</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% @overview_rows.each do |row| %>
-                  <tr>
-                    <td><%= Date.parse("#{row[:month]}-01").strftime("%-m 月") %></td>
-                    <td>NT$ <%= number_with_delimiter(row[:gross_amount].round) %></td>
-                    <td>NT$ <%= number_with_delimiter(row[:net_amount].round) %></td>
-                    <td><%= row[:paid_order_count] %></td>
-                    <td><%= row[:total_customers] %></td>
-                    <td><%= row[:avg_order_amount] ? "NT$ #{number_with_delimiter(row[:avg_order_amount].round)}" : "—" %></td>
-                    <td><%= row[:repurchase_rate] ? "#{row[:repurchase_rate]}%" : "—" %></td>
-                    <td><%= row[:new_member_count] %></td>
-                  </tr>
-                <% end %>
-                <% if @overview_rows.blank? %>
-                  <tr><td colspan="8" class="mbs-empty">該年度尚無資料</td></tr>
-                <% end %>
-              </tbody>
-            </table>
-          </div>
+          <div class="tab-content mt-3">
+            <div id="overview-tab" class="tab-pane" style="display:block;">
+              <div class="mbs-table-wrap">
+                <table class="mbs-table">
+                  <thead>
+                    <tr>
+                      <th>月份</th>
+                      <th>成交總額</th>
+                      <th>總營業額</th>
+                      <th>成交訂單數</th>
+                      <th>總消費顧客數</th>
+                      <th>平均訂單金額</th>
+                      <th>回購率</th>
+                      <th>新增會員數</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @overview_rows.each_with_index do |row, i| %>
+                      <tr>
+                        <td><%= row[:month].sub("-", "/") %></td>
+                        <td class="<%= "mbs-best" if @overview_best[:gross_amount] == i %>">NT$ <%= number_with_delimiter(row[:gross_amount].round) %></td>
+                        <td class="<%= "mbs-best" if @overview_best[:net_amount] == i %>">NT$ <%= number_with_delimiter(row[:net_amount].round) %></td>
+                        <td class="<%= "mbs-best" if @overview_best[:paid_order_count] == i %>"><%= row[:paid_order_count] %></td>
+                        <td class="<%= "mbs-best" if @overview_best[:total_customers] == i %>"><%= row[:total_customers] %></td>
+                        <td class="<%= "mbs-best" if @overview_best[:avg_order_amount] == i %>"><%= row[:avg_order_amount] ? "NT$ #{number_with_delimiter(row[:avg_order_amount].round)}" : "—" %></td>
+                        <td class="<%= "mbs-best" if @overview_best[:repurchase_rate] == i %>"><%= row[:repurchase_rate] ? "#{row[:repurchase_rate]}%" : "—" %></td>
+                        <td class="<%= "mbs-best" if @overview_best[:new_member_count] == i %>"><%= row[:new_member_count] %></td>
+                      </tr>
+                    <% end %>
+                    <% if @overview_rows.blank? %>
+                      <tr><td colspan="8" class="mbs-empty">尚無資料</td></tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-          <%# 新舊客分析 %>
-          <h5 class="fw-bold mb-3"><%= @year %> 新舊客分析</h5>
-          <div class="mbs-table-wrap">
-            <table class="mbs-table">
-              <thead>
-                <tr>
-                  <th>月份</th>
-                  <th>總消費顧客數</th>
-                  <th>新客人數</th>
-                  <th>新客消費額</th>
-                  <th>新客平均消費</th>
-                  <th>舊客人數</th>
-                  <th>舊客消費額</th>
-                  <th>舊客平均消費</th>
-                  <th>新舊比例</th>
-                  <th>新客回購人數</th>
-                  <th>新客回購(金額)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% @breakdown_rows.each do |row| %>
-                  <tr>
-                    <td><%= Date.parse("#{row[:month]}-01").strftime("%-m 月") %></td>
-                    <td><%= row[:total_customers] %></td>
-                    <td><%= row[:new_count] %></td>
-                    <td>NT$ <%= number_with_delimiter(row[:new_revenue].round) %></td>
-                    <td><%= row[:new_avg_amount] ? "NT$ #{number_with_delimiter(row[:new_avg_amount].round)}" : "—" %></td>
-                    <td><%= row[:old_count] %></td>
-                    <td>NT$ <%= number_with_delimiter(row[:old_revenue].round) %></td>
-                    <td><%= row[:old_avg_amount] ? "NT$ #{number_with_delimiter(row[:old_avg_amount].round)}" : "—" %></td>
-                    <td><%= row[:new_old_ratio] || "—" %></td>
-                    <td><%= row[:new_repeat_count] %></td>
-                    <td>NT$ <%= number_with_delimiter(row[:new_repeat_revenue].round) %></td>
-                  </tr>
-                <% end %>
-                <% if @breakdown_rows.blank? %>
-                  <tr><td colspan="11" class="mbs-empty">該年度尚無資料</td></tr>
-                <% end %>
-              </tbody>
-            </table>
+            <div id="breakdown-tab" class="tab-pane" style="display:none;">
+              <div class="mbs-table-wrap">
+                <table class="mbs-table">
+                  <thead>
+                    <tr>
+                      <th>月份</th>
+                      <th>總消費顧客數</th>
+                      <th>新客人數</th>
+                      <th>新客消費額</th>
+                      <th>新客平均消費</th>
+                      <th>舊客人數</th>
+                      <th>舊客消費額</th>
+                      <th>舊客平均消費</th>
+                      <th>新舊比例</th>
+                      <th>新客回購人數</th>
+                      <th>新客回購(金額)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @breakdown_rows.each_with_index do |row, i| %>
+                      <tr>
+                        <td><%= row[:month].sub("-", "/") %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:total_customers] == i %>"><%= row[:total_customers] %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:new_count] == i %>"><%= row[:new_count] %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:new_revenue] == i %>">NT$ <%= number_with_delimiter(row[:new_revenue].round) %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:new_avg_amount] == i %>"><%= row[:new_avg_amount] ? "NT$ #{number_with_delimiter(row[:new_avg_amount].round)}" : "—" %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:old_count] == i %>"><%= row[:old_count] %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:old_revenue] == i %>">NT$ <%= number_with_delimiter(row[:old_revenue].round) %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:old_avg_amount] == i %>"><%= row[:old_avg_amount] ? "NT$ #{number_with_delimiter(row[:old_avg_amount].round)}" : "—" %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:new_old_ratio] == i %>"><%= row[:new_old_ratio] || "—" %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:new_repeat_count] == i %>"><%= row[:new_repeat_count] %></td>
+                        <td class="<%= "mbs-best" if @breakdown_best[:new_repeat_revenue] == i %>">NT$ <%= number_with_delimiter(row[:new_repeat_revenue].round) %></td>
+                      </tr>
+                    <% end %>
+                    <% if @breakdown_rows.blank? %>
+                      <tr><td colspan="11" class="mbs-empty">尚無資料</td></tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -108,12 +114,24 @@
   </div>
 </div>
 
+<script>
+  function switchTab(tabId, el) {
+    document.querySelectorAll('#mbsTabs').forEach(nav => {
+      nav.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    });
+    document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+    el.classList.add('active');
+  }
+</script>
+
 <style>
-.mbs-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; }
+.mbs-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; max-height: 75vh; }
 .mbs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.mbs-table thead th { background: #886ab5; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.mbs-table thead th { position: sticky; top: 0; background: #886ab5; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; z-index: 1; }
 .mbs-table tbody td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; white-space: nowrap; }
 .mbs-table tbody tr:last-child td { border-bottom: none; }
 .mbs-table tbody tr:hover td { background: #faf9ff; }
+.mbs-best { background: #fef3c7 !important; font-weight: 700; color: #92400e; }
 .mbs-empty { text-align: center; color: #9ca3af; padding: 40px; white-space: normal; }
 </style>
