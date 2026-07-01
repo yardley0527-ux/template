@@ -67,6 +67,8 @@
             </div>
           <% end %>
 
+          <% show_table = @selected_series.present? || @silent_only || @growing_only %>
+
           <%# ── 篩選列 ── %>
           <div class="fp-filter-bar mb-3">
             <%= form_with url: first_purchase_index_path, method: :get, local: true do %>
@@ -109,14 +111,18 @@
               </div>
             <% end %>
             <div class="fp-filter-meta mt-2">
-              共 <strong><%= number_with_delimiter(@total) %></strong> 人　
+              共 <strong><%= number_with_delimiter(@total) %></strong> 人
               第 <%= @page %> / <%= @total_pages %> 頁
+              <% if show_table && @total > 0 %>
+
+                <%= link_to "⬇ 匯出全部 #{number_with_delimiter(@total)} 人 CSV",
+                      export_first_purchase_path(series: @selected_series, silent_only: @silent_only ? 1 : 0, growing_only: @growing_only ? 1 : 0, sort: @sort),
+                      class: "fp-btn-export" %>
+              <% end %>
             </div>
           </div>
 
           <%# ── 客人列表 ── %>
-          <% show_table = @selected_series.present? || @silent_only || @growing_only %>
-
           <% if show_table %>
 
             <%# Desktop 表格 %>
@@ -370,6 +376,12 @@
 .fp-btn-primary:hover { background: #6d52a0; }
 .fp-btn-secondary { padding: 7px 14px; background: transparent; color: #6b7280; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; }
 .fp-filter-meta { font-size: 13px; color: #6b7280; }
+.fp-btn-export {
+  margin-left: 12px; padding: 4px 12px; background: #16a34a; color: #fff;
+  border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none;
+  display: inline-flex; align-items: center; white-space: nowrap;
+}
+.fp-btn-export:hover { background: #15803d; }
 
 .fp-series-tag { background: #ede9fe; color: #6d28d9; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
 .fp-series-tag-second { background: #f0fdf4; color: #16a34a; }

@@ -11,46 +11,18 @@ class FirstPurchaseController < ApplicationController
     @sort = params[:sort].to_s.presence || "amount_desc"
     @page = [params[:page].to_i, 1].max
 
-    base_scope = ShoplineCustomer
-      .joins("INNER JOIN customer_purchase_summaries cps ON cps.email = shopline_customers.email")
-      .joins("LEFT JOIN customer_series_loyalties csl ON csl.email = shopline_customers.email AND csl.series = cps.first_series")
-
-    base_scope = base_scope.where("cps.first_series = ?", @selected_series) if @selected_series.present?
-    base_scope = base_scope.where("cps.silent_only = TRUE") if @silent_only
-    base_scope = base_scope.where("csl.is_growing = TRUE") if @growing_only
+    scope = filtered_scope
 
     @total = Rails.cache.fetch(total_cache_key, expires_in: 10.minutes) do
-      base_scope.distinct.count(:id)
+      scope.distinct.count(:id)
     end
 
-    scope = base_scope
-      .select(<<~SQL.squish)
-        shopline_customers.*,
-        cps.first_order_number,
-        cps.first_product,
-        cps.first_series,
-        cps.first_date,
-        cps.first_amount,
-        cps.second_order_number,
-        cps.second_product,
-        cps.second_series,
-        cps.second_date,
-        cps.purchase_count,
-        cps.silent_only,
-        cps.last_order_date,
-        cps.silent_days_threshold,
-        csl.is_growing AS growing,
-        csl.growth_rate_pct AS growth_rate_pct,
-        CASE
-          WHEN cps.silent_only = TRUE
-          THEN EXTRACT(DAY FROM NOW() - cps.first_date)::int
-          ELSE NULL
-        END AS silent_days
-      SQL
-      .reorder(Arel.sql(sort_sql(@sort)))
-
     @total_pages = [(@total.to_f / PER_PAGE).ceil, 1].max
-    @customers = scope.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
+    @customers = scope
+      .select(customer_select_sql)
+      .reorder(Arel.sql(sort_sql(@sort)))
+      .offset((@page - 1) * PER_PAGE)
+      .limit(PER_PAGE)
 
     @series_stats = Rails.cache.fetch("first_purchase:series_stats:v3", expires_in: 30.minutes) do
       series_stats_summary
@@ -61,7 +33,86 @@ class FirstPurchaseController < ApplicationController
     end
   end
 
+  # 匯出目前篩選條件下的「所有」符合客人（不分頁），供潛力客/沉默客名單大量匯出使用
+  def export
+    @selected_series = params[:series].to_s.strip
+    @silent_only = params[:silent_only] == "1"
+    @growing_only = params[:growing_only] == "1"
+    @sort = params[:sort].to_s.presence || "amount_desc"
+
+    customers = filtered_scope
+      .select(customer_select_sql)
+      .reorder(Arel.sql(sort_sql(@sort)))
+
+    label = @growing_only ? "潛力客" : (@silent_only ? "沉默客" : "首購名單")
+    label = "#{@selected_series}_#{label}" if @selected_series.present?
+
+    send_data "\xEF\xBB\xBF" + export_csv(customers),
+              filename: "#{label}_#{Date.today}.csv",
+              type: "text/csv; charset=utf-8"
+  end
+
   private
+
+  def filtered_scope
+    scope = ShoplineCustomer
+      .joins("INNER JOIN customer_purchase_summaries cps ON cps.email = shopline_customers.email")
+      .joins("LEFT JOIN customer_series_loyalties csl ON csl.email = shopline_customers.email AND csl.series = cps.first_series")
+
+    scope = scope.where("cps.first_series = ?", @selected_series) if @selected_series.present?
+    scope = scope.where("cps.silent_only = TRUE") if @silent_only
+    scope = scope.where("csl.is_growing = TRUE") if @growing_only
+    scope
+  end
+
+  def customer_select_sql
+    <<~SQL.squish
+      shopline_customers.*,
+      cps.first_order_number,
+      cps.first_product,
+      cps.first_series,
+      cps.first_date,
+      cps.first_amount,
+      cps.second_order_number,
+      cps.second_product,
+      cps.second_series,
+      cps.second_date,
+      cps.purchase_count,
+      cps.silent_only,
+      cps.last_order_date,
+      cps.silent_days_threshold,
+      csl.is_growing AS growing,
+      csl.growth_rate_pct AS growth_rate_pct,
+      CASE
+        WHEN cps.silent_only = TRUE
+        THEN EXTRACT(DAY FROM NOW() - cps.first_date)::int
+        ELSE NULL
+      END AS silent_days
+    SQL
+  end
+
+  def export_csv(customers)
+    require "csv"
+
+    CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["姓名", "Email", "會員等級", "首購系列", "首購日期", "首購金額", "累積消費", "訂單數", "成長幅度", "IG"]
+      customers.each do |c|
+        is_growing = ActiveModel::Type::Boolean.new.cast(c.try(:growing))
+        csv << [
+          c.full_name,
+          c.email,
+          c.membership_level,
+          c.first_series.presence || c.first_product,
+          c.first_date&.strftime("%Y/%m/%d"),
+          c.first_amount.to_f.round(0).to_i,
+          c.total_amount.to_f.round(0).to_i,
+          c.purchase_count,
+          is_growing ? "+#{c.growth_rate_pct}%" : "",
+          c.instagram_account
+        ]
+      end
+    end
+  end
 
   def total_cache_key
     [
