@@ -57,7 +57,6 @@ class SidebarEntry
               { href: crm_roi_path(product: effective_key),        title: "ROI Dashboard",  icon: "fa-dollar-sign" },
               { href: crm_accuracy_path(product: effective_key),   title: "Journey 預測驗證", icon: "fa-crosshairs" },
               { href: crm_operations_path(product: effective_key), title: "客服操作分析",     icon: "fa-headset" },
-              { href: crm_monthly_summary_path,                    title: "月度營運總覽",     icon: "fa-calendar-check" },
             ]},
           ]
         },

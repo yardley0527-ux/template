@@ -76,7 +76,6 @@ Rails.application.routes.draw do
   get   '/crm/analytics/accuracy',     to: 'omnipotent_restock#journey_accuracy',      as: :crm_accuracy
   get   '/crm/analytics/operations',   to: 'omnipotent_restock#crm_analysis',          as: :crm_operations
   get   '/crm/analytics/broadcasts',   to: 'omnipotent_restock#broadcast_performance', as: :crm_broadcasts
-  get   '/crm/analytics/monthly_summary', to: 'monthly_business_summary#index',        as: :crm_monthly_summary
   get   '/crm/customer/:id',           to: 'omnipotent_restock#customer_journey',      as: :crm_customer_journey
   get   '/crm/export',                 to: 'omnipotent_restock#export',                as: :crm_export
   get   '/crm/export_at_risk',         to: 'omnipotent_restock#export_at_risk',        as: :crm_export_at_risk
