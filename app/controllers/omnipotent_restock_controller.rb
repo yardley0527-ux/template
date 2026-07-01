@@ -1,13 +1,10 @@
 class OmnipotentRestockController < ApplicationController
   include JourneyProducts
+  include MembershipLevels
 
   LOYAL_THRESHOLD      = 2
   REMINDER_BUFFER_DAYS = 7
   CHURN_THRESHOLD_DAYS = -60
-
-  MEMBERSHIP_RANK = {
-    "黑卡"    => 5, "金卡" => 4, "銀卡" => 3, "白卡" => 2, "一般會員" => 1
-  }.freeze
 
   CUSTOMER_TYPES = [
     { key: :vip,    label: "VIP常購客", emoji: "🔵", color: "#1d4ed8", rank: 4, desc: "2次以上且累計 6 瓶以上" },

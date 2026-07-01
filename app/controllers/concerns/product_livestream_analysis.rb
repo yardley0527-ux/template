@@ -1,31 +1,12 @@
 module ProductLivestreamAnalysis
   extend ActiveSupport::Concern
-
-  MEMBERSHIP_RANK = {
-    "黑卡"    => 5,
-    "金卡"    => 4,
-    "銀卡"    => 3,
-    "白卡"    => 2,
-    "一般會員" => 1
-  }.freeze
-
-  TARGET_MEMBERSHIPS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-
-  LEVEL_KEYS = {
-    "黑卡"    => "black",
-    "金卡"    => "gold",
-    "銀卡"    => "silver",
-    "白卡"    => "white",
-    "一般會員" => "normal"
-  }.freeze
+  include MembershipLevels
 
   DAYS_PER_BOTTLE = 30
 
   included do
-    # 各 controller 設定：product_sql、product_label、product_regex、product_event_list
-    class_attribute :product_sql,        instance_writer: false
+    class_attribute :product_key,        instance_writer: false
     class_attribute :product_label,      instance_writer: false
-    class_attribute :product_regex,      instance_writer: false
     class_attribute :product_event_list, instance_writer: false
 
     before_action :build_analysis_data, only: [:index, :export_missing, :export_event]
@@ -58,7 +39,7 @@ module ProductLivestreamAnalysis
 
     cache_key = "#{product_label}_prev_emails:#{@current_event[:date]}"
     all_prev_emails = Rails.cache.fetch(cache_key, expires_in: 30.minutes) do
-      ShoplineOrder.where(product_sql)
+      product_orders
         .where("order_date < ?", event_range.first)
         .where.not(email: [nil, ""])
         .distinct.pluck(:email)
@@ -68,26 +49,7 @@ module ProductLivestreamAnalysis
     @prev_returned_count = (all_prev_emails & @event_emails).size
     @prev_return_rate    = pct(@prev_returned_count, @prev_count)
 
-    level_counts = ShoplineCustomer
-      .where.not(shopline_id: nil)
-      .where(membership_level: TARGET_MEMBERSHIPS)
-      .group(:membership_level).count
-
-    emails_by_level = ShoplineCustomer
-      .where(membership_level: TARGET_MEMBERSHIPS)
-      .where.not(email: [nil, ""])
-      .pluck(:membership_level, :email)
-      .group_by(&:first)
-      .transform_values { |pairs| pairs.map(&:last) }
-
-    @level_stats = TARGET_MEMBERSHIPS.filter_map do |level|
-      total = level_counts[level] || 0
-      next if total.zero?
-      emails   = emails_by_level[level] || []
-      attended = (emails & @event_emails).size
-      { level: level, total: total, attended: attended, rate: pct(attended, total) }
-    end
-
+    @level_stats      = MembershipLevelStatsService.call(event_emails: @event_emails)
     black_stat        = @level_stats.find { |s| s[:level] == "黑卡" } || {}
     gold_stat         = @level_stats.find { |s| s[:level] == "金卡" } || {}
     @black_event_rate = black_stat[:rate].to_f
@@ -96,19 +58,12 @@ module ProductLivestreamAnalysis
     missing_emails = all_prev_emails - @event_emails
     today          = Date.today
 
-    last_orders_raw = ShoplineOrder
-      .where(product_sql).where(email: missing_emails)
-      .where("order_date < ?", event_range.first)
-      .order(:email, order_date: :desc)
-      .pluck(:email, :product_name, :order_date)
-
-    last_order_by_email = {}
-    last_orders_raw.each do |email, pname, odate|
-      last_order_by_email[email] ||= { product_name: pname, order_date: odate }
-    end
-
-    history_counts  = ShoplineOrder.where(product_sql).where(email: missing_emails).group(:email).count
-    history_amounts = email_order_amounts(ShoplineOrder.where(product_sql).where(email: missing_emails))
+    snapshots = CustomerProductSnapshotService.call(
+      emails:         missing_emails,
+      product_key:    product_key,
+      reference_date: today,
+      before_date:    event_range.first
+    )
 
     last_any_order_raw = ShoplineOrder.where(email: missing_emails)
       .order(:email, order_date: :desc)
@@ -124,31 +79,28 @@ module ProductLivestreamAnalysis
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
     @missing_customers = customers.filter_map do |c|
-      last          = last_order_by_email[c.email]
-      last_date     = last&.dig(:order_date)&.to_date
-      next if last_date.nil?
+      snapshot = snapshots[c.email]
+      next if snapshot.nil?
+      last_date = snapshot.last_order_date
       next if last_date < today - 180            # 超過半年沒買，近期無活躍
-      bottles       = extract_bottles(last&.dig(:product_name))
-      expected_days = bottles * DAYS_PER_BOTTLE
-      overdue_days  = (today - last_date).to_i - expected_days
-      next if overdue_days <= 0                  # 手上還有存貨，不需要追
-      next if overdue_days > 90                  # 逾期太久，已非追蹤目標
-      history_count  = history_counts[c.email]  || 0
+      next if snapshot.overdue_days <= 0         # 手上還有存貨，不需要追
+      next if snapshot.overdue_days > 90         # 逾期太久，已非追蹤目標
+      history_count = snapshot.order_count
       next if history_count < 2                  # 只買過一次，不算有回購習慣
-      history_amount    = history_amounts[c.email] || 0
-      last_any_date     = last_any_order[c.email]&.dig(:order_date)
-      last_any_product  = last_any_order[c.email]&.dig(:product_name)
+      history_amount   = snapshot.total_amount
+      last_any_date    = last_any_order[c.email]&.dig(:order_date)
+      last_any_product = last_any_order[c.email]&.dig(:product_name)
       membership_rank = MEMBERSHIP_RANK[c.membership_level] || 0
-      overdue_score   = [overdue_days, 0].max / 10.0
+      overdue_score   = snapshot.overdue_days / 10.0
       priority_score  = (membership_rank * 3) + overdue_score + (history_count * 0.5)
 
       {
         customer:       c,
-        last_product:   last&.dig(:product_name),
-        last_date:      last_date,
-        bottles:        bottles,
-        expected_days:  expected_days,
-        overdue_days:   overdue_days,
+        last_product:   snapshot.last_product_name,
+        last_date:      snapshot.last_order_date,
+        bottles:        snapshot.bottles,
+        expected_days:  snapshot.bottles * DAYS_PER_BOTTLE,
+        overdue_days:   snapshot.overdue_days,
         history_count:  history_count,
         history_amount: history_amount,
         last_any_date:    last_any_date,
@@ -157,8 +109,8 @@ module ProductLivestreamAnalysis
       }
     end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:history_count], -r[:history_amount].to_f] }
 
-    event_order_lines = ShoplineOrder
-      .where(product_sql).where(email: @event_emails).where(order_date: event_range)
+    event_order_lines = product_orders
+      .where(email: @event_emails).where(order_date: event_range)
       .group(:email, :order_number)
       .pluck(
         :email, :order_number,
@@ -179,7 +131,7 @@ module ProductLivestreamAnalysis
       }
     end
 
-    h_counts = ShoplineOrder.where(product_sql).where(email: @event_emails).group(:email).count
+    h_counts = product_orders.where(email: @event_emails).group(:email).count
 
     @event_customers = ShoplineCustomer
       .where(email: @event_emails).where(membership_level: TARGET_MEMBERSHIPS)
@@ -249,7 +201,7 @@ module ProductLivestreamAnalysis
     window_start = all_events.first[:date].beginning_of_day
     window_end   = (all_events.last[:date] + 3).end_of_day
 
-    all_rows = ShoplineOrder.where(product_sql)
+    all_rows = product_orders
       .where(order_date: window_start..window_end)
       .where.not(email: [nil, ""])
       .pluck(:email, :order_date, :checkout_amount, :total_amount)
@@ -286,22 +238,19 @@ module ProductLivestreamAnalysis
     all_emails = all_event_emails.flatten.uniq
     today      = Date.today
 
-    last_orders_raw = ShoplineOrder.where(product_sql).where(email: all_emails)
-      .order(:email, order_date: :desc).pluck(:email, :product_name, :order_date)
-
-    last_by_email = {}
-    last_orders_raw.each { |e, p, d| last_by_email[e] ||= { product_name: p, order_date: d } }
+    snapshots = CustomerProductSnapshotService.call(
+      emails:         all_emails,
+      product_key:    product_key,
+      reference_date: today
+    )
 
     @expiring_soon = ShoplineCustomer.where(email: all_emails)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
       .filter_map do |c|
-        last = last_by_email[c.email]
-        next unless last
-        bottles   = extract_bottles(last[:product_name])
-        last_date = last[:order_date].to_date
-        days_left = (bottles * DAYS_PER_BOTTLE) - (today - last_date).to_i
-        next unless days_left >= -7 && days_left <= 21
-        { customer: c, days_left: days_left, last_product: last[:product_name], last_date: last_date }
+        snapshot = snapshots[c.email]
+        next unless snapshot
+        next unless snapshot.days_until_return >= -7 && snapshot.days_until_return <= 21
+        { customer: c, days_left: snapshot.days_until_return, last_product: snapshot.last_product_name, last_date: snapshot.last_order_date }
       end.sort_by { |r| [r[:days_left], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0)] }
 
     iron_emails = all_event_emails.reduce(:&)
@@ -321,6 +270,15 @@ module ProductLivestreamAnalysis
           .map { |ev, _| "#{ev[:year]}/#{ev[:label]}" }
         { customer: c, attended_labels: attended }
       end.sort_by { |r| [-MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:customer].total_amount.to_f] }
+
+    after_build_comprehensive_data(
+      all_events:       all_events,
+      all_event_emails: all_event_emails,
+      all_emails:       all_emails
+    )
+  end
+
+  def after_build_comprehensive_data(all_events:, all_event_emails:, all_emails:)
   end
 
   def missing_csv
@@ -346,44 +304,22 @@ module ProductLivestreamAnalysis
         c = r[:customer]
         csv << [r[:value_tier], c.full_name, c.membership_level, c.mobile_phone,
                 r[:last_product], r[:bottles], r[:order_amount].to_i,
-                r[:total_spend].to_i, r[:product_count], c.instagram_account]
+                r[:total_spend].to_i, r[:omni_count], c.instagram_account]
       end
     end
   end
 
   def product_emails(range)
-    ShoplineOrder.where(product_sql).where(order_date: range)
+    product_orders.where(order_date: range)
       .where.not(email: [nil, ""]).distinct.pluck(:email)
   end
 
-  # total_amount 是整張訂單的付款總額（同一訂單每個商品行都重複同一值，逐行 SUM 會灌水），
-  # 需先以 order_number 分組取一筆，再依 email 加總，避免多商品行訂單被重複計入。
-  def email_order_amounts(scope)
-    order_totals = scope
-      .group(:email, :order_number)
-      .pluck(
-        :email,
-        Arel.sql("MAX(NULLIF(total_amount, 0)) AS max_total"),
-        Arel.sql("SUM(COALESCE(checkout_amount, 0)) AS sum_checkout")
-      )
-
-    order_totals.each_with_object(Hash.new(0.0)) do |(email, max_total, sum_checkout), acc|
-      acc[email] += (max_total || sum_checkout).to_f
-    end
+  def extract_bottles(product_name)
+    BottleExtractor.call(product_name, product_key)
   end
 
-  def extract_bottles(product_name)
-    return 1 if product_name.nil?
-    m = product_name.match(product_regex)
-    base = if m
-      m[1].to_i
-    elsif (m2 = product_name.match(/[（(](\d+)[瓶盒]/))
-      m2[1].to_i
-    else
-      1
-    end
-    # 「送N」緊接數字才算同品項贈品（送全能1 等不計）
-    base + (product_name.match(/送(\d+)/)&.[](1).to_i || 0)
+  def product_orders
+    ProductNameResolver.orders_for(product_key)
   end
 
   def pct(num, den)

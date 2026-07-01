@@ -2,16 +2,12 @@
 # frozen_string_literal: true
 
 class LoyalCustomersController < ApplicationController
-  SERIES_OPTIONS = %w[
-    代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣
-  ].freeze
-
   TIERS = %w[鐵粉 忠實客 回購客].freeze
   PER_PAGE = 20
 
   def index
-    @series_options  = SERIES_OPTIONS
-    @selected_series = params[:series].to_s.strip.presence || SERIES_OPTIONS.first
+    @series_options  = CrmProduct.series_labels_for_filter
+    @selected_series = params[:series].to_s.strip.presence || @series_options.first
     @selected_tier   = params[:tier].to_s.strip.presence
     @sort            = params[:sort].to_s.presence || "total_desc"
     @page            = [params[:page].to_i, 1].max
@@ -71,7 +67,7 @@ class LoyalCustomersController < ApplicationController
         repurchase: repurchase.to_i,
         avg_count:  avg.to_f.round(1)
       }
-    end.sort_by { |h| SERIES_OPTIONS.index(h[:series]) || 999 }
+    end.sort_by { |h| @series_options.index(h[:series]) || 999 }
   end
 
   def sort_sql(sort)

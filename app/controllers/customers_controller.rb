@@ -6,7 +6,6 @@ class CustomersController < ApplicationController
 
   AGE_GROUP_ORDER = ["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
   ZODIAC_ORDER    = %w[牡羊 金牛 雙子 巨蟹 獅子 處女 天秤 天蠍 射手 摩羯 水瓶 雙魚].freeze
-  SERIES_OPTIONS  = %w[穀胱甘肽 代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 維DK鈣].freeze
 
   def index
     @q                = params[:q].to_s.strip
@@ -210,7 +209,7 @@ class CustomersController < ApplicationController
     series_last_date = Hash.new
     all_orders.each do |o|
       next if o.product_name.blank?
-      matched = SERIES_OPTIONS.select { |s| o.product_name.include?(s) || (s == "益生菌" && o.product_name.include?("益生箘")) }
+      matched = series_options.select { |s| o.product_name.include?(s) || (s == "益生菌" && o.product_name.include?("益生箘")) }
       matched.each do |s|
         d = o.order_date&.to_date
         series_last_date[s] = d if d && (series_last_date[s].nil? || d > series_last_date[s])
@@ -218,7 +217,7 @@ class CustomersController < ApplicationController
     end
 
     purchased_series    = series_last_date.keys
-    @unpurchased_series = SERIES_OPTIONS - purchased_series
+    @unpurchased_series = series_options - purchased_series
 
     today = Date.today
     @no_repurchase_3m = series_last_date.select { |_, d| (today - d).to_i > 90  }.keys
@@ -557,8 +556,12 @@ class CustomersController < ApplicationController
     end.sort_by { |p| [-p[:total_qty_bottles], -p[:order_count], p[:avg_cycle_days] || Float::INFINITY] }
   end
 
+  def series_options
+    @series_options ||= CrmProduct.series_labels_for_filter
+  end
+
   def expand_product(name)
-    matches = SERIES_OPTIONS.filter_map do |s|
+    matches = series_options.filter_map do |s|
       next unless name.include?(s)
       m = name.match(/#{Regexp.escape(s)}(\d+)/)
       [s, m ? m[1].to_i : 1]
@@ -568,7 +571,7 @@ class CustomersController < ApplicationController
   end
 
   def parse_product(name)
-    SERIES_OPTIONS.each do |s|
+    series_options.each do |s|
       next unless name.include?(s)
       m = name.match(/#{Regexp.escape(s)}(\d+)/)
       return [s, m ? m[1].to_i : 1]
