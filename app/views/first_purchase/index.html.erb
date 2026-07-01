@@ -84,6 +84,12 @@
                       class: "fp-select" %>
                 </div>
                 <div class="fp-filter-group">
+                  <label class="fp-filter-label">成長趨勢</label>
+                  <%= select_tag :growing_only,
+                      options_for_select([["全部客人", "0"], ["只看潛力客（越買越多）", "1"]], @growing_only ? "1" : "0"),
+                      class: "fp-select" %>
+                </div>
+                <div class="fp-filter-group">
                   <label class="fp-filter-label">排序</label>
                   <%= select_tag :sort,
                       options_for_select([
@@ -92,6 +98,7 @@
                         ["首購日期↓（最新）", "first_desc"],
                         ["首購日期↑（最舊）", "first_asc"],
                         ["沉默優先", "silent"],
+                        ["成長幅度↓", "growth_desc"],
                       ], @sort),
                       class: "fp-select" %>
                 </div>
@@ -108,7 +115,7 @@
           </div>
 
           <%# ── 客人列表 ── %>
-          <% show_table = @selected_series.present? || @silent_only %>
+          <% show_table = @selected_series.present? || @silent_only || @growing_only %>
 
           <% if show_table %>
 
@@ -127,6 +134,7 @@
                     <% if @silent_only %>
                       <th>沉默天數</th>
                     <% end %>
+                    <th>成長趨勢</th>
                     <th>第二購方向</th>
                     <th>IG</th>
                   </tr>
@@ -135,7 +143,9 @@
                   <% @customers.each do |c| %>
                     <% purchase_count = c.purchase_count.to_i %>
                     <% is_silent = ActiveModel::Type::Boolean.new.cast(c.silent_only) %>
-                    <tr class="<%= is_silent ? 'row-silent' : '' %>">
+                    <% is_growing = ActiveModel::Type::Boolean.new.cast(c.try(:growing)) %>
+                    <% live_event = nearby_livestream_event(c.first_date) %>
+                    <tr class="<%= is_silent ? 'row-silent' : '' %> <%= live_event ? 'row-livestream' : '' %>">
                       <td>
                         <%= link_to (c.full_name.presence || "（無名）"), customer_path(c), class: "fp-customer-link" %>
                         <div class="fp-email"><%= c.email %></div>
@@ -146,7 +156,12 @@
                         </span>
                       </td>
                       <td><span class="fp-series-tag"><%= c.first_series.presence || c.first_product %></span></td>
-                      <td class="fp-date"><%= c.first_date&.strftime("%Y/%m/%d") || "—" %></td>
+                      <td class="fp-date">
+                        <%= c.first_date&.strftime("%Y/%m/%d") || "—" %>
+                        <% if live_event %>
+                          <span class="fp-live-icon" title="首購接在直播「<%= live_event[:label] %> <%= live_event[:note] %>」之後">🎥</span>
+                        <% end %>
+                      </td>
                       <td class="fp-amount">NT$ <%= number_with_delimiter(c.first_amount.to_f.round(0).to_i) %></td>
                       <td class="fp-amount">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
                       <td class="fp-count">
@@ -169,6 +184,15 @@
                         </td>
                       <% end %>
                       <td>
+                        <% if is_growing %>
+                          <span class="fp-badge-growing" title="該系列近期平均消費金額高於早期，訂單數 ≥3 筆">
+                            📈 +<%= c.growth_rate_pct %>%
+                          </span>
+                        <% else %>
+                          <span class="fp-muted">—</span>
+                        <% end %>
+                      </td>
+                      <td>
                         <% if c.second_series.present? %>
                           <span class="fp-series-tag"><%= c.second_series %></span>
                         <% else %>
@@ -189,7 +213,7 @@
                   <% end %>
                   <% if @customers.blank? %>
                     <tr>
-                      <td colspan="<%= @silent_only ? 9 : 8 %>" class="fp-empty">查無符合條件的客人</td>
+                      <td colspan="<%= @silent_only ? 11 : 10 %>" class="fp-empty">查無符合條件的客人</td>
                     </tr>
                   <% end %>
                 </tbody>
@@ -204,8 +228,10 @@
                 <% @customers.each do |c| %>
                   <% purchase_count = c.purchase_count.to_i %>
                   <% is_silent = ActiveModel::Type::Boolean.new.cast(c.silent_only) %>
+                  <% is_growing = ActiveModel::Type::Boolean.new.cast(c.try(:growing)) %>
+                  <% live_event = nearby_livestream_event(c.first_date) %>
                   <% silent_days = c.try(:silent_days).to_i %>
-                  <div class="fp-cust-card <%= is_silent ? 'is-silent' : '' %>">
+                  <div class="fp-cust-card <%= is_silent ? 'is-silent' : '' %> <%= live_event ? 'is-livestream' : '' %>">
                     <div class="fp-cust-card-top">
                       <div>
                         <%= link_to (c.full_name.presence || "（無名）"), customer_path(c), class: "fp-cust-name" %>
@@ -216,6 +242,7 @@
                           <%= c.membership_level.presence || "一般" %>
                         </span>
                         <% if is_silent %><span class="fp-badge-silent">沉默</span><% end %>
+                        <% if is_growing %><span class="fp-badge-growing">📈 +<%= c.growth_rate_pct %>%</span><% end %>
                       </div>
                     </div>
                     <div class="fp-cust-card-tags">
@@ -228,7 +255,12 @@
                     <div class="fp-cust-card-grid">
                       <div class="fp-cust-meta-item">
                         <span class="fp-cust-meta-label">首購日期</span>
-                        <span class="fp-cust-meta-value"><%= c.first_date&.strftime("%Y/%m/%d") || "—" %></span>
+                        <span class="fp-cust-meta-value">
+                          <%= c.first_date&.strftime("%Y/%m/%d") || "—" %>
+                          <% if live_event %>
+                            <span class="fp-live-icon" title="首購接在直播「<%= live_event[:label] %> <%= live_event[:note] %>」之後">🎥</span>
+                          <% end %>
+                        </span>
                       </div>
                       <div class="fp-cust-meta-item">
                         <span class="fp-cust-meta-label">首購金額</span>
@@ -286,7 +318,7 @@
 
           <% else %>
             <div class="fp-empty-hint">
-              請從上方選擇系列，或切換為「沉默客」後查看名單
+              請從上方選擇系列，或切換為「沉默客」／「潛力客」後查看名單
             </div>
           <% end %>
 
@@ -352,6 +384,8 @@
 
 .fp-badge-silent { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
 .fp-badge-warn   { background: #fef9c3; color: #92400e; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+.fp-badge-growing { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.fp-live-icon { cursor: help; font-size: 12px; margin-left: 2px; }
 .fp-ig-link { color: #6b7280; font-size: 12px; text-decoration: none; }
 .fp-ig-link:hover { color: #886ab5; }
 
@@ -363,6 +397,8 @@
 .fp-table tbody tr:hover td { background: #faf9ff; }
 .fp-table tbody tr.row-silent td { background: #fff9f9; }
 .fp-table tbody tr.row-silent:hover td { background: #fff0f0; }
+.fp-table tbody tr.row-livestream td { background: #f0fdf4; }
+.fp-table tbody tr.row-livestream:hover td { background: #dcfce7; }
 .fp-customer-link { font-weight: 600; color: #374151; text-decoration: none; }
 .fp-customer-link:hover { color: #886ab5; }
 .fp-date, .fp-amount, .fp-count { white-space: nowrap; color: #374151; }
@@ -371,6 +407,7 @@
 .fp-card-list { display: flex; flex-direction: column; gap: 12px; }
 .fp-cust-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05); }
 .fp-cust-card.is-silent { background: #fff9f9; border-color: #fecaca; }
+.fp-cust-card.is-livestream { background: #f0fdf4; border-color: #bbf7d0; }
 .fp-cust-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
 .fp-cust-name { font-weight: 700; font-size: 15px; color: #374151; text-decoration: none; display: block; }
 .fp-cust-name:hover { color: #886ab5; }

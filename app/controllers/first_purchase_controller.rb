@@ -7,14 +7,17 @@ class FirstPurchaseController < ApplicationController
     @series_options = CrmProduct.series_labels_for_filter
     @selected_series = params[:series].to_s.strip
     @silent_only = params[:silent_only] == "1"
+    @growing_only = params[:growing_only] == "1"
     @sort = params[:sort].to_s.presence || "amount_desc"
     @page = [params[:page].to_i, 1].max
 
     base_scope = ShoplineCustomer
       .joins("INNER JOIN customer_purchase_summaries cps ON cps.email = shopline_customers.email")
+      .joins("LEFT JOIN customer_series_loyalties csl ON csl.email = shopline_customers.email AND csl.series = cps.first_series")
 
     base_scope = base_scope.where("cps.first_series = ?", @selected_series) if @selected_series.present?
     base_scope = base_scope.where("cps.silent_only = TRUE") if @silent_only
+    base_scope = base_scope.where("csl.is_growing = TRUE") if @growing_only
 
     @total = Rails.cache.fetch(total_cache_key, expires_in: 10.minutes) do
       base_scope.distinct.count(:id)
@@ -36,6 +39,8 @@ class FirstPurchaseController < ApplicationController
         cps.silent_only,
         cps.last_order_date,
         cps.silent_days_threshold,
+        csl.is_growing AS growing,
+        csl.growth_rate_pct AS growth_rate_pct,
         CASE
           WHEN cps.silent_only = TRUE
           THEN EXTRACT(DAY FROM NOW() - cps.first_date)::int
@@ -62,7 +67,8 @@ class FirstPurchaseController < ApplicationController
     [
       "first_purchase:total:v3",
       @selected_series.presence || "all",
-      @silent_only ? "silent" : "all_status"
+      @silent_only ? "silent" : "all_status",
+      @growing_only ? "growing" : "all_growth"
     ].join(":")
   end
 
@@ -123,6 +129,8 @@ class FirstPurchaseController < ApplicationController
       "cps.first_date ASC NULLS LAST"
     when "silent"
       "cps.purchase_count ASC, shopline_customers.total_amount DESC NULLS LAST"
+    when "growth_desc"
+      "csl.growth_rate_pct DESC NULLS LAST"
     else
       "shopline_customers.total_amount DESC NULLS LAST"
     end
