@@ -13,6 +13,8 @@ class ProductNameMapping < ApplicationRecord
            foreign_key: :product_name_mapping_id, dependent: :destroy
   has_many :component_products, through: :components, source: :crm_product
 
+  has_many :mapping_logs, class_name: "ProductNameMappingLog", dependent: :destroy
+
   validates :raw_name, presence: true
   validates :source, presence: true, inclusion: { in: SOURCES }
   validates :mapping_status, presence: true, inclusion: { in: MAPPING_STATUSES }
@@ -27,6 +29,13 @@ class ProductNameMapping < ApplicationRecord
   # Uses a DB EXISTS check so it works correctly whether components are loaded or not.
   def bundle?
     components.exists?
+  end
+
+  # Returns the next mapping_version for a new log entry on this mapping.
+  # mapping_version is scoped per record: first event = 1, second = 2, etc.
+  # Called by ProductNameMappingHistoryService.record! before each insert.
+  def next_mapping_version
+    mapping_logs.maximum(:mapping_version).to_i + 1
   end
 
   # ── Resolver helpers (used by ProductNameResolver service) ────────────

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_02_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_02_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -518,6 +518,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100000) do
     t.index ["product_name_mapping_id"], name: "idx_pmc_mapping_id"
   end
 
+  create_table "product_name_mapping_logs", force: :cascade do |t|
+    t.bigint "product_name_mapping_id", null: false
+    t.integer "mapping_version", null: false
+    t.string "action", null: false
+    t.string "change_source", null: false
+    t.string "from_status", null: false
+    t.string "to_status", null: false
+    t.bigint "old_crm_product_id"
+    t.bigint "new_crm_product_id"
+    t.bigint "performed_by_user_id"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["action"], name: "index_product_name_mapping_logs_on_action"
+    t.index ["change_source"], name: "index_product_name_mapping_logs_on_change_source"
+    t.index ["performed_by_user_id"], name: "index_product_name_mapping_logs_on_performed_by_user_id"
+    t.index ["product_name_mapping_id", "mapping_version"], name: "idx_pnml_mapping_version"
+    t.index ["product_name_mapping_id"], name: "index_product_name_mapping_logs_on_product_name_mapping_id"
+  end
+
   create_table "product_name_mappings", force: :cascade do |t|
     t.string "raw_name", null: false
     t.string "source", null: false
@@ -894,6 +914,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100000) do
   add_foreign_key "photos", "albums"
   add_foreign_key "product_mapping_components", "crm_products"
   add_foreign_key "product_mapping_components", "product_name_mappings"
+  add_foreign_key "product_name_mapping_logs", "crm_products", column: "new_crm_product_id"
+  add_foreign_key "product_name_mapping_logs", "crm_products", column: "old_crm_product_id"
+  add_foreign_key "product_name_mapping_logs", "product_name_mappings"
+  add_foreign_key "product_name_mapping_logs", "users", column: "performed_by_user_id"
   add_foreign_key "product_name_mappings", "crm_products"
   add_foreign_key "product_name_mappings", "crm_products", column: "suggested_crm_product_id"
   add_foreign_key "product_name_mappings", "users", column: "reviewed_by_user_id"
