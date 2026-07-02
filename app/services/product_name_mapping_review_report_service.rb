@@ -1,55 +1,34 @@
 # frozen_string_literal: true
 
-# Bulk Confirm Readiness Report v3 — read-only, zero DB writes.
+# Bulk Confirm Readiness Report v4 — read-only, zero DB writes.
 #
-# Classifies ALL pending ProductNameMappings into FIVE action buckets:
+# Epic E2-1: adds action_type and promotion_detected to every row.
 #
-#   A. single_product_regex_confirmable
-#        Exactly one CrmProduct regex matched the raw_name AND suggested_confidence
-#        is High.  Safe to bulk-confirm as the first batch.
+# FIVE bucket classification (unchanged from v3):
 #
-#   B. bundle_candidate
-#        Two or more DISTINCT CrmProduct regexes matched, AND their match spans
-#        are non-overlapping (each product's keyword+digit appears at a separate
-#        position in the string).  Clearly a multi-product SKU.
-#        Do NOT bulk-confirm — hand off to Bundle Components Parser.
-#        Each row includes matched_products[] and matched_count for the parser.
+#   A. single_product_regex_confirmable — 1 regex match, High confidence
+#   B. bundle_candidate                — 2+ matches, non-overlapping spans
+#   C. ambiguous_regex_match           — 2+ matches, overlapping spans
+#   D. keyword_spot_check              — 0 matches, High confidence
+#   E. low_or_no_suggestion            — 0 matches, Medium / Low / nil
 #
-#   C. ambiguous_regex_match
-#        Two or more distinct CrmProduct regexes matched, BUT their match spans
-#        overlap.  Likely a too-broad regex or alias overlap, not a true bundle.
-#        Do NOT bulk-confirm or send to Bundle Parser.
-#        Inspect regex_pattern strings for the matched products.
-#        Each row includes matched_products[], matched_count, and reason: "regex_overlap".
+# Action type (one per row, derived from bucket):
 #
-#   D. keyword_spot_check
-#        Zero regex matches AND suggested_confidence == High.
-#        Suggestion came from core-keyword, label-segment, or trigram logic.
-#        Spot-check a sample before bulk action.
+#   bulk_confirm    ← single_product_regex_confirmable
+#   bundle_review   ← bundle_candidate
+#   keyword_review  ← keyword_spot_check
+#   manual_review   ← ambiguous_regex_match, low_or_no_suggestion
 #
-#   E. low_or_no_suggestion
-#        Zero regex matches AND confidence is Medium / Low / nil.
-#        Manual review last.
+# Promotion detection (orthogonal — does NOT change bucket or action_type):
 #
-# Bundle vs ambiguous detection (non-overlapping span check):
-#   For each CrmProduct whose regex matches, record the character-position span
-#   [begin, end) of the first match.  Sort spans by start position and check that
-#   each span ends (exclusive) at or before the next span begins.  If all spans
-#   are non-overlapping → true bundle.  If any two spans overlap → regex/alias
-#   overlap → ambiguous.
-#
-#   Example:
-#     "薑黃1全能1" (6 chars)
-#       /薑黃(\d+)/ → span 0..3  ─┐ non-overlapping → bundle_candidate
-#       /全能(\d+)/ → span 3..6  ─┘
-#
-#     Hypothetical "膠原1" if two patterns matched starting at position 0:
-#       pattern_A → span 0..3  ─┐ overlapping (same start) → ambiguous_regex_match
-#       pattern_B → span 0..3  ─┘
+#   promotion_detected = true  when raw_name matches /送\d+|贈\d+/
+#   Examples: "代謝錠2送1", "全能10送2", "穀胱甘肽10送2送面膜1" → true
+#             "全能1"                                           → false
 #
 # Usage (Rails console):
 #   report = ProductNameMappingReviewReportService.call
 #   report[:summary]
+#   report[:action_summary]
 #   report[:bulk_confirm_readiness]
 #   report[:single_product_regex_confirmable].take(20)
 #   report[:bundle_candidate].take(20)
@@ -57,6 +36,18 @@
 #   report[:keyword_spot_check].take(20)
 #   report[:low_or_no_suggestion].take(20)
 class ProductNameMappingReviewReportService
+  # Promotion keywords that signal a buy-X-get-Y offer embedded in the SKU name.
+  # Detection is informational only — does not affect bucket or action_type.
+  PROMOTION_PATTERN = /送\d+|贈\d+/.freeze
+
+  # Maps the 5 classification buckets to the 4 workflow action types.
+  BUCKET_TO_ACTION_TYPE = {
+    single_product_regex_confirmable: :bulk_confirm,
+    bundle_candidate:                 :bundle_review,
+    ambiguous_regex_match:            :manual_review,
+    keyword_spot_check:               :keyword_review,
+    low_or_no_suggestion:             :manual_review,
+  }.freeze
   def self.call
     new.call
   end
@@ -108,8 +99,20 @@ class ProductNameMappingReviewReportService
       low_or_no_suggestion:             buckets[:low_or_no_suggestion].size,
     }
 
+    # Count promotion_detected across ALL buckets (it is orthogonal to bucket type).
+    all_rows = buckets.values.sum([], &:itself)
+
+    action_summary = {
+      bulk_confirm:       buckets[:single_product_regex_confirmable].size,
+      bundle_review:      buckets[:bundle_candidate].size,
+      keyword_review:     buckets[:keyword_spot_check].size,
+      manual_review:      buckets[:ambiguous_regex_match].size + buckets[:low_or_no_suggestion].size,
+      promotion_detected: all_rows.count { |r| r[:promotion_detected] },
+    }
+
     {
       summary:                          summary,
+      action_summary:                   action_summary,
       bulk_confirm_readiness:           bulk_confirm_readiness,
       single_product_regex_confirmable: buckets[:single_product_regex_confirmable],
       bundle_candidate:                 buckets[:bundle_candidate],
@@ -185,6 +188,8 @@ class ProductNameMappingReviewReportService
       source:                mapping.source,
       matched_products:      matched_labels,
       matched_count:         matched.size,
+      action_type:           BUCKET_TO_ACTION_TYPE.fetch(bucket),
+      promotion_detected:    mapping.raw_name.match?(PROMOTION_PATTERN),
     }
 
     # Surface the overlap reason so reviewers know which regex(es) to tighten.
