@@ -87,6 +87,10 @@
     {
       "date": "2026-07-01",
       "followers": 23234
+    },
+    {
+      "date": "2026-07-02",
+      "followers": 23267
     }
   ],
   "shengting.collagen": [
@@ -184,6 +188,10 @@
     },
     {
       "date": "2026-07-01",
+      "followers": 40
+    },
+    {
+      "date": "2026-07-02",
       "followers": 40
     }
   ],
@@ -283,6 +291,10 @@
     {
       "date": "2026-07-01",
       "followers": 257
+    },
+    {
+      "date": "2026-07-02",
+      "followers": 257
     }
   ],
   "shengting.bodyfit": [
@@ -380,6 +392,10 @@
     },
     {
       "date": "2026-07-01",
+      "followers": 37
+    },
+    {
+      "date": "2026-07-02",
       "followers": 37
     }
   ],
@@ -479,6 +495,10 @@
     {
       "date": "2026-07-01",
       "followers": 43
+    },
+    {
+      "date": "2026-07-02",
+      "followers": 43
     }
   ],
   "shengting.hercare": [
@@ -576,6 +596,10 @@
     },
     {
       "date": "2026-07-01",
+      "followers": 37
+    },
+    {
+      "date": "2026-07-02",
       "followers": 37
     }
   ],
@@ -675,6 +699,10 @@
     {
       "date": "2026-07-01",
       "followers": 38
+    },
+    {
+      "date": "2026-07-02",
+      "followers": 38
     }
   ],
   "shengting.metabolic": [
@@ -772,6 +800,10 @@
     },
     {
       "date": "2026-07-01",
+      "followers": 44
+    },
+    {
+      "date": "2026-07-02",
       "followers": 44
     }
   ],
@@ -871,6 +903,10 @@
     {
       "date": "2026-07-01",
       "followers": 36
+    },
+    {
+      "date": "2026-07-02",
+      "followers": 36
     }
   ],
   "shengting.probiotic": [
@@ -968,6 +1004,10 @@
     },
     {
       "date": "2026-07-01",
+      "followers": 59
+    },
+    {
+      "date": "2026-07-02",
       "followers": 59
     }
   ],
@@ -1067,6 +1107,10 @@
     {
       "date": "2026-07-01",
       "followers": 100
+    },
+    {
+      "date": "2026-07-02",
+      "followers": 100
     }
   ],
   "shengting.nmnq10": [
@@ -1164,6 +1208,10 @@
     },
     {
       "date": "2026-07-01",
+      "followers": 39
+    },
+    {
+      "date": "2026-07-02",
       "followers": 39
     }
   ],
@@ -1263,6 +1311,10 @@
     {
       "date": "2026-07-01",
       "followers": 41
+    },
+    {
+      "date": "2026-07-02",
+      "followers": 41
     }
   ],
   "chloechao0527": [
@@ -1349,6 +1401,10 @@
     {
       "date": "2026-07-01",
       "followers": 139926
+    },
+    {
+      "date": "2026-07-02",
+      "followers": 139934
     }
   ]
 }
