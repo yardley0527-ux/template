@@ -84,6 +84,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100000) do
     t.index ["stat_month"], name: "idx_crm_monthly_stats_on_month"
   end
 
+  create_table "crm_product_aliases", force: :cascade do |t|
+    t.bigint  "crm_product_id",   null: false
+    t.string  "alias_name",       null: false
+    t.string  "normalized_alias", null: false
+    t.string  "status",           null: false, default: "active"
+    t.string  "source",           null: false, default: "seed"
+    t.text    "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["crm_product_id", "alias_name"], name: "idx_crm_product_aliases_uniq", unique: true
+    t.index ["crm_product_id"],               name: "index_crm_product_aliases_on_crm_product_id"
+    t.index ["alias_name"],                   name: "idx_crm_product_aliases_name"
+    t.index ["status"],                       name: "idx_crm_product_aliases_status"
+  end
+
   create_table "crm_products", force: :cascade do |t|
     t.string "key", null: false
     t.string "label", null: false
@@ -864,6 +879,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100000) do
   end
 
   add_foreign_key "albums", "shopline_customers"
+  add_foreign_key "crm_product_aliases", "crm_products"
   add_foreign_key "crm_products", "users", column: "reviewed_by_user_id"
   add_foreign_key "health_assessment_products", "products"
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"

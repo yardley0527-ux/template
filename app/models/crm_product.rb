@@ -4,6 +4,10 @@ class CrmProduct < ApplicationRecord
   KEY_FORMAT = /\A[a-z][a-z0-9_]*\z/
   STATUSES   = %w[candidate confirmed merged ignored].freeze
 
+  has_many :crm_product_aliases, dependent: :destroy
+  has_many :active_aliases, -> { where(status: "active") },
+           class_name: "CrmProductAlias", inverse_of: :crm_product
+
   has_many :product_name_mappings, foreign_key: :crm_product_id, inverse_of: :crm_product
   has_many :suggested_for_mappings, class_name: "ProductNameMapping",
            foreign_key: :suggested_crm_product_id, inverse_of: :suggested_crm_product
