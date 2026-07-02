@@ -1,108 +1,136 @@
 # frozen_string_literal: true
 
-# Read-only report on all pending ProductNameMappings.
+# Bulk Confirm Readiness Report — read-only, zero DB writes.
 #
-# Produces a summary (pending totals by confidence) plus a ranked list of the
-# top 100 High-confidence entries, with an auto-confirm estimate for each.
+# Classifies all pending ProductNameMappings into four action buckets:
 #
-# Auto-confirm classification:
-#   :regex_match   — raw_name matches the suggested product's stored regex_pattern.
-#                    Safest to bulk-confirm; the same pattern the generator used.
-#   :keyword_match — High confidence but regex does NOT match.  Suggestion came
-#                    from core-keyword, label-segment, or trigram logic.  Still
-#                    High confidence, but spot-check before bulk action.
-#   :none          — No High-confidence suggestion (Medium/Low/nil).
+#   A. single_product_regex_confirmable
+#        High confidence + raw_name matches exactly ONE CrmProduct's regex.
+#        Safe to bulk-confirm as-is.
+#
+#   B. bundle_candidate
+#        raw_name matches TWO OR MORE CrmProduct regexes simultaneously.
+#        Must NOT be bulk-confirmed — hand off to Bundle Components Parser.
+#        (Priority over A/C/D: checked first regardless of suggested_confidence.)
+#
+#   C. keyword_spot_check
+#        High confidence, but raw_name did NOT match any stored regex.
+#        Suggestion came from core-keyword, label-segment, or trigram logic.
+#        Spot-check a sample before bulk action.
+#
+#   D. low_or_no_suggestion
+#        Medium / Low confidence, or no suggestion at all.
+#        Leave for manual review last.
 #
 # Usage (Rails console):
 #   report = ProductNameMappingReviewReportService.call
 #   report[:summary]
-#   report[:top_100_high].first(10)
-#   report[:auto_confirm_estimate]
+#   report[:bulk_confirm_readiness]
+#   report[:single_product_regex_confirmable].take(20)
+#   report[:bundle_candidate].take(20)
+#   report[:keyword_spot_check].take(20)
+#   report[:low_or_no_suggestion].take(20)
 class ProductNameMappingReviewReportService
   def self.call
     new.call
   end
 
   def call
-    # ── Summary counts (DB aggregates, no full load) ─────────────────────
-    pending_scope = ProductNameMapping.pending
+    # Load all CrmProducts that have a regex (used for bundle detection).
+    # Cached once; avoids N+1 inside the classification loop.
+    products_with_regex = CrmProduct.where.not(regex_pattern: [nil, ""]).to_a
 
-    summary = {
-      pending_total:        pending_scope.count,
-      high_confidence:      pending_scope.where(suggested_confidence: "High").count,
-      medium_confidence:    pending_scope.where(suggested_confidence: "Medium").count,
-      low_confidence:       pending_scope.where(suggested_confidence: "Low").count,
-      no_suggestion:        pending_scope.where(suggested_confidence: nil).count,
-    }
-
-    # ── Top 100 High — ranked by occurrence_count DESC ───────────────────
-    top_high_rows = ProductNameMapping
+    # Load all pending mappings, sorted descending by occurrence_count.
+    # Order is preserved as rows are pushed into each bucket.
+    pending = ProductNameMapping
       .pending
-      .where(suggested_confidence: "High")
       .includes(:suggested_crm_product)
       .order(occurrence_count: :desc)
-      .limit(100)
-      .map { |m| build_row(m) }
+      .to_a
 
-    # ── Auto-confirm estimate across ALL High pending ─────────────────────
-    all_high = ProductNameMapping
-      .pending
-      .where(suggested_confidence: "High")
-      .includes(:suggested_crm_product)
+    # ── Classify into four buckets ────────────────────────────────────────
+    buckets = {
+      single_product_regex_confirmable: [],
+      bundle_candidate:                 [],
+      keyword_spot_check:               [],
+      low_or_no_suggestion:             [],
+    }
 
-    regex_auto    = 0
-    keyword_auto  = 0
-
-    all_high.each do |m|
-      case classify(m, m.suggested_crm_product)
-      when :regex_match   then regex_auto   += 1
-      when :keyword_match then keyword_auto += 1
-      end
+    pending.each do |m|
+      bucket = classify(m, products_with_regex)
+      buckets[bucket] << build_row(m, products_with_regex)
     end
 
-    auto_confirm_estimate = {
-      regex_auto_confirmable:   regex_auto,
-      keyword_spot_check:       keyword_auto,
-      total_high:               summary[:high_confidence],
-      note: [
-        "regex_auto_confirmable: raw_name matched the suggested product's regex_pattern",
-        "— safe to bulk-confirm via ProductNameMapping.pending",
-        "  .where(suggested_confidence: 'High') after verifying a sample.",
-        "keyword_spot_check: High confidence via keyword/label/trigram logic",
-        "— review a few before bulk action.",
-      ].join("\n  ")
+    # ── Summary ───────────────────────────────────────────────────────────
+    summary = {
+      pending_total:     pending.size,
+      high_confidence:   pending.count { |m| m.suggested_confidence == "High"   },
+      medium_confidence: pending.count { |m| m.suggested_confidence == "Medium" },
+      low_confidence:    pending.count { |m| m.suggested_confidence == "Low"    },
+      no_suggestion:     pending.count { |m| m.suggested_confidence.nil?        },
+    }
+
+    bulk_confirm_readiness = {
+      single_product_regex_confirmable: buckets[:single_product_regex_confirmable].size,
+      bundle_candidate:                 buckets[:bundle_candidate].size,
+      keyword_spot_check:               buckets[:keyword_spot_check].size,
+      low_or_no_suggestion:             buckets[:low_or_no_suggestion].size,
     }
 
     {
-      summary:               summary,
-      auto_confirm_estimate: auto_confirm_estimate,
-      top_100_high:          top_high_rows,
+      summary:                          summary,
+      bulk_confirm_readiness:           bulk_confirm_readiness,
+      single_product_regex_confirmable: buckets[:single_product_regex_confirmable],
+      bundle_candidate:                 buckets[:bundle_candidate],
+      keyword_spot_check:               buckets[:keyword_spot_check],
+      low_or_no_suggestion:             buckets[:low_or_no_suggestion],
     }
   end
 
   private
 
-  def build_row(mapping)
-    product = mapping.suggested_crm_product
-    {
-      raw_name:              mapping.raw_name,
-      occurrence_count:      mapping.occurrence_count,
-      suggested_crm_product: product&.label,
-      confidence:            mapping.suggested_confidence,
-      source:                mapping.source,
-      auto_confirmable:      classify(mapping, product),
-    }
+  # ── Classification (bundle check has highest priority) ─────────────────
+
+  def classify(mapping, products_with_regex)
+    matched = matching_products(mapping.raw_name, products_with_regex)
+
+    return :bundle_candidate if matched.size >= 2
+
+    if mapping.suggested_confidence == "High"
+      matched.size == 1 ? :single_product_regex_confirmable : :keyword_spot_check
+    else
+      :low_or_no_suggestion
+    end
   end
 
-  def classify(mapping, product)
-    return :none unless product&.regex_pattern.present?
+  # Returns CrmProducts whose regex_pattern matches raw_name.
+  def matching_products(raw_name, products)
+    products.select { |p| matches_regex?(raw_name, p.regex_pattern) }
+  end
 
-    if mapping.raw_name.match?(Regexp.new(product.regex_pattern))
-      :regex_match
-    else
-      :keyword_match
-    end
+  def matches_regex?(raw_name, pattern)
+    raw_name.match?(Regexp.new(pattern))
   rescue RegexpError
-    :keyword_match
+    false
+  end
+
+  # ── Row builder ────────────────────────────────────────────────────────
+
+  def build_row(mapping, products_with_regex)
+    suggested = mapping.suggested_crm_product
+    row = {
+      raw_name:              mapping.raw_name,
+      occurrence_count:      mapping.occurrence_count,
+      suggested_crm_product: suggested&.label,
+      confidence:            mapping.suggested_confidence,
+      source:                mapping.source,
+    }
+
+    # For bundle candidates, surface which products were detected — useful
+    # for the Bundle Components Parser to know what it needs to split.
+    matched = matching_products(mapping.raw_name, products_with_regex)
+    row[:matched_products] = matched.map(&:label) if matched.size >= 2
+
+    row
   end
 end
