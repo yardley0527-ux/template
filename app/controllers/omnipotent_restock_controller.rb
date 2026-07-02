@@ -528,7 +528,7 @@ class OmnipotentRestockController < ApplicationController
   def restock_csv(rows)
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["狀態", "客戶類型", "姓名", "卡別", "IG", "來源場次",
+      csv << ["狀態", "客戶類型", "姓名", "卡別", "手機", "IG", "來源場次",
               "上次購買", "瓶數", "累計瓶數", "累計次數",
               "吃完日", "建議提醒日", "預計回購日", "距今天數", "通知狀態"]
       rows.each do |r|
@@ -539,7 +539,7 @@ class OmnipotentRestockController < ApplicationController
                elsif r[:days_until_reminder] <= 0 then "提醒中"
                else "尚早" end
         csv << [
-          seg, r[:customer_type][:label], c.full_name, c.membership_level, ig,
+          seg, r[:customer_type][:label], c.full_name, c.membership_level, c.mobile_phone, ig,
           r[:source_event],
           r[:bought_date]&.strftime("%Y/%m/%d"), r[:bottles], r[:total_omni_bottles], r[:omni_count],
           r[:estimated_finish_date]&.strftime("%Y/%m/%d"),
@@ -555,11 +555,11 @@ class OmnipotentRestockController < ApplicationController
   def loyal_csv
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["客戶類型", "姓名", "卡別", "IG", "購買次數", "累計瓶數", "累計消費(NT$)", "上次購買"]
+      csv << ["客戶類型", "姓名", "卡別", "手機", "IG", "購買次數", "累計瓶數", "累計消費(NT$)", "上次購買"]
       @loyal_buyers.each do |r|
         c  = r[:customer]
         ig = c.instagram_account&.gsub('@', '')&.strip
-        csv << [r[:customer_type][:label], c.full_name, c.membership_level, ig,
+        csv << [r[:customer_type][:label], c.full_name, c.membership_level, c.mobile_phone, ig,
                 r[:order_count], r[:total_bottles], r[:total_spend].to_i,
                 r[:last_date]&.strftime("%Y/%m/%d")]
       end

@@ -14,7 +14,15 @@
       <h4 class="fw-bold mb-0">老闆總覽</h4>
       <p class="text-muted small mb-0"><%= @product[:label] %> 旅程管理效果追蹤・<%= Date.today.strftime("%Y年%m月") %></p>
     </div>
-    <%= link_to "← 旅程管理", crm_journey_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
+    <div class="d-flex gap-2 flex-wrap">
+      <%= link_to "⬇ 今日維護名單", crm_export_path(product: @product_key),
+            class: "btn btn-outline-secondary btn-sm fw-semibold" %>
+      <%= link_to "⬇ 流失喚醒名單", crm_export_at_risk_path(product: @product_key),
+            class: "btn btn-outline-secondary btn-sm fw-semibold" %>
+      <%= link_to "⬇ 常購名單", crm_export_loyal_path(product: @product_key),
+            class: "btn btn-outline-secondary btn-sm fw-semibold" %>
+      <%= link_to "← 旅程管理", crm_journey_path(product: @product_key), class: "btn btn-outline-secondary btn-sm" %>
+    </div>
   </div>
 </div>
 
@@ -111,7 +119,7 @@
           <div class="col-6 col-md-2">
             <div class="text-muted small" style="color:#1d4ed8;">VIP 常購客</div>
             <div class="fw-bold" style="font-size:1.5rem; color:#1d4ed8;"><%= @daily_snapshot[:vip_count] %></div>
-            <div class="text-muted" style="font-size:0.68rem;">2次+ 且 6瓶+</div>
+            <div class="text-muted" style="font-size:0.68rem;">連續兩波回購 且 6瓶+</div>
           </div>
           <div class="col-6 col-md-2">
             <div class="text-muted small" style="color:#ea580c;">大套組客</div>
