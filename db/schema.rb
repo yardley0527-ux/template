@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_02_000001) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_02_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -44,6 +44,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_000001) do
     t.datetime "refreshed_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "cross_wave_repeat", default: false, null: false
     t.index ["email", "product_key"], name: "idx_crm_tracking_on_email_product", unique: true
     t.index ["product_key", "expected_return_date"], name: "idx_crm_tracking_on_product_return_date"
     t.index ["product_key", "last_order_date"], name: "idx_crm_tracking_on_product_last_order"

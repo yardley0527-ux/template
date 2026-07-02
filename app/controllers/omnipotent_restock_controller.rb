@@ -7,7 +7,7 @@ class OmnipotentRestockController < ApplicationController
   CHURN_THRESHOLD_DAYS = -60
 
   CUSTOMER_TYPES = [
-    { key: :vip,    label: "VIP常購客", emoji: "🔵", color: "#1d4ed8", rank: 4, desc: "2次以上且累計 6 瓶以上" },
+    { key: :vip,    label: "VIP常購客", emoji: "🔵", color: "#1d4ed8", rank: 4, desc: "連續兩波進貨都有回購，且累計 6 瓶以上" },
     { key: :big,    label: "大套組客",  emoji: "🟠", color: "#ea580c", rank: 3, desc: "累計 6 瓶以上" },
     { key: :small,  label: "小套組客",  emoji: "🟡", color: "#ca8a04", rank: 2, desc: "累計 3–5 瓶" },
     { key: :single, label: "單瓶客",    emoji: "🟢", color: "#6b7280", rank: 1, desc: "累計 1–2 瓶" }
@@ -80,7 +80,8 @@ class OmnipotentRestockController < ApplicationController
         days_until_reminder:     (bought + exp - REMINDER_BUFFER_DAYS - Date.today).to_i
       }
       tb = @omni_orders.sum { |o| o[:bottles] }
-      @customer_type      = resolve_customer_type(@omni_orders.size, tb)
+      cross_wave_repeat   = WaveRepeatCalculator.call(@product[:sql]).fetch(@customer.email, false)
+      @customer_type      = resolve_customer_type(cross_wave_repeat, tb)
       @total_omni_bottles = tb
       @omni_count         = @omni_orders.size
     end
@@ -376,6 +377,8 @@ class OmnipotentRestockController < ApplicationController
       bottle_totals[email] += extract_bottles(pn)
     end
 
+    wave_repeats = WaveRepeatCalculator.call(sql)
+
     notif_map = {}
     OmnipotentNotificationStatus.where(email: all_emails, product_key: @product_key).each do |n|
       notif_map[[n.email, n.reference_date]] = n
@@ -411,7 +414,7 @@ class OmnipotentRestockController < ApplicationController
         source_event:            source_event_label(bought),
         omni_count:              count,
         total_omni_bottles:      total_bottles,
-        customer_type:           resolve_customer_type(count, total_bottles),
+        customer_type:           resolve_customer_type(wave_repeats.fetch(c.email, false), total_bottles),
         notification:            notif_map[[c.email, bought]]
       }
     end.tap do |list|
@@ -437,6 +440,8 @@ class OmnipotentRestockController < ApplicationController
       bottle_totals[email] += extract_bottles(pn)
     end
 
+    wave_repeats = WaveRepeatCalculator.call(sql)
+
     last_dates = {}
     ShoplineOrder.where(sql).where(email: loyal_emails)
       .order(:email, order_date: :desc).pluck(:email, :order_date)
@@ -459,7 +464,7 @@ class OmnipotentRestockController < ApplicationController
       total_bottles = bottle_totals[c.email] || 0
       { customer: c, order_count: count, total_spend: amounts[c.email] || 0,
         last_date: last_dates[c.email], total_bottles: total_bottles,
-        customer_type: resolve_customer_type(count, total_bottles) }
+        customer_type: resolve_customer_type(wave_repeats.fetch(c.email, false), total_bottles) }
     end.sort_by { |r| [-r[:customer_type][:rank], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:order_count], -r[:total_spend]] }
   end
 
@@ -476,8 +481,8 @@ class OmnipotentRestockController < ApplicationController
     score
   end
 
-  def resolve_customer_type(order_count, total_bottles)
-    if order_count >= 2 && total_bottles >= 6
+  def resolve_customer_type(cross_wave_repeat, total_bottles)
+    if cross_wave_repeat && total_bottles >= 6
       CUSTOMER_TYPES.find { |t| t[:key] == :vip }
     elsif total_bottles >= 6
       CUSTOMER_TYPES.find { |t| t[:key] == :big }

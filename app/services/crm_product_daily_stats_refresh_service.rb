@@ -55,7 +55,7 @@ class CrmProductDailyStatsRefreshService
   # All 8 segment counts come from a single aggregate query against the
   # tracking table — status segments are derived from
   # (expected_return_date / suggested_reminder_date) - stat_date,
-  # customer-type segments from (order_count, total_bottles).
+  # customer-type segments from (cross_wave_repeat, total_bottles).
 
   def fetch_counts
     conn = ActiveRecord::Base.connection
@@ -77,8 +77,8 @@ class CrmProductDailyStatsRefreshService
         COUNT(*) FILTER (
           WHERE (expected_return_date - #{d}) < #{OVERDUE_FLOOR_DAYS}
         ) AS at_risk_count,
-        COUNT(*) FILTER (WHERE order_count >= 2 AND total_bottles >= 6) AS vip_count,
-        COUNT(*) FILTER (WHERE order_count < 2 AND total_bottles >= 6) AS big_count,
+        COUNT(*) FILTER (WHERE cross_wave_repeat AND total_bottles >= 6) AS vip_count,
+        COUNT(*) FILTER (WHERE NOT cross_wave_repeat AND total_bottles >= 6) AS big_count,
         COUNT(*) FILTER (WHERE total_bottles BETWEEN 3 AND 5) AS small_count,
         COUNT(*) FILTER (WHERE total_bottles < 3) AS single_count
       FROM crm_customer_product_trackings

@@ -67,6 +67,7 @@ class CrmCustomerProductTrackingRefreshService
 
     order_counts  = fetch_order_counts(valid_emails)
     bottle_totals = fetch_bottle_totals(valid_emails)
+    wave_repeats  = WaveRepeatCalculator.call(@product[:sql])
     now = Time.current
 
     valid_emails.map do |email|
@@ -87,6 +88,7 @@ class CrmCustomerProductTrackingRefreshService
         suggested_reminder_date: suggested_reminder_date,
         order_count:             order_counts[email] || 0,
         total_bottles:           bottle_totals[email] || 0,
+        cross_wave_repeat:       wave_repeats.fetch(email, false),
         refreshed_at:            now
       }
     end.compact
@@ -140,7 +142,7 @@ class CrmCustomerProductTrackingRefreshService
       INSERT INTO crm_customer_product_trackings (
         email, product_key, last_order_date, last_order_product_name,
         last_order_bottles, expected_return_date, suggested_reminder_date,
-        order_count, total_bottles, refreshed_at, created_at, updated_at
+        order_count, total_bottles, cross_wave_repeat, refreshed_at, created_at, updated_at
       )
       VALUES
         #{values_sql}
@@ -152,6 +154,7 @@ class CrmCustomerProductTrackingRefreshService
         suggested_reminder_date = EXCLUDED.suggested_reminder_date,
         order_count              = EXCLUDED.order_count,
         total_bottles            = EXCLUDED.total_bottles,
+        cross_wave_repeat        = EXCLUDED.cross_wave_repeat,
         refreshed_at             = EXCLUDED.refreshed_at,
         updated_at               = NOW()
     SQL
@@ -171,6 +174,7 @@ class CrmCustomerProductTrackingRefreshService
       conn.quote(row[:suggested_reminder_date]),
       conn.quote(row[:order_count]),
       conn.quote(row[:total_bottles]),
+      conn.quote(row[:cross_wave_repeat]),
       conn.quote(row[:refreshed_at]),
       now,
       now
