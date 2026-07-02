@@ -220,110 +220,87 @@
   </div>
   <% end %>
 
-  <%# B + C 兩欄 %>
-  <div class="row g-3">
-    <%# B. 昨日主要購買卡別 %>
-    <% if yi[:by_tier].any? %>
-    <div class="col-md-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-header bg-white py-2" style="border-bottom:1px solid #ede9e4;">
-          <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">昨日主要購買卡別</span>
-        </div>
-        <div class="card-body p-0">
-          <table class="table table-sm mb-0" style="font-size:0.83rem;">
-            <thead style="background:#f8f6f3;">
-              <tr>
-                <th class="ps-3 py-2 fw-normal text-muted">卡別</th>
-                <th class="py-2 text-center fw-normal text-muted">人數</th>
-                <th class="py-2 text-center fw-normal text-muted">訂單數</th>
-                <th class="py-2 text-end pe-2 fw-normal text-muted">營業額</th>
-                <th class="py-2 text-end pe-3 fw-normal text-muted">均單</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% yi[:by_tier].each do |t| %>
-              <tr>
-                <td class="ps-3 py-2 fw-semibold"><%= t[:tier] %></td>
-                <td class="py-2 text-center text-muted"><%= t[:customer_count] %></td>
-                <td class="py-2 text-center"><%= t[:order_count] %> 單</td>
-                <td class="py-2 text-end pe-2">NT$<%= number_with_delimiter(t[:amount].to_i) %></td>
-                <td class="py-2 text-end pe-3 text-muted" style="font-size:0.78rem;">NT$<%= number_with_delimiter(t[:avg_order]) %></td>
-              </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    <% end %>
-
-    <%# C. 昨日主要年齡層 %>
-    <% if yi[:by_age].any? { |a| a[:order_count] > 0 } %>
-    <div class="col-md-6">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-header bg-white py-2" style="border-bottom:1px solid #ede9e4;">
-          <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">昨日主要年齡層</span>
-        </div>
-        <div class="card-body p-0">
-          <table class="table table-sm mb-0" style="font-size:0.83rem;">
-            <thead style="background:#f8f6f3;">
-              <tr>
-                <th class="ps-3 py-2 fw-normal text-muted">年齡區間</th>
-                <th class="py-2 text-center fw-normal text-muted">人數</th>
-                <th class="py-2 text-center fw-normal text-muted">訂單數</th>
-                <th class="py-2 text-end pe-2 fw-normal text-muted">營業額</th>
-                <th class="py-2 text-end pe-3 fw-normal text-muted">均單</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% yi[:by_age].each do |a| %>
-              <% next if a[:order_count] == 0 %>
-              <tr>
-                <td class="ps-3 py-2 fw-semibold"><%= a[:band] %></td>
-                <td class="py-2 text-center text-muted"><%= a[:customer_count] %></td>
-                <td class="py-2 text-center"><%= a[:order_count] %> 單</td>
-                <td class="py-2 text-end pe-2">NT$<%= number_with_delimiter(a[:amount].to_i) %></td>
-                <td class="py-2 text-end pe-3 text-muted" style="font-size:0.78rem;">NT$<%= number_with_delimiter(a[:avg_order]) %></td>
-              </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    <% end %>
-  </div>
 </div>
 <% end %>
-<%# ── 舊客會員分布 ── %>
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-header bg-white d-flex align-items-center py-2" style="border-bottom:2px solid #f0ede9;">
-    <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">舊客會員分布</span>
+
+<%# ── 昨日主要年齡層 + 卡別購買分布（並排） ── %>
+<div class="row g-3 mb-3">
+  <%# C. 昨日主要年齡層 %>
+  <% if @yesterday_insights && yi[:by_age].any? { |a| a[:order_count] > 0 } %>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white py-2" style="border-bottom:1px solid #ede9e4;">
+        <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">昨日主要年齡層</span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0" style="font-size:0.83rem;">
+          <thead style="background:#f8f6f3;">
+            <tr>
+              <th class="ps-3 py-2 fw-normal text-muted">年齡區間</th>
+              <th class="py-2 text-center fw-normal text-muted">人數</th>
+              <th class="py-2 text-center fw-normal text-muted">訂單數</th>
+              <th class="py-2 text-end pe-2 fw-normal text-muted">營業額</th>
+              <th class="py-2 text-end pe-3 fw-normal text-muted">均單</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% yi[:by_age].each do |a| %>
+            <% next if a[:order_count] == 0 %>
+            <tr>
+              <td class="ps-3 py-2 fw-semibold"><%= a[:band] %></td>
+              <td class="py-2 text-center text-muted"><%= a[:customer_count] %></td>
+              <td class="py-2 text-center"><%= a[:order_count] %> 單</td>
+              <td class="py-2 text-end pe-2">NT$<%= number_with_delimiter(a[:amount].to_i) %></td>
+              <td class="py-2 text-end pe-3 text-muted" style="font-size:0.78rem;">NT$<%= number_with_delimiter(a[:avg_order]) %></td>
+            </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
-  <div class="card-body p-0">
-    <table class="table table-bordered mb-0" style="font-size:0.85rem;">
-      <thead style="background-color:#6c5f4e; color:white;">
-        <tr>
-          <th class="py-2 ps-3" style="width:20%;">卡別</th>
-          <th class="py-2 text-center" style="width:20%;">訂單數</th>
-          <th class="py-2 text-center" style="width:30%;">營收</th>
-          <th class="py-2 text-center" style="width:30%;">平均客單</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% ns[:old_by_tier].each do |s| %>
-          <% zero = s[:count] == 0 %>
-          <tr style="<%= zero ? 'opacity:0.45; background:#fafafa;' : '' %>">
-            <td class="py-2 ps-3 fw-semibold"><%= s[:label] %></td>
-            <td class="py-2 text-center"><%= s[:count] %> 單</td>
-            <td class="py-2 text-center fw-semibold <%= zero ? 'text-muted' : 'text-danger' %>">
-              <%= fmt_amt.call(s[:amount], s[:count]) %>
-            </td>
-            <td class="py-2 text-center" style="font-size:0.82rem; color:#666;"><%= fmt_avg.call(s[:amount], s[:count]) %></td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
+  <% end %>
+
+  <%# 卡別購買分布 %>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white d-flex align-items-center py-2" style="border-bottom:2px solid #f0ede9;">
+        <span class="fw-semibold" style="font-size:0.82rem; color:#6c757d; letter-spacing:0.03em;">
+          卡別購買分布
+          <span class="text-muted fw-normal">
+            （<%= @start_date == @end_date ? @start_date.strftime('%Y/%m/%d') : "#{@start_date.strftime('%Y/%m/%d')} ～ #{@end_date.strftime('%Y/%m/%d')}" %>）
+          </span>
+        </span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-bordered mb-0" style="font-size:0.85rem;">
+          <thead style="background-color:#6c5f4e; color:white;">
+            <tr>
+              <th class="py-2 ps-3" style="width:20%;">卡別</th>
+              <th class="py-2 text-center" style="width:15%;">人數</th>
+              <th class="py-2 text-center" style="width:15%;">訂單數</th>
+              <th class="py-2 text-center" style="width:25%;">營收</th>
+              <th class="py-2 text-center" style="width:25%;">平均客單</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% ns[:by_tier].each do |s| %>
+              <% zero = s[:count] == 0 %>
+              <% new_row = s[:label] == "新客" %>
+              <tr style="<%= zero ? 'opacity:0.45; background:#fafafa;' : '' %><%= new_row ? ' border-top:2px solid #dee2e6;' : '' %>">
+                <td class="py-2 ps-3 fw-semibold"><%= s[:label] %></td>
+                <td class="py-2 text-center text-muted"><%= s[:customer_count] %></td>
+                <td class="py-2 text-center"><%= s[:count] %> 單</td>
+                <td class="py-2 text-center fw-semibold <%= zero ? 'text-muted' : 'text-danger' %>">
+                  <%= fmt_amt.call(s[:amount], s[:count]) %>
+                </td>
+                <td class="py-2 text-center" style="font-size:0.82rem; color:#666;"><%= fmt_avg.call(s[:amount], s[:count]) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 

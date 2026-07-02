@@ -27,7 +27,7 @@ module JourneyProducts
     "glutathione" => {
       key:     "glutathione",
       label:   "穀胱甘肽",
-      short:   "美白",
+      short:   "穀胱甘肽",
       icon:    "✨",
       color:   "#db2777",
       sql:     "product_name LIKE '%穀胱甘肽%'",
