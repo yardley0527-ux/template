@@ -108,23 +108,25 @@ class ProductNameMappingLogTest < ActiveSupport::TestCase
   end
 
   test "rejects invalid action value" do
-    log = ProductNameMappingLog.new(
-      product_name_mapping: @mapping,
-      mapping_version: 1, action: "totally_wrong", change_source: "manual_ui",
-      from_status: "pending", to_status: "confirmed_alias"
-    )
-    assert_not log.valid?
-    assert_includes log.errors[:action], "is not included in the list"
+    # Rails 7.1 enum raises ArgumentError at assignment time, before validation.
+    assert_raises(ArgumentError) do
+      ProductNameMappingLog.new(
+        product_name_mapping: @mapping,
+        mapping_version: 1, action: "totally_wrong", change_source: "manual_ui",
+        from_status: "pending", to_status: "confirmed_alias"
+      )
+    end
   end
 
   test "rejects invalid change_source value" do
-    log = ProductNameMappingLog.new(
-      product_name_mapping: @mapping,
-      mapping_version: 1, action: "confirm", change_source: "unknown_source",
-      from_status: "pending", to_status: "confirmed_alias"
-    )
-    assert_not log.valid?
-    assert_includes log.errors[:change_source], "is not included in the list"
+    # Rails 7.1 enum raises ArgumentError at assignment time, before validation.
+    assert_raises(ArgumentError) do
+      ProductNameMappingLog.new(
+        product_name_mapping: @mapping,
+        mapping_version: 1, action: "confirm", change_source: "unknown_source",
+        from_status: "pending", to_status: "confirmed_alias"
+      )
+    end
   end
 
   test "rejects mapping_version <= 0" do

@@ -18,7 +18,7 @@ one:
   notes: MyText
 
 two:
-  ig_username: MyString
+  ig_username: MyString2
   ig_full_name: MyString
   ig_user_id: MyString
   email: MyString

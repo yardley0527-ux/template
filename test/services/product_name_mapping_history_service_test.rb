@@ -9,6 +9,10 @@ class ProductNameMappingHistoryServiceTest < ActiveSupport::TestCase
       source:         "shopline_order",
       mapping_status: "pending"
     )
+    @crm_product = CrmProduct.create!(
+      key: "test_metabolism", label: "代謝錠", status: "confirmed",
+      include_in_analysis: false, source: "test"
+    )
   end
 
   test "creates a log with mapping_version=1 for the first event" do
@@ -81,15 +85,14 @@ class ProductNameMappingHistoryServiceTest < ActiveSupport::TestCase
       from_status:          "pending",
       to_status:            "confirmed_alias",
       old_crm_product_id:   nil,
-      new_crm_product_id:   42,
-      performed_by_user_id: 1,
+      new_crm_product_id:   @crm_product.id,
       notes:                "Bulk confirm via Review Workflow"
     )
 
-    assert_equal 42,                                log.new_crm_product_id
-    assert_equal 1,                                 log.performed_by_user_id
+    assert_equal @crm_product.id,                  log.new_crm_product_id
     assert_equal "Bulk confirm via Review Workflow", log.notes
     assert_nil                                      log.old_crm_product_id
+    assert_nil                                      log.performed_by_user_id
   end
 
   test "optional fields default to nil" do
@@ -114,7 +117,8 @@ class ProductNameMappingHistoryServiceTest < ActiveSupport::TestCase
   end
 
   test "raises on invalid action" do
-    assert_raises(ActiveRecord::RecordInvalid) do
+    # Rails 7.1 enum raises ArgumentError at assignment time, before record save.
+    assert_raises(ArgumentError) do
       ProductNameMappingHistoryService.record!(
         mapping: @mapping, action: :nonexistent, change_source: :manual_ui,
         from_status: "pending", to_status: "confirmed_alias"

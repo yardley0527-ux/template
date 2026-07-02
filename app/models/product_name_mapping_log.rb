@@ -46,8 +46,10 @@ class ProductNameMappingLog < ApplicationRecord
     system:        "system",
   }, prefix: :source
 
-  validates :action,          presence: true, inclusion: { in: ACTIONS }
-  validates :change_source,   presence: true, inclusion: { in: CHANGE_SOURCES }
+  # Rails 7.1 enum raises ArgumentError on invalid values before validation runs,
+  # so inclusion: checks on :action and :change_source are redundant.
+  validates :action,          presence: true
+  validates :change_source,   presence: true
   validates :from_status,     presence: true
   validates :to_status,       presence: true
   validates :mapping_version, presence: true,
