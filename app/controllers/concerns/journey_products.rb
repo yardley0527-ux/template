@@ -41,7 +41,7 @@ module JourneyProducts
       icon:    "💧",
       color:   "#0891b2",
       sql:     "product_name LIKE '%膠原%'",
-      regex:   /膠原(\d+)/,
+      regex:   /膠原(?:蛋白)?(\d+)/,
       medians: { 1=>30, 2=>60 }
     },
     "turmeric" => {
