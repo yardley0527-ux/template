@@ -268,19 +268,26 @@ class DailyDashboardController < ApplicationController
       end
     end
 
-    old_by_tier = TIERS.map do |tier|
-      matched = old_orders.select { |o| o.membership_level_col == tier }
-      { label: tier, count: matched.size, amount: matched.sum { |o| o.order_total.to_f } }
-    end
+    tier_row = ->(label, orders) {
+      {
+        label:          label,
+        customer_count: orders.map(&:email_val).compact.reject(&:blank?).uniq.size,
+        count:          orders.size,
+        amount:         orders.sum { |o| o.order_total.to_f }
+      }
+    }
+
+    by_tier = TIERS.map { |tier| tier_row.call(tier, old_orders.select { |o| o.membership_level_col == tier }) }
     ungrouped = old_orders.reject { |o| TIERS.include?(o.membership_level_col) }
-    old_by_tier << { label: "未分級", count: ungrouped.size, amount: ungrouped.sum { |o| o.order_total.to_f } } if ungrouped.any?
+    by_tier << tier_row.call("未分級", ungrouped) if ungrouped.any?
+    by_tier << tier_row.call("新客", new_orders)
 
     {
-      new_count:   new_orders.size,
-      new_amount:  new_orders.sum { |o| o.order_total.to_f },
-      old_count:   old_orders.size,
-      old_amount:  old_orders.sum { |o| o.order_total.to_f },
-      old_by_tier: old_by_tier
+      new_count:  new_orders.size,
+      new_amount: new_orders.sum { |o| o.order_total.to_f },
+      old_count:  old_orders.size,
+      old_amount: old_orders.sum { |o| o.order_total.to_f },
+      by_tier:    by_tier
     }
   end
 
