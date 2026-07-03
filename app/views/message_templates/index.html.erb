@@ -182,14 +182,11 @@ function buildBlockEl(block) {
              '</span>';
     }).join('');
 
-    var uploadId = 'upload-' + block.id;
     body = '<div class="flex-grow-1 mr-2">' +
            '<div class="d-flex flex-wrap mb-2" id="imgs-' + block.id + '">' + thumbs + '</div>' +
-           '<div class="custom-file" style="max-width:220px;">' +
-           '<input type="file" class="custom-file-input" id="' + uploadId + '" accept="image/*" ' +
-           'onchange="uploadImage(' + block.id + ', this)">' +
-           '<label class="custom-file-label" for="' + uploadId + '">選擇圖片...</label>' +
-           '</div></div>';
+           '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="uploadImage(' + block.id + ')">' +
+           '<i class="fal fa-upload mr-1"></i>上傳圖片</button>' +
+           '</div>';
   }
 
   var del = '<button type="button" class="btn btn-xs btn-outline-danger flex-shrink-0 mt-1" ' +
@@ -238,29 +235,96 @@ function deleteBlock(blockId, btn) {
   });
 }
 
-// ─── Image upload ────────────────────────────────────────────────────
-function uploadImage(blockId, input) {
-  if (!input.files[0]) return;
-  var fd = new FormData();
-  fd.append('file', input.files[0]);
-  fd.append('message_template_block_id', blockId);
+// ─── Image upload (Cloudinary widget, same flow as albums) ────────────
+var cloudinaryPromise = null;
 
+function loadCloudinary() {
+  if (window.cloudinary) return Promise.resolve(window.cloudinary);
+  if (cloudinaryPromise) return cloudinaryPromise;
+
+  cloudinaryPromise = new Promise(function(resolve, reject) {
+    var existing = document.querySelector('script[data-cloudinary-widget="true"]');
+    if (existing) {
+      if (window.cloudinary) { resolve(window.cloudinary); return; }
+      existing.addEventListener('load', function() {
+        if (window.cloudinary) resolve(window.cloudinary);
+        else reject(new Error('Cloudinary script loaded but window.cloudinary is still undefined'));
+      });
+      existing.addEventListener('error', function() {
+        reject(new Error('Existing Cloudinary script failed to load'));
+      });
+      return;
+    }
+
+    var script = document.createElement('script');
+    script.src = 'https://upload-widget.cloudinary.com/global/all.js';
+    script.async = true;
+    script.dataset.cloudinaryWidget = 'true';
+    script.onload = function() {
+      if (window.cloudinary) resolve(window.cloudinary);
+      else reject(new Error('Cloudinary script loaded but window.cloudinary not found'));
+    };
+    script.onerror = function() { reject(new Error('Cloudinary script failed to load')); };
+    document.head.appendChild(script);
+  });
+
+  return cloudinaryPromise;
+}
+
+function uploadImage(blockId) {
+  loadCloudinary()
+    .then(function(cloudinary) {
+      var widget = cloudinary.createUploadWidget({
+        cloudName: '<%= ENV["CLOUDINARY_CLOUD_NAME"] %>',
+        uploadPreset: 'ml_default',
+        multiple: true,
+        maxFiles: 20,
+        language: 'zh_TW',
+        sources: ['local', 'camera', 'photo_library'],
+        clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
+        resourceType: 'image'
+      }, function(error, result) {
+        if (error) { console.error('[msg-templates] cloudinary widget error', error); return; }
+        if (result && result.event === 'success') {
+          saveImageToRails(blockId, result.info);
+        }
+      });
+      widget.open();
+    })
+    .catch(function(err) {
+      console.error('[msg-templates] upload flow failed', err);
+      alert('上傳功能初始化失敗，請稍後再試。');
+    });
+}
+
+function saveImageToRails(blockId, info) {
   fetch('/message_template_images', {
     method: 'POST',
-    headers: { 'X-CSRF-Token': CSRF },
-    body: fd
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify({
+      message_template_image: {
+        message_template_block_id: blockId,
+        cloudinary_public_id: info.public_id,
+        url: info.secure_url
+      }
+    })
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.error) { alert(data.error); return; }
     var container = document.getElementById('imgs-' + blockId);
-    var span = document.createElement('span');
-    span.className = 'block-img-thumb';
-    span.innerHTML = '<img src="' + data.url + '">' +
-      '<button type="button" class="del-img" onclick="deleteImage(' + data.id + ', this)">&times;</button>';
-    container.appendChild(span);
+    if (container) {
+      var span = document.createElement('span');
+      span.className = 'block-img-thumb';
+      span.innerHTML = '<img src="' + data.url + '">' +
+        '<button type="button" class="del-img" onclick="deleteImage(' + data.id + ', this)">&times;</button>';
+      container.appendChild(span);
+    }
     updateCardHtml(data.card_html);
-    input.value = '';
+  })
+  .catch(function(err) {
+    console.error('[msg-templates] saveImageToRails failed', err);
+    alert('圖片儲存失敗，請稍後再試。');
   });
 }
 

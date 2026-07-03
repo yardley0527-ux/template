@@ -1,17 +1,11 @@
 class MessageTemplateImagesController < ApplicationController
   def create
-    block = MessageTemplateBlock.find(params[:message_template_block_id])
-    file  = params[:file]
-
-    result = Cloudinary::Uploader.upload(file.tempfile.path,
-      folder: "message_templates",
-      resource_type: "image"
-    )
+    block = MessageTemplateBlock.find(image_params[:message_template_block_id])
 
     position = block.message_template_images.maximum(:position).to_i + 1
     img = block.message_template_images.create!(
-      cloudinary_public_id: result["public_id"],
-      url: result["secure_url"],
+      cloudinary_public_id: image_params[:cloudinary_public_id],
+      url: image_params[:url],
       position: position
     )
 
@@ -28,7 +22,7 @@ class MessageTemplateImagesController < ApplicationController
   def destroy
     img   = MessageTemplateImage.find(params[:id])
     block = img.message_template_block
-    Cloudinary::Uploader.destroy(img.cloudinary_public_id) rescue nil
+    Cloudinary::Api.delete_resources([img.cloudinary_public_id]) rescue nil
     img.destroy
 
     card_html = render_to_string(
@@ -36,5 +30,11 @@ class MessageTemplateImagesController < ApplicationController
       locals: { template: block.message_template.reload }
     )
     render json: { card_html: card_html }
+  end
+
+  private
+
+  def image_params
+    params.require(:message_template_image).permit(:message_template_block_id, :cloudinary_public_id, :url)
   end
 end
