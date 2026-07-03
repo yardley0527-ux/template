@@ -41,7 +41,12 @@ class HighValueOrdersController < ApplicationController
         .group("o.order_number")
         .having("#{ORDER_TOTAL_SQL} >= ?", THRESHOLD)
     ).to_a
-    @tab_counts = LEVELS.index_with { |lvl| all_for_counts.count { |o| o.membership_level_col == lvl } }
+    @tab_counts = LEVELS.index_with do |lvl|
+      all_for_counts.count do |o|
+        next false unless o.membership_level_col == lvl
+        lvl == '一般會員' ? o.purchase_count_val.to_i != 1 : true
+      end
+    end
     @tab_counts['新客'] = all_for_counts.count { |o| o.purchase_count_val.to_i == 1 }
 
     # 目前選中 tab 的完整資料
@@ -50,6 +55,8 @@ class HighValueOrdersController < ApplicationController
       scope = scope.having("MAX(cps.purchase_count) = 1")
     else
       scope = scope.having("MAX(COALESCE(sc.membership_level, o.membership_level)) = ?", @level)
+      # 一般會員排除首購客戶，避免跟「新客」tab 名單重複
+      scope = scope.having("MAX(cps.purchase_count) IS DISTINCT FROM 1") if @level == '一般會員'
     end
 
     @orders        = scope.to_a
