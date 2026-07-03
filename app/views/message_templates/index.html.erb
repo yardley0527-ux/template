@@ -10,6 +10,13 @@
     .block-img-thumb img { width: 72px; height: 72px; object-fit: cover; border-radius: 4px; display: block; }
     .block-img-thumb .del-img { position: absolute; top: -6px; right: -6px; background: #dc3545; color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 1; cursor: pointer; }
     .ghost-block { opacity: 0.4; background: #e9ecef; }
+
+    .msg-img-thumb { position: relative; width: 96px; height: 96px; }
+    .msg-img-thumb img { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; cursor: pointer; display: block; }
+    .msg-img-copy-btn { position: absolute; bottom: 3px; right: 3px; padding: 2px 6px; line-height: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.35); }
+
+    #msgImageLightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; }
+    #msgImageLightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 4px 32px rgba(0,0,0,0.5); }
   </style>
 <% end %>
 
@@ -124,6 +131,11 @@
   <div class="alert alert-success shadow py-2 px-3 mb-0">
     <i class="fal fa-check mr-1"></i> 已複製！
   </div>
+</div>
+
+<%# Image lightbox %>
+<div id="msgImageLightbox" onclick="closeImageLightbox()">
+  <img id="msgImageLightboxImg" src="" alt="">
 </div>
 
 <% content_for :scripts_block do %>
@@ -466,6 +478,50 @@ function initTemplateSortables() {
 
 function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Image lightbox ────────────────────────────────────────────────────
+function openImageLightbox(url) {
+  document.getElementById('msgImageLightboxImg').src = url;
+  document.getElementById('msgImageLightbox').style.display = 'flex';
+}
+
+function closeImageLightbox() {
+  document.getElementById('msgImageLightbox').style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeImageLightbox();
+});
+
+// ─── Copy image to clipboard ────────────────────────────────────────────
+function copyImageToClipboard(url) {
+  fetch(url)
+    .then(function(r) { return r.blob(); })
+    .then(function(blob) { return createImageBitmap(blob); })
+    .then(function(bitmap) {
+      var canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0);
+      return new Promise(function(resolve, reject) {
+        canvas.toBlob(function(pngBlob) {
+          if (pngBlob) resolve(pngBlob); else reject(new Error('canvas toBlob failed'));
+        }, 'image/png');
+      });
+    })
+    .then(function(pngBlob) {
+      return navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+    })
+    .then(function() {
+      var t = document.getElementById('copyToast');
+      t.style.display = 'block';
+      setTimeout(function() { t.style.display = 'none'; }, 1500);
+    })
+    .catch(function(err) {
+      console.error('[msg-templates] copy image failed', err);
+      alert('複製圖片失敗，請改用右鍵「複製圖片」。');
+    });
 }
 
 document.addEventListener('DOMContentLoaded', initTemplateSortables);
