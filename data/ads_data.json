@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-07-01",
+  "last_updated": "2026-07-03",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -50,7 +50,7 @@
         "type": "VIDEO",
         "ig_post_url": null,
         "ig_embed_url": null,
-        "thumbnail_url": "https://scontent-iad3-2.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=kuAhFAz5-_wQ7kNvwHzERar&_nc_oc=AdopkgKgQWEz_8vEqu3sMCu6meyfkTSbI-4WmwPdMwOx2yefqM8_nhwvxcGL1-n8Z1I&_nc_zt=23&_nc_ht=scontent-iad3-2.xx&edm=AEZPnVgEAAAA&_nc_gid=1O6EyTA6bOsKme0PoFbjow&_nc_tpa=Q5bMBQHqBzSgc3KjS2ua2fQD6fI5gmdVU6ecHXePvh19dmPrzmd4aBTbxDd7-t3RPMO8kqsKmBUMrZFFEQ&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_AQBMAhVOlTiGvVM3AMFDCyzNK1L52Uj-aekSVFKn3FPlhQ&oe=6A4A39EA",
+        "thumbnail_url": "https://scontent-iad3-2.xx.fbcdn.net/v/t15.5256-10/719482939_847999835051974_6745577752528460920_n.jpg?_nc_cat=105&ccb=1-7&_nc_ohc=NyX0WJypzDkQ7kNvwHIqgku&_nc_oc=AdoMH8NYrecx2qqzT5QWYtMcgPO6wdo4eUXgoK6ebXCNFXWULRIDcwjvg1XLQ2Dg6w8&_nc_zt=23&_nc_ht=scontent-iad3-2.xx&edm=AEZPnVgEAAAA&_nc_gid=s24m0UY_F-tB_4VvzzIpWQ&_nc_tpa=Q5bMBQGCWApBJdmNsQdLCpbRA7uYkwypz0rh7tzg-auwWryFI7KiDJYLn2iEzivBu4vpXv5jfBoc67fYCQ&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=a7ce7f&_nc_sid=58080a&oh=00_AQDUKmg9cxBjn7foidV9w0-Ju_JNdYtZdpFafrZ7A8fkZw&oe=6A4D152A",
         "label": "Chloe 狀態廣告"
       },
       "daily_data": [
@@ -290,6 +290,23 @@
           "video_100": 85,
           "shares": null,
           "thruplay": 1533,
+          "ig_followers_gained": null
+        },
+        {
+          "date": "2026-07-03",
+          "impressions": 12814,
+          "reach": 12294,
+          "clicks": 841,
+          "ctr": 6.56,
+          "cpm": 119,
+          "spend": 1527,
+          "video_3s": 5615,
+          "video_25": 752,
+          "video_50": 234,
+          "video_75": 148,
+          "video_100": 90,
+          "shares": 3,
+          "thruplay": 1509,
           "ig_followers_gained": null
         }
       ]
