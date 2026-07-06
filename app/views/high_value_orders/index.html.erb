@@ -15,13 +15,6 @@ end %>
       <p class="text-muted small mb-0">單筆訂單 ≥ NT$8,000，依卡別分群</p>
     </div>
     <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-      <div class="btn-group" role="group">
-        <% [['yesterday','昨日'], ['week','本週'], ['month','本月']].each do |val, label| %>
-          <%= link_to label,
-                high_value_orders_path(period: val, tab: @tab, series_filter: @series_filter),
-                class: "btn btn-sm #{@start_date.blank? && @period == val ? 'btn-dark' : 'btn-outline-secondary'}" %>
-        <% end %>
-      </div>
       <%= form_tag high_value_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
         <%= hidden_field_tag :tab, @tab %>
         <input type="date" name="start_date" value="<%= @start_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
