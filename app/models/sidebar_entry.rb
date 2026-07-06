@@ -26,7 +26,9 @@ class SidebarEntry
           group_title: "高消費分析",
           children: [
             { href: daily_dashboard_path,             title: "每日營收儀表板", icon: "fa-tachometer-alt" },
-            { href: daily_orders_path,               title: "每日訂單明細",   icon: "fa-list-alt" },
+            { href: daily_orders_path,               title: "每日訂單明細",   icon: "fa-list-alt", children: [
+              { href: message_templates_path, title: "訊息公版", icon: "fa-copy" },
+            ]},
             { href: high_spender_first_purchase_path, title: "破萬新客分析",   icon: "fa-gem" },
             { href: high_value_orders_path,           title: "破8000訂單速覽", icon: "fa-fire", children: [
               { href: high_value_order_custom_messages_path, title: "客製化訊息", icon: "fa-comment-dots" },
@@ -87,7 +89,6 @@ class SidebarEntry
         {
           group_title: "工具 & 系統",
           children: [
-            { href: message_templates_path, title: "訊息公版",     icon: "fa-copy" },
             { href: monitoring_path,        title: "功能使用監控", icon: "fa-chart-line" },
             { href: users_path,             title: "使用者管理",   icon: "fa-users-cog" },
             { href: permissions_path,       title: "權限管理",     icon: "fa-lock" },
