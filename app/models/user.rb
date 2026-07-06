@@ -5,4 +5,9 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :validatable
   validates :username, presence: true, uniqueness: { case_sensitive: false }
 
+  belongs_to :role, optional: true
+
+  def admin?
+    role&.admin? || false
+  end
 end

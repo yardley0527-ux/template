@@ -87,10 +87,41 @@ class SidebarEntry
           children: [
             { href: message_templates_path, title: "訊息公版",     icon: "fa-copy" },
             { href: monitoring_path,        title: "功能使用監控", icon: "fa-chart-line" },
+            { href: users_path,             title: "使用者管理",   icon: "fa-users-cog" },
+            { href: permissions_path,       title: "權限管理",     icon: "fa-lock" },
           ]
         },
       ]
     end
 
+    # Same shape as .all, but with pages the user's role can't access removed.
+    def visible_for(user, product_key: nil)
+      entries = all(product_key: product_key)
+      return entries if user&.admin?
+
+      allowed = user&.role&.page_permissions&.pluck(:controller_name) || []
+      entries.filter_map do |group|
+        children = filter_children(group[:children], allowed)
+        next if children.empty?
+
+        group.merge(children: children)
+      end
+    end
+
+    private
+
+    def filter_children(children, allowed)
+      children.filter_map do |child|
+        if child[:children].present?
+          sub = filter_children(child[:children], allowed)
+          next if sub.empty?
+
+          child.merge(children: sub)
+        else
+          controller = PageRegistry.controller_for(child[:href])
+          child if controller.nil? || allowed.include?(controller)
+        end
+      end
+    end
   end
 end

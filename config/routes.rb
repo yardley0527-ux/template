@@ -17,6 +17,9 @@ Rails.application.routes.draw do
     resources :livestream_gifts, only: [:create, :update, :destroy]
   end
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
+  get   '/permissions', to: 'permissions#index',  as: :permissions
+  patch '/permissions', to: 'permissions#update', as: :update_permissions
+  resources :users, only: [:index, :update]
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
   get  '/daily_dashboard',           to: 'daily_dashboard#index',      as: :daily_dashboard
   get  '/daily_orders',             to: 'daily_orders#index',         as: :daily_orders
