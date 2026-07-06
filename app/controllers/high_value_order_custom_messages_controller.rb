@@ -5,8 +5,8 @@ class HighValueOrderCustomMessagesController < ApplicationController
 
   CATEGORIES = [
     { key: "custom_first_purchase", title: "首購訊息",   icon: "fa-gem",    description: "依產品分類的首購客訊息",     subcategories: FIRST_PURCHASE_PRODUCTS },
-    { key: "custom_send_product",   title: "送產品訊息", icon: "fa-box",    description: "出貨/送出產品時使用的訊息", subcategories: SEND_PRODUCT_ITEMS },
-    { key: "custom_gift",           title: "贈品訊息",   icon: "fa-heart",  description: "依產品分類的贈品訊息",       subcategories: PRODUCTS },
+    { key: "custom_send_product",   title: "送產品訊息", icon: "fa-box",    description: "依產品分類的出貨訊息",       subcategories: PRODUCTS },
+    { key: "custom_gift",           title: "贈品訊息",   icon: "fa-heart",  description: "出貨/送出贈品時使用的訊息", subcategories: SEND_PRODUCT_ITEMS },
   ].freeze
 
   def index
