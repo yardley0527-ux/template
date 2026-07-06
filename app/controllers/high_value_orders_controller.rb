@@ -15,9 +15,13 @@ class HighValueOrdersController < ApplicationController
     @period         = params[:period].presence || 'month'
     @tab            = %w[new old].include?(params[:tab]) ? params[:tab] : 'old'
     @series_filter  = params[:series_filter].presence
-    @start_date     = parse_date(params[:start_date])
-    @end_date       = parse_date(params[:end_date]) || @start_date
-    @end_date       = @start_date if @start_date && @end_date && @end_date < @start_date
+    if params[:start_date].blank? && params[:end_date].blank?
+      @start_date = @end_date = Date.yesterday
+    else
+      @start_date = parse_date(params[:start_date])
+      @end_date   = parse_date(params[:end_date]) || @start_date
+      @end_date   = @start_date if @start_date && @end_date && @end_date < @start_date
+    end
 
     all_orders = apply_period(build_scope).to_a
 
