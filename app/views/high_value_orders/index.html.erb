@@ -88,7 +88,6 @@ end %>
           <th class="text-end" style="width:110px;">消費金額</th>
           <th>購買商品</th>
           <th style="width:160px;">IG</th>
-          <th>Email</th>
           <% if @level == '新客' %>
             <th style="width:90px;" class="text-center">贈品已送</th>
           <% else %>
@@ -140,9 +139,6 @@ end %>
                 <span class="text-muted small">—</span>
               <% end %>
             </td>
-            <td class="text-muted small" style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-              <%= o.email_val.presence || '—' %>
-            </td>
             <% gift = @gift_records[o.order_num] %>
             <% if @level == '新客' %>
               <td class="text-center">
@@ -178,7 +174,7 @@ end %>
         <% end %>
         <% if @orders.empty? %>
           <tr>
-            <td colspan="<%= @level == '新客' ? 9 : 10 %>" class="text-center py-5 text-muted">
+            <td colspan="<%= @level == '新客' ? 8 : 9 %>" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
               此期間無單筆 ≥ NT$8,000 的訂單
             </td>

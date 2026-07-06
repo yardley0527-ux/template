@@ -95,7 +95,6 @@ class HighValueOrdersController < ApplicationController
         "#{ORDER_TOTAL_SQL} AS order_total",
         "STRING_AGG(DISTINCT o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name || ' ×' || o.quantity::text) AS products_list",
         "MAX(COALESCE(sc.instagram_account, o.instagram_account)) AS ig_account",
-        "MAX(COALESCE(sc.email, o.email)) AS email_val",
         "MAX(cps.purchase_count) AS purchase_count_val"
       )
       .where("o.payment_status = '已付款'")
