@@ -132,7 +132,7 @@ class HighValueOrdersController < ApplicationController
       .where("o.payment_status = '已付款'")
       .group("o.order_number")
       .having("#{ORDER_TOTAL_SQL} >= ?", THRESHOLD)
-      .order(Arel.sql("MAX(o.order_date) DESC"))
+      .order(Arel.sql("#{ORDER_TOTAL_SQL} DESC"))
   end
 
   def apply_period(scope)
