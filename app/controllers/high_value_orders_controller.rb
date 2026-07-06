@@ -72,6 +72,9 @@ class HighValueOrdersController < ApplicationController
 
     order_nums = @paged_orders.map(&:order_num)
     @gift_records = OrderGiftRecord.where(order_number: order_nums).index_by(&:order_number)
+
+    customer_ids = @paged_orders.map(&:shopline_customer_id).compact
+    @profiles_by_customer_id = CustomerProfile.where(shopline_customer_id: customer_ids).index_by(&:shopline_customer_id)
   end
 
   private
@@ -90,6 +93,7 @@ class HighValueOrdersController < ApplicationController
       .select(
         "o.order_number AS order_num",
         "MAX(o.customer_name) AS cust_name",
+        "MAX(sc.id) AS shopline_customer_id",
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
         "MAX(o.order_date) AS ord_date",
         "#{ORDER_TOTAL_SQL} AS order_total",
