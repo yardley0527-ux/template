@@ -130,7 +130,7 @@ end %>
             <th style="width:9%;">姓名</th>
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
-            <th style="width:<%= is_new ? 52 : 61 %>%;">是否購買過同產品</th>
+            <th style="width:<%= is_new ? 52 : 61 %>%;">購買商品</th>
             <% if is_new %>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
             <% end %>
@@ -157,15 +157,12 @@ end %>
                 NT$<%= number_with_delimiter(row.order_total.to_i) %>
               </td>
               <td>
-                <% row.products.each do |p| %>
-                  <div style="font-size:0.78rem;">
-                    <% if p[:prior_date] %>
-                      <span class="text-success">✓</span> <%= p[:name] %>（<%= p[:prior_date].strftime('%Y/%m/%d') %>）
-                    <% else %>
-                      <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
-                    <% end %>
-                  </div>
-                <% end %>
+                <div class="d-flex flex-wrap" style="gap:4px;">
+                  <% (row.products_list || '').split('、').each do |item| %>
+                    <% color = hvo_series_color(item) %>
+                    <span style="display:inline-block; background:<%= color %>20; color:<%= color %>; border:1px solid <%= color %>55; border-radius:4px; padding:1px 7px; font-size:0.78rem; white-space:nowrap; font-weight:600;"><%= item %></span>
+                  <% end %>
+                </div>
               </td>
               <% if is_new %>
                 <td class="text-center">

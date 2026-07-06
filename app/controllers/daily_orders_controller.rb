@@ -12,7 +12,7 @@ class DailyOrdersController < ApplicationController
 
   OrderRow = Struct.new(
     :order_number, :customer_name, :ig_account, :email, :order_total, :order_date,
-    :is_new_customer, :membership_level, :products, :health_profile, :health_tags,
+    :is_new_customer, :membership_level, :products_list, :health_profile, :health_tags,
     :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
     :line_bound, :total_quantity, :health_inquiry_declined,
     keyword_init: true
@@ -61,7 +61,7 @@ class DailyOrdersController < ApplicationController
     groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "是否購買過同產品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG", "綁定 LINE"]
+      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "購買商品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG", "綁定 LINE"]
       groups.each do |label, rows|
         rows.each do |row|
           csv << [
@@ -70,7 +70,7 @@ class DailyOrdersController < ApplicationController
             row.customer_name,
             row.ig_account,
             row.order_total.to_i,
-            same_product_text(row.products),
+            row.products_list.to_s.split('、').join("\n"),
             row.health_profile.presence,
             row.health_tags.join("、"),
             row.follows_chloe_ig ? "是" : "否",
@@ -89,30 +89,11 @@ class DailyOrdersController < ApplicationController
 
   private
 
-  def product_series(name)
-    name.to_s.match(/\A([^\d]+)/)&.captures&.first&.strip.presence || name.to_s
-  end
-
-  def build_prior_series_dates(emails, before)
-    raw = ShoplineOrder.where(email: emails).where("order_date < ?", before).pluck(:email, :product_name, :order_date)
-    result = {}
-    raw.each do |email, product_name, order_date|
-      key = [email, product_series(product_name)]
-      result[key] = order_date if result[key].nil? || order_date < result[key]
-    end
-    result
-  end
-
   def parse_date(value)
     Date.parse(value) if value.present?
   rescue ArgumentError
     nil
   end
-
-  def same_product_text(products)
-    products.map { |p| p[:prior_date] ? "#{p[:name]}：✓ #{p[:prior_date].strftime('%Y/%m/%d')}" : "#{p[:name]}：（首次購買）" }.join("\n")
-  end
-  helper_method :same_product_text
 
   def build_groups(start_date, end_date)
     range_start = start_date.beginning_of_day
@@ -128,7 +109,7 @@ class DailyOrdersController < ApplicationController
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
         "MAX(o.order_date) AS ord_date",
         "#{ORDER_TOTAL_SQL} AS order_total",
-        "ARRAY_AGG(DISTINCT o.product_name) AS product_names_arr",
+        "STRING_AGG(DISTINCT o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name || ' ×' || o.quantity::text) AS products_list",
         "SUM(o.quantity) AS total_quantity"
       )
       .where("o.payment_status = '已付款'")
@@ -141,8 +122,6 @@ class DailyOrdersController < ApplicationController
 
     prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
 
-    prior_series_dates = build_prior_series_dates(emails, range_start)
-
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
     summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
 
@@ -150,11 +129,6 @@ class DailyOrdersController < ApplicationController
       customer = customers_by_email[o.email_val]
       profile  = customer&.customer_profile
       summary  = summaries_by_email[o.email_val]
-
-      products = Array(o.product_names_arr).compact.map do |name|
-        prior_date = prior_series_dates[[o.email_val, product_series(name)]]
-        { name: name, prior_date: prior_date }
-      end
 
       OrderRow.new(
         order_number: o.order_num,
@@ -165,7 +139,7 @@ class DailyOrdersController < ApplicationController
         order_date: o.ord_date,
         is_new_customer: o.email_val.blank? || !prior_emails.include?(o.email_val),
         membership_level: o.membership_level_col,
-        products: products,
+        products_list: o.products_list,
         health_profile: profile&.health_profile,
         health_tags: profile&.health_tags || [],
         follows_chloe_ig: profile&.follows_chloe_ig || false,

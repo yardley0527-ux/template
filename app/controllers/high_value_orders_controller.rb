@@ -40,6 +40,8 @@ class HighValueOrdersController < ApplicationController
     customer_ids = visible_orders.map(&:shopline_customer_id).compact
     @profiles_by_customer_id = CustomerProfile.where(shopline_customer_id: customer_ids).index_by(&:shopline_customer_id)
 
+    @products_by_order = build_products_by_order(visible_orders)
+
     if @tab == 'new'
       @health_missing_count = new_orders.count do |o|
         profile = @profiles_by_customer_id[o.shopline_customer_id]
@@ -73,7 +75,7 @@ class HighValueOrdersController < ApplicationController
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
         "MAX(o.order_date) AS ord_date",
         "#{ORDER_TOTAL_SQL} AS order_total",
-        "STRING_AGG(DISTINCT o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name || ' ×' || o.quantity::text) AS products_list",
+        "ARRAY_AGG(DISTINCT o.product_name) AS product_names_arr",
         "MAX(COALESCE(sc.instagram_account, o.instagram_account)) AS ig_account",
         "MAX(COALESCE(sc.email, o.email)) AS email_val",
         "MAX(cps.purchase_count) AS purchase_count_val"
@@ -102,5 +104,26 @@ class HighValueOrdersController < ApplicationController
     Date.parse(value) if value.present?
   rescue ArgumentError
     nil
+  end
+
+  def product_series(name)
+    name.to_s.match(/\A([^\d]+)/)&.captures&.first&.strip.presence || name.to_s
+  end
+
+  # 針對每張訂單的每個商品，找出該客人「這個系列」在這張訂單之前最早的購買日期
+  def build_products_by_order(orders)
+    emails = orders.map(&:email_val).compact.uniq
+    raw_history = ShoplineOrder.where(email: emails).where("payment_status = '已付款'").pluck(:email, :product_name, :order_date)
+    series_dates = Hash.new { |h, k| h[k] = [] }
+    raw_history.each { |email, name, date| series_dates[[email, product_series(name)]] << date }
+    series_dates.each_value(&:sort!)
+
+    orders.each_with_object({}) do |o, result|
+      result[o.order_num] = Array(o.product_names_arr).compact.map do |name|
+        dates = series_dates[[o.email_val, product_series(name)]] || []
+        prior_date = dates.find { |d| d < o.ord_date }
+        { name: name, prior_date: prior_date }
+      end
+    end
   end
 end
