@@ -101,11 +101,11 @@ end %>
           <tr>
             <th class="ps-3" style="width:70px;">日期</th>
             <th>姓名</th>
+            <th style="width:160px;">IG</th>
             <th style="width:70px;">卡別</th>
             <th>訂單號碼</th>
             <th class="text-end" style="width:110px;">消費金額</th>
             <th>是否購買過同產品</th>
-            <th style="width:160px;">IG</th>
             <th style="width:200px;">健康資料</th>
             <% if is_new %>
               <th style="width:90px;" class="text-center">贈品已送</th>
@@ -121,7 +121,25 @@ end %>
             <% url = ig_link_url(o.ig_account) %>
             <tr>
               <td class="ps-3 text-nowrap text-muted"><%= o.ord_date&.strftime("%-m/%-d") %></td>
-              <td class="fw-semibold"><%= o.cust_name %></td>
+              <td class="fw-semibold">
+                <% if o.shopline_customer_id %>
+                  <%= link_to o.cust_name, customer_path(o.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
+                <% else %>
+                  <%= o.cust_name %>
+                <% end %>
+              </td>
+              <td>
+                <% if url %>
+                  <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                    <i class="fal fa-at text-danger"></i>
+                    <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                      <%= o.ig_account&.sub(/^@/, '') %>
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
               <td>
                 <% badge_bg, badge_fg = case o.membership_level_col
                                       when '黑卡' then ['#333', '#fff']
@@ -148,18 +166,6 @@ end %>
                       <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
                     <% end %>
                   </div>
-                <% end %>
-              </td>
-              <td>
-                <% if url %>
-                  <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
-                    <i class="fal fa-at text-danger"></i>
-                    <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
-                      <%= o.ig_account&.sub(/^@/, '') %>
-                    </span>
-                  <% end %>
-                <% else %>
-                  <span class="text-muted small">—</span>
                 <% end %>
               </td>
               <% profile = @profiles_by_customer_id[o.shopline_customer_id] %>
