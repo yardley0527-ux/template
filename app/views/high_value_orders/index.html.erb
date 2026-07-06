@@ -114,6 +114,7 @@ end %>
               <th style="width:190px;">贈品紀錄</th>
               <th style="width:90px;" class="text-center">贈品已送</th>
             <% end %>
+            <th style="width:90px; font-size:0.78rem; line-height:1.3;" class="text-center">傳送<br>客製化訊息</th>
           </tr>
         </thead>
         <tbody>
@@ -231,11 +232,19 @@ end %>
                     style="width:18px; height:18px; cursor:pointer; accent-color:#c00;">
                 </td>
               <% end %>
+              <td class="text-center">
+                <input type="checkbox"
+                  class="custom-message-checkbox"
+                  data-order="<%= o.order_num %>"
+                  data-url="<%= upsert_order_gift_record_path %>"
+                  <%= gift&.custom_message_sent? ? 'checked' : '' %>
+                  style="width:18px; height:18px; cursor:pointer; accent-color:#0d6efd;">
+              </td>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="<%= is_new ? 9 : 11 %>" class="text-center py-5 text-muted">
+              <td colspan="<%= is_new ? 10 : 12 %>" class="text-center py-5 text-muted">
                 <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
                 此期間無單筆 ≥ NT$8,000 的訂單
               </td>
@@ -280,6 +289,15 @@ end %>
       flashTip(td, cb.checked ? '✓ 已送出' : '已取消', cb.checked ? '#28a745' : '#999');
     });
     if (cb.checked) cb.closest('tr').style.background = '#f0fff4';
+  });
+
+  // 傳送客製化訊息：checkbox 打勾（新客／舊客共用）
+  document.querySelectorAll('.custom-message-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var td = cb.closest('td');
+      upsert(cb.dataset.order, cb.dataset.url, { custom_message_sent: cb.checked });
+      flashTip(td, cb.checked ? '✓ 已送出' : '已取消', cb.checked ? '#28a745' : '#999');
+    });
   });
 
   // 贈品紀錄：select 一改變就自動存檔
