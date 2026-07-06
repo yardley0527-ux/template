@@ -15,6 +15,9 @@ class HighValueOrdersController < ApplicationController
     @period         = params[:period].presence || 'month'
     @tab            = %w[new old].include?(params[:tab]) ? params[:tab] : 'old'
     @series_filter  = params[:series_filter].presence
+    @start_date     = parse_date(params[:start_date])
+    @end_date       = parse_date(params[:end_date]) || @start_date
+    @end_date       = @start_date if @start_date && @end_date && @end_date < @start_date
 
     all_orders = apply_period(build_scope).to_a
 
@@ -82,6 +85,10 @@ class HighValueOrdersController < ApplicationController
   end
 
   def apply_period(scope)
+    if @start_date.present?
+      return scope.where("o.order_date >= ? AND o.order_date <= ?", @start_date.beginning_of_day, @end_date.end_of_day)
+    end
+
     cutoff = case @period
              when 'yesterday' then Date.yesterday.beginning_of_day
              when 'week'      then 1.week.ago.beginning_of_day
@@ -89,5 +96,11 @@ class HighValueOrdersController < ApplicationController
              end
     return scope unless cutoff
     @period == 'yesterday' ? scope.where("o.order_date >= ? AND o.order_date < ?", cutoff, Date.today.beginning_of_day) : scope.where("o.order_date >= ?", cutoff)
+  end
+
+  def parse_date(value)
+    Date.parse(value) if value.present?
+  rescue ArgumentError
+    nil
   end
 end

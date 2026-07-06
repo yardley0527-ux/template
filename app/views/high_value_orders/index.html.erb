@@ -14,11 +14,23 @@ end %>
       <h4 class="fw-bold mb-0">破8000訂單速覽</h4>
       <p class="text-muted small mb-0">單筆訂單 ≥ NT$8,000，依卡別分群</p>
     </div>
-    <div class="btn-group" role="group">
-      <% [['yesterday','昨日'], ['week','本週'], ['month','本月']].each do |val, label| %>
-        <%= link_to label,
-              high_value_orders_path(period: val, tab: @tab, series_filter: @series_filter),
-              class: "btn btn-sm #{@period == val ? 'btn-dark' : 'btn-outline-secondary'}" %>
+    <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+      <div class="btn-group" role="group">
+        <% [['yesterday','昨日'], ['week','本週'], ['month','本月']].each do |val, label| %>
+          <%= link_to label,
+                high_value_orders_path(period: val, tab: @tab, series_filter: @series_filter),
+                class: "btn btn-sm #{@start_date.blank? && @period == val ? 'btn-dark' : 'btn-outline-secondary'}" %>
+        <% end %>
+      </div>
+      <%= form_tag high_value_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+        <%= hidden_field_tag :tab, @tab %>
+        <input type="date" name="start_date" value="<%= @start_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <span class="text-muted small">至</span>
+        <input type="date" name="end_date" value="<%= @end_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+        <% if @start_date.present? %>
+          <%= link_to "清除", high_value_orders_path(period: @period, tab: @tab, series_filter: @series_filter), class: "btn btn-sm btn-outline-secondary" %>
+        <% end %>
       <% end %>
     </div>
   </div>
@@ -28,12 +40,12 @@ end %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
     <%= link_to "新客（#{@new_count}）",
-          high_value_orders_path(period: @period, tab: 'new', series_filter: @series_filter),
+          high_value_orders_path(period: @period, tab: 'new', series_filter: @series_filter, start_date: @start_date, end_date: @end_date),
           class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
   </li>
   <li class="nav-item">
     <%= link_to "舊客（#{@old_count}）",
-          high_value_orders_path(period: @period, tab: 'old', series_filter: @series_filter),
+          high_value_orders_path(period: @period, tab: 'old', series_filter: @series_filter, start_date: @start_date, end_date: @end_date),
           class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
   </li>
 </ul>
