@@ -14,91 +14,37 @@ class HighValueOrdersController < ApplicationController
     @series_options = CrmProduct.series_labels_for_filter
     @period         = params[:period].presence || 'month'
     @tab            = %w[new old].include?(params[:tab]) ? params[:tab] : 'old'
-    @level          = @tab == 'new' ? '新客' : (LEVELS.include?(params[:level]) ? params[:level] : LEVELS.first)
-    @levels         = LEVELS
     @series_filter  = params[:series_filter].presence
-    @specific_month = params[:specific_month].presence
 
-    base = apply_period(build_scope)
+    all_orders = apply_period(build_scope).to_a
 
-    # 各 tab 計數：只撈最精簡欄位，不帶 level filter
-    count_base = ShoplineOrder.from("shopline_orders o")
-    if @series_filter.present?
-      count_base = count_base.where(
-        "o.order_number IN (SELECT DISTINCT order_number FROM shopline_orders WHERE product_name LIKE ?)",
-        "%#{@series_filter}%"
-      )
-    end
-    all_for_counts = apply_period(
-      count_base
-        .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
-        .joins("LEFT JOIN (SELECT email, MAX(purchase_count) AS purchase_count FROM customer_purchase_summaries GROUP BY email) cps ON cps.email = o.email")
-        .select(
-          "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
-          "MAX(cps.purchase_count) AS purchase_count_val"
-        )
-        .where("o.payment_status = '已付款'")
-        .group("o.order_number")
-        .having("#{ORDER_TOTAL_SQL} >= ?", THRESHOLD)
-    ).to_a
-    @tab_counts = LEVELS.index_with do |lvl|
-      all_for_counts.count do |o|
-        next false unless o.membership_level_col == lvl
-        lvl == '一般會員' ? o.purchase_count_val.to_i != 1 : true
-      end
-    end
-    @new_count = all_for_counts.count { |o| o.purchase_count_val.to_i == 1 }
-    @old_count = @tab_counts.values.sum
-
-    # 目前選中 tab 的完整資料
-    scope = base
-    if @level == '新客'
-      scope = scope.having("MAX(cps.purchase_count) = 1")
-    else
-      scope = scope.having("MAX(COALESCE(sc.membership_level, o.membership_level)) = ?", @level)
-      # 一般會員排除首購客戶，避免跟「新客」tab 名單重複
-      scope = scope.having("MAX(cps.purchase_count) IS DISTINCT FROM 1") if @level == '一般會員'
+    new_orders = all_orders.select { |o| o.purchase_count_val.to_i == 1 }
+    old_orders = all_orders.select do |o|
+      next false unless LEVELS.include?(o.membership_level_col)
+      o.membership_level_col == '一般會員' ? o.purchase_count_val.to_i != 1 : true
     end
 
-    @orders        = scope.to_a
-    @total_revenue = @orders.sum { |o| o.order_total.to_f }
-    @total_count   = @orders.size
+    @new_count  = new_orders.size
+    @old_count  = old_orders.size
+    @tab_counts = LEVELS.index_with { |lvl| old_orders.count { |o| o.membership_level_col == lvl } }
 
-    @per_page    = 10
-    @page        = [[params[:page].to_i, 1].max, 1].max
-    @total_pages = [(@total_count / @per_page.to_f).ceil, 1].max
-    @page        = [@page, @total_pages].min
-    @paged_orders = @orders[(@page - 1) * @per_page, @per_page] || []
+    @groups = @tab == 'new' ? [["新客", new_orders]] : LEVELS.map { |lvl| [lvl, old_orders.select { |o| o.membership_level_col == lvl }] }
 
-    order_nums = @paged_orders.map(&:order_num)
+    visible_orders = @groups.flat_map { |_, rows| rows }
+    order_nums = visible_orders.map(&:order_num)
     @gift_records = OrderGiftRecord.where(order_number: order_nums).index_by(&:order_number)
 
-    customer_ids = @paged_orders.map(&:shopline_customer_id).compact
+    customer_ids = visible_orders.map(&:shopline_customer_id).compact
     @profiles_by_customer_id = CustomerProfile.where(shopline_customer_id: customer_ids).index_by(&:shopline_customer_id)
 
     if @tab == 'new'
-      all_customer_ids = @orders.map(&:shopline_customer_id).compact
-      all_profiles_by_id = CustomerProfile.where(shopline_customer_id: all_customer_ids).index_by(&:shopline_customer_id)
-      @profiles_by_customer_id = @profiles_by_customer_id.merge(all_profiles_by_id)
-      @health_missing_count = @orders.count do |o|
-        profile = all_profiles_by_id[o.shopline_customer_id]
+      @health_missing_count = new_orders.count do |o|
+        profile = @profiles_by_customer_id[o.shopline_customer_id]
         profile&.health_profile.blank? && profile&.health_tags.blank?
       end
-
-      emails = @orders.map(&:email_val).compact.uniq
-      summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
-      @line_bound_count = @orders.count { |o| summaries_by_email[o.email_val]&.line_bound }
     else
-      # 跟 @tab_counts 用同一套「舊客」判定規則，確保未填人數不會超過舊客總數
-      old_orders = base.to_a.select do |o|
-        next false unless LEVELS.include?(o.membership_level_col)
-        o.membership_level_col == '一般會員' ? o.purchase_count_val.to_i != 1 : true
-      end
-      old_customer_ids = old_orders.map(&:shopline_customer_id).compact
-      old_profiles_by_id = CustomerProfile.where(shopline_customer_id: old_customer_ids).index_by(&:shopline_customer_id)
-      @profiles_by_customer_id = @profiles_by_customer_id.merge(old_profiles_by_id)
       @old_health_missing_count = old_orders.count do |o|
-        profile = old_profiles_by_id[o.shopline_customer_id]
+        profile = @profiles_by_customer_id[o.shopline_customer_id]
         profile&.health_profile.blank? && profile&.health_tags.blank?
       end
     end
@@ -136,14 +82,6 @@ class HighValueOrdersController < ApplicationController
   end
 
   def apply_period(scope)
-    if @specific_month.present?
-      begin
-        d = Date.parse("#{@specific_month}-01")
-        return scope.where("o.order_date >= ? AND o.order_date < ?", d.beginning_of_month, d.next_month.beginning_of_month)
-      rescue ArgumentError
-        return scope
-      end
-    end
     cutoff = case @period
              when 'yesterday' then Date.yesterday.beginning_of_day
              when 'week'      then 1.week.ago.beginning_of_day
