@@ -23,7 +23,10 @@ class ShoplineOrder < ApplicationRecord
 
   def self.format_decimal(v)
     return "" if v.nil?
-    BigDecimal(v.to_s).to_s("F")
+    # Round to the shopline_orders decimal column scale (2) before hashing, so
+    # re-exports with sub-cent floating-point noise still hash identically and
+    # update the existing row instead of inserting a duplicate.
+    BigDecimal(v.to_s).round(2).to_s("F")
   rescue ArgumentError
     ""
   end
