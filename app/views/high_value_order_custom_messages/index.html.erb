@@ -1,16 +1,529 @@
-<%# app/views/high_value_order_custom_messages/index.html.erb %>
 <% content_for :page_title, "客製化訊息" %>
+<% content_for :head_block do %>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <style>
+    .block-editor { border: 1px solid #dee2e6; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; background: #fff; }
+    .block-editor:hover { border-color: #adb5bd; }
+    .block-drag-handle { cursor: grab; color: #adb5bd; margin-right: 8px; }
+    .block-drag-handle:active { cursor: grabbing; }
+    .block-img-thumb { position: relative; display: inline-block; margin: 2px; }
+    .block-img-thumb img { width: 72px; height: 72px; object-fit: cover; border-radius: 4px; display: block; }
+    .block-img-thumb .del-img { position: absolute; top: -6px; right: -6px; background: #dc3545; color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; line-height: 1; cursor: pointer; }
+    .ghost-block { opacity: 0.4; background: #e9ecef; }
 
-<div class="row g-3 mb-4">
+    .msg-img-thumb { position: relative; width: 320px; max-width: 100%; height: 320px; background: #f1f3f5; border-radius: 6px; }
+    .msg-img-thumb img { width: 100%; height: 100%; object-fit: contain; border-radius: 6px; cursor: pointer; display: block; }
+    .msg-img-copy-btn { position: absolute; bottom: 3px; right: 3px; padding: 2px 6px; line-height: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.35); }
+
+    #msgImageLightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; }
+    #msgImageLightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 4px 32px rgba(0,0,0,0.5); }
+  </style>
+<% end %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-comment-dots mr-2 text-muted"></i> 客製化訊息
+    <small>點 <i class="fal fa-copy"></i> 複製；拖 <i class="fal fa-grip-vertical"></i> 排序；點 <i class="fal fa-pencil"></i> 編輯</small>
+  </h1>
+</div>
+
+<div class="row">
   <div class="col-12">
-    <h4 class="fw-bold mb-0">客製化訊息</h4>
-    <p class="text-muted small mb-0">功能開發中</p>
+    <ul class="nav nav-tabs" id="msgTabs" role="tablist">
+      <% @categories.each_with_index do |cat, i| %>
+        <li class="nav-item">
+          <a class="nav-link <%= 'active' if i == 0 %>"
+             data-toggle="tab" href="#panel-<%= cat[:key] %>" role="tab">
+            <i class="fal <%= cat[:icon] %> mr-1"></i><%= cat[:title] %>
+          </a>
+        </li>
+      <% end %>
+    </ul>
+
+    <div class="tab-content border border-top-0 p-3 bg-white">
+      <% @categories.each_with_index do |cat, i| %>
+        <div class="tab-pane fade <%= 'show active' if i == 0 %>"
+             id="panel-<%= cat[:key] %>" role="tabpanel">
+
+          <% if cat[:description].present? %>
+            <p class="text-muted small mb-3"><i class="fal fa-info-circle mr-1"></i><%= cat[:description] %></p>
+          <% end %>
+
+          <% if cat[:subcategories] %>
+            <ul class="nav nav-pills mb-3 flex-wrap">
+              <% cat[:subcategories].each_with_index do |sub, j| %>
+                <li class="nav-item">
+                  <a class="nav-link <%= 'active' if j == 0 %>"
+                     data-toggle="tab"
+                     href="#subpanel-<%= cat[:key] %>-<%= j %>" role="tab">
+                    <%= sub[:name] %>
+                    <span class="badge badge-light"><%= sub[:templates].size %></span>
+                  </a>
+                </li>
+              <% end %>
+            </ul>
+            <div class="tab-content">
+              <% cat[:subcategories].each_with_index do |sub, j| %>
+                <div class="tab-pane fade <%= 'show active' if j == 0 %>"
+                     id="subpanel-<%= cat[:key] %>-<%= j %>" role="tabpanel">
+                  <div class="msg-list" data-category="<%= cat[:key] %>" data-subcategory="<%= sub[:name] %>">
+                    <% sub[:templates].each do |tpl| %>
+                      <%= render partial: 'message_templates/message_card', locals: { template: tpl } %>
+                    <% end %>
+                  </div>
+                  <%= render partial: 'message_templates/add_button', locals: { category_key: cat[:key], subcategory: sub[:name] } %>
+                </div>
+              <% end %>
+            </div>
+
+          <% else %>
+            <div class="msg-list" data-category="<%= cat[:key] %>" data-subcategory="">
+              <% cat[:templates].each do |tpl| %>
+                <%= render partial: 'message_templates/message_card', locals: { template: tpl } %>
+              <% end %>
+            </div>
+            <%= render partial: 'message_templates/add_button', locals: { category_key: cat[:key], subcategory: nil } %>
+          <% end %>
+
+        </div>
+      <% end %>
+    </div>
   </div>
 </div>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-body text-center py-5 text-muted">
-    <i class="fal fa-tools fa-2x mb-3 d-block opacity-25"></i>
-    此頁面尚未開放，敬請期待
+<%# ─── Edit Modal ──────────────────────────────────────────────────────────── %>
+<div class="modal fade" id="editModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h5 class="modal-title mb-0">編輯訊息</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body py-2">
+        <div class="form-group mb-2">
+          <input type="text" id="editTitle" class="form-control form-control-sm"
+                 placeholder="標題（選填）"
+                 onblur="saveTitle()">
+        </div>
+        <hr class="my-2">
+
+        <%# blocks container %>
+        <div id="blockList"></div>
+
+        <div class="mt-2 d-flex" style="gap:8px;">
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addBlock('text')">
+            <i class="fal fa-plus mr-1"></i>文字區塊
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addBlock('images')">
+            <i class="fal fa-plus mr-1"></i>圖片區塊
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-primary btn-sm" data-dismiss="modal" onclick="refreshCard()">完成</button>
+      </div>
+    </div>
   </div>
 </div>
+
+<%# Toast %>
+<div id="copyToast" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:none;">
+  <div class="alert alert-success shadow py-2 px-3 mb-0">
+    <i class="fal fa-check mr-1"></i> 已複製！
+  </div>
+</div>
+
+<%# Image lightbox %>
+<div id="msgImageLightbox" onclick="closeImageLightbox()">
+  <img id="msgImageLightboxImg" src="" alt="">
+</div>
+
+<% content_for :scripts_block do %>
+<script>
+var CSRF = document.querySelector('meta[name="csrf-token"]').content;
+var currentTemplateId = null;
+var blockSortable = null;
+
+// ─── Copy ─────────────────────────────────────────────────────────────
+function copyBlock(text) {
+  navigator.clipboard.writeText(text).then(function() {
+    var t = document.getElementById('copyToast');
+    t.style.display = 'block';
+    setTimeout(function() { t.style.display = 'none'; }, 1500);
+  });
+}
+
+// ─── Open modal ───────────────────────────────────────────────────────
+function openEdit(btn) {
+  var card = btn.closest('.msg-card');
+  currentTemplateId = card.dataset.id;
+  document.getElementById('editTitle').value = card.dataset.title || '';
+
+  var blocks = JSON.parse(card.dataset.blocks || '[]');
+  renderBlocks(blocks);
+  $('#editModal').modal('show');
+}
+
+// ─── Render blocks in modal ──────────────────────────────────────────
+function renderBlocks(blocks) {
+  var list = document.getElementById('blockList');
+  list.innerHTML = '';
+  blocks.forEach(function(b) { list.appendChild(buildBlockEl(b)); });
+  initBlockSortable();
+}
+
+function buildBlockEl(block) {
+  var wrap = document.createElement('div');
+  wrap.className = 'block-editor d-flex align-items-start';
+  wrap.dataset.blockId = block.id;
+
+  var handle = '<span class="block-drag-handle mt-1"><i class="fal fa-grip-vertical"></i></span>';
+  var body = '';
+
+  if (block.type === 'text') {
+    body = '<textarea class="form-control form-control-sm flex-grow-1 mr-2" rows="5" ' +
+           'style="font-size:0.82rem;resize:vertical;" ' +
+           'onblur="saveBlock(' + block.id + ', this.value)">' +
+           escapeHtml(block.content || '') + '</textarea>';
+  } else {
+    // images block
+    var thumbs = (block.images || []).map(function(img) {
+      return '<span class="block-img-thumb">' +
+             '<img src="' + img.url + '">' +
+             '<button type="button" class="del-img" onclick="deleteImage(' + img.id + ', this)">&times;</button>' +
+             '</span>';
+    }).join('');
+
+    body = '<div class="flex-grow-1 mr-2">' +
+           '<div class="d-flex flex-wrap mb-2" id="imgs-' + block.id + '">' + thumbs + '</div>' +
+           '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="uploadImage(' + block.id + ')">' +
+           '<i class="fal fa-upload mr-1"></i>上傳圖片</button>' +
+           '</div>';
+  }
+
+  var del = '<button type="button" class="btn btn-xs btn-outline-danger flex-shrink-0 mt-1" ' +
+            'onclick="deleteBlock(' + block.id + ', this)">' +
+            '<i class="fal fa-trash"></i></button>';
+
+  wrap.innerHTML = handle + body + del;
+  return wrap;
+}
+
+// ─── Block CRUD ──────────────────────────────────────────────────────
+function addBlock(type) {
+  fetch('/message_template_blocks', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify({ message_template_id: currentTemplateId, block_type: type })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) { alert(data.error); return; }
+    var newBlock = { id: data.id, type: type, content: '', images: [] };
+    document.getElementById('blockList').appendChild(buildBlockEl(newBlock));
+    initBlockSortable();
+    updateCardHtml(data.card_html);
+  });
+}
+
+function saveBlock(blockId, content) {
+  fetch('/message_template_blocks/' + blockId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify({ content: content })
+  });
+}
+
+function deleteBlock(blockId, btn) {
+  if (!confirm('確定刪除這個區塊？')) return;
+  fetch('/message_template_blocks/' + blockId, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': CSRF }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.closest('.block-editor').remove();
+    updateCardHtml(data.card_html);
+  });
+}
+
+// ─── Image upload (Cloudinary widget, same flow as albums) ────────────
+var cloudinaryPromise = null;
+
+function loadCloudinary() {
+  if (window.cloudinary) return Promise.resolve(window.cloudinary);
+  if (cloudinaryPromise) return cloudinaryPromise;
+
+  cloudinaryPromise = new Promise(function(resolve, reject) {
+    var existing = document.querySelector('script[data-cloudinary-widget="true"]');
+    if (existing) {
+      if (window.cloudinary) { resolve(window.cloudinary); return; }
+      existing.addEventListener('load', function() {
+        if (window.cloudinary) resolve(window.cloudinary);
+        else reject(new Error('Cloudinary script loaded but window.cloudinary is still undefined'));
+      });
+      existing.addEventListener('error', function() {
+        reject(new Error('Existing Cloudinary script failed to load'));
+      });
+      return;
+    }
+
+    var script = document.createElement('script');
+    script.src = 'https://upload-widget.cloudinary.com/global/all.js';
+    script.async = true;
+    script.dataset.cloudinaryWidget = 'true';
+    script.onload = function() {
+      if (window.cloudinary) resolve(window.cloudinary);
+      else reject(new Error('Cloudinary script loaded but window.cloudinary not found'));
+    };
+    script.onerror = function() { reject(new Error('Cloudinary script failed to load')); };
+    document.head.appendChild(script);
+  });
+
+  return cloudinaryPromise;
+}
+
+function uploadImage(blockId) {
+  loadCloudinary()
+    .then(function(cloudinary) {
+      var widget = cloudinary.createUploadWidget({
+        cloudName: '<%= ENV["CLOUDINARY_CLOUD_NAME"] %>',
+        uploadPreset: 'ml_default',
+        multiple: true,
+        maxFiles: 20,
+        language: 'zh_TW',
+        sources: ['local', 'camera', 'photo_library'],
+        clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
+        resourceType: 'image'
+      }, function(error, result) {
+        if (error) { console.error('[hvo-custom-messages] cloudinary widget error', error); return; }
+        if (result && result.event === 'success') {
+          saveImageToRails(blockId, result.info);
+        }
+      });
+      widget.open();
+    })
+    .catch(function(err) {
+      console.error('[hvo-custom-messages] upload flow failed', err);
+      alert('上傳功能初始化失敗，請稍後再試。');
+    });
+}
+
+function saveImageToRails(blockId, info) {
+  fetch('/message_template_images', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify({
+      message_template_image: {
+        message_template_block_id: blockId,
+        cloudinary_public_id: info.public_id,
+        url: info.secure_url
+      }
+    })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) { alert(data.error); return; }
+    var container = document.getElementById('imgs-' + blockId);
+    if (container) {
+      var span = document.createElement('span');
+      span.className = 'block-img-thumb';
+      span.innerHTML = '<img src="' + data.url + '">' +
+        '<button type="button" class="del-img" onclick="deleteImage(' + data.id + ', this)">&times;</button>';
+      container.appendChild(span);
+    }
+    updateCardHtml(data.card_html);
+  })
+  .catch(function(err) {
+    console.error('[hvo-custom-messages] saveImageToRails failed', err);
+    alert('圖片儲存失敗，請稍後再試。');
+  });
+}
+
+function deleteImage(imgId, btn) {
+  if (!confirm('刪除這張圖片？')) return;
+  fetch('/message_template_images/' + imgId, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': CSRF }
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    btn.closest('.block-img-thumb').remove();
+    updateCardHtml(data.card_html);
+  });
+}
+
+// ─── Title save ──────────────────────────────────────────────────────
+function saveTitle() {
+  if (!currentTemplateId) return;
+  fetch('/message_templates/' + currentTemplateId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify({ message_template: { title: document.getElementById('editTitle').value } })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) { updateCardHtml(data.html); });
+}
+
+// ─── Refresh card ────────────────────────────────────────────────────
+function refreshCard() {
+  if (!currentTemplateId) return;
+  fetch('/message_templates/' + currentTemplateId, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify({ message_template: {} })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) { updateCardHtml(data.html); });
+}
+
+function updateCardHtml(html) {
+  if (!html || !currentTemplateId) return;
+  var card = document.querySelector('[data-id="' + currentTemplateId + '"]');
+  if (!card) return;
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  var newCard = tmp.firstElementChild;
+  card.replaceWith(newCard);
+  initTemplateSortables();
+}
+
+// ─── Delete template ─────────────────────────────────────────────────
+function deleteTemplate(btn) {
+  if (!confirm('確定刪除這則訊息？')) return;
+  var card = btn.closest('.msg-card');
+  var id   = card.dataset.id;
+  fetch('/message_templates/' + id, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': CSRF }
+  }).then(function() { card.remove(); });
+}
+
+// ─── Add template ────────────────────────────────────────────────────
+function addTemplate(btn) {
+  var catKey = btn.dataset.category;
+  var subcat = btn.dataset.subcategory || '';
+  fetch('/message_templates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+    body: JSON.stringify({ message_template: { category_key: catKey, subcategory: subcat } })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) { alert(data.error); return; }
+    // Insert before the add-button's previous sibling (the msg-list)
+    var list = btn.previousElementSibling;
+    list.insertAdjacentHTML('beforeend', data.html);
+    initTemplateSortables();
+    // open edit right away
+    currentTemplateId = data.id;
+    document.getElementById('editTitle').value = '';
+    renderBlocks([{ id: null, type: 'text', content: '', images: [] }]);
+    // fetch real block id
+    fetch('/message_templates/' + data.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ message_template: {} })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      updateCardHtml(d.html);
+      var card = document.querySelector('[data-id="' + data.id + '"]');
+      if (card) {
+        var blocks = JSON.parse(card.dataset.blocks || '[]');
+        renderBlocks(blocks);
+      }
+    });
+    $('#editModal').modal('show');
+  });
+}
+
+// ─── Sortable: block order inside modal ──────────────────────────────
+function initBlockSortable() {
+  var list = document.getElementById('blockList');
+  if (blockSortable) blockSortable.destroy();
+  blockSortable = Sortable.create(list, {
+    animation: 150,
+    handle: '.block-drag-handle',
+    ghostClass: 'ghost-block',
+    onEnd: function() {
+      var ids = Array.from(list.querySelectorAll('[data-block-id]')).map(function(el) { return el.dataset.blockId; });
+      fetch('/message_template_blocks/reorder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({ ids: ids })
+      });
+    }
+  });
+}
+
+// ─── Sortable: template card order in list ───────────────────────────
+function initTemplateSortables() {
+  document.querySelectorAll('.msg-list').forEach(function(list) {
+    if (list._sortable) list._sortable.destroy();
+    list._sortable = Sortable.create(list, {
+      animation: 150,
+      handle: '.drag-handle',
+      onEnd: function() {
+        var ids = Array.from(list.querySelectorAll('.msg-card')).map(function(c) { return c.dataset.id; });
+        fetch('/message_templates/reorder', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+          body: JSON.stringify({ ids: ids })
+        });
+      }
+    });
+  });
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Image lightbox ────────────────────────────────────────────────────
+function openImageLightbox(url) {
+  document.getElementById('msgImageLightboxImg').src = url;
+  document.getElementById('msgImageLightbox').style.display = 'flex';
+}
+
+function closeImageLightbox() {
+  document.getElementById('msgImageLightbox').style.display = 'none';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeImageLightbox();
+});
+
+// ─── Copy image to clipboard ────────────────────────────────────────────
+function copyImageToClipboard(url) {
+  fetch(url)
+    .then(function(r) { return r.blob(); })
+    .then(function(blob) { return createImageBitmap(blob); })
+    .then(function(bitmap) {
+      var canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0);
+      return new Promise(function(resolve, reject) {
+        canvas.toBlob(function(pngBlob) {
+          if (pngBlob) resolve(pngBlob); else reject(new Error('canvas toBlob failed'));
+        }, 'image/png');
+      });
+    })
+    .then(function(pngBlob) {
+      return navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+    })
+    .then(function() {
+      var t = document.getElementById('copyToast');
+      t.style.display = 'block';
+      setTimeout(function() { t.style.display = 'none'; }, 1500);
+    })
+    .catch(function(err) {
+      console.error('[hvo-custom-messages] copy image failed', err);
+      alert('複製圖片失敗，請改用右鍵「複製圖片」。');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', initTemplateSortables);
+</script>
+<% end %>
