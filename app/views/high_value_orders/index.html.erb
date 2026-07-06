@@ -22,27 +22,6 @@ end %>
       <% end %>
     </div>
   </div>
-  <div class="col-12">
-    <%= form_tag high_value_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:10px;" do %>
-      <%= hidden_field_tag :tab, @tab %>
-      <%= hidden_field_tag :level, @level %>
-      <div class="d-flex align-items-center" style="gap:6px;">
-        <label class="text-muted small mb-0" style="white-space:nowrap;">月份</label>
-        <select name="specific_month" class="form-control form-control-sm" style="width:auto;">
-          <option value="">— 快速篩選 —</option>
-          <% 24.times.map { |i| i.months.ago.beginning_of_month }.each do |m| %>
-            <option value="<%= m.strftime('%Y-%m') %>" <%= @specific_month == m.strftime('%Y-%m') ? 'selected' : '' %>>
-              <%= m.strftime('%Y 年 %m 月') %>
-            </option>
-          <% end %>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-sm btn-primary">篩選</button>
-      <% if @series_filter.present? || @specific_month.present? %>
-        <%= link_to "清除", high_value_orders_path(period: @period, tab: @tab, level: @level), class: "btn btn-sm btn-outline-secondary" %>
-      <% end %>
-    <% end %>
-  </div>
 </div>
 
 <%# 新客／舊客 tabs %>
@@ -96,6 +75,27 @@ end %>
 <% end %>
 
 <% if @tab == 'old' %>
+  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-users" style="color:#6c757d; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">舊客</div>
+        <div class="fw-bold" style="font-size:1rem;"><%= @old_count %> 人</div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span class="<%= @old_health_missing_count > 0 ? 'text-danger' : 'text-success' %>">
+            <%= @old_health_missing_count > 0 ? "#{@old_health_missing_count} 人未填" : "✓ 全員已填" %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <%# Level tabs %>
   <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
     <% @levels.each do |lvl| %>

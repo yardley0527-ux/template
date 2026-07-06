@@ -88,6 +88,19 @@ class HighValueOrdersController < ApplicationController
       emails = @orders.map(&:email_val).compact.uniq
       summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
       @line_bound_count = @orders.count { |o| summaries_by_email[o.email_val]&.line_bound }
+    else
+      # 跟 @tab_counts 用同一套「舊客」判定規則，確保未填人數不會超過舊客總數
+      old_orders = base.to_a.select do |o|
+        next false unless LEVELS.include?(o.membership_level_col)
+        o.membership_level_col == '一般會員' ? o.purchase_count_val.to_i != 1 : true
+      end
+      old_customer_ids = old_orders.map(&:shopline_customer_id).compact
+      old_profiles_by_id = CustomerProfile.where(shopline_customer_id: old_customer_ids).index_by(&:shopline_customer_id)
+      @profiles_by_customer_id = @profiles_by_customer_id.merge(old_profiles_by_id)
+      @old_health_missing_count = old_orders.count do |o|
+        profile = old_profiles_by_id[o.shopline_customer_id]
+        profile&.health_profile.blank? && profile&.health_tags.blank?
+      end
     end
   end
 
