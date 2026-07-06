@@ -1,10 +1,9 @@
 class HighValueOrderCustomMessagesController < ApplicationController
-  PRODUCTS           = %w[全能 美白 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
-  FIRST_PURCHASE_PRODUCTS = PRODUCTS - ["2.0面膜"]
-  SEND_PRODUCT_ITEMS = %w[會員小物 禮物].freeze
+  PRODUCTS            = %w[全能 美白 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣].freeze
+  SEND_PRODUCT_ITEMS  = %w[會員小物 禮物].freeze
 
   CATEGORIES = [
-    { key: "custom_first_purchase", title: "首購訊息",   icon: "fa-gem",    description: "依產品分類的首購客訊息",     subcategories: FIRST_PURCHASE_PRODUCTS },
+    { key: "custom_first_purchase", title: "首購訊息",   icon: "fa-gem",    description: "依產品分類的首購客訊息",     subcategories: PRODUCTS },
     { key: "custom_send_product",   title: "送產品訊息", icon: "fa-box",    description: "依產品分類的出貨訊息",       subcategories: PRODUCTS },
     { key: "custom_gift",           title: "贈品訊息",   icon: "fa-heart",  description: "出貨/送出贈品時使用的訊息", subcategories: SEND_PRODUCT_ITEMS },
   ].freeze
