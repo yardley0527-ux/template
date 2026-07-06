@@ -109,6 +109,7 @@ class ProductNameMappingBulkConfirmServiceTest < ActiveSupport::TestCase
     stubbed_report = {
       single_product_regex_confirmable: [
         {
+          mapping_id:            mapping.id,
           raw_name:              mapping.raw_name,
           source:                mapping.source,
           suggested_crm_product: @metabolism.label,
@@ -131,6 +132,40 @@ class ProductNameMappingBulkConfirmServiceTest < ActiveSupport::TestCase
     assert_equal 0, ProductNameMappingLog.count
   end
 
+  test "re-checks status under lock at write time, not the pre-transaction snapshot" do
+    # Simulates ProductRegistryController#ignore committing between the report
+    # snapshot and this service's write — the row lock + fresh read must catch it.
+    mapping = create_bulk_confirmable("代謝錠2")
+
+    stubbed_report = {
+      single_product_regex_confirmable: [
+        {
+          mapping_id:            mapping.id,
+          raw_name:              mapping.raw_name,
+          source:                mapping.source,
+          suggested_crm_product: @metabolism.label,
+          occurrence_count:      1,
+          action_type:           :bulk_confirm,
+          promotion_detected:    false,
+        },
+      ],
+    }
+
+    # Concurrent writer (e.g. ProductRegistryController#ignore) commits *after*
+    # the snapshot above was built, but before this service runs — it must read
+    # this committed value under lock rather than trusting the stale snapshot.
+    mapping.update_column(:mapping_status, "ignored")
+
+    result = ProductNameMappingBulkConfirmService.call(
+      dry_run: false, performed_by_user_id: @user.id, report: stubbed_report
+    )
+
+    assert_equal 0, result[:confirmed_count]
+    assert_equal 1, result[:skipped_count]
+    assert_equal "ignored", mapping.reload.mapping_status
+    assert_equal 0, ProductNameMappingLog.count
+  end
+
   test "raises and rolls back the whole batch if a row is misclassified" do
     good = create_bulk_confirmable("代謝錠2")
     bad  = create_bulk_confirmable("代謝錠3")
@@ -138,12 +173,12 @@ class ProductNameMappingBulkConfirmServiceTest < ActiveSupport::TestCase
     stubbed_report = {
       single_product_regex_confirmable: [
         {
-          raw_name: good.raw_name, source: good.source,
+          mapping_id: good.id, raw_name: good.raw_name, source: good.source,
           suggested_crm_product: @metabolism.label, occurrence_count: 1,
           action_type: :bulk_confirm, promotion_detected: false,
         },
         {
-          raw_name: bad.raw_name, source: bad.source,
+          mapping_id: bad.id, raw_name: bad.raw_name, source: bad.source,
           suggested_crm_product: @metabolism.label, occurrence_count: 1,
           action_type: :manual_review, promotion_detected: false,
         },
@@ -159,5 +194,51 @@ class ProductNameMappingBulkConfirmServiceTest < ActiveSupport::TestCase
     assert_equal "pending", good.reload.mapping_status
     assert_equal "pending", bad.reload.mapping_status
     assert_equal 0, ProductNameMappingLog.count
+  end
+
+  test "does not confirm and counts as failed when suggested_crm_product_id is nil" do
+    mapping = ProductNameMapping.create!(
+      raw_name:             "代謝錠4",
+      source:               "shopline_order",
+      mapping_status:       "pending",
+      occurrence_count:     1,
+      suggested_confidence: "High"
+      # suggested_crm_product intentionally absent — data anomaly: High
+      # confidence with no suggested product.
+    )
+
+    stubbed_report = {
+      single_product_regex_confirmable: [
+        {
+          mapping_id: mapping.id, raw_name: mapping.raw_name, source: mapping.source,
+          suggested_crm_product: nil, occurrence_count: 1,
+          action_type: :bulk_confirm, promotion_detected: false,
+        },
+      ],
+    }
+
+    result = ProductNameMappingBulkConfirmService.call(
+      dry_run: false, performed_by_user_id: @user.id, report: stubbed_report
+    )
+
+    assert_equal 0, result[:confirmed_count]
+    assert_equal 1, result[:failed_count]
+    assert_equal 0, result[:history_written]
+    assert_equal [{ raw_name: "代謝錠4", source: "shopline_order", reason: "suggested_crm_product_id is nil" }],
+                 result[:failed_rows]
+
+    mapping.reload
+    assert_equal "pending", mapping.mapping_status
+    assert_nil mapping.crm_product_id
+    assert_equal 0, ProductNameMappingLog.count
+  end
+
+  test "review report rows carry mapping_id for batched lookup" do
+    mapping = create_bulk_confirmable("代謝錠2")
+
+    report = ProductNameMappingReviewReportService.call
+    row    = report[:single_product_regex_confirmable].find { |r| r[:raw_name] == mapping.raw_name }
+
+    assert_equal mapping.id, row[:mapping_id]
   end
 end

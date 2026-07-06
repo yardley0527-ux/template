@@ -48,11 +48,19 @@ namespace :product_name_mappings do
       puts "\n── Summary ──────────────────────────────────────────────────────────"
       puts "  Confirmed        : #{result[:confirmed_count]}"
       puts "  Skipped          : #{result[:skipped_count]}"
+      puts "  Failed           : #{result[:failed_count]}"
       puts "  History written  : #{result[:history_written]}"
 
       puts "\n  依產品分類："
       result[:by_product].sort_by { |_, count| -count }.each do |label, count|
         puts "    #{label}：#{count}"
+      end
+
+      if result[:failed_rows].present?
+        puts "\n  Failed rows（需人工檢查，未 confirm）："
+        result[:failed_rows].each do |f|
+          puts "    #{f[:raw_name]} (#{f[:source]}) — #{f[:reason]}"
+        end
       end
     end
     puts sep
