@@ -27,7 +27,5 @@ class MessageTemplate < ApplicationRecord
   }.freeze
 
   BULK_SUBCATEGORIES = %w[全能 美白 全能＋美白 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
-  CATEGORY_ORDER     = %w[binding zhongzu birthday bulk omnipotent whitening metabolism
-                           turmeric probiotics astaxanthin fiber_powder collagen fish_oil
-                           feminine_powder glutathione vitamin_d_calcium].freeze
+  CATEGORY_ORDER     = %w[binding zhongzu birthday bulk].freeze
 end
