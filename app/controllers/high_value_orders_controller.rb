@@ -1,7 +1,6 @@
 class HighValueOrdersController < ApplicationController
   THRESHOLD      = 8_000
   LEVELS         = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  ALL_TABS       = (LEVELS + ['新客']).freeze
   # total_amount 是整張訂單的付款總額（同一訂單每個商品行都重複同一值，需取 MAX）；
   # checkout_amount 是逐行商品金額，只有在 total_amount 缺失時才需要 SUM 全部商品行回推訂單總額。
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
@@ -14,8 +13,9 @@ class HighValueOrdersController < ApplicationController
   def index
     @series_options = CrmProduct.series_labels_for_filter
     @period         = params[:period].presence || 'month'
-    @level          = params[:level].presence || LEVELS.first
-    @levels         = ALL_TABS
+    @tab            = %w[new old].include?(params[:tab]) ? params[:tab] : 'old'
+    @level          = @tab == 'new' ? '新客' : (LEVELS.include?(params[:level]) ? params[:level] : LEVELS.first)
+    @levels         = LEVELS
     @series_filter  = params[:series_filter].presence
     @specific_month = params[:specific_month].presence
 
@@ -47,7 +47,8 @@ class HighValueOrdersController < ApplicationController
         lvl == '一般會員' ? o.purchase_count_val.to_i != 1 : true
       end
     end
-    @tab_counts['新客'] = all_for_counts.count { |o| o.purchase_count_val.to_i == 1 }
+    @new_count = all_for_counts.count { |o| o.purchase_count_val.to_i == 1 }
+    @old_count = @tab_counts.values.sum
 
     # 目前選中 tab 的完整資料
     scope = base

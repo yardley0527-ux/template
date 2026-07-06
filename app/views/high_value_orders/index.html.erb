@@ -17,13 +17,14 @@ end %>
     <div class="btn-group" role="group">
       <% [['yesterday','昨日'], ['week','本週'], ['month','本月']].each do |val, label| %>
         <%= link_to label,
-              high_value_orders_path(period: val, level: @level, series_filter: @series_filter),
+              high_value_orders_path(period: val, tab: @tab, level: @level, series_filter: @series_filter),
               class: "btn btn-sm #{@specific_month.blank? && @period == val ? 'btn-dark' : 'btn-outline-secondary'}" %>
       <% end %>
     </div>
   </div>
   <div class="col-12">
     <%= form_tag high_value_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:10px;" do %>
+      <%= hidden_field_tag :tab, @tab %>
       <%= hidden_field_tag :level, @level %>
       <div class="d-flex align-items-center" style="gap:6px;">
         <label class="text-muted small mb-0" style="white-space:nowrap;">月份</label>
@@ -38,24 +39,39 @@ end %>
       </div>
       <button type="submit" class="btn btn-sm btn-primary">篩選</button>
       <% if @series_filter.present? || @specific_month.present? %>
-        <%= link_to "清除", high_value_orders_path(period: @period, level: @level), class: "btn btn-sm btn-outline-secondary" %>
+        <%= link_to "清除", high_value_orders_path(period: @period, tab: @tab, level: @level), class: "btn btn-sm btn-outline-secondary" %>
       <% end %>
     <% end %>
   </div>
 </div>
 
-
-<%# Level tabs %>
+<%# 新客／舊客 tabs %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
-  <% @levels.each do |lvl| %>
-    <% cnt = @tab_counts[lvl] || 0 %>
-    <li class="nav-item">
-      <%= link_to "#{lvl}（#{cnt}）",
-            high_value_orders_path(period: @period, level: lvl, series_filter: @series_filter, specific_month: @specific_month),
-            class: "nav-link #{@level == lvl ? 'active fw-bold' : 'text-muted'}" %>
-    </li>
-  <% end %>
+  <li class="nav-item">
+    <%= link_to "新客（#{@new_count}）",
+          high_value_orders_path(period: @period, tab: 'new', series_filter: @series_filter, specific_month: @specific_month),
+          class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "舊客（#{@old_count}）",
+          high_value_orders_path(period: @period, tab: 'old', level: @level == '新客' ? nil : @level, series_filter: @series_filter, specific_month: @specific_month),
+          class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
 </ul>
+
+<% if @tab == 'old' %>
+  <%# Level tabs %>
+  <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+    <% @levels.each do |lvl| %>
+      <% cnt = @tab_counts[lvl] || 0 %>
+      <li class="nav-item">
+        <%= link_to "#{lvl}（#{cnt}）",
+              high_value_orders_path(period: @period, tab: 'old', level: lvl, series_filter: @series_filter, specific_month: @specific_month),
+              class: "nav-link #{@level == lvl ? 'active fw-bold' : 'text-muted'}" %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>
 
 <%# Table %>
 <% display_orders = @paged_orders %>
@@ -187,7 +203,7 @@ end %>
       <nav>
         <ul class="pagination pagination-sm mb-0">
           <li class="page-item <%= @page == 1 ? 'disabled' : '' %>">
-            <%= link_to "«".html_safe, high_value_orders_path(period: @period, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: @page - 1), class: "page-link" %>
+            <%= link_to "«".html_safe, high_value_orders_path(period: @period, tab: @tab, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: @page - 1), class: "page-link" %>
           </li>
           <% prev_p = nil %>
           <% page_nums.each do |p| %>
@@ -195,12 +211,12 @@ end %>
               <li class="page-item disabled"><span class="page-link">…</span></li>
             <% end %>
             <li class="page-item <%= p == @page ? 'active' : '' %>">
-              <%= link_to p, high_value_orders_path(period: @period, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: p), class: "page-link" %>
+              <%= link_to p, high_value_orders_path(period: @period, tab: @tab, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: p), class: "page-link" %>
             </li>
             <% prev_p = p %>
           <% end %>
           <li class="page-item <%= @page == @total_pages ? 'disabled' : '' %>">
-            <%= link_to "»".html_safe, high_value_orders_path(period: @period, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: @page + 1), class: "page-link" %>
+            <%= link_to "»".html_safe, high_value_orders_path(period: @period, tab: @tab, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: @page + 1), class: "page-link" %>
           </li>
         </ul>
       </nav>
