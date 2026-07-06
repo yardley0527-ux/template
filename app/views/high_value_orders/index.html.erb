@@ -1,5 +1,5 @@
 <%# app/views/high_value_orders/index.html.erb %>
-<% content_for :page_title, "破萬訂單速覽" %>
+<% content_for :page_title, "破8000訂單速覽" %>
 
 <% def ig_link_url(account)
   return nil if account.blank?
@@ -11,8 +11,8 @@ end %>
 <div class="row g-3 mb-3">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
     <div>
-      <h4 class="fw-bold mb-0">破萬訂單速覽</h4>
-      <p class="text-muted small mb-0">單筆訂單 ≥ NT$10,000，依卡別分群</p>
+      <h4 class="fw-bold mb-0">破8000訂單速覽</h4>
+      <p class="text-muted small mb-0">單筆訂單 ≥ NT$8,000，依卡別分群</p>
     </div>
     <div class="btn-group" role="group">
       <% [['yesterday','昨日'], ['week','本週'], ['month','本月']].each do |val, label| %>
@@ -25,15 +25,6 @@ end %>
   <div class="col-12">
     <%= form_tag high_value_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:10px;" do %>
       <%= hidden_field_tag :level, @level %>
-      <div class="d-flex align-items-center" style="gap:6px;">
-        <label class="text-muted small mb-0" style="white-space:nowrap;">系列</label>
-        <select name="series_filter" class="form-control form-control-sm" style="width:auto;">
-          <option value="">全部系列</option>
-          <% @series_options.each do |s| %>
-            <option value="<%= s %>" <%= @series_filter == s ? 'selected' : '' %>><%= s %></option>
-          <% end %>
-        </select>
-      </div>
       <div class="d-flex align-items-center" style="gap:6px;">
         <label class="text-muted small mb-0" style="white-space:nowrap;">月份</label>
         <select name="specific_month" class="form-control form-control-sm" style="width:auto;">
@@ -173,7 +164,7 @@ end %>
           <tr>
             <td colspan="<%= @level == '新客' ? 9 : 10 %>" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
-              此期間無單筆 ≥ NT$10,000 的訂單
+              此期間無單筆 ≥ NT$8,000 的訂單
             </td>
           </tr>
         <% end %>

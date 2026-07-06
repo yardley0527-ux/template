@@ -28,7 +28,7 @@ class SidebarEntry
             { href: daily_dashboard_path,             title: "每日營收儀表板", icon: "fa-tachometer-alt" },
             { href: daily_orders_path,               title: "每日訂單明細",   icon: "fa-list-alt" },
             { href: high_spender_first_purchase_path, title: "破萬新客分析",   icon: "fa-gem" },
-            { href: high_value_orders_path,           title: "破萬訂單速覽",   icon: "fa-fire" },
+            { href: high_value_orders_path,           title: "破8000訂單速覽", icon: "fa-fire" },
             { href: first_purchase_index_path,        title: "首購總覽",       icon: "fa-shopping-bag" },
             { href: loyal_customers_path,             title: "忠實客分析",     icon: "fa-heart" },
           ]

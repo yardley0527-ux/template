@@ -11,7 +11,7 @@ class PageView < ApplicationRecord
 
   # 所有應追蹤的頁面（controller#action），用來計算「從未被造訪」
   ALL_TRACKED_PAGES = {
-    "high_value_orders#index"                => "破萬訂單速覽",
+    "high_value_orders#index"                => "破8000訂單速覽",
     "welcome#index"                         => "首頁 Dashboard",
     "customers#index"                       => "客人資料庫",
     "customers#show"                        => "客人詳細頁",

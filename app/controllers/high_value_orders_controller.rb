@@ -1,5 +1,5 @@
 class HighValueOrdersController < ApplicationController
-  THRESHOLD      = 10_000
+  THRESHOLD      = 8_000
   LEVELS         = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
   ALL_TABS       = (LEVELS + ['新客']).freeze
   # total_amount 是整張訂單的付款總額（同一訂單每個商品行都重複同一值，需取 MAX）；
