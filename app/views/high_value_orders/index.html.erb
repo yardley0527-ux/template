@@ -59,6 +59,42 @@ end %>
   </li>
 </ul>
 
+<% if @tab == 'new' %>
+  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-user-plus" style="color:#6c757d; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">新客</div>
+        <div class="fw-bold" style="font-size:1rem;"><%= @new_count %> 人</div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-comment-lines" style="color:#28a745; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">已綁定 LINE</div>
+        <div class="fw-bold" style="font-size:1rem;">
+          <%= @line_bound_count %> / <%= @new_count %> 人
+          <% unbound = @new_count - @line_bound_count %>
+          <span class="<%= unbound > 0 ? 'text-danger' : 'text-success' %>" style="font-size:0.78rem;">
+            <%= unbound > 0 ? "（還有 #{unbound} 人未綁）" : "✓ 全員已綁" %>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span class="<%= @health_missing_count > 0 ? 'text-danger' : 'text-success' %>">
+            <%= @health_missing_count > 0 ? "#{@health_missing_count} 人未填" : "✓ 全員已填" %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
 <% if @tab == 'old' %>
   <%# Level tabs %>
   <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">

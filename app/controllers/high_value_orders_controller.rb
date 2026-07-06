@@ -75,6 +75,20 @@ class HighValueOrdersController < ApplicationController
 
     customer_ids = @paged_orders.map(&:shopline_customer_id).compact
     @profiles_by_customer_id = CustomerProfile.where(shopline_customer_id: customer_ids).index_by(&:shopline_customer_id)
+
+    if @tab == 'new'
+      all_customer_ids = @orders.map(&:shopline_customer_id).compact
+      all_profiles_by_id = CustomerProfile.where(shopline_customer_id: all_customer_ids).index_by(&:shopline_customer_id)
+      @profiles_by_customer_id = @profiles_by_customer_id.merge(all_profiles_by_id)
+      @health_missing_count = @orders.count do |o|
+        profile = all_profiles_by_id[o.shopline_customer_id]
+        profile&.health_profile.blank? && profile&.health_tags.blank?
+      end
+
+      emails = @orders.map(&:email_val).compact.uniq
+      summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
+      @line_bound_count = @orders.count { |o| summaries_by_email[o.email_val]&.line_bound }
+    end
   end
 
   private
@@ -99,6 +113,7 @@ class HighValueOrdersController < ApplicationController
         "#{ORDER_TOTAL_SQL} AS order_total",
         "STRING_AGG(DISTINCT o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name || ' ×' || o.quantity::text) AS products_list",
         "MAX(COALESCE(sc.instagram_account, o.instagram_account)) AS ig_account",
+        "MAX(COALESCE(sc.email, o.email)) AS email_val",
         "MAX(cps.purchase_count) AS purchase_count_val"
       )
       .where("o.payment_status = '已付款'")
