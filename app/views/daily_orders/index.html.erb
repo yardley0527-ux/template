@@ -130,11 +130,9 @@ end %>
             <th style="width:9%;">姓名</th>
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
-            <th style="width:52%;">是否購買過同產品</th>
+            <th style="width:<%= is_new ? 52 : 61 %>%;">是否購買過同產品</th>
             <% if is_new %>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
-            <% else %>
-              <th class="text-center" style="width:9%; font-size:0.78rem; line-height:1.3;">已詢問<br>無意願回覆</th>
             <% end %>
           </tr>
         </thead>
@@ -182,25 +180,12 @@ end %>
                     <span class="text-muted">—</span>
                   <% end %>
                 </td>
-              <% else %>
-                <td class="text-center">
-                  <% if row.shopline_customer_id %>
-                    <input type="checkbox"
-                      class="customer-flag-checkbox"
-                      data-customer-id="<%= row.shopline_customer_id %>"
-                      data-field="health_inquiry_declined"
-                      <%= row.health_inquiry_declined ? 'checked' : '' %>
-                      style="width:18px; height:18px; cursor:pointer; accent-color:#6c757d;">
-                  <% else %>
-                    <span class="text-muted">—</span>
-                  <% end %>
-                </td>
               <% end %>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="6" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="<%= is_new ? 6 : 5 %>" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>

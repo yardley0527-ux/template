@@ -105,6 +105,7 @@ end %>
             <% if is_new %>
               <th style="width:90px;" class="text-center">贈品已送</th>
             <% else %>
+              <th class="text-center" style="width:90px; font-size:0.78rem; line-height:1.3;">已詢問<br>無意願回覆</th>
               <th style="width:190px;">贈品紀錄</th>
               <th style="width:90px;" class="text-center">贈品已送</th>
             <% end %>
@@ -184,6 +185,18 @@ end %>
                     style="width:18px; height:18px; cursor:pointer; accent-color:#c00;">
                 </td>
               <% else %>
+                <td class="text-center">
+                  <% if o.shopline_customer_id %>
+                    <input type="checkbox"
+                      class="customer-flag-checkbox"
+                      data-customer-id="<%= o.shopline_customer_id %>"
+                      data-field="health_inquiry_declined"
+                      <%= profile&.health_inquiry_declined ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#6c757d;">
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
                 <td>
                   <select class="form-control form-control-sm gift-note-input"
                     data-order="<%= o.order_num %>"
@@ -208,7 +221,7 @@ end %>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="<%= is_new ? 9 : 10 %>" class="text-center py-5 text-muted">
+              <td colspan="<%= is_new ? 9 : 11 %>" class="text-center py-5 text-muted">
                 <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
                 此期間無單筆 ≥ NT$8,000 的訂單
               </td>
@@ -264,6 +277,19 @@ end %>
       flashTip(td, sel.value ? '✓ 已更新' : '已清除', sel.value ? '#28a745' : '#999');
     });
     if (sel.value) sel.style.borderColor = '#28a745';
+  });
+
+  // 已詢問無意願回覆：checkbox 打勾即存檔
+  document.querySelectorAll('.customer-flag-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      fetch('<%= toggle_daily_orders_customer_flag_path %>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({ customer_id: cb.dataset.customerId, field: cb.dataset.field, value: cb.checked })
+      }).then(function(r) {
+        if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
+      });
+    });
   });
 })();
 </script>
