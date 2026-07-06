@@ -9,7 +9,7 @@ class MessageTemplate < ApplicationRecord
 
   CATEGORY_META = {
     "zhongzu"    => { title: "中租零卡分期", icon: "fa-credit-card",    description: "付款提醒訊息" },
-    "bulk"       => { title: "大組數",       icon: "fa-boxes",          description: "客人一次購買大量時使用" },
+    "bulk"       => { title: "新客訊息",     icon: "fa-boxes",          description: "客人一次購買大量時使用" },
     "omnipotent" => { title: "全能膠囊",     icon: "fa-capsules",       description: "依序發送" },
     "whitening"  => { title: "美白膠囊",     icon: "fa-star",           description: "依序發送" },
     "metabolism" => { title: "代謝錠",       icon: "fa-fire",           description: "依序發送" },
