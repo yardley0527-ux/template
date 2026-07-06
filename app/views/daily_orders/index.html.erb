@@ -130,8 +130,7 @@ end %>
             <th style="width:9%;">姓名</th>
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
-            <th style="width:<%= is_new ? 27 : 27 %>%;">是否購買過同產品</th>
-            <th style="width:<%= is_new ? 25 : 25 %>%;">健康資料</th>
+            <th style="width:52%;">是否購買過同產品</th>
             <% if is_new %>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
             <% else %>
@@ -170,21 +169,6 @@ end %>
                   </div>
                 <% end %>
               </td>
-              <td style="max-width:220px;">
-                <% if row.health_profile.present? %>
-                  <div class="small text-truncate" style="max-width:220px;" title="<%= row.health_profile %>"><%= row.health_profile %></div>
-                <% end %>
-                <% if row.health_tags.present? %>
-                  <div class="d-flex flex-wrap" style="gap:3px; margin-top:2px;">
-                    <% row.health_tags.each do |tag| %>
-                      <span class="badge bg-light text-dark border" style="font-size:0.7rem;"><%= tag %></span>
-                    <% end %>
-                  </div>
-                <% end %>
-                <% if row.health_profile.blank? && row.health_tags.blank? && row.shopline_customer_id && (is_new || row.order_total.to_f >= 10_000) %>
-                  <%= link_to "+ 填寫健康資料", edit_customer_path(row.shopline_customer_id, section: "health"), target: "_blank", class: "small text-decoration-none" %>
-                <% end %>
-              </td>
               <% if is_new %>
                 <td class="text-center">
                   <% if row.shopline_customer_id %>
@@ -216,7 +200,7 @@ end %>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="7" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="6" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
