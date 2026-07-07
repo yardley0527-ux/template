@@ -118,15 +118,19 @@ class SidebarEntry
     def filter_children(children, allowed)
       children.filter_map do |child|
         controller = PageRegistry.controller_for(child[:href])
-        own_allowed = controller.nil? || allowed.include?(controller)
 
         if child[:children].present?
+          # A "#" container (e.g. CRM 效益分析, 業配名單) has no controller of its
+          # own, so it must only show up when at least one child is allowed —
+          # unlike a real page (e.g. 客人資料庫) whose own controller permission
+          # should be enough on its own, even with no permitted children.
+          own_allowed = controller.present? && allowed.include?(controller)
           sub = filter_children(child[:children], allowed)
           next if sub.empty? && !own_allowed
 
           child.merge(children: sub)
         else
-          child if own_allowed
+          child if controller.nil? || allowed.include?(controller)
         end
       end
     end
