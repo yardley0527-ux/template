@@ -108,6 +108,8 @@ Rails.application.routes.draw do
   get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
   get '/first_purchase/export', to: 'first_purchase#export', as: :export_first_purchase
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
+  get '/metabolism_qingxian_customers',        to: 'metabolism_qingxian_customers#index',  as: :metabolism_qingxian_customers
+  get '/metabolism_qingxian_customers/export', to: 'metabolism_qingxian_customers#export', as: :export_metabolism_qingxian_customers
   get '/inactive_members',           to: 'inactive_members#index',     as: :inactive_members
   get  '/duplicate_customers',         to: 'duplicate_customers#index', as: :duplicate_customers
   post '/duplicate_customers/merge',   to: 'duplicate_customers#merge', as: :merge_duplicate_customers

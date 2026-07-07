@@ -1,0 +1,113 @@
+<%# app/views/metabolism_qingxian_customers/index.html.erb %>
+<% content_for :page_title, "代謝錠回購×清纖粉名單" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-list"></i>
+    代謝錠回購×清纖粉名單
+    <small>首購代謝錠落在指定期間、且已回購代謝錠的客人中，同時買過清纖粉的名單</small>
+  </h1>
+</div>
+<%= render 'shared/data_freshness', updated_at: series_loyalty_updated_at %>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-container show">
+        <div class="panel-content">
+
+          <%# ── 篩選列 ── %>
+          <div class="fp-filter-bar mb-3">
+            <%= form_with url: metabolism_qingxian_customers_path, method: :get, local: true do %>
+              <div class="fp-filter-row">
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">代謝錠首購日期（起）</label>
+                  <input type="date" name="start_date" value="<%= @start_date.iso8601 %>" class="fp-select">
+                </div>
+                <div class="fp-filter-group">
+                  <label class="fp-filter-label">代謝錠首購日期（迄）</label>
+                  <input type="date" name="end_date" value="<%= @end_date.iso8601 %>" class="fp-select">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">套用</button>
+                <%= link_to "匯出 CSV", export_metabolism_qingxian_customers_path(start_date: @start_date, end_date: @end_date), class: "btn btn-outline-secondary btn-sm" %>
+              </div>
+            <% end %>
+          </div>
+
+          <p class="text-muted small mb-3">共 <strong><%= @customers.size %></strong> 位客人</p>
+
+          <div class="fp-table-wrap">
+            <table class="fp-table">
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th>IG</th>
+                  <th>代謝錠回購次數</th>
+                  <th>清纖粉購買次數</th>
+                  <th>總訂單數</th>
+                  <th>總消費</th>
+                  <th>會員等級</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @customers.each do |c| %>
+                  <tr>
+                    <td><%= c["full_name"].presence || "（無姓名）" %></td>
+                    <td>
+                      <% if c["instagram_account"].present? %>
+                        <a href="https://instagram.com/<%= c["instagram_account"].to_s.delete_prefix('@') %>" target="_blank" class="fp-ig-link">
+                          📷 <%= c["instagram_account"] %>
+                        </a>
+                      <% else %>
+                        <span class="fp-muted">—</span>
+                      <% end %>
+                    </td>
+                    <td><%= c["metabolism_repurchase_count"] %></td>
+                    <td><%= c["qingxian_count"] %></td>
+                    <td><%= c["total_orders"] %></td>
+                    <td class="fp-amount">NT$ <%= number_with_delimiter(c["total_spend"].to_f.round(0).to_i) %></td>
+                    <td>
+                      <span class="fp-level fp-level-<%= c["membership_level"].to_s.gsub('卡','') %>">
+                        <%= c["membership_level"].presence || "一般" %>
+                      </span>
+                    </td>
+                  </tr>
+                <% end %>
+                <% if @customers.blank? %>
+                  <tr>
+                    <td colspan="7" class="fp-empty">查無符合條件的客人</td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.fp-filter-bar { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; }
+.fp-filter-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.fp-filter-group { display: flex; flex-direction: column; gap: 4px; }
+.fp-filter-label { font-size: 12px; color: #6b7280; font-weight: 600; }
+.fp-select { border: 1px solid #d1d5db; border-radius: 6px; padding: 6px 10px; font-size: 13px; }
+.fp-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; }
+.fp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fp-table thead th { background: #886ab5; color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; white-space: nowrap; }
+.fp-table tbody td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.fp-table tbody tr:last-child td { border-bottom: none; }
+.fp-table tbody tr:hover td { background: #faf9ff; }
+.fp-amount { white-space: nowrap; }
+.fp-muted { color: #9ca3af; }
+.fp-empty { text-align: center; color: #9ca3af; padding: 24px; }
+.fp-ig-link { color: #886ab5; text-decoration: none; }
+.fp-ig-link:hover { text-decoration: underline; }
+.fp-level { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; background: #f3f4f6; color: #4b5563; }
+.fp-level-黑 { background: #1f2937; color: #fff; }
+.fp-level-金 { background: #fef3c7; color: #92400e; }
+.fp-level-銀 { background: #e5e7eb; color: #374151; }
+.fp-level-白 { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+</style>
