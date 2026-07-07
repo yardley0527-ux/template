@@ -1,0 +1,72 @@
+<%# app/views/omnipotent_restock/daily.html.erb %>
+<% content_for :page_title, "客戶旅程管理 - 今日待辦" %>
+
+<%# ── 產品選擇器 ── %>
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+  <span class="text-muted small fw-semibold me-1">產品：</span>
+  <%= link_to crm_journey_path, class: "btn btn-sm btn-primary" do %>
+    📋 今日待辦（全部有貨）
+  <% end %>
+  <% JourneyProducts::PRODUCTS.values.each do |p| %>
+    <%= link_to crm_journey_path(product: p[:key]), class: "btn btn-sm btn-outline-secondary" do %>
+      <%= p[:icon] %> <%= p[:short] %><%= p[:in_stock] ? "" : "（缺貨）" %>
+    <% end %>
+  <% end %>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0" style="color:#374151;">📋 今日待辦・有庫存產品回購名單</h4>
+      <p class="text-muted small mb-0">
+        合併所有目前有庫存的產品，把提醒中＋逾期未回購的客人排在一起，依 CRM Score 排序・每天打開這頁就是今天要聯絡的人
+      </p>
+    </div>
+  </div>
+</div>
+
+<%# ── 有庫存產品 & 缺貨產品一覽 ── %>
+<div class="card border-0 bg-light mb-4" style="border-left: 4px solid #374151 !important;">
+  <div class="card-body py-3">
+    <div class="row g-3">
+      <div class="col-md-6">
+        <div class="fw-bold text-dark mb-1" style="font-size:0.85rem;">✅ 目前有庫存（納入此清單）</div>
+        <div style="font-size:0.82rem;">
+          <% @in_stock_products.each do |p| %>
+            <span class="badge bg-white text-dark border me-1 mb-1">
+              <%= p[:icon] %> <%= p[:label] %>・<%= @combined_by_product[p[:label]] || 0 %> 人
+            </span>
+          <% end %>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="fw-bold text-muted mb-1" style="font-size:0.85rem;">⚠️ 目前缺貨（不在此清單，到貨後手動改 in_stock）</div>
+        <div style="font-size:0.82rem;">
+          <% JourneyProducts::PRODUCTS.values.reject { |p| p[:in_stock] }.each do |p| %>
+            <span class="badge bg-white text-muted border me-1 mb-1">
+              <%= p[:icon] %> <%= p[:label] %><% if p[:restock_date] %>・<%= p[:restock_date].strftime("%m/%d") %> 到貨<% end %>
+            </span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 今日待辦 ── %>
+<div class="card border-0 shadow-sm">
+  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color: #991b1b;">
+    <div>
+      <span class="fw-bold">今日應聯絡（全部有貨產品合併）</span>
+      <span class="ms-2 small opacity-75">高價值客戶（VIP＋大套組） <%= @high_value_combined %> 人</span>
+    </div>
+    <span class="badge bg-white text-dark"><%= @combined_today.size %> 人</span>
+  </div>
+  <div class="card-body p-0">
+    <% if @combined_today.any? %>
+      <%= render 'restock_table', rows: @combined_today, show_product: true %>
+    <% else %>
+      <p class="text-muted small p-3 mb-0">今天沒有需要聯絡的客戶。</p>
+    <% end %>
+  </div>
+</div>
