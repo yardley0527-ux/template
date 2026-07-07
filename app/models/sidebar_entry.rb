@@ -93,7 +93,6 @@ class SidebarEntry
           children: [
             { href: monitoring_path,        title: "功能使用監控", icon: "fa-chart-line" },
             { href: users_path,             title: "使用者管理",   icon: "fa-users-cog" },
-            { href: permissions_path,       title: "權限管理",     icon: "fa-lock" },
           ]
         },
       ]
