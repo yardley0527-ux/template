@@ -117,14 +117,16 @@ class SidebarEntry
 
     def filter_children(children, allowed)
       children.filter_map do |child|
+        controller = PageRegistry.controller_for(child[:href])
+        own_allowed = controller.nil? || allowed.include?(controller)
+
         if child[:children].present?
           sub = filter_children(child[:children], allowed)
-          next if sub.empty?
+          next if sub.empty? && !own_allowed
 
           child.merge(children: sub)
         else
-          controller = PageRegistry.controller_for(child[:href])
-          child if controller.nil? || allowed.include?(controller)
+          child if own_allowed
         end
       end
     end

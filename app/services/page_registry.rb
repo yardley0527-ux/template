@@ -5,7 +5,14 @@
 # SidebarEntry, so the permissions admin UI and the sidebar filter never drift
 # out of sync with each other.
 class PageRegistry
-  ALWAYS_ALLOWED_CONTROLLERS = %w[welcome].freeze
+  # Devise's own controllers must never be gated by page_permissions: Warden's
+  # Database Authenticatable strategy authenticates as a side effect of the
+  # inherited authenticate_user! before_action (it runs on any request carrying
+  # user[username]/user[password] params), so by the time authorize_page! runs
+  # during the sessions#create request itself, current_user is already present
+  # and gets checked against the "sessions" controller — which no role should
+  # ever need to whitelist just to be able to log in.
+  ALWAYS_ALLOWED_CONTROLLERS = %w[welcome sessions passwords].freeze
 
   class << self
     # [{ group_title:, pages: [{ controller:, title: }] }]
@@ -35,12 +42,9 @@ class PageRegistry
 
     def flatten(children)
       children.flat_map do |child|
-        if child[:children].present?
-          flatten(child[:children])
-        else
-          controller = controller_for(child[:href])
-          controller ? [{ controller: controller, title: child[:title] }] : []
-        end
+        controller = controller_for(child[:href])
+        own = controller ? [{ controller: controller, title: child[:title] }] : []
+        child[:children].present? ? own + flatten(child[:children]) : own
       end.uniq { |p| p[:controller] }
     end
   end
