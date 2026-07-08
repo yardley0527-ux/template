@@ -115,7 +115,9 @@ class ProductNameMappingBulkConfirmService
 
         if mapping.suggested_crm_product_id.blank?
           failed_count += 1
-          failed_rows << { raw_name: mapping.raw_name, source: mapping.source,
+          failed_rows << { mapping_id: mapping.id, raw_name: mapping.raw_name, source: mapping.source,
+                            suggested_confidence: mapping.suggested_confidence,
+                            suggested_crm_product_id: mapping.suggested_crm_product_id,
                             reason: "suggested_crm_product_id is nil" }
           next
         end

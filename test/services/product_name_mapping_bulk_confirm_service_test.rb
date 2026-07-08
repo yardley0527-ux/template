@@ -224,8 +224,14 @@ class ProductNameMappingBulkConfirmServiceTest < ActiveSupport::TestCase
     assert_equal 0, result[:confirmed_count]
     assert_equal 1, result[:failed_count]
     assert_equal 0, result[:history_written]
-    assert_equal [{ raw_name: "代謝錠4", source: "shopline_order", reason: "suggested_crm_product_id is nil" }],
-                 result[:failed_rows]
+    assert_equal [{
+      mapping_id:               mapping.id,
+      raw_name:                 "代謝錠4",
+      source:                   "shopline_order",
+      suggested_confidence:     "High",
+      suggested_crm_product_id: nil,
+      reason:                   "suggested_crm_product_id is nil",
+    }], result[:failed_rows]
 
     mapping.reload
     assert_equal "pending", mapping.mapping_status

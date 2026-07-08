@@ -59,7 +59,8 @@ namespace :product_name_mappings do
       if result[:failed_rows].present?
         puts "\n  Failed rows（需人工檢查，未 confirm）："
         result[:failed_rows].each do |f|
-          puts "    #{f[:raw_name]} (#{f[:source]}) — #{f[:reason]}"
+          puts "    mapping_id=#{f[:mapping_id]} #{f[:raw_name]} (#{f[:source]}) — #{f[:reason]}" \
+               " [confidence=#{f[:suggested_confidence].inspect} suggested_crm_product_id=#{f[:suggested_crm_product_id].inspect}]"
         end
       end
     end
