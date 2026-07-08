@@ -1,4 +1,4 @@
-<% content_for :page_title, "訊息公版" %>
+<% content_for :page_title, "客製化訊息" %>
 <% content_for :head_block do %>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <style>
@@ -22,7 +22,7 @@
 
 <div class="subheader">
   <h1 class="subheader-title">
-    <i class="fal fa-copy mr-2 text-muted"></i> 訊息公版
+    <i class="fal fa-comment-dots mr-2 text-muted"></i> 客製化訊息
     <small>點 <i class="fal fa-copy"></i> 複製；拖 <i class="fal fa-grip-vertical"></i> 排序；點 <i class="fal fa-pencil"></i> 編輯</small>
   </h1>
 </div>
@@ -57,7 +57,6 @@
                      data-toggle="tab"
                      href="#subpanel-<%= cat[:key] %>-<%= j %>" role="tab">
                     <%= sub[:name] %>
-                    <span class="badge badge-light"><%= sub[:templates].size %></span>
                   </a>
                 </li>
               <% end %>
@@ -68,10 +67,10 @@
                      id="subpanel-<%= cat[:key] %>-<%= j %>" role="tabpanel">
                   <div class="msg-list" data-category="<%= cat[:key] %>" data-subcategory="<%= sub[:name] %>">
                     <% sub[:templates].each do |tpl| %>
-                      <%= render 'message_card', template: tpl %>
+                      <%= render partial: 'message_templates/message_card', locals: { template: tpl } %>
                     <% end %>
                   </div>
-                  <%= render 'add_button', category_key: cat[:key], subcategory: sub[:name] %>
+                  <%= render partial: 'message_templates/add_button', locals: { category_key: cat[:key], subcategory: sub[:name] } %>
                 </div>
               <% end %>
             </div>
@@ -79,10 +78,10 @@
           <% else %>
             <div class="msg-list" data-category="<%= cat[:key] %>" data-subcategory="">
               <% cat[:templates].each do |tpl| %>
-                <%= render 'message_card', template: tpl %>
+                <%= render partial: 'message_templates/message_card', locals: { template: tpl } %>
               <% end %>
             </div>
-            <%= render 'add_button', category_key: cat[:key], subcategory: nil %>
+            <%= render partial: 'message_templates/add_button', locals: { category_key: cat[:key], subcategory: nil } %>
           <% end %>
 
         </div>
@@ -296,7 +295,7 @@ function uploadImage(blockId) {
         clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp', 'heic'],
         resourceType: 'image'
       }, function(error, result) {
-        if (error) { console.error('[msg-templates] cloudinary widget error', error); return; }
+        if (error) { console.error('[hvo-custom-messages] cloudinary widget error', error); return; }
         if (result && result.event === 'success') {
           saveImageToRails(blockId, result.info);
         }
@@ -304,7 +303,7 @@ function uploadImage(blockId) {
       widget.open();
     })
     .catch(function(err) {
-      console.error('[msg-templates] upload flow failed', err);
+      console.error('[hvo-custom-messages] upload flow failed', err);
       alert('上傳功能初始化失敗，請稍後再試。');
     });
 }
@@ -335,7 +334,7 @@ function saveImageToRails(blockId, info) {
     updateCardHtml(data.card_html);
   })
   .catch(function(err) {
-    console.error('[msg-templates] saveImageToRails failed', err);
+    console.error('[hvo-custom-messages] saveImageToRails failed', err);
     alert('圖片儲存失敗，請稍後再試。');
   });
 }
@@ -519,7 +518,7 @@ function copyImageToClipboard(url) {
       setTimeout(function() { t.style.display = 'none'; }, 1500);
     })
     .catch(function(err) {
-      console.error('[msg-templates] copy image failed', err);
+      console.error('[hvo-custom-messages] copy image failed', err);
       alert('複製圖片失敗，請改用右鍵「複製圖片」。');
     });
 }

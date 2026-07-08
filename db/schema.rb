@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_02_100001) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_06_174927) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -50,6 +50,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100001) do
     t.index ["product_key", "last_order_date"], name: "idx_crm_tracking_on_product_last_order"
   end
 
+  create_table "crm_product_aliases", force: :cascade do |t|
+    t.bigint "crm_product_id", null: false
+    t.string "alias_name", null: false
+    t.string "normalized_alias", null: false
+    t.string "status", default: "active", null: false
+    t.string "source", default: "seed", null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["alias_name"], name: "idx_crm_product_aliases_name"
+    t.index ["crm_product_id", "alias_name"], name: "idx_crm_product_aliases_uniq", unique: true
+    t.index ["crm_product_id"], name: "index_crm_product_aliases_on_crm_product_id"
+    t.index ["status"], name: "idx_crm_product_aliases_status"
+  end
+
   create_table "crm_product_daily_stats", force: :cascade do |t|
     t.string "product_key", limit: 50, null: false
     t.date "stat_date", null: false
@@ -82,21 +97,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100001) do
     t.datetime "updated_at", null: false
     t.index ["product_key", "stat_month"], name: "idx_crm_monthly_stats_on_product_month", unique: true
     t.index ["stat_month"], name: "idx_crm_monthly_stats_on_month"
-  end
-
-  create_table "crm_product_aliases", force: :cascade do |t|
-    t.bigint  "crm_product_id",   null: false
-    t.string  "alias_name",       null: false
-    t.string  "normalized_alias", null: false
-    t.string  "status",           null: false, default: "active"
-    t.string  "source",           null: false, default: "seed"
-    t.text    "notes"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["crm_product_id", "alias_name"], name: "idx_crm_product_aliases_uniq", unique: true
-    t.index ["crm_product_id"],               name: "index_crm_product_aliases_on_crm_product_id"
-    t.index ["alias_name"],                   name: "idx_crm_product_aliases_name"
-    t.index ["status"],                       name: "idx_crm_product_aliases_status"
   end
 
   create_table "crm_products", force: :cascade do |t|
@@ -482,7 +482,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100001) do
     t.string "updated_by"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "custom_message_sent", default: false, null: false
     t.index ["order_number"], name: "index_order_gift_records_on_order_number", unique: true
+  end
+
+  create_table "page_permissions", force: :cascade do |t|
+    t.bigint "role_id", null: false
+    t.string "controller_name", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["role_id", "controller_name"], name: "index_page_permissions_on_role_and_controller", unique: true
+    t.index ["role_id"], name: "index_page_permissions_on_role_id"
   end
 
   create_table "page_views", force: :cascade do |t|
@@ -584,6 +594,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["ig_username"], name: "index_relove_kocs_on_ig_username", unique: true
+  end
+
+  create_table "roles", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "name", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_roles_on_key", unique: true
   end
 
   create_table "shopline_customer_health_assessments", force: :cascade do |t|
@@ -882,8 +900,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "username", default: "", null: false
+    t.bigint "role_id"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["role_id"], name: "index_users_on_role_id"
     t.index ["username"], name: "index_users_on_username", unique: true
   end
 
@@ -911,6 +931,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100001) do
   add_foreign_key "membership_level_changes", "import_runs"
   add_foreign_key "message_template_blocks", "message_templates"
   add_foreign_key "message_template_images", "message_template_blocks"
+  add_foreign_key "page_permissions", "roles"
   add_foreign_key "photos", "albums"
   add_foreign_key "product_mapping_components", "crm_products"
   add_foreign_key "product_mapping_components", "product_name_mappings"
@@ -924,4 +945,5 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_02_100001) do
   add_foreign_key "shopline_customer_health_assessments", "shopline_customers"
   add_foreign_key "shopline_customer_health_questionnaires", "shopline_customers"
   add_foreign_key "shopline_orders", "shopline_customers"
+  add_foreign_key "users", "roles"
 end

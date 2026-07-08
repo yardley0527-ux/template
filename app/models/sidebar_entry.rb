@@ -13,7 +13,9 @@ class SidebarEntry
         {
           group_title: "會員管理",
           children: [
-            { href: customers_path,          title: "客人資料庫",     icon: "fa-address-book" },
+            { href: customers_path,          title: "客人資料庫",     icon: "fa-address-book", children: [
+              { href: metabolism_qingxian_customers_path, title: "代謝錠回購×清纖粉名單", icon: "fa-list" },
+            ]},
             { href: inactive_members_path,   title: "近期未消費名單", icon: "fa-user-times" },
             { href: member_contacts_path,    title: "會員分群",       icon: "fa-address-card" },
             { href: expiring_members_path,   title: "即將降級會員",   icon: "fa-bell" },
@@ -26,9 +28,13 @@ class SidebarEntry
           group_title: "高消費分析",
           children: [
             { href: daily_dashboard_path,             title: "每日營收儀表板", icon: "fa-tachometer-alt" },
-            { href: daily_orders_path,               title: "每日訂單明細",   icon: "fa-list-alt" },
+            { href: daily_orders_path,               title: "每日訂單明細",   icon: "fa-list-alt", children: [
+              { href: message_templates_path, title: "訊息公版", icon: "fa-copy" },
+            ]},
             { href: high_spender_first_purchase_path, title: "破萬新客分析",   icon: "fa-gem" },
-            { href: high_value_orders_path,           title: "破萬訂單速覽",   icon: "fa-fire" },
+            { href: high_value_orders_path,           title: "破8000訂單速覽", icon: "fa-fire", children: [
+              { href: high_value_order_custom_messages_path, title: "客製化訊息", icon: "fa-comment-dots" },
+            ]},
             { href: first_purchase_index_path,        title: "首購總覽",       icon: "fa-shopping-bag" },
             { href: loyal_customers_path,             title: "忠實客分析",     icon: "fa-heart" },
           ]
@@ -85,12 +91,47 @@ class SidebarEntry
         {
           group_title: "工具 & 系統",
           children: [
-            { href: message_templates_path, title: "訊息公版",     icon: "fa-copy" },
             { href: monitoring_path,        title: "功能使用監控", icon: "fa-chart-line" },
+            { href: users_path,             title: "使用者管理",   icon: "fa-users-cog" },
           ]
         },
       ]
     end
 
+    # Same shape as .all, but with pages the user's role can't access removed.
+    def visible_for(user, product_key: nil)
+      entries = all(product_key: product_key)
+      return entries if user&.admin?
+
+      allowed = user&.role&.page_permissions&.pluck(:controller_name) || []
+      entries.filter_map do |group|
+        children = filter_children(group[:children], allowed)
+        next if children.empty?
+
+        group.merge(children: children)
+      end
+    end
+
+    private
+
+    def filter_children(children, allowed)
+      children.filter_map do |child|
+        controller = PageRegistry.controller_for(child[:href])
+
+        if child[:children].present?
+          # A "#" container (e.g. CRM 效益分析, 業配名單) has no controller of its
+          # own, so it must only show up when at least one child is allowed —
+          # unlike a real page (e.g. 客人資料庫) whose own controller permission
+          # should be enough on its own, even with no permitted children.
+          own_allowed = controller.present? && allowed.include?(controller)
+          sub = filter_children(child[:children], allowed)
+          next if sub.empty? && !own_allowed
+
+          child.merge(children: sub)
+        else
+          child if controller.nil? || allowed.include?(controller)
+        end
+      end
+    end
   end
 end

@@ -1,7 +1,6 @@
 class HighValueOrdersController < ApplicationController
-  THRESHOLD      = 10_000
+  THRESHOLD      = 8_000
   LEVELS         = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  ALL_TABS       = (LEVELS + ['新客']).freeze
   # total_amount 是整張訂單的付款總額（同一訂單每個商品行都重複同一值，需取 MAX）；
   # checkout_amount 是逐行商品金額，只有在 total_amount 缺失時才需要 SUM 全部商品行回推訂單總額。
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
@@ -14,56 +13,50 @@ class HighValueOrdersController < ApplicationController
   def index
     @series_options = CrmProduct.series_labels_for_filter
     @period         = params[:period].presence || 'month'
-    @level          = params[:level].presence || LEVELS.first
-    @levels         = ALL_TABS
+    @tab            = %w[new old].include?(params[:tab]) ? params[:tab] : 'old'
     @series_filter  = params[:series_filter].presence
-    @specific_month = params[:specific_month].presence
-
-    base = apply_period(build_scope)
-
-    # 各 tab 計數：只撈最精簡欄位，不帶 level filter
-    count_base = ShoplineOrder.from("shopline_orders o")
-    if @series_filter.present?
-      count_base = count_base.where(
-        "o.order_number IN (SELECT DISTINCT order_number FROM shopline_orders WHERE product_name LIKE ?)",
-        "%#{@series_filter}%"
-      )
-    end
-    all_for_counts = apply_period(
-      count_base
-        .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
-        .joins("LEFT JOIN (SELECT email, MAX(purchase_count) AS purchase_count FROM customer_purchase_summaries GROUP BY email) cps ON cps.email = o.email")
-        .select(
-          "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
-          "MAX(cps.purchase_count) AS purchase_count_val"
-        )
-        .where("o.payment_status = '已付款'")
-        .group("o.order_number")
-        .having("#{ORDER_TOTAL_SQL} >= ?", THRESHOLD)
-    ).to_a
-    @tab_counts = LEVELS.index_with { |lvl| all_for_counts.count { |o| o.membership_level_col == lvl } }
-    @tab_counts['新客'] = all_for_counts.count { |o| o.purchase_count_val.to_i == 1 }
-
-    # 目前選中 tab 的完整資料
-    scope = base
-    if @level == '新客'
-      scope = scope.having("MAX(cps.purchase_count) = 1")
+    if params[:start_date].blank? && params[:end_date].blank?
+      @start_date = @end_date = Date.yesterday
     else
-      scope = scope.having("MAX(COALESCE(sc.membership_level, o.membership_level)) = ?", @level)
+      @start_date = parse_date(params[:start_date])
+      @end_date   = parse_date(params[:end_date]) || @start_date
+      @end_date   = @start_date if @start_date && @end_date && @end_date < @start_date
     end
 
-    @orders        = scope.to_a
-    @total_revenue = @orders.sum { |o| o.order_total.to_f }
-    @total_count   = @orders.size
+    all_orders = apply_period(build_scope).to_a
 
-    @per_page    = 10
-    @page        = [[params[:page].to_i, 1].max, 1].max
-    @total_pages = [(@total_count / @per_page.to_f).ceil, 1].max
-    @page        = [@page, @total_pages].min
-    @paged_orders = @orders[(@page - 1) * @per_page, @per_page] || []
+    new_orders = all_orders.select { |o| o.purchase_count_val.to_i == 1 }
+    old_orders = all_orders.select do |o|
+      next false unless LEVELS.include?(o.membership_level_col)
+      o.membership_level_col == '一般會員' ? o.purchase_count_val.to_i != 1 : true
+    end
 
-    order_nums = @paged_orders.map(&:order_num)
+    @new_count  = new_orders.size
+    @old_count  = old_orders.size
+    @tab_counts = LEVELS.index_with { |lvl| old_orders.count { |o| o.membership_level_col == lvl } }
+
+    @groups = @tab == 'new' ? [["新客", new_orders]] : LEVELS.map { |lvl| [lvl, old_orders.select { |o| o.membership_level_col == lvl }] }
+
+    visible_orders = @groups.flat_map { |_, rows| rows }
+    order_nums = visible_orders.map(&:order_num)
     @gift_records = OrderGiftRecord.where(order_number: order_nums).index_by(&:order_number)
+
+    customer_ids = visible_orders.map(&:shopline_customer_id).compact
+    @profiles_by_customer_id = CustomerProfile.where(shopline_customer_id: customer_ids).index_by(&:shopline_customer_id)
+
+    @products_by_order = build_products_by_order(visible_orders)
+
+    if @tab == 'new'
+      @health_missing_count = new_orders.count do |o|
+        profile = @profiles_by_customer_id[o.shopline_customer_id]
+        profile&.health_profile.blank? && profile&.health_tags.blank?
+      end
+    else
+      @old_health_missing_count = old_orders.count do |o|
+        profile = @profiles_by_customer_id[o.shopline_customer_id]
+        profile&.health_profile.blank? && profile&.health_tags.blank?
+      end
+    end
   end
 
   private
@@ -82,10 +75,11 @@ class HighValueOrdersController < ApplicationController
       .select(
         "o.order_number AS order_num",
         "MAX(o.customer_name) AS cust_name",
+        "MAX(sc.id) AS shopline_customer_id",
         "MAX(COALESCE(sc.membership_level, o.membership_level)) AS membership_level_col",
         "MAX(o.order_date) AS ord_date",
         "#{ORDER_TOTAL_SQL} AS order_total",
-        "STRING_AGG(DISTINCT o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name || ' ×' || o.quantity::text) AS products_list",
+        "ARRAY_AGG(DISTINCT o.product_name) AS product_names_arr",
         "MAX(COALESCE(sc.instagram_account, o.instagram_account)) AS ig_account",
         "MAX(COALESCE(sc.email, o.email)) AS email_val",
         "MAX(cps.purchase_count) AS purchase_count_val"
@@ -93,18 +87,14 @@ class HighValueOrdersController < ApplicationController
       .where("o.payment_status = '已付款'")
       .group("o.order_number")
       .having("#{ORDER_TOTAL_SQL} >= ?", THRESHOLD)
-      .order(Arel.sql("MAX(o.order_date) DESC"))
+      .order(Arel.sql("#{ORDER_TOTAL_SQL} DESC"))
   end
 
   def apply_period(scope)
-    if @specific_month.present?
-      begin
-        d = Date.parse("#{@specific_month}-01")
-        return scope.where("o.order_date >= ? AND o.order_date < ?", d.beginning_of_month, d.next_month.beginning_of_month)
-      rescue ArgumentError
-        return scope
-      end
+    if @start_date.present?
+      return scope.where("o.order_date >= ? AND o.order_date <= ?", @start_date.beginning_of_day, @end_date.end_of_day)
     end
+
     cutoff = case @period
              when 'yesterday' then Date.yesterday.beginning_of_day
              when 'week'      then 1.week.ago.beginning_of_day
@@ -112,5 +102,32 @@ class HighValueOrdersController < ApplicationController
              end
     return scope unless cutoff
     @period == 'yesterday' ? scope.where("o.order_date >= ? AND o.order_date < ?", cutoff, Date.today.beginning_of_day) : scope.where("o.order_date >= ?", cutoff)
+  end
+
+  def parse_date(value)
+    Date.parse(value) if value.present?
+  rescue ArgumentError
+    nil
+  end
+
+  def product_series(name)
+    name.to_s.match(/\A([^\d]+)/)&.captures&.first&.strip.presence || name.to_s
+  end
+
+  # 針對每張訂單的每個商品，找出該客人「這個系列」在這張訂單之前最早的購買日期
+  def build_products_by_order(orders)
+    emails = orders.map(&:email_val).compact.uniq
+    raw_history = ShoplineOrder.where(email: emails).where("payment_status = '已付款'").pluck(:email, :product_name, :order_date)
+    series_dates = Hash.new { |h, k| h[k] = [] }
+    raw_history.each { |email, name, date| series_dates[[email, product_series(name)]] << date }
+    series_dates.each_value(&:sort!)
+
+    orders.each_with_object({}) do |o, result|
+      result[o.order_num] = Array(o.product_names_arr).compact.map do |name|
+        dates = series_dates[[o.email_val, product_series(name)]] || []
+        prior_date = dates.find { |d| d < o.ord_date }
+        { name: name, prior_date: prior_date }
+      end
+    end
   end
 end

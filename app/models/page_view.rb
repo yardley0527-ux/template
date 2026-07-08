@@ -7,11 +7,12 @@ class PageView < ApplicationRecord
     turmeric_analysis metabolism_analysis glutathione_analysis
     omnipotent_analysis probiotic_analysis omnipotent_restock albums photos
     ads_dashboard duplicate_customers ig_dashboard threads_dashboard line_broadcast
+    metabolism_qingxian_customers
   ].freeze
 
   # 所有應追蹤的頁面（controller#action），用來計算「從未被造訪」
   ALL_TRACKED_PAGES = {
-    "high_value_orders#index"                => "破萬訂單速覽",
+    "high_value_orders#index"                => "破8000訂單速覽",
     "welcome#index"                         => "首頁 Dashboard",
     "customers#index"                       => "客人資料庫",
     "customers#show"                        => "客人詳細頁",
@@ -21,6 +22,8 @@ class PageView < ApplicationRecord
     "high_spender_first_purchase#index"     => "破萬新客分析",
     "inactive_members#index"                => "近期未消費名單",
     "loyal_customers#index"                 => "忠實客分析",
+    "metabolism_qingxian_customers#index"   => "代謝錠回購×清纖粉名單",
+    "metabolism_qingxian_customers#export"  => "代謝錠回購×清纖粉名單匯出",
     "shopping_credits#index"                => "購物金分析",
     "products#index"                        => "年度 Top 產品排行",
     "products#show"                         => "產品詳細頁",

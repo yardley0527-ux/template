@@ -1,0 +1,42 @@
+<%# app/views/users/index.html.erb %>
+<% content_for :page_title, "使用者管理" %>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">使用者管理</h4>
+      <p class="text-muted small mb-0">指派每個使用者的角色，角色可存取的頁面在「權限管理」設定。</p>
+    </div>
+    <%= link_to "新增使用者", new_user_path, class: "btn btn-primary btn-sm" %>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th class="ps-3">使用者</th>
+          <th>Email</th>
+          <th style="width: 220px;">角色</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @users.each do |user| %>
+          <tr>
+            <td class="ps-3"><%= user.username %></td>
+            <td><%= user.email %></td>
+            <td>
+              <%= form_with url: user_path(user), method: :patch, local: true, class: "d-flex gap-2" do %>
+                <%= select_tag "user[role_id]",
+                      options_from_collection_for_select(@roles, :id, :name, user.role_id),
+                      class: "form-select form-select-sm", include_blank: false %>
+                <%= submit_tag "更新", class: "btn btn-sm btn-outline-secondary" %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

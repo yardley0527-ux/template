@@ -1,5 +1,5 @@
 <%# app/views/high_value_orders/index.html.erb %>
-<% content_for :page_title, "破萬訂單速覽" %>
+<% content_for :page_title, "破8000訂單速覽" %>
 
 <% def ig_link_url(account)
   return nil if account.blank?
@@ -11,208 +11,248 @@ end %>
 <div class="row g-3 mb-3">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
     <div>
-      <h4 class="fw-bold mb-0">破萬訂單速覽</h4>
-      <p class="text-muted small mb-0">單筆訂單 ≥ NT$10,000，依卡別分群</p>
+      <h4 class="fw-bold mb-0">破8000訂單速覽</h4>
+      <p class="text-muted small mb-0">單筆訂單 ≥ NT$8,000，依卡別分群</p>
     </div>
-    <div class="btn-group" role="group">
-      <% [['yesterday','昨日'], ['week','本週'], ['month','本月']].each do |val, label| %>
-        <%= link_to label,
-              high_value_orders_path(period: val, level: @level, series_filter: @series_filter),
-              class: "btn btn-sm #{@specific_month.blank? && @period == val ? 'btn-dark' : 'btn-outline-secondary'}" %>
+    <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+      <%= form_tag high_value_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+        <%= hidden_field_tag :tab, @tab %>
+        <input type="date" name="start_date" value="<%= @start_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <span class="text-muted small">至</span>
+        <input type="date" name="end_date" value="<%= @end_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+        <% if @start_date.present? %>
+          <%= link_to "清除", high_value_orders_path(period: @period, tab: @tab, series_filter: @series_filter), class: "btn btn-sm btn-outline-secondary" %>
+        <% end %>
       <% end %>
     </div>
-  </div>
-  <div class="col-12">
-    <%= form_tag high_value_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:10px;" do %>
-      <%= hidden_field_tag :level, @level %>
-      <div class="d-flex align-items-center" style="gap:6px;">
-        <label class="text-muted small mb-0" style="white-space:nowrap;">系列</label>
-        <select name="series_filter" class="form-control form-control-sm" style="width:auto;">
-          <option value="">全部系列</option>
-          <% @series_options.each do |s| %>
-            <option value="<%= s %>" <%= @series_filter == s ? 'selected' : '' %>><%= s %></option>
-          <% end %>
-        </select>
-      </div>
-      <div class="d-flex align-items-center" style="gap:6px;">
-        <label class="text-muted small mb-0" style="white-space:nowrap;">月份</label>
-        <select name="specific_month" class="form-control form-control-sm" style="width:auto;">
-          <option value="">— 快速篩選 —</option>
-          <% 24.times.map { |i| i.months.ago.beginning_of_month }.each do |m| %>
-            <option value="<%= m.strftime('%Y-%m') %>" <%= @specific_month == m.strftime('%Y-%m') ? 'selected' : '' %>>
-              <%= m.strftime('%Y 年 %m 月') %>
-            </option>
-          <% end %>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-sm btn-primary">篩選</button>
-      <% if @series_filter.present? || @specific_month.present? %>
-        <%= link_to "清除", high_value_orders_path(period: @period, level: @level), class: "btn btn-sm btn-outline-secondary" %>
-      <% end %>
-    <% end %>
   </div>
 </div>
 
-
-<%# Level tabs %>
+<%# 新客／舊客 tabs %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
-  <% @levels.each do |lvl| %>
-    <% cnt = @tab_counts[lvl] || 0 %>
-    <li class="nav-item">
-      <%= link_to "#{lvl}（#{cnt}）",
-            high_value_orders_path(period: @period, level: lvl, series_filter: @series_filter, specific_month: @specific_month),
-            class: "nav-link #{@level == lvl ? 'active fw-bold' : 'text-muted'}" %>
-    </li>
-  <% end %>
+  <li class="nav-item">
+    <%= link_to "新客（#{@new_count}）",
+          high_value_orders_path(period: @period, tab: 'new', series_filter: @series_filter, start_date: @start_date, end_date: @end_date),
+          class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "舊客（#{@old_count}）",
+          high_value_orders_path(period: @period, tab: 'old', series_filter: @series_filter, start_date: @start_date, end_date: @end_date),
+          class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
 </ul>
 
-<%# Table %>
-<% display_orders = @paged_orders %>
+<% if @tab == 'new' %>
+  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-user-plus" style="color:#6c757d; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">新客</div>
+        <div class="fw-bold" style="font-size:1rem;"><%= @new_count %> 人</div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span class="<%= @health_missing_count > 0 ? 'text-danger' : 'text-success' %>">
+            <%= @health_missing_count > 0 ? "#{@health_missing_count} 人未填" : "✓ 全員已填" %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-users" style="color:#6c757d; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">舊客</div>
+        <div class="fw-bold" style="font-size:1rem;"><%= @old_count %> 人</div>
+      </div>
+    </div>
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="fw-bold" style="font-size:1rem;">
+          <span class="<%= @old_health_missing_count > 0 ? 'text-danger' : 'text-success' %>">
+            <%= @old_health_missing_count > 0 ? "#{@old_health_missing_count} 人未填" : "✓ 全員已填" %>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-body p-0 table-responsive">
-    <table class="table align-middle mb-0" style="font-size:0.86rem;">
-      <thead style="background-color:#4a4a4a; color:white;">
-        <tr>
-          <th class="ps-3" style="width:70px;">日期</th>
-          <th>姓名</th>
-          <th style="width:70px;">卡別</th>
-          <th>訂單號碼</th>
-          <th class="text-end" style="width:110px;">消費金額</th>
-          <th>購買商品</th>
-          <th style="width:160px;">IG</th>
-          <th>Email</th>
-          <% if @level == '新客' %>
-            <th style="width:90px;" class="text-center">贈品已送</th>
-          <% else %>
-            <th style="width:220px;">贈品紀錄</th>
-          <% end %>
-        </tr>
-      </thead>
-      <tbody>
-        <% display_orders.each do |o| %>
-          <% url = ig_link_url(o.ig_account) %>
+<%# Tables：新客只有一組；舊客依卡別分成多組，全部往下疊在同一頁 %>
+<% @groups.each do |label, rows| %>
+  <% is_new = label == "新客" %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
+      <span class="fw-bold"><%= label %></span>
+      <span class="badge bg-secondary"><%= rows.size %></span>
+    </div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table align-middle mb-0" style="font-size:0.86rem;">
+        <thead style="background-color:#4a4a4a; color:white;">
           <tr>
-            <td class="ps-3 text-nowrap text-muted"><%= o.ord_date&.strftime("%-m/%-d") %></td>
-            <td class="fw-semibold"><%= o.cust_name %></td>
-            <td>
-              <% badge_bg, badge_fg = case o.membership_level_col
-                                    when '黑卡' then ['#333', '#fff']
-                                    when '金卡' then ['#b8860b', '#fff']
-                                    when '銀卡' then ['#6c757d', '#fff']
-                                    when '白卡' then ['#dee2e6', '#333']
-                                    else             ['#adb5bd', '#333']
-                                    end %>
-              <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= o.membership_level_col %></span>
-              <% if @level == '新客' %>
-                <span class="badge bg-warning text-dark ms-1" style="font-size:0.72rem;">首購</span>
-              <% end %>
-            </td>
-            <td class="text-muted small"><%= o.order_num %></td>
-            <td class="text-end fw-bold text-danger">
-              NT$<%= number_with_delimiter(o.order_total.to_i) %>
-            </td>
-            <td style="max-width:360px;">
-              <div class="d-flex flex-wrap" style="gap:4px;">
-                <% (o.products_list || '').split('、').each do |item| %>
-                  <% color = hvo_series_color(item) %>
-                  <span style="display:inline-block; background:<%= color %>20; color:<%= color %>; border:1px solid <%= color %>55; border-radius:4px; padding:1px 7px; font-size:0.78rem; white-space:nowrap; font-weight:600;"><%= item %></span>
-                <% end %>
-              </div>
-            </td>
-            <td>
-              <% if url %>
-                <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
-                  <i class="fal fa-at text-danger"></i>
-                  <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
-                    <%= o.ig_account&.sub(/^@/, '') %>
-                  </span>
-                <% end %>
-              <% else %>
-                <span class="text-muted small">—</span>
-              <% end %>
-            </td>
-            <td class="text-muted small" style="max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-              <%= o.email_val.presence || '—' %>
-            </td>
-            <% gift = @gift_records[o.order_num] %>
-            <% if @level == '新客' %>
-              <td class="text-center">
-                <input type="checkbox"
-                  class="gift-sent-checkbox"
-                  data-order="<%= o.order_num %>"
-                  data-url="<%= upsert_order_gift_record_path %>"
-                  <%= gift&.gift_sent? ? 'checked' : '' %>
-                  style="width:18px; height:18px; cursor:pointer; accent-color:#c00;">
-              </td>
+            <th class="ps-3" style="width:70px;">日期</th>
+            <th>姓名</th>
+            <th style="width:160px;">IG</th>
+            <th style="width:70px;">卡別</th>
+            <th>訂單號碼</th>
+            <th class="text-end" style="width:110px;">消費金額</th>
+            <th>是否購買過同產品</th>
+            <th style="width:200px;">健康資料</th>
+            <% if is_new %>
+              <th style="width:90px;" class="text-center">贈品已送</th>
             <% else %>
+              <th class="text-center" style="width:90px; font-size:0.78rem; line-height:1.3;">已詢問<br>無意願回覆</th>
+              <th style="width:190px;">贈品紀錄</th>
+              <th style="width:90px;" class="text-center">贈品已送</th>
+            <% end %>
+            <th style="width:90px; font-size:0.78rem; line-height:1.3;" class="text-center">傳送<br>客製化訊息</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.each do |o| %>
+            <% url = ig_link_url(o.ig_account) %>
+            <tr>
+              <td class="ps-3 text-nowrap text-muted"><%= o.ord_date&.strftime("%-m/%-d") %></td>
+              <td class="fw-semibold">
+                <% if o.shopline_customer_id %>
+                  <%= link_to o.cust_name, customer_path(o.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
+                <% else %>
+                  <%= o.cust_name %>
+                <% end %>
+              </td>
               <td>
-                <div class="d-flex align-items-center" style="gap:8px;">
+                <% if url %>
+                  <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                    <i class="fal fa-at text-danger"></i>
+                    <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                      <%= o.ig_account&.sub(/^@/, '') %>
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td>
+                <% badge_bg, badge_fg = case o.membership_level_col
+                                      when '黑卡' then ['#333', '#fff']
+                                      when '金卡' then ['#b8860b', '#fff']
+                                      when '銀卡' then ['#6c757d', '#fff']
+                                      when '白卡' then ['#dee2e6', '#333']
+                                      else             ['#adb5bd', '#333']
+                                      end %>
+                <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= o.membership_level_col %></span>
+                <% if is_new %>
+                  <span class="badge bg-warning text-dark ms-1" style="font-size:0.72rem;">首購</span>
+                <% end %>
+              </td>
+              <td class="text-muted small"><%= o.order_num %></td>
+              <td class="text-end fw-bold text-danger">
+                NT$<%= number_with_delimiter(o.order_total.to_i) %>
+              </td>
+              <td style="max-width:360px;">
+                <% (@products_by_order[o.order_num] || []).each do |p| %>
+                  <div style="font-size:0.78rem;">
+                    <% if p[:prior_date] %>
+                      <span class="text-success">✓</span> <%= p[:name] %>（<%= p[:prior_date].strftime('%Y/%m/%d') %>）
+                    <% else %>
+                      <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
+                    <% end %>
+                  </div>
+                <% end %>
+              </td>
+              <% profile = @profiles_by_customer_id[o.shopline_customer_id] %>
+              <td style="max-width:220px;">
+                <% if profile&.health_profile.present? %>
+                  <div class="small text-truncate" style="max-width:220px;" title="<%= profile.health_profile %>"><%= profile.health_profile %></div>
+                <% end %>
+                <% if profile&.health_tags.present? %>
+                  <div class="d-flex flex-wrap" style="gap:3px; margin-top:2px;">
+                    <% profile.health_tags.each do |tag| %>
+                      <span class="badge bg-light text-dark border" style="font-size:0.7rem;"><%= tag %></span>
+                    <% end %>
+                  </div>
+                <% end %>
+                <% if profile&.health_profile.blank? && profile&.health_tags.blank? %>
+                  <% if o.shopline_customer_id %>
+                    <%= link_to "+ 填寫健康資料", edit_customer_path(o.shopline_customer_id, section: "health"), target: "_blank", class: "small text-decoration-none" %>
+                  <% else %>
+                    <span class="text-muted small">—</span>
+                  <% end %>
+                <% end %>
+              </td>
+              <% gift = @gift_records[o.order_num] %>
+              <% if is_new %>
+                <td class="text-center">
+                  <input type="checkbox"
+                    class="gift-sent-checkbox"
+                    data-order="<%= o.order_num %>"
+                    data-url="<%= upsert_order_gift_record_path %>"
+                    <%= gift&.gift_sent? ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#c00;">
+                </td>
+              <% else %>
+                <td class="text-center">
+                  <% if o.shopline_customer_id %>
+                    <input type="checkbox"
+                      class="customer-flag-checkbox"
+                      data-customer-id="<%= o.shopline_customer_id %>"
+                      data-field="health_inquiry_declined"
+                      <%= profile&.health_inquiry_declined ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#6c757d;">
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td>
                   <select class="form-control form-control-sm gift-note-input"
                     data-order="<%= o.order_num %>"
                     data-url="<%= upsert_order_gift_record_path %>"
-                    style="font-size:0.8rem; flex:1; min-width:0;">
+                    style="font-size:0.8rem;">
                     <option value="">— 選擇贈品 —</option>
                     <% @series_options.each do |s| %>
                       <option value="<%= s %>" <%= gift&.gift_note == s ? 'selected' : '' %>><%= s %></option>
                     <% end %>
                   </select>
-                  <button type="button" class="btn btn-sm gift-save-btn"
+                </td>
+                <td class="text-center">
+                  <input type="checkbox"
+                    class="gift-sent-checkbox"
                     data-order="<%= o.order_num %>"
                     data-url="<%= upsert_order_gift_record_path %>"
-                    style="background:#c8a882; color:#fff; white-space:nowrap; font-size:0.78rem; padding:3px 10px; flex-shrink:0;">
-                    更新
-                  </button>
-                </div>
+                    <%= gift&.gift_sent? ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#c00;">
+                </td>
+              <% end %>
+              <td class="text-center">
+                <input type="checkbox"
+                  class="custom-message-checkbox"
+                  data-order="<%= o.order_num %>"
+                  data-url="<%= upsert_order_gift_record_path %>"
+                  <%= gift&.custom_message_sent? ? 'checked' : '' %>
+                  style="width:18px; height:18px; cursor:pointer; accent-color:#0d6efd;">
               </td>
-            <% end %>
-          </tr>
-        <% end %>
-        <% if @orders.empty? %>
-          <tr>
-            <td colspan="9" class="text-center py-5 text-muted">
-              <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
-              此期間無單筆 ≥ NT$10,000 的訂單
-            </td>
-          </tr>
-        <% end %>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<% if @total_count > 0 %>
-  <div class="d-flex align-items-center justify-content-between flex-wrap mt-2 px-1" style="gap:8px;">
-    <div class="text-muted small">
-      共 <%= @total_count %> 筆 ｜ 合計 NT$<%= number_with_delimiter(@total_revenue.to_i) %>
-      ｜ 第 <%= @page %> / <%= @total_pages %> 頁
-    </div>
-    <% if @total_pages > 1 %>
-      <%
-        window = ([@page - 2, 1].max)...([@page + 3, @total_pages + 1].min)
-        page_nums = ([1] + window.to_a + [@total_pages]).uniq
-      %>
-      <nav>
-        <ul class="pagination pagination-sm mb-0">
-          <li class="page-item <%= @page == 1 ? 'disabled' : '' %>">
-            <%= link_to "«".html_safe, high_value_orders_path(period: @period, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: @page - 1), class: "page-link" %>
-          </li>
-          <% prev_p = nil %>
-          <% page_nums.each do |p| %>
-            <% if prev_p && p > prev_p + 1 %>
-              <li class="page-item disabled"><span class="page-link">…</span></li>
-            <% end %>
-            <li class="page-item <%= p == @page ? 'active' : '' %>">
-              <%= link_to p, high_value_orders_path(period: @period, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: p), class: "page-link" %>
-            </li>
-            <% prev_p = p %>
+            </tr>
           <% end %>
-          <li class="page-item <%= @page == @total_pages ? 'disabled' : '' %>">
-            <%= link_to "»".html_safe, high_value_orders_path(period: @period, level: @level, series_filter: @series_filter, specific_month: @specific_month, page: @page + 1), class: "page-link" %>
-          </li>
-        </ul>
-      </nav>
-    <% end %>
+          <% if rows.empty? %>
+            <tr>
+              <td colspan="<%= is_new ? 10 : 12 %>" class="text-center py-5 text-muted">
+                <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                此期間無單筆 ≥ NT$8,000 的訂單
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   </div>
 <% end %>
 
@@ -221,65 +261,66 @@ end %>
 (function() {
   var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-  function upsert(orderNum, url, data, el) {
+  function upsert(orderNum, url, data) {
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
       body: JSON.stringify({ order_number: orderNum, order_gift_record: data })
-    }).then(function(r) {
-      if (r.ok && el) showSaved(el);
     });
   }
 
-  function showSaved(td) {
-    var btn = td.querySelector('.gift-save-btn');
-    if (btn) {
-      var orig = btn.textContent;
-      var origBg = btn.style.background;
-      btn.textContent = '✓ 已儲存';
-      btn.style.background = '#28a745';
-      btn.disabled = true;
-      setTimeout(function() {
-        btn.textContent = orig;
-        btn.style.background = origBg;
-        btn.disabled = false;
-      }, 2000);
-    }
+  function flashTip(td, text, color) {
+    var old = td.querySelector('.cb-saved-tip');
+    if (old) old.remove();
+    var tip = document.createElement('div');
+    tip.className = 'cb-saved-tip';
+    tip.textContent = text;
+    tip.style.cssText = 'font-size:0.72rem; color:' + color + '; margin-top:2px; font-weight:600;';
+    td.appendChild(tip);
+    setTimeout(function() { tip.remove(); }, 2000);
   }
 
-  // 新客：checkbox 打勾
+  // 贈品已送：checkbox 打勾（新客／舊客共用）
   document.querySelectorAll('.gift-sent-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
       var td = cb.closest('td');
-      upsert(cb.dataset.order, cb.dataset.url, { gift_sent: cb.checked }, td);
+      upsert(cb.dataset.order, cb.dataset.url, { gift_sent: cb.checked });
       cb.closest('tr').style.background = cb.checked ? '#f0fff4' : '';
-      // 在 checkbox 旁顯示提示文字
-      var old = td.querySelector('.cb-saved-tip');
-      if (old) old.remove();
-      var tip = document.createElement('div');
-      tip.className = 'cb-saved-tip';
-      tip.textContent = cb.checked ? '✓ 已送出' : '已取消';
-      tip.style.cssText = 'font-size:0.72rem; color:' + (cb.checked ? '#28a745' : '#999') + '; margin-top:2px; font-weight:600;';
-      td.appendChild(tip);
-      setTimeout(function() { tip.remove(); }, 2000);
+      flashTip(td, cb.checked ? '✓ 已送出' : '已取消', cb.checked ? '#28a745' : '#999');
     });
     if (cb.checked) cb.closest('tr').style.background = '#f0fff4';
   });
 
-  // 舊客：select change 只改邊框顏色，不存檔
+  // 傳送客製化訊息：checkbox 打勾（新客／舊客共用）
+  document.querySelectorAll('.custom-message-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var td = cb.closest('td');
+      upsert(cb.dataset.order, cb.dataset.url, { custom_message_sent: cb.checked });
+      flashTip(td, cb.checked ? '✓ 已送出' : '已取消', cb.checked ? '#28a745' : '#999');
+    });
+  });
+
+  // 贈品紀錄：select 一改變就自動存檔
   document.querySelectorAll('.gift-note-input').forEach(function(sel) {
     sel.addEventListener('change', function() {
-      sel.style.borderColor = '#f0ad4e';
+      var td = sel.closest('td');
+      sel.style.borderColor = sel.value ? '#28a745' : '#ccc';
+      upsert(sel.dataset.order, sel.dataset.url, { gift_note: sel.value });
+      flashTip(td, sel.value ? '✓ 已更新' : '已清除', sel.value ? '#28a745' : '#999');
     });
     if (sel.value) sel.style.borderColor = '#28a745';
   });
 
-  // 更新按鈕
-  document.querySelectorAll('.gift-save-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var td = btn.closest('td');
-      var sel = td.querySelector('.gift-note-input');
-      upsert(btn.dataset.order, btn.dataset.url, { gift_note: sel.value }, td);
+  // 已詢問無意願回覆：checkbox 打勾即存檔
+  document.querySelectorAll('.customer-flag-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      fetch('<%= toggle_daily_orders_customer_flag_path %>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({ customer_id: cb.dataset.customerId, field: cb.dataset.field, value: cb.checked })
+      }).then(function(r) {
+        if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
+      });
     });
   });
 })();

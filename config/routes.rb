@@ -17,7 +17,9 @@ Rails.application.routes.draw do
     resources :livestream_gifts, only: [:create, :update, :destroy]
   end
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
+  resources :users, only: [:index, :new, :create, :update]
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
+  get  '/high_value_orders/custom_messages', to: 'high_value_order_custom_messages#index', as: :high_value_order_custom_messages
   get  '/daily_dashboard',           to: 'daily_dashboard#index',      as: :daily_dashboard
   get  '/daily_orders',             to: 'daily_orders#index',         as: :daily_orders
   get  '/daily_orders/export',      to: 'daily_orders#export',        as: :export_daily_orders
@@ -104,6 +106,8 @@ Rails.application.routes.draw do
   get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
   get '/first_purchase/export', to: 'first_purchase#export', as: :export_first_purchase
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
+  get '/metabolism_qingxian_customers',        to: 'metabolism_qingxian_customers#index',  as: :metabolism_qingxian_customers
+  get '/metabolism_qingxian_customers/export', to: 'metabolism_qingxian_customers#export', as: :export_metabolism_qingxian_customers
   get '/inactive_members',           to: 'inactive_members#index',     as: :inactive_members
   get  '/duplicate_customers',         to: 'duplicate_customers#index', as: :duplicate_customers
   post '/duplicate_customers/merge',   to: 'duplicate_customers#merge', as: :merge_duplicate_customers

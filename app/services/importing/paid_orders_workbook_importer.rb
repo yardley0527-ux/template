@@ -90,14 +90,12 @@ module Importing
           customer = resolve_customer!(raw, run.id)
           payload = build_order_payload(raw, order_number, customer, month)
 
-          row_hash = Digest::SHA256.hexdigest(
-            JSON.generate(
-              kind: run.kind,
-              year: @source_year,
-              month: month,
-              sheet: sheet_name,
-              row: row_i
-            )
+          row_hash = ShoplineOrder.content_hash(
+            order_number: order_number,
+            product_name: payload[:product_name],
+            quantity: payload[:quantity],
+            checkout_amount: payload[:checkout_amount],
+            total_amount: payload[:total_amount]
           )
 
           order = ShoplineOrder.find_or_initialize_by(source_row_hash: row_hash)

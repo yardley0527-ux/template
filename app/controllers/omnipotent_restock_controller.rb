@@ -24,12 +24,21 @@ class OmnipotentRestockController < ApplicationController
   ATTRIBUTION_WINDOW = 45
 
   before_action :set_product
-  before_action :build_restock_data, only: [:index, :export, :export_at_risk, :broadcast_room]
-  before_action :build_loyal_buyers,  only: [:index, :export_loyal, :broadcast_room]
+  before_action :build_restock_data, only: [:index, :export, :export_at_risk, :broadcast_room], if: :single_product_view?
+  before_action :build_loyal_buyers,  only: [:index, :export_loyal, :broadcast_room], if: :single_product_view?
+  before_action :build_daily_combined_list, only: [:index], unless: :single_product_view?
 
   # ── Main actions ──────────────────────────────────────────────────
 
-  def index; end
+  # 沒帶 ?product= 時顯示「今日待辦」：合併所有有庫存產品的可聯絡名單。
+  # 帶了 ?product=X 時維持原本單一產品的旅程頁籤畫面。
+  def index
+    render(single_product_view? ? :index : :daily)
+  end
+
+  def single_product_view?
+    action_name != "index" || params[:product].present?
+  end
 
   def broadcast_room
     @rescue_worthy = @at_risk.select { |r| r[:omni_count] >= 2 }
@@ -63,12 +72,12 @@ class OmnipotentRestockController < ApplicationController
       .order(order_date: :desc)
       .pluck(:product_name, :order_date, :order_number)
       .map { |pn, od, on_| { product_name: pn, order_date: od&.to_date, order_number: on_,
-                              bottles: extract_bottles(pn), source_event: source_event_label(od&.to_date) } }
+                              bottles: extract_bottles(pn, @product), source_event: source_event_label(od&.to_date) } }
     @contact_history = OmnipotentNotificationStatus
       .where(email: @customer.email, product_key: @product_key).order(reference_date: :desc)
     if @omni_orders.any?
       latest = @omni_orders.first
-      b = latest[:bottles]; bought = latest[:order_date]; exp = expected_days(b)
+      b = latest[:bottles]; bought = latest[:order_date]; exp = expected_days(b, @product)
       @journey = {
         bought_date:             bought,             bottles:      b,
         product_name:            latest[:product_name],
@@ -160,8 +169,8 @@ class OmnipotentRestockController < ApplicationController
     @validations = tracked_pairs.map do |email, ref_date|
       pn = pn_by_key[[email, ref_date]]
       next unless pn
-      bottles   = extract_bottles(pn)
-      predicted = ref_date + expected_days(bottles)
+      bottles   = extract_bottles(pn, @product)
+      predicted = ref_date + expected_days(bottles, @product)
       actual    = orders_by_email[email].sort.find { |d| d > ref_date }
       error     = actual ? (actual - predicted).to_i : nil
       { email: email, reference_date: ref_date, bottles: bottles,
@@ -347,9 +356,39 @@ class OmnipotentRestockController < ApplicationController
   end
 
   def build_restock_data
+    data = compute_restock_rows(@product)
+    @restock_list      = data[:restock_list]
+    @remind_now        = data[:remind_now]
+    @overdue           = data[:overdue]
+    @at_risk           = data[:at_risk]
+    @not_urgent        = data[:not_urgent]
+    @today             = data[:today]
+    @high_value_count  = data[:high_value_count]
+  end
+
+  # 沒帶 ?product= 時：合併所有 in_stock: true 產品的「今日應聯絡」名單。
+  def build_daily_combined_list
+    @in_stock_products = JourneyProducts::PRODUCTS.values.select { |p| p[:in_stock] }
+
+    @combined_today = @in_stock_products.flat_map do |product|
+      compute_restock_rows(product)[:today].each do |r|
+        r[:product_key]   = product[:key]
+        r[:product_label] = product[:label]
+        r[:product_icon]  = product[:icon]
+        r[:product_color] = product[:color]
+      end
+    end.sort_by { |r| [-r[:crm_score], r[:days_left]] }
+
+    @combined_by_product   = @combined_today.group_by { |r| r[:product_label] }.transform_values(&:size)
+    @high_value_combined   = @combined_today.count { |r| [:vip, :big].include?(r[:customer_type][:key]) }
+  end
+
+  def compute_restock_rows(product)
     today      = Date.today
     since_date = today - 365
-    sql        = @product[:sql]
+    sql        = product[:sql]
+
+    empty_result = { restock_list: [], remind_now: [], overdue: [], at_risk: [], not_urgent: [], today: [], high_value_count: 0 }
 
     orders_raw = ShoplineOrder
       .where(sql).where("order_date >= ?", since_date.beginning_of_day)
@@ -362,11 +401,7 @@ class OmnipotentRestockController < ApplicationController
       last_order_by_email[email] ||= { product_name: product_name, order_date: order_date.to_date }
     end
 
-    if last_order_by_email.empty?
-      @restock_list = @remind_now = @overdue = @at_risk = @not_urgent = @today = []
-      @high_value_count = 0
-      return
-    end
+    return empty_result if last_order_by_email.empty?
 
     all_emails = last_order_by_email.keys
 
@@ -374,13 +409,13 @@ class OmnipotentRestockController < ApplicationController
 
     bottle_totals = Hash.new(0)
     ShoplineOrder.where(sql).where(email: all_emails).pluck(:email, :product_name).each do |email, pn|
-      bottle_totals[email] += extract_bottles(pn)
+      bottle_totals[email] += extract_bottles(pn, product)
     end
 
     wave_repeats = WaveRepeatCalculator.call(sql)
 
     notif_map = {}
-    OmnipotentNotificationStatus.where(email: all_emails, product_key: @product_key).each do |n|
+    OmnipotentNotificationStatus.where(email: all_emails, product_key: product[:key]).each do |n|
       notif_map[[n.email, n.reference_date]] = n
     end
 
@@ -388,13 +423,13 @@ class OmnipotentRestockController < ApplicationController
       .where(email: all_emails)
       .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
 
-    @restock_list = customers.map do |c|
+    restock_list = customers.map do |c|
       order   = last_order_by_email[c.email]
       bought  = order[:order_date]
-      bottles = extract_bottles(order[:product_name])
+      bottles = extract_bottles(order[:product_name], product)
 
       estimated_finish_date   = bought + bottles * 30
-      expected_return_date    = bought + expected_days(bottles)
+      expected_return_date    = bought + expected_days(bottles, product)
       suggested_reminder_date = expected_return_date - REMINDER_BUFFER_DAYS
       days_left               = (expected_return_date   - today).to_i
       days_until_reminder     = (suggested_reminder_date - today).to_i
@@ -421,12 +456,21 @@ class OmnipotentRestockController < ApplicationController
       list.each { |r| r[:crm_score] = calc_crm_score(r) }
     end.sort_by { |r| [-r[:crm_score], r[:days_left]] }
 
-    @remind_now = @restock_list.select { |r| r[:days_until_reminder] <= 0 && r[:days_left] > 0 }
-    @overdue    = @restock_list.select { |r| r[:days_left] < 0 && r[:days_left] >= CHURN_THRESHOLD_DAYS }
-    @at_risk    = @restock_list.select { |r| r[:days_left] < CHURN_THRESHOLD_DAYS }
-    @not_urgent = @restock_list.select { |r| r[:days_until_reminder] > 0 }
-    @today      = (@remind_now + @overdue).sort_by { |r| -r[:crm_score] }
-    @high_value_count = @today.count { |r| [:vip, :big].include?(r[:customer_type][:key]) }
+    remind_now = restock_list.select { |r| r[:days_until_reminder] <= 0 && r[:days_left] > 0 }
+    overdue    = restock_list.select { |r| r[:days_left] < 0 && r[:days_left] >= CHURN_THRESHOLD_DAYS }
+    at_risk    = restock_list.select { |r| r[:days_left] < CHURN_THRESHOLD_DAYS }
+    not_urgent = restock_list.select { |r| r[:days_until_reminder] > 0 }
+    today_list = (remind_now + overdue).sort_by { |r| -r[:crm_score] }
+
+    {
+      restock_list:      restock_list,
+      remind_now:        remind_now,
+      overdue:           overdue,
+      at_risk:           at_risk,
+      not_urgent:        not_urgent,
+      today:             today_list,
+      high_value_count:  today_list.count { |r| [:vip, :big].include?(r[:customer_type][:key]) }
+    }
   end
 
   def build_loyal_buyers
@@ -437,7 +481,7 @@ class OmnipotentRestockController < ApplicationController
 
     bottle_totals = Hash.new(0)
     ShoplineOrder.where(sql).where(email: loyal_emails).pluck(:email, :product_name).each do |email, pn|
-      bottle_totals[email] += extract_bottles(pn)
+      bottle_totals[email] += extract_bottles(pn, @product)
     end
 
     wave_repeats = WaveRepeatCalculator.call(sql)
@@ -501,9 +545,9 @@ class OmnipotentRestockController < ApplicationController
     event ? "#{event[:year]}/#{event[:label]}" : "一般購買"
   end
 
-  def extract_bottles(product_name)
+  def extract_bottles(product_name, product)
     return 1 if product_name.nil?
-    m    = product_name.match(@product[:regex])
+    m    = product_name.match(product[:regex])
     base = if m
       m[1].to_i
     elsif (m2 = product_name.match(/[（(](\d+)[瓶盒]/))
@@ -514,8 +558,8 @@ class OmnipotentRestockController < ApplicationController
     base + (product_name.match(/送(\d+)/)&.[](1).to_i || 0)
   end
 
-  def expected_days(bottles)
-    medians = @product[:medians]
+  def expected_days(bottles, product)
+    medians = product[:medians]
     return medians[bottles] if medians.key?(bottles)
     keys = medians.keys.sort
     lo = keys.select { |k| k < bottles }.last
@@ -528,7 +572,7 @@ class OmnipotentRestockController < ApplicationController
   def restock_csv(rows)
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["狀態", "客戶類型", "姓名", "卡別", "IG", "來源場次",
+      csv << ["狀態", "客戶類型", "姓名", "卡別", "手機", "IG", "來源場次",
               "上次購買", "瓶數", "累計瓶數", "累計次數",
               "吃完日", "建議提醒日", "預計回購日", "距今天數", "通知狀態"]
       rows.each do |r|
@@ -539,7 +583,7 @@ class OmnipotentRestockController < ApplicationController
                elsif r[:days_until_reminder] <= 0 then "提醒中"
                else "尚早" end
         csv << [
-          seg, r[:customer_type][:label], c.full_name, c.membership_level, ig,
+          seg, r[:customer_type][:label], c.full_name, c.membership_level, c.mobile_phone, ig,
           r[:source_event],
           r[:bought_date]&.strftime("%Y/%m/%d"), r[:bottles], r[:total_omni_bottles], r[:omni_count],
           r[:estimated_finish_date]&.strftime("%Y/%m/%d"),
@@ -555,11 +599,11 @@ class OmnipotentRestockController < ApplicationController
   def loyal_csv
     require "csv"
     CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["客戶類型", "姓名", "卡別", "IG", "購買次數", "累計瓶數", "累計消費(NT$)", "上次購買"]
+      csv << ["客戶類型", "姓名", "卡別", "手機", "IG", "購買次數", "累計瓶數", "累計消費(NT$)", "上次購買"]
       @loyal_buyers.each do |r|
         c  = r[:customer]
         ig = c.instagram_account&.gsub('@', '')&.strip
-        csv << [r[:customer_type][:label], c.full_name, c.membership_level, ig,
+        csv << [r[:customer_type][:label], c.full_name, c.membership_level, c.mobile_phone, ig,
                 r[:order_count], r[:total_bottles], r[:total_spend].to_i,
                 r[:last_date]&.strftime("%Y/%m/%d")]
       end

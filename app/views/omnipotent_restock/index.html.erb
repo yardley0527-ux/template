@@ -4,10 +4,13 @@
 <%# ── 產品選擇器 ── %>
 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
   <span class="text-muted small fw-semibold me-1">產品：</span>
+  <%= link_to crm_journey_path, class: "btn btn-sm btn-outline-secondary" do %>
+    📋 今日待辦（全部有貨）
+  <% end %>
   <% @all_products.each do |p| %>
     <%= link_to crm_journey_path(product: p[:key]),
           class: "btn btn-sm #{p[:key] == @product_key ? 'btn-primary' : 'btn-outline-secondary'}" do %>
-      <%= p[:icon] %> <%= p[:short] %>
+      <%= p[:icon] %> <%= p[:short] %><%= p[:in_stock] ? "" : "（缺貨）" %>
     <% end %>
   <% end %>
 </div>
