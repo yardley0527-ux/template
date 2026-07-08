@@ -2,6 +2,15 @@
 
 # Epic C Phase 3B/3C — Bundle SKU component tasks.
 #
+# NOTE (Epic E3): this is a narrow first pass — keyword ALIAS_MAP matching,
+# only triggers on raw_names containing 薑黃/代謝, only writes when 2+ products
+# are detected, and has no concept of gift/promotion quantity (a "送" clause
+# gets parsed as if it were a second paid product). Epic E3's quantity parser
+# (regex+span based, matches ProductNameMappingReviewReportService's approach)
+# is the general-purpose replacement — covers every product, single-product
+# mappings too, and splits paid_quantity/gift_quantity correctly. Don't extend
+# this task further; new work belongs in the E3 parser.
+#
 # Workflow:
 #   1.  rails bundle_components:dry_run       — inspect what WOULD be written
 #   2.  rails bundle_components:export_review — export CSV for human review
@@ -324,7 +333,7 @@ namespace :bundle_components do
             ProductMappingComponent.create!(
               product_name_mapping_id: mapping.id,
               crm_product_id:          crm.id,
-              quantity:                comp[:quantity]
+              paid_quantity:           comp[:quantity]
             )
             puts "  [CREATED]         #{mapping.raw_name.inspect} → #{comp[:product_key]} qty=#{comp[:quantity]}"
             log[:created] += 1

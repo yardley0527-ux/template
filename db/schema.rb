@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_06_174927) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_08_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -523,6 +523,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_06_174927) do
     t.integer "quantity", default: 1, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "paid_quantity", default: 1, null: false
+    t.integer "gift_quantity", default: 0, null: false
+    t.virtual "total_quantity", type: :integer, as: "(paid_quantity + gift_quantity)", stored: true
     t.index ["crm_product_id", "product_name_mapping_id"], name: "idx_pmc_product_mapping", unique: true
     t.index ["crm_product_id"], name: "index_product_mapping_components_on_crm_product_id"
     t.index ["product_name_mapping_id"], name: "idx_pmc_mapping_id"
