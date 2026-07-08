@@ -23,6 +23,9 @@
 #      product name (i.e. a bare number right after 送/贈, like "送2") adds N
 #      to the gift_quantity of the nearest PRECEDING matched product — this
 #      is the "全能10送2" case: the same product gets 2 bonus units.
+#   4. Bracket fallback (E3-2.1): products the primary regex missed are
+#      retried as name + "（N瓶/盒" — "全能（10瓶送2）" → paid 10, and the
+#      送2 inside the bracket still attaches via rule 3 → gift 2.
 #
 # Usage:
 #   result = ProductQuantityParserService.call("全能10送2")
@@ -47,17 +50,30 @@ class ProductQuantityParserService
   # match as a gift rather than a purchase.
   GIFT_MARKER_PREFIX_PATTERN = /[送贈]\s*\z/.freeze
 
-  def self.call(raw_name)
-    new.parse(raw_name.to_s.strip)
+  # Bracket-form quantity (Epic E3-2.1): many raw_names put the quantity in a
+  # bracket after the product name instead of immediately appending digits —
+  # "全能（10瓶送2）", "DK鈣（10盒）". The stored regex requires digits right
+  # after the name, so those never match. Fallback: for products the primary
+  # regex did NOT match, retry with the pattern's name part (the regex minus
+  # its trailing "(\d+)") followed by bracket + digits + 瓶/盒. Same unit
+  # characters as legacy BottleExtractor::BRACKET_PATTERN.
+  BRACKET_QUANTITY_SUFFIX = '\s*[（(](\d+)[瓶盒]'
+  TRAILING_DIGIT_CAPTURE  = /\(\\d\+\)\z/.freeze
+
+  # products: optional pre-loaded CrmProduct array so batch callers (the
+  # dry-run report) can load once instead of once per raw_name.
+  def self.call(raw_name, products: nil)
+    new.parse(raw_name.to_s.strip, products: products)
   end
 
-  def parse(raw_name)
+  def parse(raw_name, products: nil)
     return Result.new(components: []) if raw_name.blank?
 
-    products_with_regex = CrmProduct.where.not(regex_pattern: [nil, ""]).to_a
+    products ||= CrmProduct.where.not(regex_pattern: [nil, ""]).to_a
     matches = ProductNameMappingReviewReportService
-      .find_matches_with_spans(raw_name, products_with_regex)
-      .sort_by { |m| m[:span].begin }
+      .find_matches_with_spans(raw_name, products)
+    matches += bracket_fallback_matches(raw_name, products, matches)
+    matches.sort_by! { |m| m[:span].begin }
 
     totals = {}
     matches.each do |m|
@@ -86,6 +102,30 @@ class ProductQuantityParserService
   end
 
   private
+
+  # Retry unmatched products with the bracket-quantity form. Only products the
+  # primary regex missed are tried, so a product can never be counted twice.
+  # Products whose stored pattern doesn't end in the standard "(\d+)" capture
+  # are skipped — without that convention we can't isolate the name part.
+  def bracket_fallback_matches(raw_name, products, existing)
+    matched_ids = existing.to_set { |m| m[:product].id }
+
+    products.filter_map do |product|
+      next if matched_ids.include?(product.id)
+
+      name_part = product.regex_pattern.to_s.sub(TRAILING_DIGIT_CAPTURE, "")
+      next if name_part == product.regex_pattern
+
+      begin
+        m = Regexp.new(name_part + BRACKET_QUANTITY_SUFFIX).match(raw_name)
+      rescue RegexpError
+        next
+      end
+      next unless m
+
+      { product: product, span: (m.begin(0)...m.end(0)), quantity: m[1].to_i }
+    end
+  end
 
   def gift_marker_precedes?(raw_name, span)
     raw_name[0...span.begin].match?(GIFT_MARKER_PREFIX_PATTERN)
