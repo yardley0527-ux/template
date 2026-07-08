@@ -9,7 +9,7 @@ module JourneyProducts
   PRODUCTS = {
     "omnipotent" => {
       key:          "omnipotent",
-      label:        "B群／全能",
+      label:        "全能",
       short:        "B群",
       icon:         "💊",
       color:        "#1d4ed8",
@@ -45,7 +45,7 @@ module JourneyProducts
     },
     "collagen" => {
       key:          "collagen",
-      label:        "膠原飲",
+      label:        "膠原蛋白",
       short:        "膠原",
       icon:         "💧",
       color:        "#0891b2",

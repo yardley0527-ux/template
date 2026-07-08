@@ -36,9 +36,10 @@ class CrmProduct < ApplicationRecord
   ].freeze
 
   # Bridge for controllers that filter against customer_series_loyalties.series or
-  # customer_purchase_summaries.first_series (written by refresh services using legacy
-  # labels). Maps two diverged CrmProduct labels back to the values the DB stores.
-  # TODO: remove after aligning CrmProduct labels + migrating DB series columns.
+  # customer_purchase_summaries.first_series. The label divergence this maps was
+  # fixed by AlignCrmProductDisplayLabels (labels now match the series values),
+  # making this a no-op — kept only to cover the window where this code is
+  # deployed but that migration hasn't run yet. Safe to delete next cleanup.
   SERIES_FILTER_OVERRIDES = {
     "B群／全能" => "全能",
     "膠原飲"   => "膠原蛋白"
