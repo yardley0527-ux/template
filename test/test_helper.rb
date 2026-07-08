@@ -13,8 +13,14 @@ Rails::LineFiltering.module_eval do
 end
 
 class ActiveSupport::TestCase
-  # Run tests in parallel with specified workers
-  parallelize(workers: :number_of_processors)
+  # Parallelization disabled: activesupport 7.1.6's parallelization worker
+  # calls Minitest.run_one_method, which minitest 6.0.1 removed/renamed (same
+  # class of incompatibility as the LineFiltering patch above). This was
+  # latent — the suite stayed under Rails' default 50-test parallelization
+  # threshold until Epic E3-2 pushed it past that, which is what surfaced it.
+  # workers: 1 sidesteps the broken fork path entirely; at this suite size
+  # single-process is still well under a second.
+  parallelize(workers: 1)
 
   # Setup all fixtures in test/fixtures/*.yml for all tests in alphabetical order.
   fixtures :all

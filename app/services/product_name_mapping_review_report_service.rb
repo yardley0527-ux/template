@@ -52,6 +52,41 @@ class ProductNameMappingReviewReportService
     new.call
   end
 
+  # ── Step 1: regex match with span capture ──────────────────────────────
+  #
+  # Returns an array of { product:, span: (begin...end), quantity: }, one
+  # entry per matching CrmProduct, deduplicated by product id (first match
+  # wins — a product mentioned twice in one raw_name only counts once).
+  # Character positions are used (not byte positions) so span comparison
+  # is correct for multi-byte UTF-8 strings. `quantity` is the regex's
+  # captured group (e.g. "全能10" → 10); defaults to 1 if the stored
+  # regex_pattern has no capturing group.
+  #
+  # Public — reused by ProductQuantityParserService (Epic E3-2) as the
+  # single source of truth for "which products does this raw_name match,
+  # and where." Do not duplicate this matching logic elsewhere.
+  def self.find_matches_with_spans(raw_name, products)
+    seen    = {}
+    matches = []
+
+    products.each do |product|
+      next if seen.key?(product.id)
+
+      begin
+        m = Regexp.new(product.regex_pattern).match(raw_name)
+        if m
+          quantity = m[1] ? m[1].to_i : 1
+          matches << { product: product, span: (m.begin(0)...m.end(0)), quantity: quantity }
+          seen[product.id] = true
+        end
+      rescue RegexpError
+        # skip products with a malformed stored regex_pattern
+      end
+    end
+
+    matches
+  end
+
   def call
     # Load all CrmProducts that have a regex — used for bundle/overlap detection.
     # Fetched once; each product's regex is tested against every pending raw_name.
@@ -77,7 +112,7 @@ class ProductNameMappingReviewReportService
     pending.each do |mapping|
       # Find which CrmProduct regexes match, with their character-span.
       # Deduplicated by product id — each product counted at most once.
-      matched = find_matches_with_spans(mapping.raw_name, products_with_regex)
+      matched = self.class.find_matches_with_spans(mapping.raw_name, products_with_regex)
       bucket  = classify(mapping, matched)
       buckets[bucket] << build_row(mapping, matched, bucket)
     end
@@ -123,33 +158,6 @@ class ProductNameMappingReviewReportService
   end
 
   private
-
-  # ── Step 1: regex match with span capture ──────────────────────────────
-
-  # Returns an array of { product:, span: (begin...end) }, one entry per
-  # matching CrmProduct, deduplicated by product id (first match wins).
-  # Character positions are used (not byte positions) so span comparison
-  # is correct for multi-byte UTF-8 strings.
-  def find_matches_with_spans(raw_name, products)
-    seen    = {}
-    matches = []
-
-    products.each do |product|
-      next if seen.key?(product.id)
-
-      begin
-        m = Regexp.new(product.regex_pattern).match(raw_name)
-        if m
-          matches << { product: product, span: (m.begin(0)...m.end(0)) }
-          seen[product.id] = true
-        end
-      rescue RegexpError
-        # skip products with a malformed stored regex_pattern
-      end
-    end
-
-    matches
-  end
 
   # ── Step 2: classify ───────────────────────────────────────────────────
 
