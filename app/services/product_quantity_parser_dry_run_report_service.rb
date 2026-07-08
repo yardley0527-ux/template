@@ -52,6 +52,8 @@ class ProductQuantityParserDryRunReportService
       m.components.empty? && parsed_by_mapping_id[m.id].components.any?
     end
 
+    gift_diffs = diffs.select { |d| d[:contains_promotion_marker] }
+
     {
       total_confirmed:           confirmed.size,
       total_unparsed:            unparsed.size,
@@ -60,8 +62,18 @@ class ProductQuantityParserDryRunReportService
       would_write_new_count:     would_write.size,
       would_write_new_raw_names: would_write.map(&:raw_name),
       diffs:                     diffs,
-      diffs_with_promotion:      diffs.select { |d| d[:contains_promotion_marker] },
+      diffs_with_promotion:      gift_diffs,
       sample_parsed:             sample_parsed(confirmed, parsed_by_mapping_id),
+
+      # Flat summary aliases — same numbers as above, named for quick
+      # production spot-checks via `.slice(...)` in rails runner. Counts
+      # only, no arrays.
+      parsed_count:                 confirmed.size - unparsed.size,
+      unparsed_count:               unparsed.size,
+      already_has_components_count: already_componented.size,
+      would_write_count:            would_write.size,
+      diff_count:                   diffs.size,
+      gift_diff_count:              gift_diffs.size,
     }
   end
 
