@@ -23,12 +23,24 @@ class ProductNameMapping < ApplicationRecord
 
   scope :pending,   -> { where(mapping_status: "pending") }
   scope :confirmed, -> { where(mapping_status: "confirmed_alias") }
-  scope :bundles,   -> { joins(:components).distinct }
 
-  # True when this SKU has been decomposed into multiple component products.
-  # Uses a DB EXISTS check so it works correctly whether components are loaded or not.
+  # Mappings decomposed into more than one product. NOT the same as "has any
+  # component" — every confirmed mapping is expected to have >= 1 component
+  # (Epic E3), including single-product SKUs, so `joins(:components)` alone
+  # would match almost everything and no longer means "bundle".
+  scope :bundles, -> {
+    joins(:components)
+      .group("product_name_mappings.id")
+      .having("COUNT(product_mapping_components.id) > 1")
+  }
+
+  # True when this SKU's raw_name represents more than one distinct product
+  # (e.g. "薑黃1全能1"). A mapping with exactly one component (including every
+  # single-product mapping under Epic E3) is NOT a bundle — component
+  # existence and "is a bundle" are different questions, see
+  # ProductMappingComponent's class comment.
   def bundle?
-    components.exists?
+    components.count > 1
   end
 
   # Returns the next mapping_version for a new log entry on this mapping.
