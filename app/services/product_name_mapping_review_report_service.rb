@@ -181,6 +181,7 @@ class ProductNameMappingReviewReportService
     matched_labels = matched.map { |m| m[:product].label }
 
     row = {
+      mapping_id:            mapping.id,
       raw_name:              mapping.raw_name,
       occurrence_count:      mapping.occurrence_count,
       suggested_crm_product: suggested&.label,
