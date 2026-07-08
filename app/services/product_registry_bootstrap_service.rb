@@ -31,19 +31,28 @@ class ProductRegistryBootstrapService
   #
   # Aliases drive regex generation via ProductAliasRegexGeneratorService.
   # Add / edit here; run product_aliases:generate_regex to propagate.
+  #
+  # Typo variants (代謝定, 代謝錠錠, 榖胱甘肽, 益生箘) are real spellings seen
+  # in imported order data — first catalogued in BundleComponentParser's
+  # ALIAS_MAP (Epic C), promoted into the alias registry in Epic E3-2.1 so
+  # the generated regex_pattern covers them too.
   ALIASES_BY_KEY = {
     "omnipotent"         => %w[全能 B群 B群全能 全能膠囊],
-    "metabolism"         => %w[代謝 代謝錠],
-    "glutathione"        => %w[穀胱甘肽],
+    "metabolism"         => %w[代謝 代謝錠 代謝定 代謝錠錠],
+    "glutathione"        => %w[穀胱甘肽 榖胱甘肽],
     "collagen"           => %w[膠原 膠原蛋白],
     "turmeric"           => %w[薑黃],
-    "probiotic"          => %w[益生菌],
+    "probiotic"          => %w[益生菌 益生箘],
     "whitening"          => %w[美白],
     "fish_oil"           => %w[魚油],
     "cleanse_powder"     => %w[清纖 清纖粉],
     "astaxanthin"        => %w[蝦紅素],
     "intimate_powder"    => %w[私密 私密粉],
-    "mask"               => %w[面膜],
+    # 面 (bare) is real store shorthand — 面1/面3/面6/面10 exist as confirmed
+    # mask mappings. The dev regex had been hand-widened to 面(?:膜)?(\d+) to
+    # cover them; the alias registry needs 面 explicitly or regeneration
+    # regresses those four mappings (found in E3-2.1).
+    "mask"               => %w[面膜 面],
     "vitamin_dk_calcium" => %w[維DK鈣 DK鈣],
   }.freeze
 

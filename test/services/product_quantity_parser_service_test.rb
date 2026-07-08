@@ -112,4 +112,62 @@ class ProductQuantityParserServiceTest < ActiveSupport::TestCase
     assert_equal 1, components.size
     assert_equal 1, components.first[:paid_quantity]
   end
+
+  # ── Bracket fallback (E3-2.1) ─────────────────────────────────────────
+
+  test "bracket fallback: 全能（10瓶送2） → paid 10 gift 2" do
+    components = components_for("全能（10瓶送2）")
+
+    assert_equal 1, components.size
+    assert_equal({ crm_product_key: "qp_omnipotent", crm_product_label: "全能",
+                    paid_quantity: 10, gift_quantity: 2, total_quantity: 12 }, components.first)
+  end
+
+  test "bracket fallback: DK鈣（10盒） and 維DK鈣（10盒） both → paid 10 gift 0" do
+    create_product("vitamin_dk_calcium", "維DK鈣", '維?DK鈣(\d+)')
+
+    ["DK鈣（10盒）", "維DK鈣（10盒）"].each do |raw|
+      components = components_for(raw)
+      assert_equal 1, components.size, "expected one component for #{raw}"
+      assert_equal 10, components.first[:paid_quantity]
+      assert_equal 0,  components.first[:gift_quantity]
+    end
+  end
+
+  test "bracket fallback: 代謝錠（2瓶送1） → paid 2 gift 1, and half-width bracket works" do
+    assert_equal [{ crm_product_key: "qp_metabolism", crm_product_label: "代謝錠",
+                     paid_quantity: 2, gift_quantity: 1, total_quantity: 3 }],
+                 components_for("代謝錠（2瓶送1）")
+    assert_equal 2, components_for("代謝錠(2瓶)").first[:paid_quantity]
+  end
+
+  test "bracket fallback never double-counts a product the primary regex already matched" do
+    components = components_for("全能6")
+
+    assert_equal 1, components.size
+    assert_equal 6, components.first[:paid_quantity]
+  end
+
+  test "bracket without 瓶/盒 unit is not treated as a quantity" do
+    assert_equal [], components_for("全能（10）")
+  end
+
+  test "bracket fallback allows whitespace between name and bracket: 益生菌 （3盒送1）" do
+    create_product("probiotic", "益生菌", '益生菌(\d+)')
+
+    components = components_for("益生菌 （3盒送1）")
+
+    assert_equal 1, components.size
+    assert_equal 3, components.first[:paid_quantity]
+    assert_equal 1, components.first[:gift_quantity]
+  end
+
+  test "accepts a pre-loaded products array instead of querying" do
+    products = CrmProduct.where.not(regex_pattern: [nil, ""]).to_a
+
+    result = ProductQuantityParserService.call("全能10送2", products: products)
+
+    assert_equal 10, result.components.first[:paid_quantity]
+    assert_equal 2,  result.components.first[:gift_quantity]
+  end
 end

@@ -25,6 +25,7 @@ namespace :product_name_mappings do
     puts "  Confirmed mappings scanned      : #{result[:total_confirmed]}"
     puts "  Parser found 0 components       : #{result[:total_unparsed]}"
     puts "  Already has components (Epic C) : #{result[:already_componented]}"
+    puts "  E3-3 would-write set（無 component 且可解析）: #{result[:would_write_new_count]}"
 
     if result[:unparsed_raw_names].any?
       puts "\n無法解析（parser 找不到任何產品匹配，需要人工檢查）："

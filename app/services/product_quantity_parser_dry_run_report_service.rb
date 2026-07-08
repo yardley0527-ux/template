@@ -33,22 +33,35 @@ class ProductQuantityParserDryRunReportService
       .order(:raw_name)
       .to_a
 
+    # Load products once for the whole batch instead of once per raw_name.
+    products = CrmProduct.where.not(regex_pattern: [nil, ""]).to_a
+
     parsed_by_mapping_id = confirmed.each_with_object({}) do |mapping, h|
-      h[mapping.id] = ProductQuantityParserService.call(mapping.raw_name)
+      h[mapping.id] = ProductQuantityParserService.call(mapping.raw_name, products: products)
     end
 
     unparsed = confirmed.select { |m| parsed_by_mapping_id[m.id].components.empty? }
     already_componented = confirmed.select { |m| m.components.any? }
     diffs = already_componented.filter_map { |m| build_diff(m, parsed_by_mapping_id[m.id]) }
 
+    # The set E3-3 would write: confirmed, no components yet, parseable.
+    # NOT derivable from the other counts by arithmetic — unparsed and
+    # already_componented overlap (rows Epic C componented that the new
+    # parser can't match at all).
+    would_write = confirmed.select do |m|
+      m.components.empty? && parsed_by_mapping_id[m.id].components.any?
+    end
+
     {
-      total_confirmed:      confirmed.size,
-      total_unparsed:       unparsed.size,
-      unparsed_raw_names:   unparsed.map(&:raw_name),
-      already_componented:  already_componented.size,
-      diffs:                diffs,
-      diffs_with_promotion: diffs.select { |d| d[:contains_promotion_marker] },
-      sample_parsed:        sample_parsed(confirmed, parsed_by_mapping_id),
+      total_confirmed:           confirmed.size,
+      total_unparsed:            unparsed.size,
+      unparsed_raw_names:        unparsed.map(&:raw_name),
+      already_componented:       already_componented.size,
+      would_write_new_count:     would_write.size,
+      would_write_new_raw_names: would_write.map(&:raw_name),
+      diffs:                     diffs,
+      diffs_with_promotion:      diffs.select { |d| d[:contains_promotion_marker] },
+      sample_parsed:             sample_parsed(confirmed, parsed_by_mapping_id),
     }
   end
 
