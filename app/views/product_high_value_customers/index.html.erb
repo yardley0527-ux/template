@@ -27,17 +27,13 @@ end %>
   </div>
 </div>
 
-<%# 產品切換：一眼比較各產品破萬人數，點選只看單一產品 %>
+<%# 產品切換：一眼比較各產品破萬人數，點選只看單一產品，再點一次回到全部 %>
 <div class="d-flex flex-wrap mb-3" style="gap:6px;">
-  <%= link_to product_high_value_customers_path(start_date: params[:start_date], end_date: params[:end_date]),
-        class: "btn btn-sm #{@series_filter.nil? ? 'btn-dark' : 'btn-outline-secondary'}" do %>
-    全部產品
-  <% end %>
   <% @product_summary.each do |p| %>
-    <%= link_to product_high_value_customers_path(series: p[:series], start_date: params[:start_date], end_date: params[:end_date]),
-          class: "btn btn-sm #{@series_filter == p[:series] ? 'btn-dark' : 'btn-outline-secondary'}" do %>
-      <%= p[:series] %>
-      <span class="badge <%= @series_filter == p[:series] ? 'bg-light text-dark' : 'bg-secondary' %>" style="font-size:0.7rem;"><%= p[:count] %></span>
+    <% selected = @series_filter == p[:series] %>
+    <%= link_to product_high_value_customers_path(series: selected ? nil : p[:series], start_date: params[:start_date], end_date: params[:end_date]),
+          class: "btn btn-sm #{selected ? 'btn-dark' : 'btn-outline-secondary'}" do %>
+      <%= p[:series] %>（<%= p[:count] %>）
     <% end %>
   <% end %>
 </div>
