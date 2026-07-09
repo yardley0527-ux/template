@@ -95,4 +95,36 @@ class ProductQuantityParserDryRunReportServiceTest < ActiveSupport::TestCase
       ProductQuantityParserDryRunReportService.call
     end
   end
+
+  test "flat summary keys are present and consistent with the detailed keys" do
+    confirmed_mapping("全能1")                       # parseable, no components
+    confirmed_mapping("完全match不到的字串ZZZ")        # unparsed
+    with_comp = confirmed_mapping("代謝錠12送全能2")   # componented + diff + gift marker
+    ProductMappingComponent.create!(
+      product_name_mapping: with_comp, crm_product: @metabolism, paid_quantity: 12, gift_quantity: 0
+    )
+    ProductMappingComponent.create!(
+      product_name_mapping: with_comp, crm_product: @omnipotent, paid_quantity: 2, gift_quantity: 0
+    )
+
+    result = ProductQuantityParserDryRunReportService.call
+
+    summary = result.slice(:total_confirmed, :parsed_count, :unparsed_count,
+                           :already_has_components_count, :would_write_count,
+                           :diff_count, :gift_diff_count)
+    assert_equal(
+      { total_confirmed: 3, parsed_count: 2, unparsed_count: 1,
+        already_has_components_count: 1, would_write_count: 1,
+        diff_count: 1, gift_diff_count: 1 },
+      summary
+    )
+
+    # Aliases must always mirror the detailed keys.
+    assert_equal result[:total_unparsed],                result[:unparsed_count]
+    assert_equal result[:already_componented],           result[:already_has_components_count]
+    assert_equal result[:would_write_new_count],         result[:would_write_count]
+    assert_equal result[:diffs].size,                    result[:diff_count]
+    assert_equal result[:diffs_with_promotion].size,     result[:gift_diff_count]
+    assert_equal result[:total_confirmed] - result[:unparsed_count], result[:parsed_count]
+  end
 end
