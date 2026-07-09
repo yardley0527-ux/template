@@ -59,7 +59,18 @@ class CustomerProfile < ApplicationRecord
     "過敏"
   ].freeze
 
+  CUSTOMER_TYPE_OPTIONS = [
+    "高潛力客",
+    "穩定回購客",
+    "流失回流客",
+    "新客培養中",
+    "高互動低消費",
+    "流失高風險客"
+  ].freeze
+
   before_validation :normalize_tag_fields
+
+  validates :customer_type, inclusion: { in: CUSTOMER_TYPE_OPTIONS }, allow_blank: true
 
   private
 

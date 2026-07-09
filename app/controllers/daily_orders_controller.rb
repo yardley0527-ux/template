@@ -50,6 +50,17 @@ class DailyOrdersController < ApplicationController
     head :ok
   end
 
+  def update_customer_type
+    value = params[:value].to_s.presence
+    return head :bad_request if value.present? && !CustomerProfile::CUSTOMER_TYPE_OPTIONS.include?(value)
+
+    customer = ShoplineCustomer.find(params[:customer_id])
+    profile  = customer.customer_profile || customer.build_customer_profile
+    profile.update!(customer_type: value)
+
+    head :ok
+  end
+
   def export
     @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
     @end_date   = parse_date(params[:end_date]) || @start_date
