@@ -21,6 +21,7 @@ Rails.application.routes.draw do
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
   get  '/high_value_orders/custom_messages', to: 'high_value_order_custom_messages#index', as: :high_value_order_custom_messages
   get  '/high_value_orders/follow_ups', to: 'high_value_follow_ups#index', as: :high_value_follow_ups
+  get  '/high_value_orders/follow_up_results', to: 'high_value_follow_up_results#index', as: :high_value_follow_up_results
   get  '/daily_dashboard',           to: 'daily_dashboard#index',      as: :daily_dashboard
   get  '/daily_orders',             to: 'daily_orders#index',         as: :daily_orders
   get  '/daily_orders/export',      to: 'daily_orders#export',        as: :export_daily_orders

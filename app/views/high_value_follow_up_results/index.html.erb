@@ -1,0 +1,141 @@
+<%# app/views/high_value_follow_up_results/index.html.erb %>
+<% content_for :page_title, "追蹤成效" %>
+
+<% def ig_link_url(account)
+  return nil if account.blank?
+  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+end %>
+
+<%# Header %>
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
+    <div>
+      <h4 class="fw-bold mb-0">追蹤成效確認</h4>
+      <p class="text-muted small mb-0">已追蹤（有填追蹤備註）的客人，是否回購同一首購產品</p>
+    </div>
+    <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+      <%= form_tag high_value_follow_up_results_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+        <%= hidden_field_tag :tab, @tab %>
+        <input type="date" name="start_date" value="<%= @start_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <span class="text-muted small">至</span>
+        <input type="date" name="end_date" value="<%= @end_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+        <% if @start_date.present? %>
+          <%= link_to "清除", high_value_follow_up_results_path(tab: @tab), class: "btn btn-sm btn-outline-secondary" %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<%# 已回購／未回購 tabs %>
+<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+  <li class="nav-item">
+    <%= link_to "已回購（#{@repurchased_count}）",
+          high_value_follow_up_results_path(tab: 'repurchased', start_date: @start_date, end_date: @end_date),
+          class: "nav-link #{@tab == 'repurchased' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "未回購（#{@pending_count}）",
+          high_value_follow_up_results_path(tab: 'pending', start_date: @start_date, end_date: @end_date),
+          class: "nav-link #{@tab == 'pending' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+</ul>
+
+<%# 依卡別分成多組，全部往下疊在同一頁 %>
+<% @groups.each do |label, rows| %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
+      <span class="fw-bold"><%= label %></span>
+      <span class="badge bg-secondary"><%= rows.size %></span>
+    </div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table align-middle mb-0" style="font-size:0.86rem;">
+        <thead style="background-color:#4a4a4a; color:white;">
+          <tr>
+            <th class="ps-3" style="width:60px;">日期</th>
+            <th style="width:110px;">姓名</th>
+            <th style="width:150px;">IG</th>
+            <th style="width:80px;">卡別</th>
+            <th class="text-end" style="width:100px;">消費金額</th>
+            <th style="width:22%;">首購產品</th>
+            <th style="width:24%;">追蹤備註</th>
+            <th>回購狀態</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.each do |o| %>
+            <% url = ig_link_url(o.ig_account) %>
+            <% first_items = (@products_by_order[o.order_num] || []).select { |p| p[:prior_date].nil? } %>
+            <% reps = @repurchases_by_order[o.order_num] || [] %>
+            <tr>
+              <td class="ps-3 text-nowrap text-muted"><%= o.ord_date&.strftime("%-m/%-d") %></td>
+              <td class="fw-semibold">
+                <% if o.shopline_customer_id %>
+                  <%= link_to o.cust_name, customer_path(o.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
+                <% else %>
+                  <%= o.cust_name %>
+                <% end %>
+              </td>
+              <td>
+                <% if url %>
+                  <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                    <i class="fal fa-at text-danger"></i>
+                    <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                      <%= o.ig_account&.sub(/^@/, '') %>
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td>
+                <% badge_bg, badge_fg = case o.membership_level_col
+                                      when '黑卡' then ['#333', '#fff']
+                                      when '金卡' then ['#b8860b', '#fff']
+                                      when '銀卡' then ['#6c757d', '#fff']
+                                      when '白卡' then ['#dee2e6', '#333']
+                                      else             ['#adb5bd', '#333']
+                                      end %>
+                <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= o.membership_level_col %></span>
+              </td>
+              <td class="text-end fw-bold text-danger">
+                NT$<%= number_with_delimiter(o.order_total.to_i) %>
+              </td>
+              <td>
+                <% first_items.each do |p| %>
+                  <div style="font-size:0.78rem;"><%= p[:name] %></div>
+                <% end %>
+              </td>
+              <td>
+                <div class="text-muted" style="font-size:0.8rem; white-space:pre-wrap;"><%= @notes[o.order_num] %></div>
+              </td>
+              <td>
+                <% if reps.any? %>
+                  <% reps.each do |r| %>
+                    <div style="font-size:0.8rem;">
+                      <span class="text-success fw-bold">✓</span>
+                      <%= r[:product_name] %>
+                      <span class="text-muted"><%= r[:date].strftime('%-m/%-d') %>・NT$<%= number_with_delimiter(r[:amount]) %>・相隔 <%= r[:days_between] %> 天</span>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <span class="badge bg-light text-muted border" style="font-size:0.75rem;">尚未回購</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          <% if rows.empty? %>
+            <tr>
+              <td colspan="8" class="text-center py-5 text-muted">
+                <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                <%= @tab == 'repurchased' ? "此區間沒有已回購的追蹤客人" : "此區間沒有未回購的追蹤客人" %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
