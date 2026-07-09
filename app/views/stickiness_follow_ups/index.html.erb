@@ -1,0 +1,221 @@
+<%# app/views/stickiness_follow_ups/index.html.erb %>
+<% content_for :page_title, "黏著度分析" %>
+
+<% def ig_link_url(account)
+  return nil if account.blank?
+  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+end %>
+
+<%# Header %>
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
+    <div>
+      <h4 class="fw-bold mb-0">黏著度分析</h4>
+      <p class="text-muted small mb-0">已標客人類型的客人，依客人類型＋卡別分類，追蹤後續與回購</p>
+    </div>
+    <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+      <%= form_tag stickiness_follow_ups_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+        <%= hidden_field_tag :status, @status %>
+        <span class="text-muted small">最後購買日</span>
+        <input type="date" name="start_date" value="<%= @start_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <span class="text-muted small">至</span>
+        <input type="date" name="end_date" value="<%= @end_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+        <% if @start_date.present? %>
+          <%= link_to "清除", stickiness_follow_ups_path(status: @status), class: "btn btn-sm btn-outline-secondary" %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap mb-3" style="gap:10px;">
+  <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #8f6340; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:160px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#f4ece2; flex-shrink:0;">
+      <i class="fal fa-magnet" style="color:#8f6340; font-size:1rem;"></i>
+    </div>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">名單人數</div>
+      <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;"><%= @total_count %> 人</div>
+    </div>
+  </div>
+  <% pending_alert = @pending_count > 0 %>
+  <div class="d-flex align-items-center px-3 py-2" style="background:<%= pending_alert ? '#fdf1ef' : '#fff' %>; border:1px solid <%= pending_alert ? '#f3cdc7' : '#e9e2d8' %>; border-left:4px solid <%= pending_alert ? '#d03b3b' : '#188038' %>; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:160px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:<%= pending_alert ? '#fbe0dc' : '#e8f4ea' %>; flex-shrink:0;">
+      <i class="fal <%= pending_alert ? 'fa-exclamation-circle' : 'fa-check-circle' %>" style="color:<%= pending_alert ? '#d03b3b' : '#188038' %>; font-size:1rem;"></i>
+    </div>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">未追蹤（沒填備註）</div>
+      <div class="fw-bold" style="font-size:1.05rem; color:<%= pending_alert ? '#d03b3b' : '#188038' %>;">
+        <%= pending_alert ? "#{@pending_count} 人" : "✓ 全部追蹤完" %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# 全部／未追蹤／已追蹤 篩選 %>
+<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+  <li class="nav-item">
+    <%= link_to "全部（#{@total_count}）",
+          stickiness_follow_ups_path(status: 'all', start_date: params[:start_date], end_date: params[:end_date]),
+          class: "nav-link #{@status == 'all' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "未追蹤（#{@pending_count}）",
+          stickiness_follow_ups_path(status: 'pending', start_date: params[:start_date], end_date: params[:end_date]),
+          class: "nav-link #{@status == 'pending' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "已追蹤（#{@done_count}）",
+          stickiness_follow_ups_path(status: 'done', start_date: params[:start_date], end_date: params[:end_date]),
+          class: "nav-link #{@status == 'done' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+</ul>
+
+<%# 依客人類型分組，組內照卡別排序，全部往下疊在同一頁 %>
+<% @groups.each do |label, rows| %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
+      <span class="fw-bold"><%= label %></span>
+      <span class="badge bg-secondary"><%= rows.size %></span>
+    </div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table align-middle mb-0" style="font-size:0.86rem;">
+        <thead style="background-color:#4a4a4a; color:white;">
+          <tr>
+            <th class="ps-3" style="width:110px;">姓名</th>
+            <th style="width:150px;">IG</th>
+            <th style="width:80px;">卡別</th>
+            <th style="width:100px;">最後購買日</th>
+            <th style="width:22%;">買過的系列</th>
+            <th style="width:28%;">追蹤備註</th>
+            <th>回購狀態</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.each do |r| %>
+            <% url = ig_link_url(r.customer.instagram_account) %>
+            <tr style="<%= r.tracked? ? '' : 'background:#fffbe6;' %>">
+              <td class="ps-3 fw-semibold">
+                <%= link_to r.customer.full_name, customer_path(r.customer.id), target: "_blank", class: "text-decoration-none" %>
+              </td>
+              <td>
+                <% if url %>
+                  <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                    <i class="fal fa-at text-danger"></i>
+                    <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                      <%= r.customer.instagram_account&.sub(/^@/, '') %>
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td>
+                <% badge_bg, badge_fg = case r.membership_level
+                                      when '黑卡' then ['#333', '#fff']
+                                      when '金卡' then ['#b8860b', '#fff']
+                                      when '銀卡' then ['#6c757d', '#fff']
+                                      when '白卡' then ['#dee2e6', '#333']
+                                      else             ['#adb5bd', '#333']
+                                      end %>
+                <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= r.membership_level %></span>
+              </td>
+              <td class="text-nowrap text-muted"><%= r.last_purchase_date ? r.last_purchase_date.strftime('%Y/%m/%d') : '—' %></td>
+              <td>
+                <div class="d-flex flex-wrap" style="gap:3px;">
+                  <% r.purchased_series.each do |s| %>
+                    <span class="badge bg-light text-dark border" style="font-size:0.7rem;"><%= s %></span>
+                  <% end %>
+                  <% if r.purchased_series.empty? %>
+                    <span class="text-muted small">—</span>
+                  <% end %>
+                </div>
+              </td>
+              <td class="py-2">
+                <% if r.profile.stickiness_followed_up_at %>
+                  <div class="text-muted" style="font-size:0.72rem;">追蹤於 <%= r.profile.stickiness_followed_up_at.strftime('%-m/%-d') %></div>
+                <% end %>
+                <textarea
+                  class="form-control form-control-sm stickiness-note-input"
+                  data-customer-id="<%= r.customer.id %>"
+                  data-url="<%= upsert_stickiness_note_path %>"
+                  rows="3"
+                  placeholder="可輸入多行備註，點到其他地方自動存檔"
+                  style="font-size:0.82rem; min-height:72px; resize:vertical;"><%= r.profile.stickiness_note %></textarea>
+              </td>
+              <td>
+                <% if r.repurchases.any? %>
+                  <% r.repurchases.each do |rep| %>
+                    <div style="font-size:0.8rem;">
+                      <span class="text-success fw-bold">✓</span>
+                      <%= rep[:product_name] %>
+                      <span class="text-muted"><%= rep[:date].strftime('%-m/%-d') %>・NT$<%= number_with_delimiter(rep[:amount]) %>・追蹤後 <%= rep[:days_between] %> 天</span>
+                    </div>
+                  <% end %>
+                <% elsif r.tracked? %>
+                  <span class="badge bg-light text-muted border" style="font-size:0.75rem;">尚未回購</span>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          <% if rows.empty? %>
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                此類型沒有符合條件的客人
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  function flashTip(td, text, color) {
+    var old = td.querySelector('.cb-saved-tip');
+    if (old) old.remove();
+    var tip = document.createElement('div');
+    tip.className = 'cb-saved-tip';
+    tip.textContent = text;
+    tip.style.cssText = 'font-size:0.72rem; color:' + color + '; margin-top:2px; font-weight:600;';
+    td.appendChild(tip);
+    setTimeout(function() { tip.remove(); }, 2000);
+  }
+
+  // 追蹤備註：離開欄位即自動存檔（Enter 為換行）
+  document.querySelectorAll('.stickiness-note-input').forEach(function(input) {
+    var saved = input.value;
+    function save() {
+      if (input.value === saved) return;
+      fetch(input.dataset.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({ customer_id: input.dataset.customerId, note: input.value })
+      }).then(function(r) {
+        var td = input.closest('td');
+        if (r.ok) {
+          saved = input.value;
+          input.style.borderColor = input.value ? '#28a745' : '#ccc';
+          input.closest('tr').style.background = input.value ? '' : '#fffbe6';
+          flashTip(td, input.value ? '✓ 已存檔' : '已清除', input.value ? '#28a745' : '#999');
+        } else {
+          flashTip(td, '存檔失敗，請再試一次', '#dc3545');
+        }
+      });
+    }
+    input.addEventListener('blur', save);
+    if (input.value) input.style.borderColor = '#28a745';
+  });
+})();
+</script>
+<% end %>

@@ -69,10 +69,19 @@ class CustomerProfile < ApplicationRecord
   ].freeze
 
   before_validation :normalize_tag_fields
+  before_save :stamp_stickiness_followed_up_at
 
   validates :customer_type, inclusion: { in: CUSTOMER_TYPE_OPTIONS }, allow_blank: true
 
   private
+
+  # 第一次填黏著度追蹤備註時記下追蹤時間；備註被清空則一併清掉，
+  # 黏著度成效的回購判斷以此時間為準（同 OrderGiftRecord#stamp_followed_up_at）
+  def stamp_stickiness_followed_up_at
+    return unless stickiness_note_changed?
+
+    self.stickiness_followed_up_at = stickiness_note.present? ? (stickiness_followed_up_at || Time.current) : nil
+  end
 
   def normalize_tag_fields
     self.product_tags          = normalize_array(product_tags)
