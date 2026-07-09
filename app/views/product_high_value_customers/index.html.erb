@@ -54,7 +54,8 @@ end %>
             <th>產品</th>
             <th class="text-end" style="width:130px;">總破萬次數</th>
             <th class="text-end" style="width:120px;">破萬人數</th>
-            <th class="text-end" style="width:140px;">破萬 2 次以上</th>
+            <th class="text-end" style="width:120px;">破萬 2 次</th>
+            <th class="text-end" style="width:140px;">破萬 3 次含以上</th>
             <th class="text-end" style="width:160px;">破萬合計金額</th>
             <th style="width:110px;"></th>
           </tr>
@@ -67,14 +68,15 @@ end %>
               <td class="fw-semibold"><%= link_to p[:series], detail_path, class: "text-decoration-none" %></td>
               <td class="text-end fw-bold" style="font-size:1rem; color:#c0392b;"><%= p[:total_count] %> 次</td>
               <td class="text-end"><%= p[:customers] %> 人</td>
-              <td class="text-end"><%= p[:repeat_customers] %> 人</td>
+              <td class="text-end"><%= p[:two_times] %> 人</td>
+              <td class="text-end"><%= p[:three_plus] %> 人</td>
               <td class="text-end fw-bold" style="color:#6e4a2e;">NT$<%= number_with_delimiter(p[:total_amount]) %></td>
               <td class="text-end pe-3"><%= link_to "看名單", detail_path, class: "btn btn-sm btn-outline-primary" %></td>
             </tr>
           <% end %>
           <% if @product_summary.empty? %>
             <tr>
-              <td colspan="7" class="text-center py-5 text-muted">
+              <td colspan="8" class="text-center py-5 text-muted">
                 <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
                 此期間沒有單一產品破萬的訂單
               </td>

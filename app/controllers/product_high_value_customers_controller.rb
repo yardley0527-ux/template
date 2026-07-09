@@ -19,7 +19,8 @@ class ProductHighValueCustomersController < ApplicationController
       {
         series: g[:series],
         customers: g[:rows].size,
-        repeat_customers: g[:rows].count { |r| r[:count] >= 2 },
+        two_times: g[:rows].count { |r| r[:count] == 2 },
+        three_plus: g[:rows].count { |r| r[:count] >= 3 },
         total_count: g[:rows].sum { |r| r[:count] },
         total_amount: g[:rows].sum { |r| r[:total] }
       }
