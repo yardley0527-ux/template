@@ -140,7 +140,7 @@ end %>
               <td class="text-nowrap text-muted"><%= r.last_purchase_date ? r.last_purchase_date.strftime('%Y/%m/%d') : '—' %></td>
               <td>
                 <% if r.profile.stickiness_followed_up_at %>
-                  <div class="text-muted" style="font-size:0.72rem;">追蹤於 <%= r.profile.stickiness_followed_up_at.strftime('%-m/%-d') %></div>
+                  <div class="text-muted" style="font-size:0.72rem;">追蹤於 <%= r.profile.stickiness_followed_up_at.strftime('%-m/%-d') %><% if r.profile.stickiness_note_edited_by.present? %>・edit by <%= note_editor_name(r.profile.stickiness_note_edited_by) %><% end %></div>
                 <% end %>
                 <div class="text-muted" style="font-size:0.8rem; white-space:pre-wrap;"><%= r.profile.stickiness_note %></div>
               </td>

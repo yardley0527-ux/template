@@ -36,7 +36,11 @@ class StickinessFollowUpsController < ApplicationController
   def upsert_note
     customer = ShoplineCustomer.find(params[:customer_id])
     profile  = customer.customer_profile || customer.build_customer_profile
-    profile.update!(stickiness_note: params[:note].to_s)
+    note     = params[:note].to_s
+    profile.update!(
+      stickiness_note: note,
+      stickiness_note_edited_by: note.present? ? current_user.username : nil
+    )
 
     head :ok
   end

@@ -135,7 +135,7 @@ end %>
               </td>
               <td class="py-2">
                 <% if r.profile.stickiness_followed_up_at %>
-                  <div class="text-muted" style="font-size:0.72rem;">追蹤於 <%= r.profile.stickiness_followed_up_at.strftime('%-m/%-d') %></div>
+                  <div class="text-muted" style="font-size:0.72rem;">追蹤於 <%= r.profile.stickiness_followed_up_at.strftime('%-m/%-d') %><% if r.profile.stickiness_note_edited_by.present? %>・edit by <%= note_editor_name(r.profile.stickiness_note_edited_by) %><% end %></div>
                 <% end %>
                 <textarea
                   class="form-control form-control-sm stickiness-note-input"

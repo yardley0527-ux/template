@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
 module ApplicationHelper
+  # 追蹤備註編輯者的顯示名稱（帳號 → 中文名），沒對到的帳號直接顯示 username
+  NOTE_EDITOR_NAMES = {
+    "crmdata" => "珍珍",
+    "owner"   => "Chloe"
+  }.freeze
+
+  def note_editor_name(username)
+    NOTE_EDITOR_NAMES.fetch(username.to_s, username)
+  end
+
   def class_if_current_page(entry:)
     selected = is_current_page?(entry)
 
