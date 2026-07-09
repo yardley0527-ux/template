@@ -49,13 +49,13 @@ end %>
       <table class="table align-middle mb-0" style="font-size:0.86rem;">
         <thead style="background-color:#4a4a4a; color:white;">
           <tr>
-            <th class="ps-3" style="width:70px;">日期</th>
-            <th>姓名</th>
-            <th style="width:160px;">IG</th>
-            <th style="width:70px;">卡別</th>
-            <th class="text-end" style="width:110px;">消費金額</th>
+            <th class="ps-3" style="width:60px;">日期</th>
+            <th style="width:110px;">姓名</th>
+            <th style="width:150px;">IG</th>
+            <th style="width:80px;">卡別</th>
+            <th class="text-end" style="width:100px;">消費金額</th>
             <th>是否購買過同產品</th>
-            <th style="width:260px;">追蹤備註</th>
+            <th style="width:34%;">追蹤備註</th>
           </tr>
         </thead>
         <tbody>
@@ -107,14 +107,14 @@ end %>
                   </div>
                 <% end %>
               </td>
-              <td>
-                <input type="text"
+              <td class="py-2">
+                <textarea
                   class="form-control form-control-sm follow-up-note-input"
                   data-order="<%= o.order_num %>"
                   data-url="<%= upsert_order_gift_record_path %>"
-                  value="<%= gift&.follow_up_note %>"
-                  placeholder="輸入備註後自動存檔"
-                  style="font-size:0.8rem;">
+                  rows="3"
+                  placeholder="可輸入多行備註，點到其他地方自動存檔"
+                  style="font-size:0.82rem; min-height:72px; resize:vertical;"><%= gift&.follow_up_note %></textarea>
               </td>
             </tr>
           <% end %>
@@ -156,7 +156,7 @@ end %>
     setTimeout(function() { tip.remove(); }, 2000);
   }
 
-  // 追蹤備註：離開欄位或按 Enter 即自動存檔
+  // 追蹤備註：離開欄位即自動存檔（Enter 為換行）
   document.querySelectorAll('.follow-up-note-input').forEach(function(input) {
     var saved = input.value;
     function save() {
@@ -173,7 +173,6 @@ end %>
       });
     }
     input.addEventListener('blur', save);
-    input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); save(); } });
     if (input.value) input.style.borderColor = '#28a745';
   });
 })();
