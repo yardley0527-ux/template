@@ -15,15 +15,31 @@ end %>
       <p class="text-muted small mb-0">單筆訂單中該產品買滿 NT$<%= number_with_delimiter(ProductHighValueCustomersController::THRESHOLD) %> 才算破萬一次，依次數排序 — 各產品可推大單的客人</p>
     </div>
     <%= form_tag product_high_value_customers_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+      <%= hidden_field_tag :series, @series_filter %>
       <input type="date" name="start_date" value="<%= @start_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
       <span class="text-muted small">至</span>
       <input type="date" name="end_date" value="<%= @end_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
       <button type="submit" class="btn btn-sm btn-primary">查詢</button>
       <% if params[:start_date].present? %>
-        <%= link_to "回今年", product_high_value_customers_path, class: "btn btn-sm btn-outline-secondary" %>
+        <%= link_to "回今年", product_high_value_customers_path(series: @series_filter), class: "btn btn-sm btn-outline-secondary" %>
       <% end %>
     <% end %>
   </div>
+</div>
+
+<%# 產品切換：一眼比較各產品破萬人數，點選只看單一產品 %>
+<div class="d-flex flex-wrap mb-3" style="gap:6px;">
+  <%= link_to product_high_value_customers_path(start_date: params[:start_date], end_date: params[:end_date]),
+        class: "btn btn-sm #{@series_filter.nil? ? 'btn-dark' : 'btn-outline-secondary'}" do %>
+    全部產品
+  <% end %>
+  <% @product_summary.each do |p| %>
+    <%= link_to product_high_value_customers_path(series: p[:series], start_date: params[:start_date], end_date: params[:end_date]),
+          class: "btn btn-sm #{@series_filter == p[:series] ? 'btn-dark' : 'btn-outline-secondary'}" do %>
+      <%= p[:series] %>
+      <span class="badge <%= @series_filter == p[:series] ? 'bg-light text-dark' : 'bg-secondary' %>" style="font-size:0.7rem;"><%= p[:count] %></span>
+    <% end %>
+  <% end %>
 </div>
 
 <% @groups.each do |group| %>

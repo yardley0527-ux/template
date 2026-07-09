@@ -13,7 +13,10 @@ class ProductHighValueCustomersController < ApplicationController
     @end_date   = parse_date(params[:end_date])   || Date.current
     @end_date   = @start_date if @end_date < @start_date
 
-    @groups = build_groups
+    all_groups = build_groups
+    @product_summary = all_groups.map { |g| { series: g[:series], count: g[:rows].size } }
+    @series_filter   = all_groups.any? { |g| g[:series] == params[:series] } ? params[:series] : nil
+    @groups = @series_filter ? all_groups.select { |g| g[:series] == @series_filter } : all_groups
   end
 
   private
