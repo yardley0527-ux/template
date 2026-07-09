@@ -45,42 +45,48 @@ end %>
 
 <% if @tab == 'new' %>
   <div class="d-flex flex-wrap mb-3" style="gap:10px;">
-    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-      <i class="fal fa-user-plus" style="color:#6c757d; font-size:1.1rem;"></i>
+    <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #8f6340; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:160px;">
+      <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#f4ece2; flex-shrink:0;">
+        <i class="fal fa-user-plus" style="color:#8f6340; font-size:1rem;"></i>
+      </div>
       <div>
         <div class="text-muted" style="font-size:0.75rem;">新客</div>
-        <div class="fw-bold" style="font-size:1rem;"><%= @new_count %> 人</div>
+        <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;"><%= @new_count %> 人</div>
       </div>
     </div>
-    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+    <% health_alert = @health_missing_count > 0 %>
+    <div class="d-flex align-items-center px-3 py-2" style="background:<%= health_alert ? '#fdf1ef' : '#fff' %>; border:1px solid <%= health_alert ? '#f3cdc7' : '#e9e2d8' %>; border-left:4px solid <%= health_alert ? '#d03b3b' : '#188038' %>; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:160px;">
+      <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:<%= health_alert ? '#fbe0dc' : '#e8f4ea' %>; flex-shrink:0;">
+        <i class="fal fa-notes-medical" style="color:<%= health_alert ? '#d03b3b' : '#188038' %>; font-size:1rem;"></i>
+      </div>
       <div>
         <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
-        <div class="fw-bold" style="font-size:1rem;">
-          <span class="<%= @health_missing_count > 0 ? 'text-danger' : 'text-success' %>">
-            <%= @health_missing_count > 0 ? "#{@health_missing_count} 人未填" : "✓ 全員已填" %>
-          </span>
+        <div class="fw-bold" style="font-size:1.05rem; color:<%= health_alert ? '#d03b3b' : '#188038' %>;">
+          <%= health_alert ? "#{@health_missing_count} 人未填" : "✓ 全員已填" %>
         </div>
       </div>
     </div>
   </div>
 <% else %>
   <div class="d-flex flex-wrap mb-3" style="gap:10px;">
-    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-      <i class="fal fa-users" style="color:#6c757d; font-size:1.1rem;"></i>
+    <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #8f6340; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:160px;">
+      <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#f4ece2; flex-shrink:0;">
+        <i class="fal fa-users" style="color:#8f6340; font-size:1rem;"></i>
+      </div>
       <div>
         <div class="text-muted" style="font-size:0.75rem;">舊客</div>
-        <div class="fw-bold" style="font-size:1rem;"><%= @old_count %> 人</div>
+        <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;"><%= @old_count %> 人</div>
       </div>
     </div>
-    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-      <i class="fal fa-notes-medical" style="color:#fd7e14; font-size:1.1rem;"></i>
+    <% health_alert = @old_health_missing_count > 0 %>
+    <div class="d-flex align-items-center px-3 py-2" style="background:<%= health_alert ? '#fdf1ef' : '#fff' %>; border:1px solid <%= health_alert ? '#f3cdc7' : '#e9e2d8' %>; border-left:4px solid <%= health_alert ? '#d03b3b' : '#188038' %>; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:160px;">
+      <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:<%= health_alert ? '#fbe0dc' : '#e8f4ea' %>; flex-shrink:0;">
+        <i class="fal fa-notes-medical" style="color:<%= health_alert ? '#d03b3b' : '#188038' %>; font-size:1rem;"></i>
+      </div>
       <div>
         <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
-        <div class="fw-bold" style="font-size:1rem;">
-          <span class="<%= @old_health_missing_count > 0 ? 'text-danger' : 'text-success' %>">
-            <%= @old_health_missing_count > 0 ? "#{@old_health_missing_count} 人未填" : "✓ 全員已填" %>
-          </span>
+        <div class="fw-bold" style="font-size:1.05rem; color:<%= health_alert ? '#d03b3b' : '#188038' %>;">
+          <%= health_alert ? "#{@old_health_missing_count} 人未填" : "✓ 全員已填" %>
         </div>
       </div>
     </div>

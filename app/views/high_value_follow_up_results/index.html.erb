@@ -29,39 +29,47 @@ end %>
   </div>
 </div>
 
-<%# 成效統計 %>
+<%# 成效統計：已追蹤=灰（分母）、已回購=綠（成果）、間隔=藍（參考）、營業額=品牌棕（重點） %>
 <div class="d-flex flex-wrap mb-3" style="gap:10px;">
-  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-    <i class="fal fa-user-check" style="color:#6c757d; font-size:1.1rem;"></i>
+  <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #6c757d; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:150px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#eef0f2; flex-shrink:0;">
+      <i class="fal fa-user-check" style="color:#6c757d; font-size:1rem;"></i>
+    </div>
     <div>
       <div class="text-muted" style="font-size:0.75rem;">已追蹤</div>
-      <div class="fw-bold" style="font-size:1rem;"><%= @stats[:tracked] %> 人</div>
+      <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;"><%= @stats[:tracked] %> 人</div>
     </div>
   </div>
-  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-    <i class="fal fa-redo" style="color:#28a745; font-size:1.1rem;"></i>
+  <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #188038; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:150px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#e8f4ea; flex-shrink:0;">
+      <i class="fal fa-redo" style="color:#188038; font-size:1rem;"></i>
+    </div>
     <div>
       <div class="text-muted" style="font-size:0.75rem;">已回購</div>
-      <div class="fw-bold" style="font-size:1rem;">
+      <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;">
         <%= @stats[:repurchased] %> 人
         <% if @stats[:rate] %>
-          <span class="text-success" style="font-size:0.85rem;">（<%= @stats[:rate] %>%）</span>
+          <span style="font-size:0.85rem; color:#188038;">（<%= @stats[:rate] %>%）</span>
         <% end %>
       </div>
     </div>
   </div>
-  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-    <i class="fal fa-hourglass-half" style="color:#fd7e14; font-size:1.1rem;"></i>
+  <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #2a78d6; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:150px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#eaf1fb; flex-shrink:0;">
+      <i class="fal fa-hourglass-half" style="color:#2a78d6; font-size:1rem;"></i>
+    </div>
     <div>
       <div class="text-muted" style="font-size:0.75rem;">平均回購間隔</div>
-      <div class="fw-bold" style="font-size:1rem;"><%= @stats[:avg_days] ? "#{@stats[:avg_days]} 天" : "—" %></div>
+      <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;"><%= @stats[:avg_days] ? "#{@stats[:avg_days]} 天" : "—" %></div>
     </div>
   </div>
-  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-    <i class="fal fa-dollar-sign" style="color:#c00; font-size:1.1rem;"></i>
+  <div class="d-flex align-items-center px-3 py-2" style="background:#f9f3ea; border:1px solid #e4d3bd; border-left:4px solid #8f6340; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:170px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#f0e2cf; flex-shrink:0;">
+      <i class="fal fa-dollar-sign" style="color:#8f6340; font-size:1rem;"></i>
+    </div>
     <div>
       <div class="text-muted" style="font-size:0.75rem;">回購帶回營業額</div>
-      <div class="fw-bold" style="font-size:1rem;">NT$<%= number_with_delimiter(@stats[:revenue]) %></div>
+      <div class="fw-bold" style="font-size:1.05rem; color:#6e4a2e;">NT$<%= number_with_delimiter(@stats[:revenue]) %></div>
     </div>
   </div>
 </div>

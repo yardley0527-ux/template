@@ -28,21 +28,24 @@ end %>
 </div>
 
 <div class="d-flex flex-wrap mb-3" style="gap:10px;">
-  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-    <i class="fal fa-user-clock" style="color:#6c757d; font-size:1.1rem;"></i>
+  <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #8f6340; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:160px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#f4ece2; flex-shrink:0;">
+      <i class="fal fa-user-clock" style="color:#8f6340; font-size:1rem;"></i>
+    </div>
     <div>
       <div class="text-muted" style="font-size:0.75rem;">待追蹤</div>
-      <div class="fw-bold" style="font-size:1rem;"><%= @total_count %> 人</div>
+      <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;"><%= @total_count %> 人</div>
     </div>
   </div>
-  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#fffbe6; border:1px solid #ffe58f; gap:10px;">
-    <i class="fal fa-exclamation-circle" style="color:#d48806; font-size:1.1rem;"></i>
+  <% pending_alert = @pending_count > 0 %>
+  <div class="d-flex align-items-center px-3 py-2" style="background:<%= pending_alert ? '#fdf1ef' : '#fff' %>; border:1px solid <%= pending_alert ? '#f3cdc7' : '#e9e2d8' %>; border-left:4px solid <%= pending_alert ? '#d03b3b' : '#188038' %>; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:160px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:<%= pending_alert ? '#fbe0dc' : '#e8f4ea' %>; flex-shrink:0;">
+      <i class="fal <%= pending_alert ? 'fa-exclamation-circle' : 'fa-check-circle' %>" style="color:<%= pending_alert ? '#d03b3b' : '#188038' %>; font-size:1rem;"></i>
+    </div>
     <div>
       <div class="text-muted" style="font-size:0.75rem;">未處理（沒填備註）</div>
-      <div class="fw-bold" style="font-size:1rem;">
-        <span class="<%= @pending_count > 0 ? 'text-danger' : 'text-success' %>">
-          <%= @pending_count > 0 ? "#{@pending_count} 人" : "✓ 全部處理完" %>
-        </span>
+      <div class="fw-bold" style="font-size:1.05rem; color:<%= pending_alert ? '#d03b3b' : '#188038' %>;">
+        <%= pending_alert ? "#{@pending_count} 人" : "✓ 全部處理完" %>
       </div>
     </div>
   </div>
