@@ -33,6 +33,17 @@ class StickinessFollowUpsController < ApplicationController
     @groups = group_by_customer_type(filtered)
   end
 
+  # 已維護：只有 Admin（owner）可以編輯
+  def toggle_maintained
+    return head :forbidden unless current_user.admin?
+
+    customer = ShoplineCustomer.find(params[:customer_id])
+    profile  = customer.customer_profile || customer.build_customer_profile
+    profile.update!(stickiness_maintained: ActiveModel::Type::Boolean.new.cast(params[:value]))
+
+    head :ok
+  end
+
   def upsert_note
     customer = ShoplineCustomer.find(params[:customer_id])
     profile  = customer.customer_profile || customer.build_customer_profile

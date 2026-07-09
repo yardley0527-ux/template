@@ -85,6 +85,7 @@ end %>
         <thead style="background-color:#4a4a4a; color:white;">
           <tr>
             <th class="ps-3" style="width:110px;">姓名</th>
+            <th class="text-center" style="width:70px;">已維護</th>
             <th style="width:150px;">IG</th>
             <th style="width:80px;">卡別</th>
             <th style="width:100px;">最後購買日</th>
@@ -99,6 +100,20 @@ end %>
             <tr style="<%= r.tracked? ? '' : 'background:#fffbe6;' %>">
               <td class="ps-3 fw-semibold">
                 <%= link_to r.customer.full_name, customer_path(r.customer.id), target: "_blank", class: "text-decoration-none" %>
+              </td>
+              <td class="text-center">
+                <% if current_user.admin? %>
+                  <input type="checkbox"
+                    class="maintained-checkbox"
+                    data-customer-id="<%= r.customer.id %>"
+                    data-url="<%= toggle_stickiness_maintained_path %>"
+                    <%= r.profile.stickiness_maintained? ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#8f6340;">
+                <% elsif r.profile.stickiness_maintained? %>
+                  <span class="text-success fw-bold">✓</span>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
               </td>
               <td>
                 <% if url %>
@@ -164,7 +179,7 @@ end %>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="7" class="text-center py-5 text-muted">
+              <td colspan="8" class="text-center py-5 text-muted">
                 <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
                 此類型沒有符合條件的客人
               </td>
@@ -191,6 +206,25 @@ end %>
     td.appendChild(tip);
     setTimeout(function() { tip.remove(); }, 2000);
   }
+
+  // 已維護：checkbox 打勾即存檔（只有 Admin 看得到 checkbox，後端也會再擋一次）
+  document.querySelectorAll('.maintained-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      var td = cb.closest('td');
+      fetch(cb.dataset.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({ customer_id: cb.dataset.customerId, value: cb.checked })
+      }).then(function(r) {
+        if (r.ok) {
+          flashTip(td, cb.checked ? '✓ 已維護' : '已取消', cb.checked ? '#28a745' : '#999');
+        } else {
+          cb.checked = !cb.checked;
+          flashTip(td, '更新失敗', '#dc3545');
+        }
+      });
+    });
+  });
 
   // 追蹤備註：離開欄位即自動存檔（Enter 為換行）
   document.querySelectorAll('.stickiness-note-input').forEach(function(input) {
