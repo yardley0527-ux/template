@@ -29,6 +29,43 @@ end %>
   </div>
 </div>
 
+<%# 成效統計 %>
+<div class="d-flex flex-wrap mb-3" style="gap:10px;">
+  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+    <i class="fal fa-user-check" style="color:#6c757d; font-size:1.1rem;"></i>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">已追蹤</div>
+      <div class="fw-bold" style="font-size:1rem;"><%= @stats[:tracked] %> 人</div>
+    </div>
+  </div>
+  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+    <i class="fal fa-redo" style="color:#28a745; font-size:1.1rem;"></i>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">已回購</div>
+      <div class="fw-bold" style="font-size:1rem;">
+        <%= @stats[:repurchased] %> 人
+        <% if @stats[:rate] %>
+          <span class="text-success" style="font-size:0.85rem;">（<%= @stats[:rate] %>%）</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+    <i class="fal fa-hourglass-half" style="color:#fd7e14; font-size:1.1rem;"></i>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">平均回購間隔</div>
+      <div class="fw-bold" style="font-size:1rem;"><%= @stats[:avg_days] ? "#{@stats[:avg_days]} 天" : "—" %></div>
+    </div>
+  </div>
+  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+    <i class="fal fa-dollar-sign" style="color:#c00; font-size:1.1rem;"></i>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">回購帶回營業額</div>
+      <div class="fw-bold" style="font-size:1rem;">NT$<%= number_with_delimiter(@stats[:revenue]) %></div>
+    </div>
+  </div>
+</div>
+
 <%# 已回購／未回購 tabs %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
@@ -109,7 +146,10 @@ end %>
                 <% end %>
               </td>
               <td>
-                <div class="text-muted" style="font-size:0.8rem; white-space:pre-wrap;"><%= @notes[o.order_num] %></div>
+                <% if @notes.dig(o.order_num, :at) %>
+                  <div class="text-muted" style="font-size:0.72rem;">追蹤於 <%= @notes[o.order_num][:at].strftime('%-m/%-d') %></div>
+                <% end %>
+                <div class="text-muted" style="font-size:0.8rem; white-space:pre-wrap;"><%= @notes.dig(o.order_num, :note) %></div>
               </td>
               <td>
                 <% if reps.any? %>
@@ -117,7 +157,7 @@ end %>
                     <div style="font-size:0.8rem;">
                       <span class="text-success fw-bold">✓</span>
                       <%= r[:product_name] %>
-                      <span class="text-muted"><%= r[:date].strftime('%-m/%-d') %>・NT$<%= number_with_delimiter(r[:amount]) %>・相隔 <%= r[:days_between] %> 天</span>
+                      <span class="text-muted"><%= r[:date].strftime('%-m/%-d') %>・NT$<%= number_with_delimiter(r[:amount]) %>・追蹤後 <%= r[:days_between] %> 天</span>
                     </div>
                   <% end %>
                 <% else %>

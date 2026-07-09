@@ -10,7 +10,9 @@ class HighValueFollowUpResultsController < ApplicationController
     @end_date   = parse_date(params[:end_date]) || @start_date
     @end_date   = @start_date if @start_date && @end_date && @end_date < @start_date
 
-    @notes = OrderGiftRecord.where.not(follow_up_note: [nil, ""]).pluck(:order_number, :follow_up_note).to_h
+    @notes = OrderGiftRecord.where.not(follow_up_note: [nil, ""])
+                            .pluck(:order_number, :follow_up_note, :followed_up_at)
+                            .each_with_object({}) { |(num, note, at), h| h[num] = { note: note, at: at } }
 
     orders = @notes.empty? ? [] : build_scope.where("o.order_number IN (?)", @notes.keys).to_a
     if @start_date.present?
@@ -26,6 +28,8 @@ class HighValueFollowUpResultsController < ApplicationController
     repurchased, pending = orders.partition { |o| @repurchases_by_order[o.order_num].present? }
     @repurchased_count = repurchased.size
     @pending_count     = pending.size
+
+    @stats = build_stats(orders, repurchased)
 
     rows = @tab == 'repurchased' ? repurchased : pending
     @groups = LEVELS.map { |lvl| [lvl, rows.select { |o| o.membership_level_col == lvl }] }
@@ -53,10 +57,12 @@ class HighValueFollowUpResultsController < ApplicationController
     series_purchases.each_value { |list| list.sort_by! { |p| p[:date] } }
 
     orders.each_with_object({}) do |o, result|
+      # 回購要發生在「追蹤時間」之後才算成效（追蹤前自己回來買的不算）
+      tracked_at = @notes.dig(o.order_num, :at) || o.ord_date
       first_purchase_items = (@products_by_order[o.order_num] || []).select { |p| p[:prior_date].nil? }
       hits = first_purchase_items.filter_map do |p|
         series = product_series(p[:name])
-        rep = series_purchases[[o.email_val, series]].find { |r| r[:date] > o.ord_date && r[:order_number] != o.order_num }
+        rep = series_purchases[[o.email_val, series]].find { |r| r[:date] > tracked_at && r[:order_number] != o.order_num }
         next unless rep
 
         t = order_totals[rep[:order_number]]
@@ -64,11 +70,27 @@ class HighValueFollowUpResultsController < ApplicationController
           series:        series,
           product_name:  rep[:product_name],
           date:          rep[:date],
+          order_number:  rep[:order_number],
           amount:        (t[:max_total] || t[:sum_checkout]).to_i,
-          days_between:  (rep[:date].to_date - o.ord_date.to_date).to_i,
+          days_between:  (rep[:date].to_date - tracked_at.to_date).to_i,
         }
       end
       result[o.order_num] = hits if hits.any?
     end
+  end
+
+  def build_stats(orders, repurchased)
+    tracked = orders.size
+    days    = repurchased.map { |o| @repurchases_by_order[o.order_num].map { |r| r[:days_between] }.min }
+    revenue = repurchased.flat_map { |o| @repurchases_by_order[o.order_num] }
+                         .uniq { |r| r[:order_number] }
+                         .sum { |r| r[:amount] }
+    {
+      tracked:     tracked,
+      repurchased: repurchased.size,
+      rate:        tracked.zero? ? nil : (repurchased.size * 100.0 / tracked).round(1),
+      avg_days:    days.empty? ? nil : (days.sum.to_f / days.size).round(1),
+      revenue:     revenue,
+    }
   end
 end

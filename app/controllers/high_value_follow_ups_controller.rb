@@ -5,9 +5,11 @@ class HighValueFollowUpsController < ApplicationController
   LEVELS = HighValueOrderScoping::LEVELS
 
   def index
-    @period = params[:period].presence || 'month'
+    @status = %w[all pending done].include?(params[:status]) ? params[:status] : 'all'
     if params[:start_date].blank? && params[:end_date].blank?
-      @start_date = @end_date = Date.yesterday
+      # 預設近 7 天，員工不用每天自己調日期
+      @start_date = 6.days.ago.to_date
+      @end_date   = Date.today
     else
       @start_date = parse_date(params[:start_date])
       @end_date   = parse_date(params[:end_date]) || @start_date
@@ -23,9 +25,18 @@ class HighValueFollowUpsController < ApplicationController
       (@products_by_order[o.order_num] || []).any? { |p| p[:prior_date].nil? }
     end
 
-    @total_count = follow_up_orders.size
-    @groups = LEVELS.map { |lvl| [lvl, follow_up_orders.select { |o| o.membership_level_col == lvl }] }
-
     @gift_records = OrderGiftRecord.where(order_number: follow_up_orders.map(&:order_num)).index_by(&:order_number)
+
+    pending, done = follow_up_orders.partition { |o| @gift_records[o.order_num]&.follow_up_note.blank? }
+    @total_count   = follow_up_orders.size
+    @pending_count = pending.size
+    @done_count    = done.size
+
+    rows = case @status
+           when 'pending' then pending
+           when 'done'    then done
+           else                follow_up_orders
+           end
+    @groups = LEVELS.map { |lvl| [lvl, rows.select { |o| o.membership_level_col == lvl }] }
   end
 end

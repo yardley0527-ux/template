@@ -16,13 +16,12 @@ end %>
     </div>
     <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
       <%= form_tag high_value_follow_ups_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+        <%= hidden_field_tag :status, @status %>
         <input type="date" name="start_date" value="<%= @start_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
         <span class="text-muted small">至</span>
         <input type="date" name="end_date" value="<%= @end_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
         <button type="submit" class="btn btn-sm btn-primary">查詢</button>
-        <% if @start_date.present? %>
-          <%= link_to "清除", high_value_follow_ups_path(period: @period), class: "btn btn-sm btn-outline-secondary" %>
-        <% end %>
+        <%= link_to "清除", high_value_follow_ups_path(status: @status), class: "btn btn-sm btn-outline-secondary" %>
       <% end %>
     </div>
   </div>
@@ -36,7 +35,37 @@ end %>
       <div class="fw-bold" style="font-size:1rem;"><%= @total_count %> 人</div>
     </div>
   </div>
+  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#fffbe6; border:1px solid #ffe58f; gap:10px;">
+    <i class="fal fa-exclamation-circle" style="color:#d48806; font-size:1.1rem;"></i>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">未處理（沒填備註）</div>
+      <div class="fw-bold" style="font-size:1rem;">
+        <span class="<%= @pending_count > 0 ? 'text-danger' : 'text-success' %>">
+          <%= @pending_count > 0 ? "#{@pending_count} 人" : "✓ 全部處理完" %>
+        </span>
+      </div>
+    </div>
+  </div>
 </div>
+
+<%# 全部／未處理／已處理 篩選 %>
+<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+  <li class="nav-item">
+    <%= link_to "全部（#{@total_count}）",
+          high_value_follow_ups_path(status: 'all', start_date: params[:start_date], end_date: params[:end_date]),
+          class: "nav-link #{@status == 'all' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "未處理（#{@pending_count}）",
+          high_value_follow_ups_path(status: 'pending', start_date: params[:start_date], end_date: params[:end_date]),
+          class: "nav-link #{@status == 'pending' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "已處理（#{@done_count}）",
+          high_value_follow_ups_path(status: 'done', start_date: params[:start_date], end_date: params[:end_date]),
+          class: "nav-link #{@status == 'done' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+</ul>
 
 <%# 依卡別分成多組，全部往下疊在同一頁 %>
 <% @groups.each do |label, rows| %>
@@ -62,7 +91,7 @@ end %>
           <% rows.each do |o| %>
             <% url = ig_link_url(o.ig_account) %>
             <% gift = @gift_records[o.order_num] %>
-            <tr>
+            <tr style="<%= gift&.follow_up_note.blank? ? 'background:#fffbe6;' : '' %>">
               <td class="ps-3 text-nowrap text-muted"><%= o.ord_date&.strftime("%-m/%-d") %></td>
               <td class="fw-semibold">
                 <% if o.shopline_customer_id %>
@@ -166,6 +195,7 @@ end %>
         if (r.ok) {
           saved = input.value;
           input.style.borderColor = input.value ? '#28a745' : '#ccc';
+          input.closest('tr').style.background = input.value ? '' : '#fffbe6';
           flashTip(td, input.value ? '✓ 已存檔' : '已清除', input.value ? '#28a745' : '#999');
         } else {
           flashTip(td, '存檔失敗，請再試一次', '#dc3545');
