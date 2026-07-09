@@ -27,6 +27,16 @@ class ProductHighValueCustomersController < ApplicationController
 
     @series_filter = all_groups.any? { |g| g[:series] == params[:series] } ? params[:series] : nil
     @groups = @series_filter ? all_groups.select { |g| g[:series] == @series_filter } : []
+
+    # 產品內頁：依破萬次數分 tab
+    if @series_filter && @groups.any?
+      rows = @groups.first[:rows]
+      @count_tabs = rows.group_by { |r| r[:count] }
+                        .map { |count, rs| { count: count, size: rs.size } }
+                        .sort_by { |t| -t[:count] }
+      @times_filter = @count_tabs.any? { |t| t[:count] == params[:times].to_i } ? params[:times].to_i : nil
+      @groups = [{ series: @series_filter, rows: rows.select { |r| r[:count] == @times_filter } }] if @times_filter
+    end
   end
 
   private
@@ -57,16 +67,17 @@ class ProductHighValueCustomersController < ApplicationController
       entry[:date] = order_date if entry[:date].nil? || order_date > entry[:date]
     end
 
-    # 破萬的 (訂單, 客人, 系列) → 依 (系列, 客人) 統計次數
-    stats = Hash.new { |h, k| h[k] = { count: 0, total: 0, last_date: nil } }
+    # 破萬的 (訂單, 客人, 系列) → 依 (系列, 客人) 統計次數，保留每筆紀錄供點開明細
+    stats = Hash.new { |h, k| h[k] = { count: 0, total: 0, orders: [] } }
     per_order_series.each do |(_order_num, email, series), entry|
       next if entry[:amount] < THRESHOLD
 
       s = stats[[series, email]]
       s[:count] += 1
       s[:total] += entry[:amount].round
-      s[:last_date] = entry[:date] if s[:last_date].nil? || entry[:date] > s[:last_date]
+      s[:orders] << { date: entry[:date], amount: entry[:amount].round }
     end
+    stats.each_value { |s| s[:orders].sort_by! { |o| o[:date] }.reverse! }
     return [] if stats.empty?
 
     customers = customer_snapshots(stats.keys.map(&:last).uniq)
@@ -86,7 +97,7 @@ class ProductHighValueCustomersController < ApplicationController
           count: s[:count],
           total: s[:total],
           avg_order: avg_order,
-          last_date: s[:last_date]
+          orders: s[:orders]
         }
       end
       rows.sort_by! { |r| [-r[:count], -r[:total], LEVEL_RANK.fetch(r[:membership_level], 6)] }

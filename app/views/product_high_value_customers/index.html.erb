@@ -28,11 +28,25 @@ end %>
 </div>
 
 <% if @series_filter %>
-  <%# 產品內頁：只留返回總覽 %>
+  <%# 產品內頁：返回總覽 + 依破萬次數分 tab %>
   <div class="mb-3">
     <%= link_to "← 回產品總覽", product_high_value_customers_path(start_date: params[:start_date], end_date: params[:end_date]),
           class: "btn btn-sm btn-dark" %>
   </div>
+  <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+    <li class="nav-item">
+      <%= link_to "全部（#{@count_tabs.sum { |t| t[:size] }}）",
+            product_high_value_customers_path(series: @series_filter, start_date: params[:start_date], end_date: params[:end_date]),
+            class: "nav-link #{@times_filter.nil? ? 'active fw-bold' : 'text-muted'}" %>
+    </li>
+    <% @count_tabs.each do |t| %>
+      <li class="nav-item">
+        <%= link_to "#{t[:count]} 次（#{t[:size]}）",
+              product_high_value_customers_path(series: @series_filter, times: t[:count], start_date: params[:start_date], end_date: params[:end_date]),
+              class: "nav-link #{@times_filter == t[:count] ? 'active fw-bold' : 'text-muted'}" %>
+      </li>
+    <% end %>
+  </ul>
 <% else %>
   <%# 產品總覽面板：依總破萬次數排序，點產品看客人名單 %>
   <div class="card border-0 shadow-sm mb-4">
@@ -91,13 +105,15 @@ end %>
             <th style="width:130px;">姓名</th>
             <th style="width:160px;">IG</th>
             <th style="width:90px;">卡別</th>
-            <th class="text-end" style="width:110px;">破萬次數</th>
+            <th class="text-end" style="width:110px;">
+              破萬次數
+              <div class="fw-normal" style="font-size:0.68rem; opacity:0.75;">點擊看消費紀錄</div>
+            </th>
             <th class="text-end" style="width:140px;">破萬合計金額</th>
             <th class="text-end" style="width:130px;">
               平均客單價
               <div class="fw-normal" style="font-size:0.68rem; opacity:0.75;">歷史累計消費總額 ÷ 總訂單數</div>
             </th>
-            <th style="width:110px;">最近一次</th>
             <th></th>
           </tr>
         </thead>
@@ -135,11 +151,26 @@ end %>
                                       end %>
                 <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= r[:membership_level].presence || "—" %></span>
               </td>
-              <td class="text-end fw-bold" style="font-size:1rem; color:#c0392b;"><%= r[:count] %> 次</td>
+              <td class="text-end">
+                <a href="#" class="fw-bold text-decoration-none" style="font-size:1rem; color:#c0392b;"
+                   onclick="document.getElementById('phv-detail-<%= i %>').classList.toggle('d-none'); return false;">
+                  <%= r[:count] %> 次 <i class="fal fa-chevron-down" style="font-size:0.7rem;"></i>
+                </a>
+              </td>
               <td class="text-end fw-bold" style="color:#6e4a2e;">NT$<%= number_with_delimiter(r[:total]) %></td>
               <td class="text-end"><%= r[:avg_order] ? "NT$#{number_with_delimiter(r[:avg_order])}" : "—" %></td>
-              <td class="text-nowrap text-muted"><%= r[:last_date]&.strftime('%Y/%m/%d') %></td>
               <td></td>
+            </tr>
+            <tr id="phv-detail-<%= i %>" class="d-none">
+              <td colspan="8" style="background:#faf7f2; padding:8px 16px 8px 60px;">
+                <div class="text-muted mb-1" style="font-size:0.75rem;">破萬消費紀錄（<%= group[:series] %>）</div>
+                <% r[:orders].each do |o| %>
+                  <div style="font-size:0.82rem;">
+                    <span class="text-muted"><%= o[:date].strftime('%Y/%m/%d') %></span>
+                    ・<span class="fw-bold" style="color:#6e4a2e;">NT$<%= number_with_delimiter(o[:amount]) %></span>
+                  </div>
+                <% end %>
+              </td>
             </tr>
           <% end %>
         </tbody>
