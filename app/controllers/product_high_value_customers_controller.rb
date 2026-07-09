@@ -28,14 +28,14 @@ class ProductHighValueCustomersController < ApplicationController
     @series_filter = all_groups.any? { |g| g[:series] == params[:series] } ? params[:series] : nil
     @groups = @series_filter ? all_groups.select { |g| g[:series] == @series_filter } : []
 
-    # 產品內頁：依破萬次數分 tab
+    # 產品內頁：依破萬次數分 tab，預設顯示次數最高的那個 tab
     if @series_filter && @groups.any?
       rows = @groups.first[:rows]
       @count_tabs = rows.group_by { |r| r[:count] }
                         .map { |count, rs| { count: count, size: rs.size } }
                         .sort_by { |t| -t[:count] }
-      @times_filter = @count_tabs.any? { |t| t[:count] == params[:times].to_i } ? params[:times].to_i : nil
-      @groups = [{ series: @series_filter, rows: rows.select { |r| r[:count] == @times_filter } }] if @times_filter
+      @times_filter = @count_tabs.any? { |t| t[:count] == params[:times].to_i } ? params[:times].to_i : @count_tabs.first[:count]
+      @groups = [{ series: @series_filter, rows: rows.select { |r| r[:count] == @times_filter } }]
     end
   end
 

@@ -34,11 +34,6 @@ end %>
           class: "btn btn-sm btn-dark" %>
   </div>
   <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
-    <li class="nav-item">
-      <%= link_to "全部（#{@count_tabs.sum { |t| t[:size] }}）",
-            product_high_value_customers_path(series: @series_filter, start_date: params[:start_date], end_date: params[:end_date]),
-            class: "nav-link #{@times_filter.nil? ? 'active fw-bold' : 'text-muted'}" %>
-    </li>
     <% @count_tabs.each do |t| %>
       <li class="nav-item">
         <%= link_to "#{t[:count]} 次（#{t[:size]}）",
