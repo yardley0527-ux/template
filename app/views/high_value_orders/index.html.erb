@@ -60,7 +60,7 @@ end %>
         <i class="fal fa-notes-medical" style="color:<%= health_alert ? '#d03b3b' : '#188038' %>; font-size:1rem;"></i>
       </div>
       <div>
-        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="text-muted" style="font-size:0.75rem;">健康資料</div>
         <div class="fw-bold" style="font-size:1.05rem; color:<%= health_alert ? '#d03b3b' : '#188038' %>;">
           <%= health_alert ? "#{@health_missing_count} 人未填" : "✓ 全員已填" %>
         </div>
@@ -84,7 +84,7 @@ end %>
         <i class="fal fa-notes-medical" style="color:<%= health_alert ? '#d03b3b' : '#188038' %>; font-size:1rem;"></i>
       </div>
       <div>
-        <div class="text-muted" style="font-size:0.75rem;">未填健康資料</div>
+        <div class="text-muted" style="font-size:0.75rem;">健康資料</div>
         <div class="fw-bold" style="font-size:1.05rem; color:<%= health_alert ? '#d03b3b' : '#188038' %>;">
           <%= health_alert ? "#{@old_health_missing_count} 人未填" : "✓ 全員已填" %>
         </div>
