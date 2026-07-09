@@ -110,6 +110,9 @@ Rails.application.routes.draw do
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
   get '/metabolism_qingxian_customers',        to: 'metabolism_qingxian_customers#index',  as: :metabolism_qingxian_customers
   get '/metabolism_qingxian_customers/export', to: 'metabolism_qingxian_customers#export', as: :export_metabolism_qingxian_customers
+  get '/message_lists',            to: 'message_lists#index',  as: :message_lists
+  get '/message_lists/:id',        to: 'message_lists#show',   as: :message_list
+  get '/message_lists/:id/export', to: 'message_lists#export', as: :export_message_list
   get '/inactive_members',           to: 'inactive_members#index',     as: :inactive_members
   get  '/duplicate_customers',         to: 'duplicate_customers#index', as: :duplicate_customers
   post '/duplicate_customers/merge',   to: 'duplicate_customers#merge', as: :merge_duplicate_customers

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_09_060000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_09_080000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -426,6 +426,28 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_09_060000) do
     t.index ["direction"], name: "index_membership_level_changes_on_direction"
     t.index ["import_run_id"], name: "index_membership_level_changes_on_import_run_id"
     t.index ["shopline_id"], name: "index_membership_level_changes_on_shopline_id"
+  end
+
+  create_table "message_list_recipients", force: :cascade do |t|
+    t.bigint "message_list_id", null: false
+    t.string "email", null: false
+    t.string "full_name"
+    t.string "instagram_account"
+    t.string "membership_level"
+    t.bigint "shopline_customer_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_list_id", "email"], name: "index_message_list_recipients_on_message_list_id_and_email", unique: true
+    t.index ["message_list_id"], name: "index_message_list_recipients_on_message_list_id"
+  end
+
+  create_table "message_lists", force: :cascade do |t|
+    t.string "name", null: false
+    t.date "sent_on", null: false
+    t.string "target_product", null: false
+    t.text "source_note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "message_template_blocks", force: :cascade do |t|
@@ -934,6 +956,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_09_060000) do
   add_foreign_key "livestream_images", "livestreams"
   add_foreign_key "livestream_products", "livestreams"
   add_foreign_key "membership_level_changes", "import_runs"
+  add_foreign_key "message_list_recipients", "message_lists"
   add_foreign_key "message_template_blocks", "message_templates"
   add_foreign_key "message_template_images", "message_template_blocks"
   add_foreign_key "page_permissions", "roles"

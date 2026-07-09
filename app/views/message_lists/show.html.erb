@@ -1,0 +1,159 @@
+<%# app/views/message_lists/show.html.erb %>
+<% content_for :page_title, @list.name %>
+
+<% def ig_link_url(account)
+  return nil if account.blank?
+  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+end %>
+
+<%# Header %>
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
+    <div>
+      <div class="text-muted small mb-1">
+        <%= link_to "訊息名單追蹤", message_lists_path, class: "text-decoration-none" %> ／
+        <%= @list.sent_on.strftime("%Y/%-m/%-d") %> 傳送・目標商品「<%= @list.target_product %>」
+      </div>
+      <h4 class="fw-bold mb-0"><%= @list.name %></h4>
+      <% if @list.source_note.present? %>
+        <p class="text-muted small mb-0"><%= @list.source_note %></p>
+      <% end %>
+    </div>
+    <%= link_to export_message_list_path(@list), class: "btn btn-sm btn-outline-secondary" do %>
+      <i class="fal fa-download me-1"></i>匯出 CSV
+    <% end %>
+  </div>
+</div>
+
+<%# 成效統計：名單人數=灰（分母）、已回購=綠（成果）、間隔=藍（參考）、營業額=品牌棕（重點） %>
+<div class="d-flex flex-wrap mb-3" style="gap:10px;">
+  <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #6c757d; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:150px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#eef0f2; flex-shrink:0;">
+      <i class="fal fa-users" style="color:#6c757d; font-size:1rem;"></i>
+    </div>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">名單人數</div>
+      <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;"><%= @stats[:total] %> 人</div>
+    </div>
+  </div>
+  <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #188038; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:150px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#e8f4ea; flex-shrink:0;">
+      <i class="fal fa-redo" style="color:#188038; font-size:1rem;"></i>
+    </div>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">已回購</div>
+      <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;">
+        <%= @stats[:repurchased] %> 人
+        <% if @stats[:rate] %>
+          <span style="font-size:0.85rem; color:#188038;">（<%= @stats[:rate] %>%）</span>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #2a78d6; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:150px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#eaf1fb; flex-shrink:0;">
+      <i class="fal fa-hourglass-half" style="color:#2a78d6; font-size:1rem;"></i>
+    </div>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">平均回購間隔</div>
+      <div class="fw-bold" style="font-size:1.05rem; color:#2f2a24;"><%= @stats[:avg_days] ? "#{@stats[:avg_days]} 天" : "—" %></div>
+    </div>
+  </div>
+  <div class="d-flex align-items-center px-3 py-2" style="background:#f9f3ea; border:1px solid #e4d3bd; border-left:4px solid #8f6340; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:170px;">
+    <div class="d-flex align-items-center justify-content-center" style="width:34px; height:34px; border-radius:8px; background:#f0e2cf; flex-shrink:0;">
+      <i class="fal fa-dollar-sign" style="color:#8f6340; font-size:1rem;"></i>
+    </div>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">回購帶回營業額</div>
+      <div class="fw-bold" style="font-size:1.05rem; color:#6e4a2e;">NT$<%= number_with_delimiter(@stats[:revenue]) %></div>
+    </div>
+  </div>
+</div>
+
+<%# 已回購／未回購 tabs %>
+<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+  <li class="nav-item">
+    <%= link_to "已回購（#{@repurchased_rows.size}）",
+          message_list_path(@list, tab: 'repurchased'),
+          class: "nav-link #{@tab == 'repurchased' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "未回購（#{@pending_rows.size}）",
+          message_list_path(@list, tab: 'pending'),
+          class: "nav-link #{@tab == 'pending' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+</ul>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0" style="font-size:0.86rem;">
+      <thead style="background-color:#4a4a4a; color:white;">
+        <tr>
+          <th class="ps-3" style="width:130px;">姓名</th>
+          <th style="width:160px;">IG</th>
+          <th style="width:90px;">卡別</th>
+          <th>回購狀態</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rows.each do |r| %>
+          <% url = ig_link_url(r.instagram_account) %>
+          <% rep = @repurchases[r.email] %>
+          <tr>
+            <td class="ps-3 fw-semibold">
+              <% if r.shopline_customer_id %>
+                <%= link_to r.full_name.presence || r.email, customer_path(r.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
+              <% else %>
+                <%= r.full_name.presence || r.email %>
+              <% end %>
+            </td>
+            <td>
+              <% if url %>
+                <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                  <i class="fal fa-at text-danger"></i>
+                  <span style="font-size:0.8rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                    <%= r.instagram_account&.sub(/^@/, '') %>
+                  </span>
+                <% end %>
+              <% else %>
+                <span class="text-muted small">—</span>
+              <% end %>
+            </td>
+            <td>
+              <% badge_bg, badge_fg = case r.membership_level
+                                    when '黑卡' then ['#333', '#fff']
+                                    when '金卡' then ['#b8860b', '#fff']
+                                    when '銀卡' then ['#6c757d', '#fff']
+                                    when '白卡' then ['#dee2e6', '#333']
+                                    else             ['#adb5bd', '#333']
+                                    end %>
+              <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= r.membership_level.presence || "—" %></span>
+            </td>
+            <td>
+              <% if rep %>
+                <div style="font-size:0.8rem;">
+                  <span class="text-success fw-bold">✓</span>
+                  <%= rep["product_names"] %>
+                  <span class="text-muted">
+                    <%= rep["order_date"].to_date.strftime('%-m/%-d') %>・NT$<%= number_with_delimiter(rep["order_total"].to_i) %>・傳送後 <%= (rep["order_date"].to_date - @list.sent_on).to_i %> 天
+                  </span>
+                </div>
+              <% else %>
+                <span class="badge bg-light text-muted border" style="font-size:0.75rem;">尚未回購</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @rows.empty? %>
+          <tr>
+            <td colspan="4" class="text-center py-5 text-muted">
+              <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+              <%= @tab == 'repurchased' ? "這批名單還沒有人回購目標商品" : "這批名單沒有未回購的客人" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
