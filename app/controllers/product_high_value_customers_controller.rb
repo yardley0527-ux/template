@@ -14,9 +14,19 @@ class ProductHighValueCustomersController < ApplicationController
     @end_date   = @start_date if @end_date < @start_date
 
     all_groups = build_groups
-    @product_summary = all_groups.map { |g| { series: g[:series], count: g[:rows].size } }
-    @series_filter   = all_groups.any? { |g| g[:series] == params[:series] } ? params[:series] : nil
-    @groups = @series_filter ? all_groups.select { |g| g[:series] == @series_filter } : all_groups
+    # 各產品總覽：依總破萬次數排序，進頁面先看哪個產品破萬次數高
+    @product_summary = all_groups.map do |g|
+      {
+        series: g[:series],
+        customers: g[:rows].size,
+        repeat_customers: g[:rows].count { |r| r[:count] >= 2 },
+        total_count: g[:rows].sum { |r| r[:count] },
+        total_amount: g[:rows].sum { |r| r[:total] }
+      }
+    end.sort_by { |p| [-p[:total_count], -p[:total_amount]] }
+
+    @series_filter = all_groups.any? { |g| g[:series] == params[:series] } ? params[:series] : nil
+    @groups = @series_filter ? all_groups.select { |g| g[:series] == @series_filter } : []
   end
 
   private
