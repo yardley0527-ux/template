@@ -28,16 +28,10 @@ end %>
 </div>
 
 <% if @series_filter %>
-  <%# 產品內頁：切換列 + 返回總覽 %>
-  <div class="d-flex flex-wrap mb-3" style="gap:6px;">
+  <%# 產品內頁：只留返回總覽 %>
+  <div class="mb-3">
     <%= link_to "← 回產品總覽", product_high_value_customers_path(start_date: params[:start_date], end_date: params[:end_date]),
           class: "btn btn-sm btn-dark" %>
-    <% @product_summary.each do |p| %>
-      <%= link_to product_high_value_customers_path(series: p[:series], start_date: params[:start_date], end_date: params[:end_date]),
-            class: "btn btn-sm #{@series_filter == p[:series] ? 'btn-secondary' : 'btn-outline-secondary'}" do %>
-        <%= p[:series] %>（<%= p[:customers] %>）
-      <% end %>
-    <% end %>
   </div>
 <% else %>
   <%# 產品總覽面板：依總破萬次數排序，點產品看客人名單 %>
