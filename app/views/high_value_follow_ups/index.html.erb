@@ -1,0 +1,181 @@
+<%# app/views/high_value_follow_ups/index.html.erb %>
+<% content_for :page_title, "待追蹤名單" %>
+
+<% def ig_link_url(account)
+  return nil if account.blank?
+  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+end %>
+
+<%# Header %>
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
+    <div>
+      <h4 class="fw-bold mb-0">舊客首購產品追蹤</h4>
+      <p class="text-muted small mb-0">破8000舊客訂單中含首次購買產品，依卡別分群</p>
+    </div>
+    <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+      <%= form_tag high_value_follow_ups_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+        <input type="date" name="start_date" value="<%= @start_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <span class="text-muted small">至</span>
+        <input type="date" name="end_date" value="<%= @end_date&.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+        <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+        <% if @start_date.present? %>
+          <%= link_to "清除", high_value_follow_ups_path(period: @period), class: "btn btn-sm btn-outline-secondary" %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="d-flex flex-wrap mb-3" style="gap:10px;">
+  <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+    <i class="fal fa-user-clock" style="color:#6c757d; font-size:1.1rem;"></i>
+    <div>
+      <div class="text-muted" style="font-size:0.75rem;">待追蹤</div>
+      <div class="fw-bold" style="font-size:1rem;"><%= @total_count %> 人</div>
+    </div>
+  </div>
+</div>
+
+<%# 依卡別分成多組，全部往下疊在同一頁 %>
+<% @groups.each do |label, rows| %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
+      <span class="fw-bold"><%= label %></span>
+      <span class="badge bg-secondary"><%= rows.size %></span>
+    </div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table align-middle mb-0" style="font-size:0.86rem;">
+        <thead style="background-color:#4a4a4a; color:white;">
+          <tr>
+            <th class="ps-3" style="width:70px;">日期</th>
+            <th>姓名</th>
+            <th style="width:160px;">IG</th>
+            <th style="width:70px;">卡別</th>
+            <th class="text-end" style="width:110px;">消費金額</th>
+            <th>是否購買過同產品</th>
+            <th style="width:260px;">追蹤備註</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.each do |o| %>
+            <% url = ig_link_url(o.ig_account) %>
+            <% gift = @gift_records[o.order_num] %>
+            <tr>
+              <td class="ps-3 text-nowrap text-muted"><%= o.ord_date&.strftime("%-m/%-d") %></td>
+              <td class="fw-semibold">
+                <% if o.shopline_customer_id %>
+                  <%= link_to o.cust_name, customer_path(o.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
+                <% else %>
+                  <%= o.cust_name %>
+                <% end %>
+              </td>
+              <td>
+                <% if url %>
+                  <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                    <i class="fal fa-at text-danger"></i>
+                    <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                      <%= o.ig_account&.sub(/^@/, '') %>
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td>
+                <% badge_bg, badge_fg = case o.membership_level_col
+                                      when '黑卡' then ['#333', '#fff']
+                                      when '金卡' then ['#b8860b', '#fff']
+                                      when '銀卡' then ['#6c757d', '#fff']
+                                      when '白卡' then ['#dee2e6', '#333']
+                                      else             ['#adb5bd', '#333']
+                                      end %>
+                <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= o.membership_level_col %></span>
+              </td>
+              <td class="text-end fw-bold text-danger">
+                NT$<%= number_with_delimiter(o.order_total.to_i) %>
+              </td>
+              <td style="max-width:360px;">
+                <% (@products_by_order[o.order_num] || []).each do |p| %>
+                  <div style="font-size:0.78rem;">
+                    <% if p[:prior_date] %>
+                      <span class="text-success">✓</span> <%= p[:name] %>（<%= p[:prior_date].strftime('%Y/%m/%d') %>）
+                    <% else %>
+                      <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
+                    <% end %>
+                  </div>
+                <% end %>
+              </td>
+              <td>
+                <input type="text"
+                  class="form-control form-control-sm follow-up-note-input"
+                  data-order="<%= o.order_num %>"
+                  data-url="<%= upsert_order_gift_record_path %>"
+                  value="<%= gift&.follow_up_note %>"
+                  placeholder="輸入備註後自動存檔"
+                  style="font-size:0.8rem;">
+              </td>
+            </tr>
+          <% end %>
+          <% if rows.empty? %>
+            <tr>
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                此期間無含首次購買產品的舊客訂單
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  function upsert(orderNum, url, data) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ order_number: orderNum, order_gift_record: data })
+    });
+  }
+
+  function flashTip(td, text, color) {
+    var old = td.querySelector('.cb-saved-tip');
+    if (old) old.remove();
+    var tip = document.createElement('div');
+    tip.className = 'cb-saved-tip';
+    tip.textContent = text;
+    tip.style.cssText = 'font-size:0.72rem; color:' + color + '; margin-top:2px; font-weight:600;';
+    td.appendChild(tip);
+    setTimeout(function() { tip.remove(); }, 2000);
+  }
+
+  // 追蹤備註：離開欄位或按 Enter 即自動存檔
+  document.querySelectorAll('.follow-up-note-input').forEach(function(input) {
+    var saved = input.value;
+    function save() {
+      if (input.value === saved) return;
+      upsert(input.dataset.order, input.dataset.url, { follow_up_note: input.value }).then(function(r) {
+        var td = input.closest('td');
+        if (r.ok) {
+          saved = input.value;
+          input.style.borderColor = input.value ? '#28a745' : '#ccc';
+          flashTip(td, input.value ? '✓ 已存檔' : '已清除', input.value ? '#28a745' : '#999');
+        } else {
+          flashTip(td, '存檔失敗，請再試一次', '#dc3545');
+        }
+      });
+    }
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+    if (input.value) input.style.borderColor = '#28a745';
+  });
+})();
+</script>
+<% end %>
