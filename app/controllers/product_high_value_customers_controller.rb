@@ -65,6 +65,8 @@ class ProductHighValueCustomersController < ApplicationController
     grouped.map do |series, entries|
       rows = entries.map do |(_series, email), s|
         c = customers[email] || {}
+        # 客人整體平均客單價：累計消費 / 總訂單數（shopline_customers 匯入欄位）
+        avg_order = c["order_count"].to_i.positive? ? (c["total_amount"].to_f / c["order_count"].to_i).round : nil
         {
           email: email,
           full_name: c["full_name"],
@@ -73,6 +75,7 @@ class ProductHighValueCustomersController < ApplicationController
           shopline_customer_id: c["id"],
           count: s[:count],
           total: s[:total],
+          avg_order: avg_order,
           last_date: s[:last_date]
         }
       end
@@ -87,7 +90,8 @@ class ProductHighValueCustomersController < ApplicationController
     quoted = emails.map { |e| ActiveRecord::Base.connection.quote(e) }.join(", ")
     sql = <<~SQL
       WITH sc AS (
-        SELECT DISTINCT ON (LOWER(TRIM(email))) LOWER(TRIM(email)) AS email_key, id, full_name, membership_level
+        SELECT DISTINCT ON (LOWER(TRIM(email))) LOWER(TRIM(email)) AS email_key, id, full_name, membership_level,
+               total_amount, order_count
         FROM shopline_customers
         WHERE LOWER(TRIM(email)) IN (#{quoted})
         ORDER BY LOWER(TRIM(email)), id
@@ -99,7 +103,7 @@ class ProductHighValueCustomersController < ApplicationController
           AND instagram_account IS NOT NULL AND instagram_account <> ''
         ORDER BY LOWER(TRIM(email)), order_date DESC
       )
-      SELECT sc.email_key, sc.id, sc.full_name, sc.membership_level, ig.instagram_account
+      SELECT sc.email_key, sc.id, sc.full_name, sc.membership_level, sc.total_amount, sc.order_count, ig.instagram_account
       FROM sc LEFT JOIN ig ON ig.email_key = sc.email_key
     SQL
 
