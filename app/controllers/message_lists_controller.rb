@@ -59,8 +59,13 @@ class MessageListsController < ApplicationController
   end
 
   # 每位名單成員在傳送日（含當天）之後，最早一張含目標商品的已付款訂單。
+  # 目標商品可用「、」或「,」分隔多個關鍵字，符合任一個即算。
   # 金額為整張訂單總額（同破8000追蹤成效的口徑：MAX total_amount，缺失才 SUM checkout_amount）。
   def repurchases_for(list)
+    product_match = list.target_product.split(/[、,]/).filter_map { |k| k.strip.presence }
+                        .map { |k| "o.product_name ILIKE #{connection.quote("%#{k}%")}" }
+                        .join(" OR ")
+
     sql = <<~SQL
       WITH hits AS (
         SELECT r.email AS email_key,
@@ -74,7 +79,7 @@ class MessageListsController < ApplicationController
         WHERE o.payment_status = '已付款'
           AND o.order_number IS NOT NULL AND o.order_number <> ''
           AND o.order_date >= #{connection.quote(list.sent_on)}
-          AND o.product_name ILIKE #{connection.quote("%#{list.target_product}%")}
+          AND (#{product_match})
         GROUP BY r.email, o.order_number
       ),
       first_hit AS (
