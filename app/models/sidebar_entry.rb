@@ -35,6 +35,7 @@ class SidebarEntry
               { href: high_value_follow_ups_path,            title: "待追蹤名單", icon: "fa-user-clock" },
               { href: high_value_follow_up_results_path,     title: "追蹤成效",   icon: "fa-clipboard-check" },
             ]},
+            { href: product_high_value_customers_path,       title: "產品高破萬次數客人", icon: "fa-medal" },
             { href: stickiness_follow_ups_path,       title: "黏著度分析",     icon: "fa-magnet", children: [
               { href: stickiness_results_path, title: "黏著度成效", icon: "fa-chart-line" },
             ]},

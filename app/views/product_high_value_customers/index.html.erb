@@ -1,0 +1,102 @@
+<%# app/views/product_high_value_customers/index.html.erb %>
+<% content_for :page_title, "產品高破萬次數客人" %>
+
+<% def ig_link_url(account)
+  return nil if account.blank?
+  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+end %>
+
+<%# Header %>
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
+    <div>
+      <h4 class="fw-bold mb-0">產品高破萬次數客人</h4>
+      <p class="text-muted small mb-0">單筆訂單中該產品買滿 NT$<%= number_with_delimiter(ProductHighValueCustomersController::THRESHOLD) %> 才算破萬一次，依次數排序 — 各產品可推大單的客人</p>
+    </div>
+    <%= form_tag product_high_value_customers_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
+      <input type="date" name="start_date" value="<%= @start_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+      <span class="text-muted small">至</span>
+      <input type="date" name="end_date" value="<%= @end_date.strftime('%Y-%m-%d') %>" class="form-control form-control-sm">
+      <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+      <% if params[:start_date].present? %>
+        <%= link_to "回今年", product_high_value_customers_path, class: "btn btn-sm btn-outline-secondary" %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<% @groups.each do |group| %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
+      <span class="fw-bold"><%= group[:series] %></span>
+      <span class="badge bg-secondary"><%= group[:rows].size %> 人</span>
+    </div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table align-middle mb-0" style="font-size:0.86rem;">
+        <thead style="background-color:#4a4a4a; color:white;">
+          <tr>
+            <th class="ps-3" style="width:50px;">#</th>
+            <th style="width:130px;">姓名</th>
+            <th style="width:160px;">IG</th>
+            <th style="width:90px;">卡別</th>
+            <th class="text-end" style="width:110px;">破萬次數</th>
+            <th class="text-end" style="width:140px;">破萬合計金額</th>
+            <th style="width:110px;">最近一次</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% group[:rows].each_with_index do |r, i| %>
+            <% url = ig_link_url(r[:instagram_account]) %>
+            <tr>
+              <td class="ps-3 text-muted"><%= i + 1 %></td>
+              <td class="fw-semibold">
+                <% if r[:shopline_customer_id] %>
+                  <%= link_to r[:full_name].presence || r[:email], customer_path(r[:shopline_customer_id]), target: "_blank", class: "text-decoration-none" %>
+                <% else %>
+                  <%= r[:full_name].presence || r[:email] %>
+                <% end %>
+              </td>
+              <td>
+                <% if url %>
+                  <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                    <i class="fal fa-at text-danger"></i>
+                    <span style="font-size:0.8rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                      <%= r[:instagram_account]&.sub(/^@/, '') %>
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td>
+                <% badge_bg, badge_fg = case r[:membership_level]
+                                      when '黑卡' then ['#333', '#fff']
+                                      when '金卡' then ['#b8860b', '#fff']
+                                      when '銀卡' then ['#6c757d', '#fff']
+                                      when '白卡' then ['#dee2e6', '#333']
+                                      else             ['#adb5bd', '#333']
+                                      end %>
+                <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= r[:membership_level].presence || "—" %></span>
+              </td>
+              <td class="text-end fw-bold" style="font-size:1rem; color:#c0392b;"><%= r[:count] %> 次</td>
+              <td class="text-end fw-bold" style="color:#6e4a2e;">NT$<%= number_with_delimiter(r[:total]) %></td>
+              <td class="text-nowrap text-muted"><%= r[:last_date]&.strftime('%Y/%m/%d') %></td>
+              <td></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<% if @groups.empty? %>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5 text-muted">
+      <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+      此期間沒有單一產品破萬的訂單
+    </div>
+  </div>
+<% end %>
