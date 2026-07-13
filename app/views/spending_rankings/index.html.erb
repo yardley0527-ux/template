@@ -15,6 +15,37 @@ end %>
   </div>
 </div>
 
+<%# 摘要卡：老闆先看重點，再看名單 %>
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #c0392b !important;">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1"><i class="fal fa-exclamation-triangle" style="color:#c0392b;"></i> 流失警訊</div>
+        <div class="fw-bold" style="font-size:1.6rem; color:#c0392b;"><%= @summary[:cooling_count] %> 人</div>
+        <div class="text-muted" style="font-size:0.78rem;">2025 前 100 名中，今年消費不到去年同期一半（其中 <%= @summary[:cooling_no_repurchase] %> 人今年完全沒回購）</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #1e7e34 !important;">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1"><i class="fal fa-arrow-up" style="color:#1e7e34;"></i> 上升新星</div>
+        <div class="fw-bold" style="font-size:1.6rem; color:#1e7e34;"><%= @summary[:rising_count] %> 人</div>
+        <div class="text-muted" style="font-size:0.78rem;">2026 前 100 名中，已超越自己 2025 全年消費（含 <%= @summary[:rising_new] %> 位 2025 未消費的新面孔）</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6e4a2e !important;">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1"><i class="fal fa-coins" style="color:#6e4a2e;"></i> 總榜前 <%= @summary[:total_count] %> 名貢獻</div>
+        <div class="fw-bold" style="font-size:1.6rem; color:#6e4a2e;">NT$<%= number_with_delimiter(@summary[:total_amount]) %></div>
+        <div class="text-muted" style="font-size:0.78rem;">2025 + 2026 累積消費金額合計</div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <% SpendingRankingsController::TABS.each do |key, config| %>
     <li class="nav-item">
@@ -36,13 +67,17 @@ end %>
       <thead style="background-color:#4a4a4a; color:white;">
         <tr>
           <th class="ps-3" style="width:70px;">排名</th>
-          <th style="width:150px;">姓名</th>
-          <th style="width:170px;">IG</th>
-          <th style="width:90px;">卡別</th>
-          <th class="text-end" style="width:150px;">2025 消費金額</th>
-          <th class="text-end" style="width:170px;">2026 累積消費金額</th>
-          <th class="text-end" style="width:170px;">總累積消費金額</th>
-          <th></th>
+          <th style="width:140px;">姓名</th>
+          <th style="width:160px;">IG</th>
+          <th style="width:85px;">卡別</th>
+          <th style="width:120px;">
+            動能
+            <div class="fw-normal" style="font-size:0.68rem; opacity:0.75;">2026 對比 2025 同期</div>
+          </th>
+          <th class="text-end" style="width:140px;">2025 消費金額</th>
+          <th class="text-end" style="width:150px;">2026 累積消費金額</th>
+          <th class="text-end" style="width:150px;">總累積消費金額</th>
+          <th class="text-end pe-3" style="width:130px;">最近消費</th>
         </tr>
       </thead>
       <tbody>
@@ -67,7 +102,7 @@ end %>
               <% if url %>
                 <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
                   <i class="fal fa-at text-danger"></i>
-                  <span style="font-size:0.8rem; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                  <span style="font-size:0.8rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
                     <%= r[:instagram_account]&.sub(/^@/, '') %>
                   </span>
                 <% end %>
@@ -85,6 +120,18 @@ end %>
                                     end %>
               <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= r[:membership_level].presence || "—" %></span>
             </td>
+            <td>
+              <% case r[:trend] %>
+              <% when :cooling %>
+                <span class="badge" style="background:#fdecea; color:#c0392b; font-size:0.72rem;"><i class="fal fa-arrow-down"></i> 流失警訊</span>
+              <% when :surpassed %>
+                <span class="badge" style="background:#e6f4ea; color:#1e7e34; font-size:0.72rem;"><i class="fal fa-arrow-up"></i> 超越去年</span>
+              <% when :new %>
+                <span class="badge" style="background:#e7f1fb; color:#1a5da6; font-size:0.72rem;"><i class="fal fa-sparkles"></i> NEW</span>
+              <% else %>
+                <span class="text-muted small">穩定</span>
+              <% end %>
+            </td>
             <td class="text-end <%= 'fw-bold' if sort_key == :amount_2025 %>" style="<%= 'color:#c0392b; font-size:0.95rem;' if sort_key == :amount_2025 %>">
               <%= r[:amount_2025].positive? ? "NT$#{number_with_delimiter(r[:amount_2025])}" : "—" %>
             </td>
@@ -94,12 +141,23 @@ end %>
             <td class="text-end <%= sort_key == :amount_total ? 'fw-bold' : 'fw-semibold' %>" style="<%= sort_key == :amount_total ? 'color:#c0392b; font-size:0.95rem;' : 'color:#6e4a2e;' %>">
               NT$<%= number_with_delimiter(r[:amount_total]) %>
             </td>
-            <td></td>
+            <td class="text-end pe-3">
+              <% if r[:last_order_date] %>
+                <div style="font-size:0.8rem;"><%= r[:last_order_date].strftime('%Y/%m/%d') %></div>
+                <% if r[:silent_days] > SpendingRankingsController::SILENT_DAYS %>
+                  <div class="fw-bold" style="font-size:0.72rem; color:#c0392b;"><%= r[:silent_days] %> 天沒消費</div>
+                <% else %>
+                  <div class="text-muted" style="font-size:0.72rem;"><%= r[:silent_days] %> 天前</div>
+                <% end %>
+              <% else %>
+                <span class="text-muted small">—</span>
+              <% end %>
+            </td>
           </tr>
         <% end %>
         <% if @rows.empty? %>
           <tr>
-            <td colspan="8" class="text-center py-5 text-muted">
+            <td colspan="9" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
               目前沒有符合的消費紀錄
             </td>
