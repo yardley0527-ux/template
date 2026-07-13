@@ -159,7 +159,7 @@ module Importing
         quantity: safe_int(raw[:quantity]),
         customer_name: raw[:customer_name]&.to_s&.strip,
         payment_method: raw[:payment_method]&.to_s&.strip,
-        order_date: to_time(raw[:order_date]),
+        order_date: order_date_for(order_number, raw[:order_date]),
         membership_level: raw[:membership_level]&.to_s&.strip,
         city: raw[:city]&.to_s&.strip,                            # ✅ 城市寫進 order
         source_year: @source_year,
@@ -238,6 +238,18 @@ module Importing
       return v if v.is_a?(Time) || v.is_a?(DateTime)
       return v.to_time if v.is_a?(Date)
       Time.zone.parse(v.to_s) rescue nil
+    end
+
+    # 訂單號碼內嵌真實下單時間（#YYYYMMDDHHMMSS…）。來源 Excel 的「訂單日期」
+    # 上游產檔時多加了 8 小時，16:00 後下單的訂單日期會變成隔天，
+    # 因此一律以訂單號碼的日期為準，取不出來才退回 Excel 的值。
+    def order_date_for(order_number, raw_date)
+      m = order_number.match(/\A#(\d{4})(\d{2})(\d{2})\d{6}/)
+      return to_time(raw_date) unless m
+
+      Time.utc(m[1].to_i, m[2].to_i, m[3].to_i)
+    rescue ArgumentError
+      to_time(raw_date)
     end
   end
 end
