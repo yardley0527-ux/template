@@ -8,11 +8,14 @@ class CommandCenterSnapshot
   end
 
   def call
+    radar = CampaignReadinessScan.call
     {
       next_livestream:   upcoming_event("livestream"),
       next_arrival:      upcoming_event("arrival"),
       upcoming_events:   upcoming_all(limit: 5),
       department_lights: department_lights,
+      radar:             radar,
+      risks:             OpsRiskScan.call(radar: radar),
       sync_alerts:       SyncRun.current_alerts,
       sync_last_run:     DepartmentSheetSync.last_run_at
     }
