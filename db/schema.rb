@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_13_140000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_13_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -252,6 +252,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_13_140000) do
     t.integer "api_push"
     t.integer "api_reply"
     t.index ["stat_date"], name: "index_daily_member_stats_on_stat_date", unique: true
+  end
+
+  create_table "department_updates", force: :cascade do |t|
+    t.string "department", null: false
+    t.date "log_date", null: false
+    t.text "content"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["department", "log_date"], name: "index_department_updates_on_department_and_log_date", unique: true
+    t.index ["log_date"], name: "index_department_updates_on_log_date"
   end
 
   create_table "health_assessment_products", force: :cascade do |t|

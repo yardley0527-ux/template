@@ -15,6 +15,19 @@ class CalendarEventsController < ApplicationController
     upcoming = CalendarEvent.in_range(upcoming_range).order(:event_date, :created_at).to_a
     upcoming += livestream_record_events(upcoming_range, upcoming)
     @upcoming_by_date = upcoming.group_by(&:event_date).sort_by(&:first)
+
+    @department_updates_by_date = DepartmentUpdate.in_range(range)
+      .sort_by { |u| DepartmentUpdate::DEPARTMENTS.index(u.department) || 99 }
+      .group_by(&:log_date)
+    @department_sync_last_run = DepartmentSheetSync.last_run_at
+    schedule_department_sync if DepartmentSheetSync.stale?
+  end
+
+  def sync_departments
+    results = DepartmentSheetSync.call
+    failed = results.select { |_, r| r[:error] }.keys
+    notice = failed.empty? ? "部門日誌已同步" : "部門日誌已同步（失敗：#{failed.join('、')}）"
+    redirect_to calendar_events_path(month: params[:month]), notice: notice
   end
 
   def new
@@ -63,6 +76,13 @@ class CalendarEventsController < ApplicationController
     Date.strptime(params[:month], "%Y-%m")
   rescue ArgumentError, TypeError
     Date.current.beginning_of_month
+  end
+
+  # 超過 1 小時沒同步就在背景重抓部門 Sheet；先標記時間戳避免
+  # 多個 request 同時觸發重複的同步。
+  def schedule_department_sync
+    DepartmentSheetSync.mark_run!
+    SyncDepartmentSheetsJob.perform_later
   end
 
   # 直播歷史（Livestream）已有日期資料，直接帶進行事曆顯示，不用重複輸入。

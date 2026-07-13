@@ -64,6 +64,11 @@
     <% end %>
   </div>
   <%= link_to "回到本月", calendar_events_path, class: "btn btn-sm btn-outline-primary mb-2 mr-3" %>
+  <span class="text-muted small mb-2 mr-2">
+    部門日誌：<%= @department_sync_last_run ? "#{time_ago_in_words(@department_sync_last_run)}前同步" : "尚未同步" %>
+  </span>
+  <%= button_to "立即同步", sync_departments_calendar_events_path(month: @month.strftime("%Y-%m")),
+        class: "btn btn-sm btn-outline-secondary mb-2 mr-3", form_class: "d-inline" %>
   <div class="mb-2 small">
     <% CalendarEvent::EVENT_TYPES.each_value do |type| %>
       <span class="mr-2 text-nowrap">
@@ -112,6 +117,11 @@
                     <span style="<%= chip_style %>" title="<%= chip_title %>"><%= event.title %></span>
                   <% end %>
                 <% end %>
+                <% if (@department_updates_by_date[date] || []).any? %>
+                  <a href="#day-<%= date %>" class="d-block small text-muted" style="font-size:10px;" title="各部門當日更新，點擊跳到明細">
+                    <i class="fal fa-users"></i> <%= @department_updates_by_date[date].size %> 部門
+                  </a>
+                <% end %>
               </td>
             <% end %>
           </tr>
@@ -126,7 +136,7 @@
   <div class="card-header py-2">
     <strong><i class="fal fa-list mr-1"></i> <%= @month.strftime("%-m 月") %>事件明細</strong>
   </div>
-  <% month_days = @events_by_date.keys.sort %>
+  <% month_days = (@events_by_date.keys | @department_updates_by_date.keys).sort %>
   <% if month_days.empty? %>
     <div class="card-body text-center text-muted py-5">
       <i class="fal fa-calendar fa-3x mb-3 d-block opacity-25"></i>
@@ -135,14 +145,14 @@
   <% else %>
     <div class="list-group list-group-flush">
       <% month_days.each do |date| %>
-        <div class="list-group-item px-3 py-2" style="<%= 'background:#fff9e0;' if date == Date.current %>">
+        <div class="list-group-item px-3 py-2" id="day-<%= date %>" style="<%= 'background:#fff9e0;' if date == Date.current %>">
           <div class="d-flex">
             <div class="text-center mr-3 flex-shrink-0" style="width:52px;">
               <div class="h5 mb-0 font-weight-bold <%= date == Date.current ? 'text-primary' : '' %>"><%= date.strftime("%-m/%-d") %></div>
               <div class="small text-muted"><%= date == Date.current ? "今天" : "週#{%w[日 一 二 三 四 五 六][date.wday]}" %></div>
             </div>
             <div class="flex-grow-1" style="min-width:0;">
-              <% @events_by_date[date].each do |event| %>
+              <% (@events_by_date[date] || []).each do |event| %>
                 <div class="mb-2">
                   <div class="d-flex align-items-center flex-wrap">
                     <span class="badge badge-pill text-white mr-2" style="background:<%= event.type_color %>;"><%= event.type_label %></span>
@@ -174,6 +184,23 @@
                     <div class="text-muted small mt-1" style="white-space:pre-wrap;"><%= event.description %></div>
                   <% end %>
                 </div>
+              <% end %>
+
+              <% updates = @department_updates_by_date[date] || [] %>
+              <% if updates.any? %>
+                <details class="mt-1">
+                  <summary class="small text-primary" style="cursor:pointer;">
+                    <i class="fal fa-users"></i> 各部門當日更新（<%= updates.size %> 個部門）
+                  </summary>
+                  <div class="mt-2 pl-2" style="border-left:3px solid #e0e6ef;">
+                    <% updates.each do |update| %>
+                      <div class="mb-2">
+                        <span class="badge badge-secondary"><%= update.department %></span>
+                        <div class="small mt-1" style="white-space:pre-wrap; word-break:break-word;"><%= auto_link_urls(update.content) %></div>
+                      </div>
+                    <% end %>
+                  </div>
+                </details>
               <% end %>
             </div>
           </div>
