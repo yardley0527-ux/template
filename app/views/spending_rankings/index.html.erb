@@ -15,58 +15,76 @@ end %>
   </div>
 </div>
 
-<%# 摘要卡：老闆先看重點，再看名單 %>
+<%# 摘要卡：老闆先看重點，點卡片看名單 %>
 <div class="row g-3 mb-4">
   <div class="col-md-4">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #c0392b !important;">
-      <div class="card-body py-3">
-        <div class="text-muted small mb-1"><i class="fal fa-exclamation-triangle" style="color:#c0392b;"></i> 流失警訊</div>
-        <div class="fw-bold" style="font-size:1.6rem; color:#c0392b;"><%= @summary[:cooling_count] %> 人</div>
-        <div class="text-muted" style="font-size:0.78rem;">2025 前 100 名中，今年消費不到去年同期一半（其中 <%= @summary[:cooling_no_repurchase] %> 人今年完全沒回購）</div>
+    <%= link_to spending_rankings_path(focus: "cooling"), class: "text-decoration-none" do %>
+      <div class="card border-0 shadow-sm h-100 <%= 'border' if @focus == 'cooling' %>" style="border-left:4px solid #c0392b !important;">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1"><i class="fal fa-exclamation-triangle" style="color:#c0392b;"></i> 流失警訊</div>
+          <div class="fw-bold" style="font-size:1.6rem; color:#c0392b;"><%= @summary[:cooling_count] %> 人</div>
+          <div class="text-muted" style="font-size:0.78rem;">2025 前 100 名中，今年消費不到去年同期一半（其中 <%= @summary[:cooling_no_repurchase] %> 人今年完全沒回購）</div>
+          <div class="fw-semibold mt-1" style="font-size:0.75rem; color:#c0392b;">點擊看名單 <i class="fal fa-chevron-right"></i></div>
+        </div>
       </div>
-    </div>
+    <% end %>
   </div>
   <div class="col-md-4">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #1e7e34 !important;">
-      <div class="card-body py-3">
-        <div class="text-muted small mb-1"><i class="fal fa-arrow-up" style="color:#1e7e34;"></i> 上升新星</div>
-        <div class="fw-bold" style="font-size:1.6rem; color:#1e7e34;"><%= @summary[:rising_count] %> 人</div>
-        <div class="text-muted" style="font-size:0.78rem;">2026 前 100 名中，已超越自己 2025 全年消費（含 <%= @summary[:rising_new] %> 位 2025 未消費的新面孔）</div>
+    <%= link_to spending_rankings_path(focus: "rising"), class: "text-decoration-none" do %>
+      <div class="card border-0 shadow-sm h-100 <%= 'border' if @focus == 'rising' %>" style="border-left:4px solid #1e7e34 !important;">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1"><i class="fal fa-arrow-up" style="color:#1e7e34;"></i> 上升新星</div>
+          <div class="fw-bold" style="font-size:1.6rem; color:#1e7e34;"><%= @summary[:rising_count] %> 人</div>
+          <div class="text-muted" style="font-size:0.78rem;">2026 前 100 名中，已超越自己 2025 全年消費（含 <%= @summary[:rising_new] %> 位 2025 未消費的新面孔）</div>
+          <div class="fw-semibold mt-1" style="font-size:0.75rem; color:#1e7e34;">點擊看名單 <i class="fal fa-chevron-right"></i></div>
+        </div>
       </div>
-    </div>
+    <% end %>
   </div>
   <div class="col-md-4">
-    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6e4a2e !important;">
-      <div class="card-body py-3">
-        <div class="text-muted small mb-1"><i class="fal fa-coins" style="color:#6e4a2e;"></i> 總榜前 <%= @summary[:total_count] %> 名貢獻</div>
-        <div class="fw-bold" style="font-size:1.6rem; color:#6e4a2e;">NT$<%= number_with_delimiter(@summary[:total_amount]) %></div>
-        <div class="text-muted" style="font-size:0.78rem;">2025 + 2026 累積消費金額合計</div>
+    <%= link_to spending_rankings_path(tab: "total"), class: "text-decoration-none" do %>
+      <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6e4a2e !important;">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1"><i class="fal fa-coins" style="color:#6e4a2e;"></i> 總榜前 <%= @summary[:total_count] %> 名貢獻</div>
+          <div class="fw-bold" style="font-size:1.6rem; color:#6e4a2e;">NT$<%= number_with_delimiter(@summary[:total_amount]) %></div>
+          <div class="text-muted" style="font-size:0.78rem;">2025 + 2026 累積消費金額合計</div>
+          <div class="fw-semibold mt-1" style="font-size:0.75rem; color:#6e4a2e;">點擊看總榜 <i class="fal fa-chevron-right"></i></div>
+        </div>
       </div>
-    </div>
+    <% end %>
   </div>
 </div>
 
-<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
-  <% SpendingRankingsController::TABS.each do |key, config| %>
-    <li class="nav-item">
-      <%= link_to config[:title], spending_rankings_path(tab: key),
-            class: "nav-link #{@tab == key ? 'active fw-bold' : 'text-muted'}" %>
-    </li>
-  <% end %>
-</ul>
+<% if @focus %>
+  <div class="mb-3">
+    <%= link_to "← 回排行榜", spending_rankings_path(tab: @tab), class: "btn btn-sm btn-dark" %>
+  </div>
+<% else %>
+  <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+    <% SpendingRankingsController::TABS.each do |key, config| %>
+      <li class="nav-item">
+        <%= link_to config[:title], spending_rankings_path(tab: key),
+              class: "nav-link #{@tab == key ? 'active fw-bold' : 'text-muted'}" %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>
 
+<% list_title    = @focus_config ? @focus_config[:title]    : @tab_config[:title] %>
+<% list_subtitle = @focus_config ? @focus_config[:subtitle] : @tab_config[:subtitle] %>
 <div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
-    <span class="fw-bold"><%= @tab_config[:title] %></span>
-    <span class="badge bg-secondary"><%= @rows.size %> 人</span>
-    <span class="text-muted small"><%= @tab_config[:subtitle] %></span>
+  <div class="card-header bg-white d-flex align-items-center flex-wrap" style="gap:8px;">
+    <span class="fw-bold"><%= list_title %></span>
+    <span class="badge bg-secondary"><%= @total_count %> 人</span>
+    <span class="text-muted small"><%= list_subtitle %></span>
+    <span class="ms-auto text-muted small">頁數：<%= @page %> / <%= @total_pages %></span>
   </div>
   <div class="card-body p-0 table-responsive">
     <% sort_key = @tab_config[:sort_key] %>
     <table class="table align-middle mb-0" style="font-size:0.86rem;">
       <thead style="background-color:#4a4a4a; color:white;">
         <tr>
-          <th class="ps-3" style="width:70px;">排名</th>
+          <th class="ps-3" style="width:<%= @focus_config ? 100 : 70 %>px;"><%= @focus_config ? @focus_config[:rank_label] : "排名" %></th>
           <th style="width:140px;">姓名</th>
           <th style="width:160px;">IG</th>
           <th style="width:85px;">卡別</th>
@@ -166,4 +184,18 @@ end %>
       </tbody>
     </table>
   </div>
+  <% if @total_pages > 1 %>
+    <div class="card-footer bg-white d-flex align-items-center justify-content-between">
+      <span class="text-muted small">
+        第 <%= (@page - 1) * SpendingRankingsController::PER_PAGE + 1 %>–<%= [(@page * SpendingRankingsController::PER_PAGE), @total_count].min %> 筆，共 <%= @total_count %> 筆
+      </span>
+      <div>
+        <% page_params = { tab: @focus ? nil : @tab, focus: @focus }.compact %>
+        <%= link_to "上一頁", spending_rankings_path(page_params.merge(page: [@page - 1, 1].max)),
+              class: "btn btn-outline-secondary btn-sm me-2 #{'disabled' if @page <= 1}" %>
+        <%= link_to "下一頁", spending_rankings_path(page_params.merge(page: [@page + 1, @total_pages].min)),
+              class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+      </div>
+    </div>
+  <% end %>
 </div>

@@ -18,12 +18,21 @@ class SpendingRankingsController < ApplicationController
     "total" => { title: "總累積消費排行榜", subtitle: "2025 消費金額 + 2026 累積消費金額合併計算，取前 200 名", limit: 200, sort_key: :amount_total }
   }.freeze
 
+  # 摘要卡點進去看的名單：排名沿用來源榜的名次
+  FOCUS = {
+    "cooling" => { title: "流失警訊名單", subtitle: "2025 前 100 名中，2026 至今消費不到 2025 同期一半", rank_label: "2025 榜排名" },
+    "rising"  => { title: "上升新星名單", subtitle: "2026 前 100 名中，已超越自己 2025 全年消費或 2025 未消費的新面孔", rank_label: "2026 榜排名" }
+  }.freeze
+
   COOLING_RATIO = 0.5   # 2026 至今 < 2025 同期 × 0.5 → 流失警訊
   SILENT_DAYS   = 60    # 最近消費超過 60 天標紅
+  PER_PAGE      = 50
 
   def index
     @tab = TABS.key?(params[:tab]) ? params[:tab] : "y2025"
     @tab_config = TABS[@tab]
+    @focus = FOCUS.key?(params[:focus]) ? params[:focus] : nil
+    @focus_config = FOCUS[@focus]
 
     totals = yearly_totals_by_email
     rankings = TABS.transform_values do |config|
@@ -35,13 +44,29 @@ class SpendingRankingsController < ApplicationController
 
     @summary = build_summary(rankings)
 
-    ranked = rankings[@tab]
-    customers = customer_snapshots(ranked.map { |t| t[:email] })
-    @rows = ranked.each_with_index.map do |t, i|
+    # 先標上來源榜排名再過濾/切頁，名次才不會跟著頁數跑掉
+    ranked =
+      case @focus
+      when "cooling"
+        rankings["y2025"].each_with_index.map { |t, i| t.merge(rank: i + 1) }.select { |t| cooling?(t) }
+      when "rising"
+        rankings["y2026"].each_with_index.map { |t, i| t.merge(rank: i + 1) }.select { |t| %i[surpassed new].include?(trend_for(t)) }
+      else
+        rankings[@tab].each_with_index.map { |t, i| t.merge(rank: i + 1) }
+      end
+
+    @total_count = ranked.size
+    @total_pages = [(@total_count.to_f / PER_PAGE).ceil, 1].max
+    @page = [params[:page].to_i, 1].max
+    @page = @total_pages if @page > @total_pages
+    page_items = ranked[(@page - 1) * PER_PAGE, PER_PAGE] || []
+
+    customers = customer_snapshots(page_items.map { |t| t[:email] })
+    @rows = page_items.map do |t|
       c = customers[t[:email]] || {}
       silent_days = t[:last_order_date] ? (Date.current - t[:last_order_date].to_date).to_i : nil
       {
-        rank: i + 1,
+        rank: t[:rank],
         email: t[:email],
         full_name: c["full_name"],
         instagram_account: c["instagram_account"],
