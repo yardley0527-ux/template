@@ -158,7 +158,7 @@
           <th class="text-end" style="width:110px;">最近消費</th>
           <th class="text-center" style="width:90px;">
             排名變化
-            <div class="fw-normal" style="font-size:0.65rem; opacity:0.75;">2025 榜 → 2026 榜</div>
+            <div class="fw-normal" style="font-size:0.65rem; opacity:0.75;">2025 全年排名 → 2026 至今排名</div>
           </th>
           <th style="width:50px;"></th>
         </tr>
@@ -253,13 +253,13 @@
                 <div class="col-md-2"><span class="text-muted">回購次數</span><div class="fw-semibold"><%= d[:repurchase_count] %> 次</div></div>
                 <div class="col-md-3"><span class="text-muted">最常買產品</span><div class="fw-semibold"><%= d[:top_product] || "—" %></div></div>
                 <div class="col-md-3"><span class="text-muted">首購日期</span><div class="fw-semibold"><%= d[:first_paid_order_at]&.strftime('%Y/%m/%d') || "—" %></div></div>
-                <div class="col-md-2"><span class="text-muted">最近參與直播</span><div class="fw-semibold"><%= d[:last_livestream_date]&.strftime('%Y/%m/%d') || "—" %></div></div>
+                <div class="col-md-2"><span class="text-muted">推定直播檔期</span><div class="fw-semibold"><%= d[:last_livestream_date]&.strftime('%Y/%m/%d') || "—" %></div></div>
                 <div class="col-md-2"><span class="text-muted">LINE 綁定</span><div class="fw-semibold"><%= d[:line_status] %></div></div>
                 <div class="col-md-2"><span class="text-muted">IG 追蹤</span><div class="fw-semibold"><%= d[:ig_status] %></div></div>
                 <div class="col-md-3"><span class="text-muted">CRM 跟進</span><div class="fw-semibold"><%= d[:crm_status] %></div></div>
                 <div class="col-md-3"><span class="text-muted">Email</span><div class="fw-semibold"><%= r[:email] %></div></div>
               </div>
-              <div class="text-muted mt-1" style="font-size:0.68rem;">訂單數／客單／回購／最常買產品統計期間：<%= SpendingRankingsController::PERIOD_LABELS[@focus_config ? @focus_config[:period] : SpendingRankingsController::TAB_PERIODS[@tab]] %>；最近參與直播＝直播日起 3 天內有下單（檔期推定）</div>
+              <div class="text-muted mt-1" style="font-size:0.68rem;">訂單數／客單／回購／最常買產品統計期間：<%= SpendingRankingsController::PERIOD_LABELS[@focus_config ? @focus_config[:period] : SpendingRankingsController::TAB_PERIODS[@tab]] %>；推定直播檔期＝依直播日起 3 天內下單推定，非實際觀看紀錄</div>
             </td>
           </tr>
         <% end %>
