@@ -1,105 +1,152 @@
-<%= image_tag "smartadmin/demo/avatars/封面照.jpg",
-    alt: "封面照",
-    style: "width: 100%; height: auto; display: block;" %>
+<% content_for :page_title, "戰情首頁" %>
 
-<div id="birthday-overlay" style="display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,0.5); z-index:9999;
-  align-items:center; justify-content:center;">
-  <div style="background:#fff; border-radius:12px;
-    width:440px; max-width:95vw; overflow:hidden; font-family:sans-serif;">
-    <div style="background:#3C3489; padding:20px 24px;">
-      <div style="color:#CECBF6; font-size:18px; font-weight:500;">🎂 本週壽星</div>
-      <div id="bd-today-date" style="color:#AFA9EC; font-size:13px; margin-top:4px;"></div>
+<%# ── 同步失敗警告（有問題時才出現） ── %>
+<% @snapshot[:sync_alerts].each do |alert| %>
+  <div class="alert alert-danger py-2 mb-2">
+    <i class="fal fa-exclamation-triangle mr-1"></i><%= alert %>
+    <%= link_to "查看行事曆", calendar_events_path, class: "alert-link ml-2" %>
+  </div>
+<% end %>
+
+<%# ── 戰情條：下一場直播 ── %>
+<% live = @snapshot[:next_livestream] %>
+<div class="card mb-3" style="border-left:6px solid #d9364c;">
+  <div class="card-body py-3">
+    <% if live %>
+      <% days = (live.event_date - Date.current).to_i %>
+      <div class="d-flex align-items-baseline flex-wrap">
+        <span class="h3 mb-0 mr-3 font-weight-bold">
+          <i class="fal fa-video text-danger mr-1"></i><%= live.title %>
+        </span>
+        <span class="h4 mb-0 text-danger font-weight-bold">
+          <%= live.event_date.strftime("%-m/%-d") %>（週<%= %w[日 一 二 三 四 五 六][live.event_date.wday] %>）
+          <%= days.zero? ? "🔴 今天" : "倒數 #{days} 天" %>
+        </span>
+        <% if live.time_info.present? %>
+          <span class="text-muted ml-2"><i class="fal fa-clock"></i> <%= live.time_info %></span>
+        <% end %>
+      </div>
+    <% else %>
+      <span class="h4 mb-0 text-muted">目前沒有排定的直播</span>
+    <% end %>
+    <% arrival = @snapshot[:next_arrival] %>
+    <% if arrival %>
+      <div class="mt-2 text-dark">
+        <i class="fal fa-truck text-success mr-1"></i>
+        <strong><%= arrival.title %></strong>
+        <span class="text-success font-weight-bold ml-1">
+          <%= arrival.event_date.strftime("%-m/%-d") %>
+          <% adays = (arrival.event_date - Date.current).to_i %>
+          <%= adays.zero? ? "（今天）" : "（#{adays} 天後）" %>
+        </span>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="row">
+  <%# ── 左欄：部門回報燈 ── %>
+  <div class="col-lg-7 mb-3">
+    <div class="card h-100">
+      <div class="card-header py-2 d-flex align-items-center">
+        <strong><i class="fal fa-users mr-1"></i> 部門今日回報</strong>
+        <span class="ml-auto small text-muted">
+          <% if @snapshot[:sync_last_run] %>
+            <%= time_ago_in_words(@snapshot[:sync_last_run]) %>前同步
+          <% end %>
+        </span>
+      </div>
+      <div class="card-body py-3">
+        <div class="row">
+          <% @snapshot[:department_lights].each do |light| %>
+            <div class="col-6 col-md-3 mb-2">
+              <div class="p-2 rounded text-center" style="background:<%= light[:reported_today] ? '#e8f6ee' : '#f4f4f4' %>;">
+                <div class="font-weight-bold">
+                  <%= light[:reported_today] ? "🟢" : "⚪" %> <%= light[:department] %>
+                </div>
+                <div class="small text-muted">
+                  <% if light[:reported_today] %>
+                    今日已回報
+                  <% elsif light[:last_date] %>
+                    最後：<%= light[:last_date].strftime("%-m/%-d") %>
+                  <% else %>
+                    尚無紀錄
+                  <% end %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+        <div class="small text-muted mt-1">
+          部門日誌通常於當天陸續填寫；點 <%= link_to "行事曆", calendar_events_path %> 看各部門完整內容
+        </div>
+      </div>
     </div>
-    <div style="padding:16px 24px 20px;">
-      <div id="bd-list" style="max-height:400px; overflow-y:auto; padding-right:4px;"></div>
-      <button onclick="document.getElementById('birthday-overlay').style.display='none'"
-        style="margin-top:16px; width:100%; padding:10px;
-          border:none; border-radius:8px; background:#3C3489;
-          color:#fff; font-size:14px; cursor:pointer;">
-        關閉
-      </button>
+  </div>
+
+  <%# ── 右欄：近期大事 + 壽星 ── %>
+  <div class="col-lg-5 mb-3">
+    <div class="card mb-3">
+      <div class="card-header py-2">
+        <strong><i class="fal fa-calendar-alt mr-1"></i> 近期大事</strong>
+        <%= link_to "完整行事曆 →", calendar_events_path, class: "small float-right" %>
+      </div>
+      <div class="list-group list-group-flush">
+        <% if @snapshot[:upcoming_events].empty? %>
+          <div class="list-group-item text-muted small">近期沒有排定事件</div>
+        <% end %>
+        <% @snapshot[:upcoming_events].each do |event| %>
+          <div class="list-group-item py-2 d-flex align-items-center">
+            <span class="badge badge-pill text-white mr-2" style="background:<%= event.type_color %>;"><%= event.type_label %></span>
+            <span class="mr-2 text-truncate" style="min-width:0;"><%= event.title %></span>
+            <span class="ml-auto small font-weight-bold text-nowrap"><%= event.event_date.strftime("%-m/%-d") %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header py-2"><strong>🎂 本週壽星</strong></div>
+      <div class="card-body py-2">
+        <div id="bd-list" style="max-height:220px; overflow-y:auto;">
+          <span class="text-muted small">載入中…</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 (function() {
-  var overlay = document.getElementById('birthday-overlay');
-  var listEl  = document.getElementById('bd-list');
-  var dateEl  = document.getElementById('bd-today-date');
-
-  var today = new Date();
-  dateEl.textContent = today.toLocaleDateString('zh-TW',
-    { year:'numeric', month:'long', day:'numeric', weekday:'long' });
-
-  overlay.style.display = 'flex';
-
+  var listEl = document.getElementById('bd-list');
   var days = ['日','一','二','三','四','五','六'];
-  function dayLabel(bd) {
-    var parts = bd.split('/');
-    var m = parseInt(parts[0]), d = parseInt(parts[1]);
-    return '週' + days[new Date(today.getFullYear(), m-1, d).getDay()];
-  }
+  var today = new Date();
 
   fetch('/api/birthday_customers')
     .then(function(r) { return r.json(); })
     .then(function(data) {
       var order = { '黑卡': 1, '金卡': 2, '銀卡': 3, '白卡': 4, '一般會員': 5 };
-      data.sort(function(a, b) {
-        var ao = order[a.membership_level] || 99;
-        var bo = order[b.membership_level] || 99;
-        return ao - bo;
-      });
+      data.sort(function(a, b) { return (order[a.membership_level] || 99) - (order[b.membership_level] || 99); });
 
       if (!data.length) {
-        listEl.innerHTML = '<p style="color:#888;font-size:14px;">本週沒有壽星 🎉</p>';
+        listEl.innerHTML = '<span class="text-muted small">本週沒有壽星 🎉</span>';
         return;
       }
 
       var html = '';
       for (var i = 0; i < data.length; i++) {
-        var c      = data[i];
-        var bg     = c.is_today ? '#EEEDFE' : '#F5F5F3';
-        var avBg   = c.is_today ? '#7F77DD' : '#B4B2A9';
-        var initial = (c.full_name || '?')[0];
-        var todayBadge = c.is_today
-          ? '<span style="font-size:11px;background:#7F77DD;color:#fff;border-radius:4px;padding:1px 6px;margin-left:4px;">今天</span>'
-          : '';
-        var phone = '';
-
-        var nameHtml = '<a href="/customers/' + c.id + '" style="color:#26215C;text-decoration:none;border-bottom:1px solid #AFA9EC;">' + c.full_name + '</a>';
-
-        var igBtn = c.instagram_account
-        ? '<a href="https://instagram.com/' + c.instagram_account + '" target="_blank" rel="noopener" '
-            + 'style="display:inline-flex;align-items:center;gap:3px;margin-left:6px;'
-            + 'font-size:11px;padding:1px 7px;border-radius:4px;text-decoration:none;'
-            + 'background:#F5F5F3;color:#888;border:1px solid #e5e7eb;">@' + c.instagram_account + '</a>'
-        : '';
-
-        var levelColors = {
-          '黑卡':   'background:#2C2C2A;color:#D3D1C7',
-          '金卡':   'background:#FAC775;color:#412402',
-          '銀卡':   'background:#D3D1C7;color:#2C2C2A',
-          '白卡':   'background:#F1EFE8;color:#5F5E5A',
-          '一般會員': 'background:#EEEDFE;color:#534AB7'
-        };
-        var levelStyle = levelColors[c.membership_level] || 'background:#EEEDFE;color:#534AB7';
-        var levelBadge = c.membership_level
-          ? '<div style="font-size:11px;border-radius:4px;padding:2px 8px;flex-shrink:0;' + levelStyle + '">' + c.membership_level + '</div>'
-          : '';
-
-        html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;margin-bottom:6px;background:' + bg + ';">'
-          + '<div style="width:36px;height:36px;border-radius:50%;flex-shrink:0;background:' + avBg + ';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;color:#fff;">' + initial + '</div>'
-          + '<div style="flex:1;min-width:0;">'
-          +   '<div style="font-size:14px;font-weight:500;color:#26215C;">' + nameHtml + igBtn + todayBadge + '</div>'
-          +   '<div style="font-size:12px;color:#888;margin-top:2px;">' + c.birthday + ' ' + dayLabel(c.birthday) + phone + '</div>'
-          + '</div>'
-          + levelBadge
+        var c = data[i];
+        var parts = (c.birthday || '').split('/');
+        var wd = parts.length === 2 ? '週' + days[new Date(today.getFullYear(), parseInt(parts[0], 10) - 1, parseInt(parts[1], 10)).getDay()] : '';
+        html += '<div class="d-flex align-items-center py-1" style="border-bottom:1px dashed #eee;">'
+          + '<a href="/customers/' + c.id + '" class="mr-2 font-weight-bold">' + c.full_name + '</a>'
+          + (c.is_today ? '<span class="badge badge-primary mr-2">今天</span>' : '')
+          + '<span class="small text-muted mr-2">' + c.birthday + ' ' + wd + '</span>'
+          + (c.membership_level ? '<span class="badge badge-light border ml-auto">' + c.membership_level + '</span>' : '')
           + '</div>';
       }
       listEl.innerHTML = html;
     })
-    .catch(function() { listEl.textContent = '載入失敗，請重整頁面'; });
+    .catch(function() { listEl.textContent = '載入失敗'; });
 })();
 </script>
