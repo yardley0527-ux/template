@@ -20,6 +20,7 @@ class CalendarEventsController < ApplicationController
       .sort_by { |u| DepartmentUpdate::DEPARTMENTS.index(u.department) || 99 }
       .group_by(&:log_date)
     @department_sync_last_run = DepartmentSheetSync.last_run_at
+    @sync_alerts = SyncRun.current_alerts
     schedule_department_sync if DepartmentSheetSync.stale?
   end
 
