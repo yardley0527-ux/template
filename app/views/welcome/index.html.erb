@@ -44,6 +44,56 @@
   </div>
 </div>
 
+<%# ── 風險條 ── %>
+<% if @snapshot[:risks].any? %>
+  <div class="card mb-3" style="border-left:6px solid #f0870f;">
+    <div class="card-header py-2"><strong>⚠️ 風險提醒（<%= @snapshot[:risks].size %>）</strong></div>
+    <ul class="list-group list-group-flush">
+      <% @snapshot[:risks].each do |risk| %>
+        <li class="list-group-item py-2 <%= risk[:level] == 'danger' ? 'text-danger font-weight-bold' : '' %>">
+          <%= risk[:level] == "danger" ? "🔴" : "🟡" %> <%= risk[:message] %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+
+<%# ── 直播準備雷達 ── %>
+<% radar = @snapshot[:radar] %>
+<% if radar && radar[:products].any? %>
+  <div class="card mb-3">
+    <div class="card-header py-2">
+      <strong><i class="fal fa-radar mr-1"></i> 直播準備雷達</strong>
+      <span class="small text-muted ml-2">
+        <%= radar[:livestream].event_date.strftime("%-m/%-d") %>「<%= radar[:products].join('、') %>」× 各部門近 3 天日誌
+      </span>
+      <span class="badge badge-light border float-right" title="關鍵字比對，僅代表日誌有提及，不代表完成">疑似相關・請查證</span>
+    </div>
+    <div class="card-body py-2">
+      <div class="row">
+        <% radar[:departments].each do |entry| %>
+          <div class="col-6 col-md-3 mb-2">
+            <% if entry[:mentions].positive? %>
+              <details>
+                <summary style="cursor:pointer;" class="font-weight-bold">
+                  ✅ <%= entry[:department] %> <span class="badge badge-success"><%= entry[:mentions] %></span>
+                </summary>
+                <div class="small mt-1 pl-2" style="border-left:2px solid #d8e3d8;">
+                  <% entry[:evidence].each do |ev| %>
+                    <div class="mb-1"><span class="text-muted"><%= ev[:date].strftime("%-m/%-d") %></span> <%= ev[:line] %></div>
+                  <% end %>
+                </div>
+              </details>
+            <% else %>
+              <span class="text-muted">➖ <%= entry[:department] %> <span class="small">無動靜</span></span>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
 <div class="row">
   <%# ── 左欄：部門回報燈 ── %>
   <div class="col-lg-7 mb-3">
