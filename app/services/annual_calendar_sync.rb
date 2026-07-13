@@ -16,6 +16,20 @@ class AnnualCalendarSync
   end
 
   def call
+    run = SyncRun.create!(source: "annual_calendar", started_at: Time.current)
+    result = sync
+    run.update!(
+      status:         result[:error] ? "failed" : "success",
+      finished_at:    Time.current,
+      meta:           { "events" => result[:events] },
+      error_messages: [result[:error]].compact
+    )
+    result
+  end
+
+  private
+
+  def sync
     year = Date.current.year
     sheet = find_year_sheet(year)
     return { events: 0, error: "找不到 #{year % 100}總表 分頁" } if sheet.nil?

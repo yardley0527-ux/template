@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_13_170000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_13_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -899,6 +899,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_13_170000) do
     t.index ["product_series"], name: "index_subscriptions_on_product_series"
     t.index ["shopline_customer_id"], name: "index_subscriptions_on_shopline_customer_id"
     t.index ["status"], name: "index_subscriptions_on_status"
+  end
+
+  create_table "sync_runs", force: :cascade do |t|
+    t.string "source", null: false
+    t.string "status", default: "running", null: false
+    t.datetime "started_at", null: false
+    t.datetime "finished_at"
+    t.jsonb "error_messages", default: [], null: false
+    t.jsonb "meta", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["source", "created_at"], name: "index_sync_runs_on_source_and_created_at"
   end
 
   create_table "threads_analyses", force: :cascade do |t|

@@ -38,9 +38,19 @@ class DepartmentSheetSync
   end
 
   def call
+    run = SyncRun.create!(source: "department_sheets", started_at: Time.current)
+
     results = SHEETS.to_h do |department, sheet_id|
       [department, sync_department(department, sheet_id)]
     end
+
+    failed = results.count { |_, r| r[:error].present? }
+    run.update!(
+      status:         failed.zero? ? "success" : (failed == results.size ? "failed" : "partial"),
+      finished_at:    Time.current,
+      meta:           results,
+      error_messages: results.filter_map { |dept, r| "#{dept}: #{r[:error]}" if r[:error] }
+    )
 
     self.class.mark_run!
     Rails.cache.write(LAST_RESULT_CACHE_KEY, results)
@@ -48,7 +58,11 @@ class DepartmentSheetSync
   end
 
   def self.last_run_at
-    [Rails.cache.read(LAST_RUN_CACHE_KEY), memory_last_run_at].compact.max
+    [
+      SyncRun.last_finished_at("department_sheets"),
+      Rails.cache.read(LAST_RUN_CACHE_KEY),
+      memory_last_run_at
+    ].compact.max
   end
 
   def self.mark_run!(time = Time.current)

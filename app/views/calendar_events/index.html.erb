@@ -69,6 +69,9 @@
   </span>
   <%= button_to "立即同步", sync_departments_calendar_events_path(month: @month.strftime("%Y-%m")),
         class: "btn btn-sm btn-outline-secondary mb-2 mr-3", form_class: "d-inline" %>
+  <% (@sync_alerts || []).each do |alert| %>
+    <span class="badge badge-danger mb-2 mr-2"><i class="fal fa-exclamation-triangle mr-1"></i><%= alert %></span>
+  <% end %>
   <div class="mb-2 small">
     <% CalendarEvent::EVENT_TYPES.each_value do |type| %>
       <span class="mr-2 text-nowrap">
