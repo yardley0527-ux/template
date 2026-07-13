@@ -21,7 +21,7 @@ class CalendarEventsController < ApplicationController
       .group_by(&:log_date)
     @department_sync_last_run = DepartmentSheetSync.last_run_at
     @sync_alerts = SyncRun.current_alerts
-    schedule_department_sync if DepartmentSheetSync.stale?
+    SyncDepartmentSheetsJob.schedule_if_stale
   end
 
   def sync_departments
@@ -85,12 +85,6 @@ class CalendarEventsController < ApplicationController
     Date.current.beginning_of_month
   end
 
-  # 超過 1 小時沒同步就在背景重抓部門 Sheet；先標記時間戳避免
-  # 多個 request 同時觸發重複的同步。
-  def schedule_department_sync
-    DepartmentSheetSync.mark_run!
-    SyncDepartmentSheetsJob.perform_later
-  end
 
   # 直播歷史（Livestream）已有日期資料，直接帶進行事曆顯示，不用重複輸入。
   # 若同一天已有手動建立的直播事件，就不再重複帶入。

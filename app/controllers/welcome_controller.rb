@@ -1,5 +1,7 @@
 class WelcomeController < ApplicationController
   def index
+    @snapshot = CommandCenterSnapshot.call
+    SyncDepartmentSheetsJob.schedule_if_stale
   end
 
   def birthday_customers
