@@ -16,6 +16,7 @@ class CommandCenterSnapshot
       department_lights: department_lights,
       radar:             radar,
       risks:             OpsRiskScan.call(radar: radar),
+      briefing:          DailyBriefing.latest,
       sync_alerts:       SyncRun.current_alerts,
       sync_last_run:     DepartmentSheetSync.last_run_at
     }

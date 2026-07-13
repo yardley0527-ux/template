@@ -58,6 +58,53 @@
   </div>
 <% end %>
 
+<%# ── AI 每日晨報 ── %>
+<% briefing = @snapshot[:briefing] %>
+<% if briefing %>
+  <div class="card mb-3" style="border-left:6px solid #6f42c1;">
+    <div class="card-header py-2 d-flex align-items-center">
+      <strong>🤖 AI 晨報</strong>
+      <span class="badge badge-light border ml-2" title="AI 整理，可能有誤，點出處回行事曆查證原文">Beta・請查證</span>
+      <span class="ml-auto small text-muted">
+        <% if briefing.status == "success" %>
+          <%= briefing.meta["report_date"] %> 日誌｜<%= briefing.generated_at&.strftime("%-m/%-d %H:%M") %> 生成
+        <% end %>
+      </span>
+    </div>
+    <div class="card-body py-2">
+      <% if briefing.status == "failed" %>
+        <div class="text-danger">
+          <i class="fal fa-exclamation-triangle mr-1"></i>今日晨報生成失敗：<%= briefing.error_message %>
+        </div>
+      <% else %>
+        <% briefing.summary.each do |item| %>
+          <div class="py-1" style="border-bottom:1px dashed #eee;">
+            ・<%= item["text"] %>
+            <span class="badge badge-light border ml-1"><%= item["source"] %></span>
+          </div>
+        <% end %>
+        <% if briefing.dropped_balls.any? %>
+          <div class="mt-2 mb-1 font-weight-bold text-warning">⚠️ 跨部門待接球</div>
+          <% briefing.dropped_balls.each do |item| %>
+            <div class="py-1 small">・<%= item["text"] %>
+              <span class="badge badge-light border ml-1"><%= item["source"] %></span>
+            </div>
+          <% end %>
+        <% end %>
+        <% if briefing.pending_decisions.any? %>
+          <div class="mt-2 mb-1 font-weight-bold text-primary">📋 等主管回覆</div>
+          <% briefing.pending_decisions.each do |item| %>
+            <div class="py-1 small">・<%= item["text"] %>
+              <span class="badge badge-light border ml-1"><%= item["source"] %></span>
+            </div>
+          <% end %>
+        <% end %>
+        <div class="small text-muted mt-2">出處日誌原文請到 <%= link_to "行事曆", calendar_events_path %> 對應日期查看</div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
 <%# ── 直播準備雷達 ── %>
 <% radar = @snapshot[:radar] %>
 <% if radar && radar[:products].any? %>
