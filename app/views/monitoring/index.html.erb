@@ -44,6 +44,44 @@
   </div>
 </div>
 
+<%# 戰情首頁開啟率（P0 成敗指標） %>
+<div class="d-flex align-items-center mb-3">
+  <div class="border-start border-3 border-primary ps-3">
+    <h5 class="fw-bold mb-0">戰情首頁開啟率（近 14 天）</h5>
+    <p class="text-muted small mb-0">每人每天算一次；上線兩週後以管理者每週開啟天數判斷是否續推下一階段</p>
+  </div>
+</div>
+<div class="card border-0 shadow-sm mb-5">
+  <div class="card-body p-0" style="overflow-x:auto;">
+    <% if @home_adoption[:users].empty? %>
+      <p class="text-muted p-3 mb-0">近 14 天沒有任何人打開戰情首頁</p>
+    <% else %>
+      <table class="table table-sm mb-0 text-center" style="min-width:640px;">
+        <thead class="thead-light">
+          <tr>
+            <th class="text-left pl-3">使用者</th>
+            <% @home_adoption[:dates].each do |date| %>
+              <th class="small <%= 'table-warning' if date == Date.current %>"><%= date.strftime("%-m/%-d") %></th>
+            <% end %>
+            <th>天數</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @home_adoption[:users].each do |row| %>
+            <tr>
+              <td class="text-left pl-3 font-weight-bold"><%= row[:name] %></td>
+              <% @home_adoption[:dates].each do |date| %>
+                <td><%= row[:days].include?(date) ? "🟢" : "" %></td>
+              <% end %>
+              <td class="font-weight-bold"><%= row[:total] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+</div>
+
 <%# 每日趨勢 %>
 <% if @daily_trend.any? %>
   <div class="d-flex align-items-center mb-3">

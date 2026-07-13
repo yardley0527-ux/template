@@ -51,5 +51,34 @@ class MonitoringController < ApplicationController
     @edit_logs = CustomerEditLog
       .order(created_at: :desc)
       .limit(20)
+
+    @home_adoption = build_home_adoption
+  end
+
+  private
+
+  # 戰情首頁開啟率：P0 的成敗指標（上線兩週後看管理者每週開幾天）。
+  # 每人每天算一次，最近 14 天。
+  def build_home_adoption
+    since = 13.days.ago.to_date
+    rows = PageView.where(controller_name: "welcome", action_name: "index")
+                   .where("visited_at >= ?", since.beginning_of_day)
+                   .where.not(user_id: nil)
+                   .group(:user_id, Arel.sql("DATE(visited_at)"))
+                   .count
+
+    users = User.where(id: rows.keys.map(&:first).uniq).index_by(&:id)
+    by_user = Hash.new { |h, k| h[k] = Set.new }
+    rows.each_key do |(user_id, date)|
+      label = users[user_id]&.username || "user##{user_id}"
+      by_user[label] << date.to_date
+    end
+
+    dates = (since..Date.current).to_a
+    {
+      dates: dates,
+      users: by_user.map { |name, days| { name: name, days: days, total: days.size } }
+                    .sort_by { |u| -u[:total] }
+    }
   end
 end

@@ -1,5 +1,14 @@
 <% content_for :page_title, "戰情首頁" %>
 
+<style>
+  /* 手機：戰情條字級縮小、倒數換行後仍醒目 */
+  @media (max-width: 575.98px) {
+    .cc-live-title { font-size: 1.25rem !important; }
+    .cc-live-countdown { font-size: 1.1rem !important; display: block; margin-top: 4px; }
+    .cc-card-body-tight { padding: 0.75rem !important; }
+  }
+</style>
+
 <%# ── 同步失敗警告（有問題時才出現） ── %>
 <% @snapshot[:sync_alerts].each do |alert| %>
   <div class="alert alert-danger py-2 mb-2">
@@ -11,14 +20,14 @@
 <%# ── 戰情條：下一場直播 ── %>
 <% live = @snapshot[:next_livestream] %>
 <div class="card mb-3" style="border-left:6px solid #d9364c;">
-  <div class="card-body py-3">
+  <div class="card-body py-3 cc-card-body-tight">
     <% if live %>
       <% days = (live.event_date - Date.current).to_i %>
       <div class="d-flex align-items-baseline flex-wrap">
-        <span class="h3 mb-0 mr-3 font-weight-bold">
+        <span class="h3 mb-0 mr-3 font-weight-bold cc-live-title">
           <i class="fal fa-video text-danger mr-1"></i><%= live.title %>
         </span>
-        <span class="h4 mb-0 text-danger font-weight-bold">
+        <span class="h4 mb-0 text-danger font-weight-bold cc-live-countdown">
           <%= live.event_date.strftime("%-m/%-d") %>（週<%= %w[日 一 二 三 四 五 六][live.event_date.wday] %>）
           <%= days.zero? ? "🔴 今天" : "倒數 #{days} 天" %>
         </span>
