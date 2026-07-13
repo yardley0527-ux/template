@@ -25,8 +25,10 @@ class CalendarEventsController < ApplicationController
 
   def sync_departments
     results = DepartmentSheetSync.call
+    annual = AnnualCalendarSync.call
     failed = results.select { |_, r| r[:error] }.keys
-    notice = failed.empty? ? "部門日誌已同步" : "部門日誌已同步（失敗：#{failed.join('、')}）"
+    failed << "年度行事曆" if annual[:error]
+    notice = failed.empty? ? "已同步（部門日誌＋年度行事曆）" : "已同步（失敗：#{failed.join('、')}）"
     redirect_to calendar_events_path(month: params[:month]), notice: notice
   end
 
@@ -63,6 +65,10 @@ class CalendarEventsController < ApplicationController
 
   def set_event
     @event = CalendarEvent.find(params[:id])
+    return unless @event.synced?
+
+    redirect_to calendar_events_path(month: @event.event_date.strftime("%Y-%m")),
+                alert: "此事件由年度行事曆 Excel 同步，請直接修改 Excel，系統會自動更新"
   end
 
   def event_params

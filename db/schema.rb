@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_13_160000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_13_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -40,7 +40,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_13_160000) do
     t.string "departments", default: [], null: false, array: true
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "external_key"
     t.index ["event_date"], name: "index_calendar_events_on_event_date"
+    t.index ["external_key"], name: "index_calendar_events_on_external_key", unique: true
   end
 
   create_table "crm_customer_product_trackings", force: :cascade do |t|

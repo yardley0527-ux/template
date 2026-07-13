@@ -17,6 +17,12 @@ class CalendarEvent < ApplicationRecord
 
   scope :in_range, ->(range) { where(event_date: range) }
 
+  # 由年度行事曆 Excel 同步進來的事件（AnnualCalendarSync），
+  # 在系統內唯讀，修改要回 Excel 改
+  def synced?
+    external_key.present?
+  end
+
   def type_label
     EVENT_TYPES.fetch(event_type, EVENT_TYPES["other"])[:label]
   end

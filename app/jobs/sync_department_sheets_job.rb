@@ -3,5 +3,6 @@ class SyncDepartmentSheetsJob < ApplicationJob
 
   def perform
     DepartmentSheetSync.call
+    AnnualCalendarSync.call
   end
 end
