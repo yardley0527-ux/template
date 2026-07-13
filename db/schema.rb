@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_13_220000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_13_230000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -237,6 +237,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_13_220000) do
     t.index ["is_growing"], name: "index_customer_series_loyalties_on_is_growing"
     t.index ["series"], name: "index_customer_series_loyalties_on_series"
     t.index ["tier"], name: "index_customer_series_loyalties_on_tier"
+  end
+
+  create_table "daily_briefings", force: :cascade do |t|
+    t.date "briefing_date", null: false
+    t.string "status", default: "pending", null: false
+    t.jsonb "summary", default: [], null: false
+    t.jsonb "dropped_balls", default: [], null: false
+    t.jsonb "pending_decisions", default: [], null: false
+    t.text "error_message"
+    t.datetime "generated_at"
+    t.jsonb "meta", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["briefing_date"], name: "index_daily_briefings_on_briefing_date", unique: true
   end
 
   create_table "daily_member_stats", force: :cascade do |t|

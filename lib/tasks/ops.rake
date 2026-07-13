@@ -18,4 +18,17 @@ namespace :ops do
     failures = dept.count { |_, r| r[:error] } + (annual[:error] ? 1 : 0)
     abort("[ops:sync] #{failures} source(s) failed") if failures.positive?
   end
+
+  # Render Cron Job：每天台北 07:30（UTC 23:30，cron "30 23 * * *"）
+  # command: bundle exec rake ops:sync ops:briefing —— 先抓最新日誌再生成晨報
+  desc "生成今日 AI 晨報（讀部門日誌＋行事曆，落地 daily_briefings）"
+  task briefing: :environment do
+    briefing = DailyBriefingService.call
+    if briefing.status == "success"
+      puts "[ops:briefing] #{briefing.briefing_date}: summary=#{briefing.summary.size} " \
+           "dropped=#{briefing.dropped_balls.size} pending=#{briefing.pending_decisions.size}"
+    else
+      abort("[ops:briefing] FAILED: #{briefing.error_message}")
+    end
+  end
 end
