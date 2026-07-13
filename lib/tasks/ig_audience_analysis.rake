@@ -24,7 +24,7 @@ namespace :ig do
     mode  = args[:mode].presence || "full"
     token = ENV["APIFY_TOKEN"].presence or abort("❌ 請先設定 APIFY_TOKEN 環境變數")
 
-    helper = IgAudienceHelper.new(token)
+    helper = IgAudienceApifyClient.new(token)
 
     puts "=" * 60
     puts "🔍 IG 受眾分析 — #{Time.current.strftime('%Y-%m-%d %H:%M')}"
@@ -176,9 +176,9 @@ namespace :ig do
 end
 
 # ─────────────────────────────────────────────────────────────────────
-# IgAudienceHelper — 僅供此 rake task 使用，不進 autoload 路徑
+# IgAudienceApifyClient — 僅供此 rake task 使用，不進 autoload 路徑
 # ─────────────────────────────────────────────────────────────────────
-class IgAudienceHelper
+class IgAudienceApifyClient
   ACTOR_ID   = "datadoping~instagram-followers-scraper"
   BASE_URL   = "https://api.apify.com/v2"
   POLL_SLEEP = 10    # 秒，輪詢間隔

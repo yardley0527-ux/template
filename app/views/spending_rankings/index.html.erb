@@ -1,54 +1,67 @@
 <%# app/views/spending_rankings/index.html.erb %>
 <% content_for :page_title, "消費排行榜" %>
 
-<% def ig_link_url(account)
-  return nil if account.blank?
-  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
-  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
-end %>
-
 <%# Header %>
 <div class="row g-3 mb-3">
   <div class="col-12">
     <h4 class="fw-bold mb-0">消費排行榜</h4>
-    <p class="text-muted small mb-0">只計「已付款」訂單，依會員彙總 2025 / 2026 消費金額</p>
+    <p class="text-muted small mb-0">
+      只計「已付款」訂單，依會員彙總 2025 / 2026 消費金額。
+      2025 同期＝2025/01/01–<%= @same_period_end.strftime('%Y/%m/%d') %>（去年的今天）。
+    </p>
   </div>
 </div>
 
-<%# 摘要卡：老闆先看重點，點卡片看名單 %>
+<%# 摘要卡：永遠全量統計，不受 tab / 搜尋 / 篩選 / 分頁影響 %>
 <div class="row g-3 mb-4">
-  <div class="col-md-4">
+  <div class="col-md-3">
     <%= link_to spending_rankings_path(focus: "cooling"), class: "text-decoration-none" do %>
-      <div class="card border-0 shadow-sm h-100 <%= 'border' if @focus == 'cooling' %>" style="border-left:4px solid #c0392b !important;">
+      <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #c0392b !important;">
         <div class="card-body py-3">
           <div class="text-muted small mb-1"><i class="fal fa-exclamation-triangle" style="color:#c0392b;"></i> 流失警訊</div>
-          <div class="fw-bold" style="font-size:1.6rem; color:#c0392b;"><%= @summary[:cooling_count] %> 人</div>
-          <div class="text-muted" style="font-size:0.78rem;">2025 前 100 名中，今年消費不到去年同期一半（其中 <%= @summary[:cooling_no_repurchase] %> 人今年完全沒回購）</div>
+          <div class="fw-bold" style="font-size:1.5rem; color:#c0392b;"><%= @summary[:cooling_count] %> 人</div>
+          <div class="text-muted" style="font-size:0.75rem;">2025 前 100 名中，今年消費不到去年同期一半（其中 <%= @summary[:cooling_no_repurchase] %> 人今年完全沒回購）</div>
           <div class="fw-semibold mt-1" style="font-size:0.75rem; color:#c0392b;">點擊看名單 <i class="fal fa-chevron-right"></i></div>
         </div>
       </div>
     <% end %>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
     <%= link_to spending_rankings_path(focus: "rising"), class: "text-decoration-none" do %>
-      <div class="card border-0 shadow-sm h-100 <%= 'border' if @focus == 'rising' %>" style="border-left:4px solid #1e7e34 !important;">
+      <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #1e7e34 !important;">
         <div class="card-body py-3">
           <div class="text-muted small mb-1"><i class="fal fa-arrow-up" style="color:#1e7e34;"></i> 上升新星</div>
-          <div class="fw-bold" style="font-size:1.6rem; color:#1e7e34;"><%= @summary[:rising_count] %> 人</div>
-          <div class="text-muted" style="font-size:0.78rem;">2026 前 100 名中，已超越自己 2025 全年消費（含 <%= @summary[:rising_new] %> 位 2025 未消費的新面孔）</div>
+          <div class="fw-bold" style="font-size:1.5rem; color:#1e7e34;"><%= @summary[:rising_count] %> 人</div>
+          <div class="text-muted" style="font-size:0.75rem;">2026 前 100 名中，超越 2025 全年、NEW（<%= @summary[:rising_new] %>）或回流（<%= @summary[:rising_returning] %>）</div>
           <div class="fw-semibold mt-1" style="font-size:0.75rem; color:#1e7e34;">點擊看名單 <i class="fal fa-chevron-right"></i></div>
         </div>
       </div>
     <% end %>
   </div>
-  <div class="col-md-4">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #1a5da6 !important;">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1"><i class="fal fa-balance-scale" style="color:#1a5da6;"></i> Top 100 同期營收</div>
+        <div style="font-size:0.85rem;">
+          2026 至今：<span class="fw-bold" style="color:#1a5da6;"><%= nt(@summary[:top100_2026_sum]) %></span><br>
+          2025 同期：<span class="fw-semibold"><%= nt(@summary[:top100_2025_ytd_sum]) %></span>
+        </div>
+        <div class="fw-bold mt-1" style="font-size:0.85rem; color:<%= @summary[:top100_yoy_change].negative? ? '#c0392b' : '#1e7e34' %>;">
+          YoY：<%= @summary[:top100_yoy_rate] ? format("%+.1f%%", @summary[:top100_yoy_rate]) : "—" %>
+          <span class="fw-normal text-muted">（<%= signed_nt(@summary[:top100_yoy_change]) %>）</span>
+        </div>
+        <div class="text-muted" style="font-size:0.72rem;">兩期各自取消費前 100 名，非同一批客人</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
     <%= link_to spending_rankings_path(tab: "total"), class: "text-decoration-none" do %>
       <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #6e4a2e !important;">
         <div class="card-body py-3">
           <div class="text-muted small mb-1"><i class="fal fa-coins" style="color:#6e4a2e;"></i> 總榜前 <%= @summary[:total_count] %> 名貢獻</div>
-          <div class="fw-bold" style="font-size:1.6rem; color:#6e4a2e;">NT$<%= number_with_delimiter(@summary[:total_amount]) %></div>
-          <div class="text-muted" style="font-size:0.78rem;">2025 + 2026 累積消費金額合計</div>
-          <div class="fw-semibold mt-1" style="font-size:0.75rem; color:#6e4a2e;">點擊看總榜 <i class="fal fa-chevron-right"></i></div>
+          <div class="fw-bold" style="font-size:1.5rem; color:#6e4a2e;"><%= nt(@summary[:total_amount]) %></div>
+          <div class="fw-semibold" style="font-size:0.85rem; color:#6e4a2e;">占全公司營收 <%= @summary[:total_share] %>%</div>
+          <div class="text-muted" style="font-size:0.72rem;">2025/01/01 至今全會員已付款營收為分母</div>
         </div>
       </div>
     <% end %>
@@ -63,12 +76,55 @@ end %>
   <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
     <% SpendingRankingsController::TABS.each do |key, config| %>
       <li class="nav-item">
-        <%= link_to config[:title], spending_rankings_path(tab: key),
+        <%= link_to config[:title], spending_rankings_path(tab: key, q: @q.presence, levels: @levels.presence, trends: @trends.presence),
               class: "nav-link #{@tab == key ? 'active fw-bold' : 'text-muted'}" %>
       </li>
     <% end %>
   </ul>
 <% end %>
+
+<%# 搜尋 + 篩選（作用在目前榜單/名單；不影響摘要卡，不重編名次） %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2">
+    <%= form_tag spending_rankings_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:10px 16px;" do %>
+      <% if @focus %>
+        <%= hidden_field_tag :focus, @focus %>
+      <% else %>
+        <%= hidden_field_tag :tab, @tab %>
+      <% end %>
+      <%= text_field_tag :q, @q, placeholder: "搜尋姓名、IG 或 Email", class: "form-control form-control-sm", style: "width:220px;" %>
+      <span class="d-flex align-items-center flex-wrap" style="gap:4px 10px; font-size:0.82rem;">
+        <span class="text-muted">卡別：</span>
+        <% SpendingRankingsController::LEVEL_OPTIONS.each do |level| %>
+          <label class="mb-0 d-flex align-items-center" style="gap:3px; cursor:pointer;">
+            <%= check_box_tag "levels[]", level, @levels.include?(level), id: "level_#{level}" %> <%= level %>
+          </label>
+        <% end %>
+      </span>
+      <span class="d-flex align-items-center flex-wrap" style="gap:4px 10px; font-size:0.82rem;">
+        <span class="text-muted">動能：</span>
+        <% SpendingRankingsController::TREND_OPTIONS.each do |key, label| %>
+          <label class="mb-0 d-flex align-items-center" style="gap:3px; cursor:pointer;">
+            <%= check_box_tag "trends[]", key, @trends.include?(key), id: "trend_#{key}" %> <%= label %>
+          </label>
+        <% end %>
+      </span>
+      <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+      <% if @q.present? || @levels.any? || @trends.any? %>
+        <%= link_to "清除條件", spending_rankings_path(@focus ? { focus: @focus } : { tab: @tab }), class: "btn btn-sm btn-outline-secondary" %>
+      <% end %>
+    <% end %>
+    <% if @q.present? || @levels.any? || @trends.any? %>
+      <div class="mt-2 d-flex align-items-center flex-wrap" style="gap:6px; font-size:0.78rem;">
+        <span class="text-muted">生效中：</span>
+        <% if @q.present? %><span class="badge bg-dark">搜尋「<%= @q %>」</span><% end %>
+        <% @levels.each do |l| %><span class="badge bg-secondary">卡別：<%= l %></span><% end %>
+        <% @trends.each do |t| %><span class="badge bg-secondary">動能：<%= SpendingRankingsController::TREND_OPTIONS[t] %></span><% end %>
+        <span class="text-muted">符合 <%= @total_count %> 人（名次仍為原榜排名）</span>
+      </div>
+    <% end %>
+  </div>
+</div>
 
 <% list_title    = @focus_config ? @focus_config[:title]    : @tab_config[:title] %>
 <% list_subtitle = @focus_config ? @focus_config[:subtitle] : @tab_config[:subtitle] %>
@@ -81,51 +137,56 @@ end %>
   </div>
   <div class="card-body p-0 table-responsive">
     <% sort_key = @tab_config[:sort_key] %>
-    <table class="table align-middle mb-0" style="font-size:0.86rem;">
+    <table class="table align-middle mb-0" style="font-size:0.82rem;">
       <thead style="background-color:#4a4a4a; color:white;">
         <tr>
-          <th class="ps-3" style="width:<%= @focus_config ? 100 : 70 %>px;"><%= @focus_config ? @focus_config[:rank_label] : "排名" %></th>
-          <th style="width:140px;">姓名</th>
-          <th style="width:160px;">IG</th>
-          <th style="width:85px;">卡別</th>
-          <th style="width:120px;">
-            動能
-            <div class="fw-normal" style="font-size:0.68rem; opacity:0.75;">2026 對比 2025 同期</div>
+          <th class="ps-3" style="width:<%= @focus_config ? 95 : 60 %>px;"><%= @focus_config ? @focus_config[:rank_label] : "排名" %></th>
+          <th style="width:150px;">姓名</th>
+          <th style="width:75px;">卡別</th>
+          <th class="text-end" style="width:115px;">2025 消費</th>
+          <th class="text-end" style="width:115px;">
+            2025 同期
+            <div class="fw-normal" style="font-size:0.65rem; opacity:0.75;">至 <%= @same_period_end.strftime('%m/%d') %></div>
           </th>
-          <th class="text-end" style="width:140px;">2025 消費金額</th>
-          <th class="text-end" style="width:150px;">2026 累積消費金額</th>
-          <th class="text-end" style="width:150px;">總累積消費金額</th>
-          <th class="text-end pe-3" style="width:130px;">最近消費</th>
+          <th class="text-end" style="width:115px;">2026 累積</th>
+          <th class="text-end" style="width:105px;">
+            YoY
+            <div class="fw-normal" style="font-size:0.65rem; opacity:0.75;">2026 對比 2025 同期</div>
+          </th>
+          <th class="text-end" style="width:120px;">總累積</th>
+          <th style="width:100px;">動能</th>
+          <th class="text-end" style="width:110px;">最近消費</th>
+          <th class="text-center" style="width:90px;">
+            排名變化
+            <div class="fw-normal" style="font-size:0.65rem; opacity:0.75;">2025 榜 → 2026 榜</div>
+          </th>
+          <th style="width:50px;"></th>
         </tr>
       </thead>
       <tbody>
         <% @rows.each do |r| %>
-          <% url = ig_link_url(r[:instagram_account]) %>
+          <% d = @details[r[:email]] || {} %>
+          <% ig_url = sr_ig_link_url(r[:instagram_account]) %>
           <tr>
             <td class="ps-3">
               <% if r[:rank] <= 3 %>
-                <span class="fw-bold" style="color:#c0392b; font-size:1rem;"><%= r[:rank] %></span>
+                <span class="fw-bold" style="color:#c0392b; font-size:0.95rem;"><%= r[:rank] %></span>
               <% else %>
                 <span class="text-muted"><%= r[:rank] %></span>
               <% end %>
             </td>
-            <td class="fw-semibold">
-              <% if r[:shopline_customer_id] %>
-                <%= link_to r[:full_name].presence || r[:email], customer_path(r[:shopline_customer_id]), target: "_blank", class: "text-decoration-none" %>
-              <% else %>
-                <%= r[:full_name].presence || r[:email] %>
-              <% end %>
-            </td>
             <td>
-              <% if url %>
-                <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
-                  <i class="fal fa-at text-danger"></i>
-                  <span style="font-size:0.8rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
-                    <%= r[:instagram_account]&.sub(/^@/, '') %>
-                  </span>
+              <div class="fw-semibold">
+                <% if r[:shopline_customer_id] %>
+                  <%= link_to r[:full_name].presence || r[:email], customer_path(r[:shopline_customer_id]), target: "_blank", class: "text-decoration-none" %>
+                <% else %>
+                  <%= r[:full_name].presence || r[:email] %>
                 <% end %>
-              <% else %>
-                <span class="text-muted small">—</span>
+              </div>
+              <% if ig_url %>
+                <%= link_to ig_url, target: "_blank", class: "text-decoration-none text-muted", style: "font-size:0.72rem;" do %>
+                  <i class="fal fa-at text-danger"></i> <%= r[:instagram_account]&.sub(/^@/, '') %>
+                <% end %>
               <% end %>
             </td>
             <td>
@@ -136,48 +197,77 @@ end %>
                                     when '白卡' then ['#dee2e6', '#333']
                                     else             ['#adb5bd', '#333']
                                     end %>
-              <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= r[:membership_level].presence || "—" %></span>
+              <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.72rem;"><%= r[:membership_level].presence || "—" %></span>
             </td>
-            <td>
-              <% case r[:trend] %>
-              <% when :cooling %>
-                <span class="badge" style="background:#fdecea; color:#c0392b; font-size:0.72rem;"><i class="fal fa-arrow-down"></i> 流失警訊</span>
-              <% when :surpassed %>
-                <span class="badge" style="background:#e6f4ea; color:#1e7e34; font-size:0.72rem;"><i class="fal fa-arrow-up"></i> 超越去年</span>
-              <% when :new %>
-                <span class="badge" style="background:#e7f1fb; color:#1a5da6; font-size:0.72rem;"><i class="fal fa-sparkles"></i> NEW</span>
-              <% else %>
-                <span class="text-muted small">穩定</span>
+            <td class="text-end <%= 'fw-bold' if sort_key == :amount_2025 && !@focus %>">
+              <%= r[:amount_2025].positive? ? nt(r[:amount_2025]) : "—" %>
+            </td>
+            <td class="text-end text-muted">
+              <%= r[:amount_2025_ytd].positive? ? nt(r[:amount_2025_ytd]) : "—" %>
+            </td>
+            <td class="text-end <%= 'fw-bold' if sort_key == :amount_2026 && !@focus %>">
+              <%= r[:amount_2026].positive? ? nt(r[:amount_2026]) : "—" %>
+            </td>
+            <td class="text-end">
+              <div class="fw-bold" style="color:<%= yoy_color(r) %>;"><%= yoy_rate_display(r) %></div>
+              <% unless r[:amount_2025_ytd].zero? && r[:amount_2026].zero? %>
+                <div class="text-muted" style="font-size:0.7rem;"><%= signed_nt(r[:yoy_change]) %></div>
               <% end %>
             </td>
-            <td class="text-end <%= 'fw-bold' if sort_key == :amount_2025 %>" style="<%= 'color:#c0392b; font-size:0.95rem;' if sort_key == :amount_2025 %>">
-              <%= r[:amount_2025].positive? ? "NT$#{number_with_delimiter(r[:amount_2025])}" : "—" %>
+            <td class="text-end <%= sort_key == :amount_total && !@focus ? 'fw-bold' : 'fw-semibold' %>" style="color:#6e4a2e;">
+              <%= nt(r[:amount_total]) %>
             </td>
-            <td class="text-end <%= 'fw-bold' if sort_key == :amount_2026 %>" style="<%= 'color:#c0392b; font-size:0.95rem;' if sort_key == :amount_2026 %>">
-              <%= r[:amount_2026].positive? ? "NT$#{number_with_delimiter(r[:amount_2026])}" : "—" %>
+            <td>
+              <% label, bg, fg, icon = trend_badge(r[:trend]) %>
+              <span class="badge" style="background:<%= bg %>; color:<%= fg %>; font-size:0.7rem;">
+                <% if icon %><i class="fal <%= icon %>"></i><% end %> <%= label %>
+              </span>
             </td>
-            <td class="text-end <%= sort_key == :amount_total ? 'fw-bold' : 'fw-semibold' %>" style="<%= sort_key == :amount_total ? 'color:#c0392b; font-size:0.95rem;' : 'color:#6e4a2e;' %>">
-              NT$<%= number_with_delimiter(r[:amount_total]) %>
-            </td>
-            <td class="text-end pe-3">
+            <td class="text-end">
               <% if r[:last_order_date] %>
-                <div style="font-size:0.8rem;"><%= r[:last_order_date].strftime('%Y/%m/%d') %></div>
-                <% if r[:silent_days] > SpendingRankingsController::SILENT_DAYS %>
-                  <div class="fw-bold" style="font-size:0.72rem; color:#c0392b;"><%= r[:silent_days] %> 天沒消費</div>
-                <% else %>
-                  <div class="text-muted" style="font-size:0.72rem;"><%= r[:silent_days] %> 天前</div>
-                <% end %>
+                <div style="font-size:0.78rem;"><%= r[:last_order_date].strftime('%Y/%m/%d') %></div>
+                <div class="<%= silent_alert?(r[:silent_days]) ? 'fw-bold' : 'text-muted' %>"
+                     style="font-size:0.7rem;<%= ' color:#c0392b;' if silent_alert?(r[:silent_days]) %>">
+                  <%= silent_days_label(r[:silent_days]) %>
+                </div>
               <% else %>
                 <span class="text-muted small">—</span>
               <% end %>
+            </td>
+            <td class="text-center">
+              <% delta_label, delta_color = rank_delta_display(r) %>
+              <span class="fw-bold" style="color:<%= delta_color %>; font-size:0.8rem;"><%= delta_label %></span>
+            </td>
+            <td class="text-center">
+              <a href="#" class="text-decoration-none text-muted"
+                 onclick="document.getElementById('sr-detail-<%= r[:rank] %>').classList.toggle('d-none'); return false;">
+                <i class="fal fa-chevron-down"></i>
+              </a>
+            </td>
+          </tr>
+          <tr id="sr-detail-<%= r[:rank] %>" class="d-none">
+            <td colspan="12" style="background:#faf7f2; padding:10px 16px 10px 48px;">
+              <div class="row" style="font-size:0.78rem; row-gap:6px;">
+                <div class="col-md-2"><span class="text-muted">訂單數</span><div class="fw-semibold"><%= d[:order_count] %> 筆</div></div>
+                <div class="col-md-2"><span class="text-muted">平均客單</span><div class="fw-semibold"><%= d[:avg_order] ? nt(d[:avg_order]) : "—" %></div></div>
+                <div class="col-md-2"><span class="text-muted">回購次數</span><div class="fw-semibold"><%= d[:repurchase_count] %> 次</div></div>
+                <div class="col-md-3"><span class="text-muted">最常買產品</span><div class="fw-semibold"><%= d[:top_product] || "—" %></div></div>
+                <div class="col-md-3"><span class="text-muted">首購日期</span><div class="fw-semibold"><%= d[:first_paid_order_at]&.strftime('%Y/%m/%d') || "—" %></div></div>
+                <div class="col-md-2"><span class="text-muted">最近參與直播</span><div class="fw-semibold"><%= d[:last_livestream_date]&.strftime('%Y/%m/%d') || "—" %></div></div>
+                <div class="col-md-2"><span class="text-muted">LINE 綁定</span><div class="fw-semibold"><%= d[:line_status] %></div></div>
+                <div class="col-md-2"><span class="text-muted">IG 追蹤</span><div class="fw-semibold"><%= d[:ig_status] %></div></div>
+                <div class="col-md-3"><span class="text-muted">CRM 跟進</span><div class="fw-semibold"><%= d[:crm_status] %></div></div>
+                <div class="col-md-3"><span class="text-muted">Email</span><div class="fw-semibold"><%= r[:email] %></div></div>
+              </div>
+              <div class="text-muted mt-1" style="font-size:0.68rem;">訂單數／客單／回購／最常買產品統計期間：<%= SpendingRankingsController::PERIOD_LABELS[@focus_config ? @focus_config[:period] : SpendingRankingsController::TAB_PERIODS[@tab]] %>；最近參與直播＝直播日起 3 天內有下單（檔期推定）</div>
             </td>
           </tr>
         <% end %>
         <% if @rows.empty? %>
           <tr>
-            <td colspan="9" class="text-center py-5 text-muted">
+            <td colspan="12" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
-              目前沒有符合的消費紀錄
+              <%= @q.present? || @levels.any? || @trends.any? ? "沒有符合搜尋／篩選條件的客人" : "目前沒有符合的消費紀錄" %>
             </td>
           </tr>
         <% end %>
@@ -190,7 +280,7 @@ end %>
         第 <%= (@page - 1) * SpendingRankingsController::PER_PAGE + 1 %>–<%= [(@page * SpendingRankingsController::PER_PAGE), @total_count].min %> 筆，共 <%= @total_count %> 筆
       </span>
       <div>
-        <% page_params = { tab: @focus ? nil : @tab, focus: @focus }.compact %>
+        <% page_params = { tab: (@focus ? nil : @tab), focus: @focus, q: @q.presence, levels: @levels.presence, trends: @trends.presence }.compact %>
         <%= link_to "上一頁", spending_rankings_path(page_params.merge(page: [@page - 1, 1].max)),
               class: "btn btn-outline-secondary btn-sm me-2 #{'disabled' if @page <= 1}" %>
         <%= link_to "下一頁", spending_rankings_path(page_params.merge(page: [@page + 1, @total_pages].min)),
