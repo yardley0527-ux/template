@@ -114,6 +114,7 @@ Rails.application.routes.draw do
   get '/first_purchase/export', to: 'first_purchase#export', as: :export_first_purchase
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
   get '/product_high_value_customers', to: 'product_high_value_customers#index', as: :product_high_value_customers
+  get '/spending_rankings', to: 'spending_rankings#index', as: :spending_rankings
   get '/metabolism_qingxian_customers',        to: 'metabolism_qingxian_customers#index',  as: :metabolism_qingxian_customers
   get '/metabolism_qingxian_customers/export', to: 'metabolism_qingxian_customers#export', as: :export_metabolism_qingxian_customers
   get '/message_lists',            to: 'message_lists#index',  as: :message_lists

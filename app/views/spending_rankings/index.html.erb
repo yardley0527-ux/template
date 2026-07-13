@@ -1,0 +1,111 @@
+<%# app/views/spending_rankings/index.html.erb %>
+<% content_for :page_title, "消費排行榜" %>
+
+<% def ig_link_url(account)
+  return nil if account.blank?
+  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+end %>
+
+<%# Header %>
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <h4 class="fw-bold mb-0">消費排行榜</h4>
+    <p class="text-muted small mb-0">只計「已付款」訂單，依會員彙總 2025 / 2026 消費金額</p>
+  </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+  <% SpendingRankingsController::TABS.each do |key, config| %>
+    <li class="nav-item">
+      <%= link_to config[:title], spending_rankings_path(tab: key),
+            class: "nav-link #{@tab == key ? 'active fw-bold' : 'text-muted'}" %>
+    </li>
+  <% end %>
+</ul>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
+    <span class="fw-bold"><%= @tab_config[:title] %></span>
+    <span class="badge bg-secondary"><%= @rows.size %> 人</span>
+    <span class="text-muted small"><%= @tab_config[:subtitle] %></span>
+  </div>
+  <div class="card-body p-0 table-responsive">
+    <% sort_key = @tab_config[:sort_key] %>
+    <table class="table align-middle mb-0" style="font-size:0.86rem;">
+      <thead style="background-color:#4a4a4a; color:white;">
+        <tr>
+          <th class="ps-3" style="width:70px;">排名</th>
+          <th style="width:150px;">姓名</th>
+          <th style="width:170px;">IG</th>
+          <th style="width:90px;">卡別</th>
+          <th class="text-end" style="width:150px;">2025 消費金額</th>
+          <th class="text-end" style="width:170px;">2026 累積消費金額</th>
+          <th class="text-end" style="width:170px;">總累積消費金額</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rows.each do |r| %>
+          <% url = ig_link_url(r[:instagram_account]) %>
+          <tr>
+            <td class="ps-3">
+              <% if r[:rank] <= 3 %>
+                <span class="fw-bold" style="color:#c0392b; font-size:1rem;"><%= r[:rank] %></span>
+              <% else %>
+                <span class="text-muted"><%= r[:rank] %></span>
+              <% end %>
+            </td>
+            <td class="fw-semibold">
+              <% if r[:shopline_customer_id] %>
+                <%= link_to r[:full_name].presence || r[:email], customer_path(r[:shopline_customer_id]), target: "_blank", class: "text-decoration-none" %>
+              <% else %>
+                <%= r[:full_name].presence || r[:email] %>
+              <% end %>
+            </td>
+            <td>
+              <% if url %>
+                <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                  <i class="fal fa-at text-danger"></i>
+                  <span style="font-size:0.8rem; max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                    <%= r[:instagram_account]&.sub(/^@/, '') %>
+                  </span>
+                <% end %>
+              <% else %>
+                <span class="text-muted small">—</span>
+              <% end %>
+            </td>
+            <td>
+              <% badge_bg, badge_fg = case r[:membership_level]
+                                    when '黑卡' then ['#333', '#fff']
+                                    when '金卡' then ['#b8860b', '#fff']
+                                    when '銀卡' then ['#6c757d', '#fff']
+                                    when '白卡' then ['#dee2e6', '#333']
+                                    else             ['#adb5bd', '#333']
+                                    end %>
+              <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= r[:membership_level].presence || "—" %></span>
+            </td>
+            <td class="text-end <%= 'fw-bold' if sort_key == :amount_2025 %>" style="<%= 'color:#c0392b; font-size:0.95rem;' if sort_key == :amount_2025 %>">
+              <%= r[:amount_2025].positive? ? "NT$#{number_with_delimiter(r[:amount_2025])}" : "—" %>
+            </td>
+            <td class="text-end <%= 'fw-bold' if sort_key == :amount_2026 %>" style="<%= 'color:#c0392b; font-size:0.95rem;' if sort_key == :amount_2026 %>">
+              <%= r[:amount_2026].positive? ? "NT$#{number_with_delimiter(r[:amount_2026])}" : "—" %>
+            </td>
+            <td class="text-end <%= sort_key == :amount_total ? 'fw-bold' : 'fw-semibold' %>" style="<%= sort_key == :amount_total ? 'color:#c0392b; font-size:0.95rem;' : 'color:#6e4a2e;' %>">
+              NT$<%= number_with_delimiter(r[:amount_total]) %>
+            </td>
+            <td></td>
+          </tr>
+        <% end %>
+        <% if @rows.empty? %>
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">
+              <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+              目前沒有符合的消費紀錄
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
