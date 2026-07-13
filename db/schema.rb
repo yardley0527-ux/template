@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_09_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_13_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -29,6 +29,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_09_130000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["shopline_customer_id"], name: "index_albums_on_shopline_customer_id"
+  end
+
+  create_table "calendar_events", force: :cascade do |t|
+    t.string "title", null: false
+    t.string "event_type", default: "other", null: false
+    t.date "event_date", null: false
+    t.string "time_info"
+    t.text "description"
+    t.string "departments", default: [], null: false, array: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_date"], name: "index_calendar_events_on_event_date"
   end
 
   create_table "crm_customer_product_trackings", force: :cascade do |t|

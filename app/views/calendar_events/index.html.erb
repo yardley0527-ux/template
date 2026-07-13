@@ -1,0 +1,184 @@
+<% content_for :page_title, "公司行事曆" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-calendar-alt mr-2 text-primary"></i> 公司行事曆
+  </h1>
+  <div class="ml-auto">
+    <%= link_to new_calendar_event_path, class: "btn btn-primary btn-sm" do %>
+      <i class="fal fa-plus mr-1"></i> 新增事件
+    <% end %>
+  </div>
+</div>
+
+<%# ── 未來 7 天摘要 ── %>
+<div class="card mb-3">
+  <div class="card-header py-2">
+    <strong><i class="fal fa-bolt mr-1 text-warning"></i> 未來 7 天</strong>
+  </div>
+  <div class="card-body py-2">
+    <% if @upcoming_by_date.empty? %>
+      <span class="text-muted small">未來 7 天沒有排定事件</span>
+    <% else %>
+      <% @upcoming_by_date.each do |date, events| %>
+        <div class="d-flex align-items-start py-1" style="border-bottom:1px dashed #eee;">
+          <div class="text-center mr-3 flex-shrink-0" style="width:52px;">
+            <div class="font-weight-bold <%= date == Date.current ? 'text-primary' : '' %>">
+              <%= date.strftime("%-m/%-d") %>
+            </div>
+            <div class="small text-muted">
+              <%= date == Date.current ? "今天" : "週#{%w[日 一 二 三 四 五 六][date.wday]}" %>
+            </div>
+          </div>
+          <div class="flex-grow-1">
+            <% events.each do |event| %>
+              <div class="mb-1">
+                <span class="badge badge-pill text-white" style="background:<%= event.type_color %>;"><%= event.type_label %></span>
+                <span class="font-weight-bold ml-1"><%= event.title %></span>
+                <% if event.time_info.present? %>
+                  <span class="text-muted small ml-1"><i class="fal fa-clock"></i> <%= event.time_info %></span>
+                <% end %>
+                <% event.departments.each do |dept| %>
+                  <span class="badge badge-light border ml-1"><%= dept %></span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<%# ── 月份切換 + 圖例 ── %>
+<div class="d-flex align-items-center flex-wrap mb-2">
+  <div class="btn-group mr-3 mb-2">
+    <%= link_to calendar_events_path(month: (@month - 1.month).strftime("%Y-%m")), class: "btn btn-sm btn-outline-secondary" do %>
+      <i class="fal fa-chevron-left"></i>
+    <% end %>
+    <span class="btn btn-sm btn-outline-secondary disabled font-weight-bold" style="min-width:110px; opacity:1;">
+      <%= @month.strftime("%Y 年 %-m 月") %>
+    </span>
+    <%= link_to calendar_events_path(month: (@month + 1.month).strftime("%Y-%m")), class: "btn btn-sm btn-outline-secondary" do %>
+      <i class="fal fa-chevron-right"></i>
+    <% end %>
+  </div>
+  <%= link_to "回到本月", calendar_events_path, class: "btn btn-sm btn-outline-primary mb-2 mr-3" %>
+  <div class="mb-2 small">
+    <% CalendarEvent::EVENT_TYPES.each_value do |type| %>
+      <span class="mr-2 text-nowrap">
+        <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:<%= type[:color] %>;"></span>
+        <%= type[:label] %>
+      </span>
+    <% end %>
+  </div>
+</div>
+
+<%# ── 桌機：月曆格狀檢視 ── %>
+<div class="d-none d-lg-block">
+  <div class="card mb-4">
+    <table class="table table-bordered mb-0" style="table-layout:fixed;">
+      <thead class="thead-light">
+        <tr>
+          <% %w[週日 週一 週二 週三 週四 週五 週六].each do |day_name| %>
+            <th class="text-center py-2 small"><%= day_name %></th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% grid_start = @month.beginning_of_month.beginning_of_week(:sunday) %>
+        <% grid_end   = @month.end_of_month.end_of_week(:sunday) %>
+        <% (grid_start..grid_end).each_slice(7) do |week| %>
+          <tr>
+            <% week.each do |date| %>
+              <% in_month = date.month == @month.month %>
+              <td class="p-1 align-top" style="height:100px; <%= 'background:#f8f9fa;' unless in_month %> <%= 'background:#fff9e0;' if date == Date.current %>">
+                <div class="d-flex align-items-center mb-1">
+                  <span class="small font-weight-bold <%= in_month ? '' : 'text-muted' %> <%= 'badge badge-primary' if date == Date.current %>">
+                    <%= date.day %>
+                  </span>
+                  <% if in_month %>
+                    <%= link_to new_calendar_event_path(date: date), class: "ml-auto text-muted small", title: "在這天新增事件" do %>
+                      <i class="fal fa-plus"></i>
+                    <% end %>
+                  <% end %>
+                </div>
+                <% (@events_by_date[date] || []).each do |event| %>
+                  <% chip_style = "display:block; background:#{event.type_color}; color:#fff; border-radius:3px; padding:1px 5px; margin-bottom:2px; font-size:11px; line-height:1.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" %>
+                  <% chip_title = [event.type_label, event.title, event.time_info].compact_blank.join("｜") %>
+                  <% if event.persisted? %>
+                    <%= link_to event.title, edit_calendar_event_path(event), style: chip_style, title: chip_title %>
+                  <% else %>
+                    <span style="<%= chip_style %>" title="<%= chip_title %>"><%= event.title %></span>
+                  <% end %>
+                <% end %>
+              </td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<%# ── 本月事件清單（手機為主要檢視，桌機當補充明細） ── %>
+<div class="card mb-4">
+  <div class="card-header py-2">
+    <strong><i class="fal fa-list mr-1"></i> <%= @month.strftime("%-m 月") %>事件明細</strong>
+  </div>
+  <% month_days = @events_by_date.keys.sort %>
+  <% if month_days.empty? %>
+    <div class="card-body text-center text-muted py-5">
+      <i class="fal fa-calendar fa-3x mb-3 d-block opacity-25"></i>
+      本月尚無事件，<%= link_to "新增第一筆", new_calendar_event_path(date: @month) %>
+    </div>
+  <% else %>
+    <div class="list-group list-group-flush">
+      <% month_days.each do |date| %>
+        <div class="list-group-item px-3 py-2" style="<%= 'background:#fff9e0;' if date == Date.current %>">
+          <div class="d-flex">
+            <div class="text-center mr-3 flex-shrink-0" style="width:52px;">
+              <div class="h5 mb-0 font-weight-bold <%= date == Date.current ? 'text-primary' : '' %>"><%= date.strftime("%-m/%-d") %></div>
+              <div class="small text-muted"><%= date == Date.current ? "今天" : "週#{%w[日 一 二 三 四 五 六][date.wday]}" %></div>
+            </div>
+            <div class="flex-grow-1" style="min-width:0;">
+              <% @events_by_date[date].each do |event| %>
+                <div class="mb-2">
+                  <div class="d-flex align-items-center flex-wrap">
+                    <span class="badge badge-pill text-white mr-2" style="background:<%= event.type_color %>;"><%= event.type_label %></span>
+                    <span class="font-weight-bold mr-2"><%= event.title %></span>
+                    <% if event.time_info.present? %>
+                      <span class="text-muted small mr-2"><i class="fal fa-clock"></i> <%= event.time_info %></span>
+                    <% end %>
+                    <% if event.persisted? %>
+                      <span class="ml-auto text-nowrap">
+                        <%= link_to edit_calendar_event_path(event), class: "btn btn-xs btn-outline-secondary" do %>
+                          <i class="fal fa-edit"></i>
+                        <% end %>
+                        <%= link_to calendar_event_path(event), method: :delete,
+                              data: { confirm: "確定刪除「#{event.title}」？" },
+                              class: "btn btn-xs btn-outline-danger ml-1" do %>
+                          <i class="fal fa-trash"></i>
+                        <% end %>
+                      </span>
+                    <% end %>
+                  </div>
+                  <% if event.departments.any? %>
+                    <div class="mt-1">
+                      <% event.departments.each do |dept| %>
+                        <span class="badge badge-light border mr-1"><%= dept %></span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                  <% if event.description.present? %>
+                    <div class="text-muted small mt-1" style="white-space:pre-wrap;"><%= event.description %></div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,63 @@
+<%= form_with model: event, local: true do |f| %>
+  <% if event.errors.any? %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% event.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="card mb-4" style="max-width:640px;">
+    <div class="card-body">
+      <div class="form-group">
+        <%= f.label :event_date, "日期" %>
+        <%= f.date_field :event_date, class: "form-control", style: "max-width:200px;" %>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :event_type, "類型" %>
+        <%= f.select :event_type,
+              CalendarEvent::EVENT_TYPES.map { |key, type| [type[:label], key] },
+              {}, class: "form-control", style: "max-width:200px;" %>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :title, "標題" %>
+        <%= f.text_field :title, class: "form-control", placeholder: "例：薑黃、代謝錠直播 / 穀胱甘肽到貨 3000 盒" %>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :time_info, "時間（選填）" %>
+        <%= f.text_field :time_info, class: "form-control", style: "max-width:300px;", placeholder: "例：早上 9:00–12:00" %>
+      </div>
+
+      <div class="form-group">
+        <label>相關部門（選填）</label>
+        <div>
+          <% CalendarEvent::DEPARTMENTS.each do |dept| %>
+            <div class="custom-control custom-checkbox custom-control-inline">
+              <%= check_box_tag "calendar_event[departments][]", dept,
+                    event.departments.include?(dept),
+                    id: "dept_#{dept}", class: "custom-control-input" %>
+              <label class="custom-control-label" for="dept_<%= dept %>"><%= dept %></label>
+            </div>
+          <% end %>
+        </div>
+        <small class="text-muted">沒勾表示全公司都相關</small>
+      </div>
+
+      <div class="form-group">
+        <%= f.label :description, "說明（選填）" %>
+        <%= f.text_area :description, class: "form-control", rows: 4,
+              placeholder: "補充細節，例如：到貨數量、直播贈品、注意事項…" %>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-5">
+    <%= f.submit event.persisted? ? "更新事件" : "建立事件", class: "btn btn-primary" %>
+    <%= link_to "取消", calendar_events_path(month: (event.event_date || Date.current).strftime("%Y-%m")), class: "btn btn-outline-secondary ml-2" %>
+  </div>
+<% end %>

@@ -1,0 +1,14 @@
+<% content_for :page_title, "編輯事件" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-calendar-edit mr-2 text-primary"></i> 編輯事件
+  </h1>
+  <div class="ml-auto">
+    <%= link_to @event, method: :delete, data: { confirm: "確定刪除「#{@event.title}」？" }, class: "btn btn-outline-danger btn-sm" do %>
+      <i class="fal fa-trash mr-1"></i> 刪除
+    <% end %>
+  </div>
+</div>
+
+<%= render "form", event: @event %>

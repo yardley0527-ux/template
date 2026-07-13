@@ -11,6 +11,8 @@ Rails.application.routes.draw do
   end
   resources :message_template_images, only: [:create, :destroy]
 
+  resources :calendar_events, only: [:index, :new, :create, :edit, :update, :destroy]
+
   resources :livestreams, only: [:index, :new, :create, :edit, :update, :destroy] do
     resources :livestream_images, only: [:create, :destroy]
     resources :livestream_products, only: [:create, :update, :destroy]

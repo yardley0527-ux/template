@@ -12,7 +12,9 @@ class PageRegistry
   # during the sessions#create request itself, current_user is already present
   # and gets checked against the "sessions" controller — which no role should
   # ever need to whitelist just to be able to log in.
-  ALWAYS_ALLOWED_CONTROLLERS = %w[welcome sessions passwords].freeze
+  # calendar_events 是全公司共用的行事曆公佈欄，每個部門登入都要看得到，
+  # 所以不走 page_permissions。
+  ALWAYS_ALLOWED_CONTROLLERS = %w[welcome sessions passwords calendar_events].freeze
 
   class << self
     def controller_for(href)
