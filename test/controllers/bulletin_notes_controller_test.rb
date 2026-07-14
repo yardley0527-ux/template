@@ -11,16 +11,15 @@ class BulletinNotesControllerTest < ActionDispatch::IntegrationTest
     sign_in @user
   end
 
-  test "creates a note with author and shows it on the homepage" do
+  test "creates a note with author and shows it on its department board" do
     assert_difference -> { BulletinNote.count }, 1 do
-      post bulletin_notes_path, params: { bulletin_note: { content: "訂 7/17 直播贈品" } }
+      post bulletin_notes_path, params: { bulletin_note: { content: "訂 7/17 直播贈品", department: "廣告部" } }
     end
     note = BulletinNote.last
     assert_equal "serena_t", note.created_by
 
-    get root_path
+    get department_board_path("廣告部")
     assert_includes response.body, "訂 7/17 直播贈品"
-    assert_includes response.body, "佈告欄"
   end
 
   test "rejects blank content with an alert" do
@@ -105,13 +104,12 @@ class BulletinNotesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to department_board_path("CRM")
   end
 
-  test "homepage board excludes department notes and cards link to boards" do
-    BulletinNote.create!(content: "全公司板便條")
+  test "homepage has no note board but cards link to department boards with badge" do
     BulletinNote.create!(content: "廣告部板便條", department: "廣告部")
 
     get root_path
-    assert_includes response.body, "全公司板便條"
     assert_not_includes response.body, "廣告部板便條"
+    assert_not_includes response.body, "想到什麼記什麼"
     assert_includes response.body, department_board_path("廣告部")
     assert_includes response.body, "📌1"
   end
@@ -121,8 +119,8 @@ class BulletinNotesControllerTest < ActionDispatch::IntegrationTest
     staff = User.create!(email: "dept@test.com", username: "dept_t", password: "password123", role: staff_role)
     sign_in staff
 
-    post bulletin_notes_path, params: { bulletin_note: { content: "部門帳號也能貼" } }
-    assert_redirected_to root_path
+    post bulletin_notes_path, params: { bulletin_note: { content: "部門帳號也能貼", department: "物流部" } }
+    assert_redirected_to department_board_path("物流部")
     assert_equal "部門帳號也能貼", BulletinNote.last.content
   end
 end
