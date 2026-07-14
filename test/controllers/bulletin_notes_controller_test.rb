@@ -104,14 +104,18 @@ class BulletinNotesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to department_board_path("CRM")
   end
 
-  test "homepage has no note board but cards link to department boards with badge" do
+  test "homepage company board sits above department lights and excludes department notes" do
+    BulletinNote.create!(content: "全公司的事")
     BulletinNote.create!(content: "廣告部板便條", department: "廣告部")
 
     get root_path
+    assert_includes response.body, "公司佈告欄"
+    assert_includes response.body, "全公司的事"
     assert_not_includes response.body, "廣告部板便條"
-    assert_not_includes response.body, "想到什麼記什麼"
     assert_includes response.body, department_board_path("廣告部")
     assert_includes response.body, "📌1"
+    assert_operator response.body.index("公司佈告欄"), :<, response.body.index("部門今日回報"),
+                    "公司佈告欄要在部門今日回報上方"
   end
 
   test "works for a non-admin department account" do
