@@ -19,6 +19,9 @@ Rails.application.routes.draw do
   end
   get "/boards/:department", to: "bulletin_notes#board", as: :department_board,
                              constraints: { department: /[^\/]+/ }
+  post "/boards/:department/sections", to: "bulletin_notes#create_section", as: :department_board_sections,
+                                       constraints: { department: /[^\/]+/ }
+  delete "/board_sections/:id", to: "bulletin_notes#destroy_section", as: :board_section
 
   resources :livestreams, only: [:index, :new, :create, :edit, :update, :destroy] do
     resources :livestream_images, only: [:create, :destroy]
