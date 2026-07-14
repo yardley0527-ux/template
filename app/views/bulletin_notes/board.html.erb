@@ -1,0 +1,48 @@
+<% content_for :page_title, "#{@department}佈告欄" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    📌 <%= @department %>佈告欄
+  </h1>
+  <div class="ml-auto">
+    <%= link_to root_path, class: "btn btn-sm btn-outline-secondary" do %>
+      <i class="fal fa-arrow-left mr-1"></i> 回戰情首頁
+    <% end %>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-7 mb-3">
+    <div class="card" style="border-left:6px solid #f0b429;">
+      <div class="card-header py-2">
+        <strong>待辦與備忘</strong>
+        <span class="small text-muted ml-2">這是<%= @department %>的板；全公司板在首頁</span>
+      </div>
+      <div class="card-body py-2">
+        <%= render "notes", notes: @notes, department: @department %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5 mb-3">
+    <div class="card">
+      <div class="card-header py-2">
+        <strong><i class="fal fa-file-alt mr-1"></i> <%= @department %>最近日誌</strong>
+        <%= link_to "完整內容 →", calendar_events_path, class: "small float-right" %>
+      </div>
+      <div class="card-body py-2">
+        <% if @recent_logs.empty? %>
+          <div class="text-muted small">尚無日誌</div>
+        <% end %>
+        <% @recent_logs.each do |log| %>
+          <details class="mb-1">
+            <summary class="font-weight-bold" style="cursor:pointer;">
+              <%= log.log_date.strftime("%-m/%-d") %>（週<%= %w[日 一 二 三 四 五 六][log.log_date.wday] %>）
+            </summary>
+            <div class="small mt-1 pl-2" style="border-left:3px solid #e0e6ef; white-space:pre-wrap; word-break:break-word;"><%= auto_link_urls(log.content) %></div>
+          </details>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

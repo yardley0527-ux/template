@@ -43,12 +43,14 @@ class CommandCenterSnapshot
   def department_lights
     reported_today = DepartmentUpdate.where(log_date: Date.current).pluck(:department).to_set
     last_dates     = DepartmentUpdate.group(:department).maximum(:log_date)
+    note_counts    = BulletinNote.open_counts_by_department
 
     DepartmentUpdate::DEPARTMENTS.map do |dept|
       {
         department:     dept,
         reported_today: reported_today.include?(dept),
-        last_date:      last_dates[dept]
+        last_date:      last_dates[dept],
+        open_notes:     note_counts[dept].to_i
       }
     end
   end

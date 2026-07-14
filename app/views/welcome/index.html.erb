@@ -166,25 +166,30 @@
         <div class="row">
           <% @snapshot[:department_lights].each do |light| %>
             <div class="col-6 col-md-3 mb-2">
-              <div class="p-2 rounded text-center" style="background:<%= light[:reported_today] ? '#e8f6ee' : '#f4f4f4' %>;">
-                <div class="font-weight-bold">
-                  <%= light[:reported_today] ? "🟢" : "⚪" %> <%= light[:department] %>
-                </div>
-                <div class="small text-muted">
-                  <% if light[:reported_today] %>
-                    今日已回報
-                  <% elsif light[:last_date] %>
-                    最後：<%= light[:last_date].strftime("%-m/%-d") %>
-                  <% else %>
-                    尚無紀錄
+              <%= link_to department_board_path(light[:department]), class: "text-decoration-none text-reset", title: "打開#{light[:department]}的佈告欄" do %>
+                <div class="p-2 rounded text-center position-relative" style="background:<%= light[:reported_today] ? '#e8f6ee' : '#f4f4f4' %>;">
+                  <% if light[:open_notes].positive? %>
+                    <span class="badge badge-warning position-absolute" style="top:4px; right:6px;" title="板上有 <%= light[:open_notes] %> 張未完成便條">📌<%= light[:open_notes] %></span>
                   <% end %>
+                  <div class="font-weight-bold">
+                    <%= light[:reported_today] ? "🟢" : "⚪" %> <%= light[:department] %>
+                  </div>
+                  <div class="small text-muted">
+                    <% if light[:reported_today] %>
+                      今日已回報
+                    <% elsif light[:last_date] %>
+                      最後：<%= light[:last_date].strftime("%-m/%-d") %>
+                    <% else %>
+                      尚無紀錄
+                    <% end %>
+                  </div>
                 </div>
-              </div>
+              <% end %>
             </div>
           <% end %>
         </div>
         <div class="small text-muted mt-1">
-          部門日誌通常於當天陸續填寫；點 <%= link_to "行事曆", calendar_events_path %> 看各部門完整內容
+          點部門卡打開該部門的佈告欄；日誌完整內容看 <%= link_to "行事曆", calendar_events_path %>
         </div>
       </div>
     </div>
@@ -196,44 +201,7 @@
         <span class="small text-muted ml-2">隨手記的待辦與備忘，全公司看得到</span>
       </div>
       <div class="card-body py-2">
-        <%= form_with url: bulletin_notes_path, method: :post, local: true, class: "mb-2" do %>
-          <div class="input-group input-group-sm">
-            <input type="text" name="bulletin_note[content]" class="form-control"
-                   placeholder="想到什麼記什麼，Enter 送出…" maxlength="500" autocomplete="off">
-            <div class="input-group-append">
-              <button class="btn btn-warning" type="submit"><i class="fal fa-thumbtack"></i> 貼上</button>
-            </div>
-          </div>
-        <% end %>
-
-        <% notes = @snapshot[:bulletin_notes] %>
-        <% if notes.empty? %>
-          <div class="text-muted small py-2">目前板上是空的</div>
-        <% end %>
-        <% notes.each do |note| %>
-          <div class="d-flex align-items-start py-1" style="border-bottom:1px dashed #eee;">
-            <%= button_to toggle_bulletin_note_path(note), method: :patch,
-                  class: "btn btn-link p-0 mr-2 text-decoration-none",
-                  title: note.done? ? "還原成未完成" : "標記完成" do %>
-              <%= note.done? ? "✅" : "⬜" %>
-            <% end %>
-            <div class="flex-grow-1" style="min-width:0; word-break:break-word;">
-              <span class="<%= 'text-muted' if note.done? %>"
-                    style="<%= 'text-decoration:line-through;' if note.done? %>"><%= note.content %></span>
-              <span class="small text-muted ml-1">
-                — <%= note.created_by.presence || "匿名" %>・<%= note.created_at.strftime("%-m/%-d") %>
-              </span>
-            </div>
-            <%= button_to bulletin_note_path(note), method: :delete,
-                  data: { confirm: "刪除這張便條？" },
-                  class: "btn btn-link p-0 ml-2 text-muted", title: "刪除" do %>
-              <i class="fal fa-times"></i>
-            <% end %>
-          </div>
-        <% end %>
-        <% if notes.any?(&:done?) %>
-          <div class="small text-muted mt-1">已完成的便條保留 14 天後自動清除</div>
-        <% end %>
+        <%= render "bulletin_notes/notes", notes: @snapshot[:bulletin_notes], department: nil %>
       </div>
     </div>
   </div>

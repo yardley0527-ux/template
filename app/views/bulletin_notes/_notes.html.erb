@@ -1,0 +1,40 @@
+<%# 便條輸入框＋列表（首頁全公司板與部門板共用）
+    locals: notes, department（nil = 全公司板） %>
+<%= form_with url: bulletin_notes_path, method: :post, local: true, class: "mb-2" do %>
+  <%= hidden_field_tag "bulletin_note[department]", department %>
+  <div class="input-group input-group-sm">
+    <input type="text" name="bulletin_note[content]" class="form-control"
+           placeholder="想到什麼記什麼，Enter 送出…" maxlength="500" autocomplete="off">
+    <div class="input-group-append">
+      <button class="btn btn-warning" type="submit"><i class="fal fa-thumbtack"></i> 貼上</button>
+    </div>
+  </div>
+<% end %>
+
+<% if notes.empty? %>
+  <div class="text-muted small py-2">目前板上是空的</div>
+<% end %>
+<% notes.each do |note| %>
+  <div class="d-flex align-items-start py-1" style="border-bottom:1px dashed #eee;">
+    <%= button_to toggle_bulletin_note_path(note), method: :patch,
+          class: "btn btn-link p-0 mr-2 text-decoration-none",
+          title: note.done? ? "還原成未完成" : "標記完成" do %>
+      <%= note.done? ? "✅" : "⬜" %>
+    <% end %>
+    <div class="flex-grow-1" style="min-width:0; word-break:break-word;">
+      <span class="<%= 'text-muted' if note.done? %>"
+            style="<%= 'text-decoration:line-through;' if note.done? %>"><%= note.content %></span>
+      <span class="small text-muted ml-1">
+        — <%= note.created_by.presence || "匿名" %>・<%= note.created_at.strftime("%-m/%-d") %>
+      </span>
+    </div>
+    <%= button_to bulletin_note_path(note), method: :delete,
+          data: { confirm: "刪除這張便條？" },
+          class: "btn btn-link p-0 ml-2 text-muted", title: "刪除" do %>
+      <i class="fal fa-times"></i>
+    <% end %>
+  </div>
+<% end %>
+<% if notes.any?(&:done?) %>
+  <div class="small text-muted mt-1">已完成的便條保留 14 天後自動清除</div>
+<% end %>

@@ -63,6 +63,59 @@ class BulletinNotesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "未完成", board.first.content, "未完成的排前面"
   end
 
+  test "department board shows only that department's notes plus its recent logs" do
+    BulletinNote.create!(content: "廣告部的事", department: "廣告部")
+    BulletinNote.create!(content: "全公司的事")
+    BulletinNote.create!(content: "設計部的事", department: "設計部")
+    DepartmentUpdate.create!(department: "廣告部", log_date: Date.current, content: "美白推播圖完成")
+
+    get department_board_path("廣告部")
+
+    assert_response :success
+    assert_includes response.body, "廣告部佈告欄"
+    assert_includes response.body, "廣告部的事"
+    assert_not_includes response.body, "全公司的事"
+    assert_not_includes response.body, "設計部的事"
+    assert_includes response.body, "美白推播圖完成"
+  end
+
+  test "unknown department redirects home" do
+    get department_board_path("不存在部")
+    assert_redirected_to root_path
+  end
+
+  test "creating from a department board scopes and returns to that board" do
+    post bulletin_notes_path, params: { bulletin_note: { content: "訂到貨箱", department: "物流部" } }
+
+    note = BulletinNote.last
+    assert_equal "物流部", note.department
+    assert_redirected_to department_board_path("物流部")
+  end
+
+  test "invalid department on create falls back to the company board" do
+    post bulletin_notes_path, params: { bulletin_note: { content: "亂填部門", department: "駭客部" } }
+
+    assert_nil BulletinNote.last.department
+    assert_redirected_to root_path
+  end
+
+  test "toggle on a department note returns to its board" do
+    note = BulletinNote.create!(content: "部門便條", department: "CRM")
+    patch toggle_bulletin_note_path(note)
+    assert_redirected_to department_board_path("CRM")
+  end
+
+  test "homepage board excludes department notes and cards link to boards" do
+    BulletinNote.create!(content: "全公司板便條")
+    BulletinNote.create!(content: "廣告部板便條", department: "廣告部")
+
+    get root_path
+    assert_includes response.body, "全公司板便條"
+    assert_not_includes response.body, "廣告部板便條"
+    assert_includes response.body, department_board_path("廣告部")
+    assert_includes response.body, "📌1"
+  end
+
   test "works for a non-admin department account" do
     staff_role = Role.create!(key: "staff2", name: "Staff")
     staff = User.create!(email: "dept@test.com", username: "dept_t", password: "password123", role: staff_role)
