@@ -106,8 +106,9 @@ end %>
               <th style="width:52%;">購買商品</th>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
             <% else %>
-              <th style="width:47%;">是否購買過同產品</th>
-              <th class="text-center" style="width:12%;">傳首購產品</th>
+              <th class="text-center" style="width:9%;">已加 IG tag</th>
+              <th style="width:38%;">是否購買過同產品</th>
+              <th class="text-center" style="width:12%;">傳首購產品訊息</th>
             <% end %>
           </tr>
         </thead>
@@ -127,8 +128,13 @@ end %>
                   <span class="text-muted small">—</span>
                 <% end %>
               </td>
-              <td class="text-end fw-bold text-danger">
-                NT$<%= number_with_delimiter(row.order_total.to_i) %>
+              <% tier_color = is_new ? nil : daily_orders_amount_tier_color(row.order_total) %>
+              <td class="text-end fw-bold">
+                <% if tier_color %>
+                  <span style="background:<%= tier_color %>18; color:<%= tier_color %>; border:1px solid <%= tier_color %>55; border-radius:4px; padding:1px 7px; white-space:nowrap; display:inline-block;">NT$<%= number_with_delimiter(row.order_total.to_i) %></span>
+                <% else %>
+                  <span class="text-danger">NT$<%= number_with_delimiter(row.order_total.to_i) %></span>
+                <% end %>
               </td>
               <% if is_new %>
                 <td>
@@ -152,32 +158,55 @@ end %>
                   <% end %>
                 </td>
               <% else %>
+                <% gift = @gift_records[row.order_number] %>
+                <% high_value = row.order_total.to_f >= HighValueOrderScoping::THRESHOLD %>
+                <td class="text-center">
+                  <% if high_value %>
+                    <input type="checkbox"
+                      class="order-flag-checkbox"
+                      data-flag="ig_tagged"
+                      data-order="<%= row.order_number %>"
+                      data-url="<%= upsert_order_gift_record_path %>"
+                      <%= gift&.ig_tagged? ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#6f42c1;">
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
                 <td>
-                  <% (@products_by_order[row.order_number] || []).each do |p| %>
-                    <div style="font-size:0.78rem;">
-                      <% if p[:prior_date] %>
-                        <span class="text-success">✓</span> <%= p[:name] %>（<%= p[:prior_date].strftime('%Y/%m/%d') %>）
-                      <% else %>
-                        <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
-                      <% end %>
-                    </div>
+                  <% if high_value %>
+                    <span class="text-muted small">—</span>
+                  <% else %>
+                    <% (@products_by_order[row.order_number] || []).each do |p| %>
+                      <div style="font-size:0.78rem;">
+                        <% if p[:prior_date] %>
+                          <span class="text-success">✓</span> <%= p[:name] %>（<%= p[:prior_date].strftime('%Y/%m/%d') %>）
+                        <% else %>
+                          <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
+                        <% end %>
+                      </div>
+                    <% end %>
                   <% end %>
                 </td>
                 <td class="text-center">
-                  <% gift = @gift_records[row.order_number] %>
-                  <input type="checkbox"
-                    class="first-purchase-msg-checkbox"
-                    data-order="<%= row.order_number %>"
-                    data-url="<%= upsert_order_gift_record_path %>"
-                    <%= gift&.first_purchase_message_sent? ? 'checked' : '' %>
-                    style="width:18px; height:18px; cursor:pointer; accent-color:#0d6efd;">
+                  <% if high_value %>
+                    <span class="text-muted">—</span>
+                  <% else %>
+                    <input type="checkbox"
+                      class="order-flag-checkbox"
+                      data-flag="first_purchase_message_sent"
+                      data-order="<%= row.order_number %>"
+                      data-url="<%= upsert_order_gift_record_path %>"
+                      <%= gift&.first_purchase_message_sent? ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#0d6efd;">
+                  <% end %>
                 </td>
               <% end %>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="6" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="<%= is_new ? 6 : 7 %>" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
@@ -252,13 +281,15 @@ end %>
     });
   });
 
-  // 傳首購產品：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
-  document.querySelectorAll('.first-purchase-msg-checkbox').forEach(function(cb) {
+  // 傳首購產品訊息／已加 IG tag：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
+  document.querySelectorAll('.order-flag-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
+      var record = {};
+      record[cb.dataset.flag] = cb.checked;
       fetch(cb.dataset.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
-        body: JSON.stringify({ order_number: cb.dataset.order, order_gift_record: { first_purchase_message_sent: cb.checked } })
+        body: JSON.stringify({ order_number: cb.dataset.order, order_gift_record: record })
       }).then(function(r) {
         if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
       });
