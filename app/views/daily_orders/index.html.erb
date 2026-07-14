@@ -188,10 +188,9 @@ end %>
                     <% end %>
                   <% end %>
                 </td>
+                <% has_first_purchase = !high_value && (@products_by_order[row.order_number] || []).any? { |p| p[:prior_date].nil? } %>
                 <td class="text-center">
-                  <% if high_value %>
-                    <span class="text-muted">—</span>
-                  <% else %>
+                  <% if has_first_purchase %>
                     <input type="checkbox"
                       class="order-flag-checkbox"
                       data-flag="first_purchase_message_sent"
@@ -199,6 +198,8 @@ end %>
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.first_purchase_message_sent? ? 'checked' : '' %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#0d6efd;">
+                  <% else %>
+                    <span class="text-muted">—</span>
                   <% end %>
                 </td>
               <% end %>
