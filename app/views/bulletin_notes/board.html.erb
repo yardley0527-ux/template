@@ -13,13 +13,41 @@
 
 <div class="row">
   <div class="col-lg-7 mb-3">
-    <div class="card" style="border-left:6px solid #f0b429;">
-      <div class="card-header py-2">
-        <strong>待辦與備忘</strong>
-        <span class="small text-muted ml-2">這是<%= @department %>的板；全公司板在首頁</span>
+    <% custom_sections = BulletinSection.where(department: @department).index_by(&:name) %>
+    <% @section_names.each do |section_name| %>
+      <div class="card mb-3" style="border-left:6px solid <%= BulletinSection::FIXED.include?(section_name) ? '#f0b429' : '#8a6fd8' %>;">
+        <div class="card-header py-2 d-flex align-items-center">
+          <strong>
+            <%= section_name == "周待辦" ? "📅" : (section_name == "月待辦" ? "🗓️" : "📋") %>
+            <%= section_name %>
+          </strong>
+          <% if (section = custom_sections[section_name]) %>
+            <%= button_to board_section_path(section), method: :delete,
+                  data: { confirm: "刪除「#{section_name}」這個板？板上的便條會一併刪除。" },
+                  class: "btn btn-link p-0 ml-auto text-muted small", title: "刪除板子" do %>
+              <i class="fal fa-trash"></i>
+            <% end %>
+          <% end %>
+        </div>
+        <div class="card-body py-2">
+          <%= render "notes", notes: (@notes_by_section[section_name] || []),
+                              department: @department, section: section_name %>
+        </div>
       </div>
+    <% end %>
+
+    <%# 新增自訂板 %>
+    <div class="card mb-3" style="border-style:dashed;">
       <div class="card-body py-2">
-        <%= render "notes", notes: @notes, department: @department %>
+        <%= form_with url: department_board_sections_path(@department), method: :post, local: true do %>
+          <div class="input-group input-group-sm" style="max-width:420px;">
+            <input type="text" name="name" class="form-control"
+                   placeholder="新增板子，例：omnichat 標籤確認事項" maxlength="50" autocomplete="off">
+            <div class="input-group-append">
+              <button class="btn btn-outline-primary" type="submit"><i class="fal fa-plus"></i> 建立板子</button>
+            </div>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>

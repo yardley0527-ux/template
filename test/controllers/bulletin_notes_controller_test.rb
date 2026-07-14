@@ -118,6 +118,67 @@ class BulletinNotesControllerTest < ActionDispatch::IntegrationTest
                     "公司佈告欄要在部門今日回報上方"
   end
 
+  test "department board shows fixed weekly and monthly sections" do
+    get department_board_path("數據部")
+
+    assert_response :success
+    assert_includes response.body, "周待辦"
+    assert_includes response.body, "月待辦"
+    assert_includes response.body, "新增板子"
+  end
+
+  test "notes land in their section" do
+    BulletinNote.create!(content: "週的事", department: "數據部", section: "周待辦")
+    BulletinNote.create!(content: "月的事", department: "數據部", section: "月待辦")
+
+    get department_board_path("數據部")
+    body = response.body
+    assert_operator body.index("週的事"), :>, body.index("周待辦")
+    assert_operator body.index("週的事"), :<, body.index("月待辦")
+    assert_operator body.index("月的事"), :>, body.index("月待辦")
+  end
+
+  test "creates a custom section and posts a note into it" do
+    post department_board_sections_path("數據部"), params: { name: "omnichat 標籤確認事項" }
+    assert_redirected_to department_board_path("數據部")
+    assert BulletinSection.exists?(department: "數據部", name: "omnichat 標籤確認事項")
+
+    post bulletin_notes_path, params: { bulletin_note: {
+      content: "全能 b 群設 omnichat 自動回覆", department: "數據部", section: "omnichat 標籤確認事項"
+    } }
+
+    get department_board_path("數據部")
+    assert_includes response.body, "omnichat 標籤確認事項"
+    assert_includes response.body, "全能 b 群設 omnichat 自動回覆"
+  end
+
+  test "cannot create a section named after a fixed board or duplicate" do
+    assert_no_difference -> { BulletinSection.count } do
+      post department_board_sections_path("數據部"), params: { name: "周待辦" }
+    end
+    BulletinSection.create!(department: "數據部", name: "重複板")
+    assert_no_difference -> { BulletinSection.count } do
+      post department_board_sections_path("數據部"), params: { name: "重複板" }
+    end
+  end
+
+  test "destroying a custom section removes its notes but not others" do
+    section = BulletinSection.create!(department: "數據部", name: "omnichat 標籤確認事項")
+    BulletinNote.create!(content: "板內便條", department: "數據部", section: "omnichat 標籤確認事項")
+    keep = BulletinNote.create!(content: "周待辦便條", department: "數據部", section: "周待辦")
+
+    assert_difference -> { BulletinNote.count }, -1 do
+      delete board_section_path(section)
+    end
+    assert BulletinNote.exists?(keep.id)
+    assert_not BulletinSection.exists?(section.id)
+  end
+
+  test "note without section defaults to weekly board" do
+    post bulletin_notes_path, params: { bulletin_note: { content: "沒指定板", department: "數據部" } }
+    assert_equal "周待辦", BulletinNote.last.section
+  end
+
   test "works for a non-admin department account" do
     staff_role = Role.create!(key: "staff2", name: "Staff")
     staff = User.create!(email: "dept@test.com", username: "dept_t", password: "password123", role: staff_role)

@@ -9,15 +9,37 @@ class BulletinNotesController < ApplicationController
       return redirect_to root_path, alert: "沒有這個部門"
     end
 
-    @notes = BulletinNote.board(@department)
+    notes = BulletinNote.board(@department)
+    @notes_by_section = notes.group_by(&:section)
+    @section_names = BulletinSection.names_for(@department, note_sections: @notes_by_section.keys)
     @recent_logs = DepartmentUpdate.where(department: @department)
                                    .order(log_date: :desc).limit(5)
+  end
+
+  # 新增自訂板（部門板頁的「新增板子」）
+  def create_section
+    section = BulletinSection.new(department: params[:department], name: params[:name].to_s.strip)
+    if section.save
+      redirect_to department_board_path(section.department)
+    else
+      redirect_to board_path_for(params[:department]),
+                  alert: "板子建立失敗：#{section.errors.full_messages.join('、')}"
+    end
+  end
+
+  # 刪除自訂板（板上的便條一併刪除；固定板不能刪）
+  def destroy_section
+    section = BulletinSection.find(params[:id])
+    BulletinNote.where(department: section.department, section: section.name).delete_all
+    section.destroy
+    redirect_to department_board_path(section.department)
   end
 
   def create
     department = normalized_department(params.dig(:bulletin_note, :department))
     note = BulletinNote.new(content: params.dig(:bulletin_note, :content).to_s.strip,
                             department: department,
+                            section: params.dig(:bulletin_note, :section).to_s.strip.presence || "周待辦",
                             created_by: current_user&.username)
     if note.save
       redirect_to board_path_for(note.department)

@@ -1,7 +1,9 @@
 <%# 便條輸入框＋列表（首頁全公司板與部門板共用）
-    locals: notes, department（nil = 全公司板） %>
+    locals: notes, department（nil = 全公司板）, section（部門板的分板名，全公司板不傳） %>
+<% section = local_assigns[:section] %>
 <%= form_with url: bulletin_notes_path, method: :post, local: true, class: "mb-2" do %>
   <%= hidden_field_tag "bulletin_note[department]", department %>
+  <%= hidden_field_tag "bulletin_note[section]", section if section %>
   <div class="input-group input-group-sm">
     <input type="text" name="bulletin_note[content]" class="form-control"
            placeholder="想到什麼記什麼，Enter 送出…" maxlength="500" autocomplete="off">

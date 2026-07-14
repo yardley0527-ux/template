@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_14_060000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_14_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -39,8 +39,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_14_060000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "department"
+    t.string "section", default: "周待辦", null: false
     t.index ["department", "done", "created_at"], name: "index_bulletin_notes_on_department_and_done_and_created_at"
     t.index ["done", "created_at"], name: "index_bulletin_notes_on_done_and_created_at"
+  end
+
+  create_table "bulletin_sections", force: :cascade do |t|
+    t.string "department", null: false
+    t.string "name", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["department", "name"], name: "index_bulletin_sections_on_department_and_name", unique: true
   end
 
   create_table "calendar_events", force: :cascade do |t|
