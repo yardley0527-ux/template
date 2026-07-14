@@ -135,9 +135,9 @@ class DailyOrdersController < ApplicationController
 
     prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
 
-    # 首購判斷只做 8000 以下的訂單；≥8000 由破8000速覽頁的流程處理
+    # 舊客全部列出購買商品與同系列歷史；「傳首購產品訊息」勾選框仍只出現在 8000 以下（≥8000 走破8000速覽頁流程）
     old_raw_orders = raw_orders.select do |o|
-      o.email_val.present? && prior_emails.include?(o.email_val) && o.order_total.to_f < HighValueOrderScoping::THRESHOLD
+      o.email_val.present? && prior_emails.include?(o.email_val)
     end
     @products_by_order = build_products_by_order(old_raw_orders)
 

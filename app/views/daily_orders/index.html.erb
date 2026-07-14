@@ -117,7 +117,13 @@ end %>
             <% url = daily_orders_ig_link(row.ig_account) %>
             <tr>
               <td class="ps-3 text-muted small"><%= row.order_number %></td>
-              <td class="fw-semibold"><%= row.customer_name %></td>
+              <td class="fw-semibold">
+                <% if row.shopline_customer_id %>
+                  <%= link_to row.customer_name, customer_path(row.shopline_customer_id), class: "text-decoration-none" %>
+                <% else %>
+                  <%= row.customer_name %>
+                <% end %>
+              </td>
               <td style="overflow:hidden;">
                 <% if url %>
                   <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1", style: "overflow:hidden;" do %>
@@ -174,18 +180,14 @@ end %>
                   <% end %>
                 </td>
                 <td>
-                  <% if high_value %>
-                    <span class="text-muted small">—</span>
-                  <% else %>
-                    <% (@products_by_order[row.order_number] || []).each do |p| %>
-                      <div style="font-size:0.78rem;">
-                        <% if p[:prior_date] %>
-                          <span class="text-success">✓</span> <%= p[:name] %>（<%= p[:prior_date].strftime('%Y/%m/%d') %>）
-                        <% else %>
-                          <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
-                        <% end %>
-                      </div>
-                    <% end %>
+                  <% (@products_by_order[row.order_number] || []).each do |p| %>
+                    <div style="font-size:0.78rem;">
+                      <% if p[:prior_date] %>
+                        <span class="text-success">✓</span> <%= p[:name] %>（<%= p[:prior_date].strftime('%Y/%m/%d') %>）
+                      <% else %>
+                        <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
+                      <% end %>
+                    </div>
                   <% end %>
                 </td>
                 <% has_first_purchase = !high_value && (@products_by_order[row.order_number] || []).any? { |p| p[:prior_date].nil? } %>
