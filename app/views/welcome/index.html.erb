@@ -194,16 +194,6 @@
       </div>
     </div>
 
-    <%# ── 佈告欄：隨手記待辦 ── %>
-    <div class="card" style="border-left:6px solid #f0b429;">
-      <div class="card-header py-2">
-        <strong>📌 佈告欄</strong>
-        <span class="small text-muted ml-2">隨手記的待辦與備忘，全公司看得到</span>
-      </div>
-      <div class="card-body py-2">
-        <%= render "bulletin_notes/notes", notes: @snapshot[:bulletin_notes], department: nil %>
-      </div>
-    </div>
   </div>
 
   <%# ── 右欄：近期大事 + 壽星 ── %>
