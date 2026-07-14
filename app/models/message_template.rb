@@ -15,6 +15,7 @@ class MessageTemplate < ApplicationRecord
     "metabolism" => { title: "代謝錠",       icon: "fa-fire",           description: "依序發送" },
     "binding"    => { title: "會員綁定提醒", icon: "fa-link",           description: "提醒完成官網會員綁定與加入官方LINE" },
     "birthday"   => { title: "生日祝福",     icon: "fa-birthday-cake",  description: "會員生日祝福訊息，依情境挑選版本" },
+    "upgrade"    => { title: "升級訊息",     icon: "fa-crown",          description: "會員升等通知訊息，依卡別挑選" },
     "turmeric"          => { title: "薑黃",     icon: "fa-pepper-hot", description: "依情境挑選版本" },
     "probiotics"        => { title: "益生菌",   icon: "fa-flask",      description: "依情境挑選版本" },
     "astaxanthin"       => { title: "蝦紅素",   icon: "fa-eye",        description: "依情境挑選版本" },
@@ -26,6 +27,8 @@ class MessageTemplate < ApplicationRecord
     "vitamin_d_calcium" => { title: "D鈣",      icon: "fa-bone",       description: "依情境挑選版本" },
   }.freeze
 
-  BULK_SUBCATEGORIES = %w[全能 美白 全能＋美白 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
-  CATEGORY_ORDER     = %w[binding zhongzu birthday bulk].freeze
+  BULK_SUBCATEGORIES    = %w[全能 美白 全能＋美白 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
+  UPGRADE_SUBCATEGORIES = %w[白卡 銀卡 金卡 黑卡].freeze
+  SUBCATEGORY_MAP       = { "bulk" => BULK_SUBCATEGORIES, "upgrade" => UPGRADE_SUBCATEGORIES }.freeze
+  CATEGORY_ORDER        = %w[binding zhongzu birthday upgrade bulk].freeze
 end
