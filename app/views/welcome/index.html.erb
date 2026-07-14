@@ -151,9 +151,9 @@
 <% end %>
 
 <div class="row">
-  <%# ── 左欄：部門回報燈 ── %>
+  <%# ── 左欄：部門回報燈＋佈告欄 ── %>
   <div class="col-lg-7 mb-3">
-    <div class="card h-100">
+    <div class="card mb-3">
       <div class="card-header py-2 d-flex align-items-center">
         <strong><i class="fal fa-users mr-1"></i> 部門今日回報</strong>
         <span class="ml-auto small text-muted">
@@ -186,6 +186,54 @@
         <div class="small text-muted mt-1">
           部門日誌通常於當天陸續填寫；點 <%= link_to "行事曆", calendar_events_path %> 看各部門完整內容
         </div>
+      </div>
+    </div>
+
+    <%# ── 佈告欄：隨手記待辦 ── %>
+    <div class="card" style="border-left:6px solid #f0b429;">
+      <div class="card-header py-2">
+        <strong>📌 佈告欄</strong>
+        <span class="small text-muted ml-2">隨手記的待辦與備忘，全公司看得到</span>
+      </div>
+      <div class="card-body py-2">
+        <%= form_with url: bulletin_notes_path, method: :post, local: true, class: "mb-2" do %>
+          <div class="input-group input-group-sm">
+            <input type="text" name="bulletin_note[content]" class="form-control"
+                   placeholder="想到什麼記什麼，Enter 送出…" maxlength="500" autocomplete="off">
+            <div class="input-group-append">
+              <button class="btn btn-warning" type="submit"><i class="fal fa-thumbtack"></i> 貼上</button>
+            </div>
+          </div>
+        <% end %>
+
+        <% notes = @snapshot[:bulletin_notes] %>
+        <% if notes.empty? %>
+          <div class="text-muted small py-2">目前板上是空的</div>
+        <% end %>
+        <% notes.each do |note| %>
+          <div class="d-flex align-items-start py-1" style="border-bottom:1px dashed #eee;">
+            <%= button_to toggle_bulletin_note_path(note), method: :patch,
+                  class: "btn btn-link p-0 mr-2 text-decoration-none",
+                  title: note.done? ? "還原成未完成" : "標記完成" do %>
+              <%= note.done? ? "✅" : "⬜" %>
+            <% end %>
+            <div class="flex-grow-1" style="min-width:0; word-break:break-word;">
+              <span class="<%= 'text-muted' if note.done? %>"
+                    style="<%= 'text-decoration:line-through;' if note.done? %>"><%= note.content %></span>
+              <span class="small text-muted ml-1">
+                — <%= note.created_by.presence || "匿名" %>・<%= note.created_at.strftime("%-m/%-d") %>
+              </span>
+            </div>
+            <%= button_to bulletin_note_path(note), method: :delete,
+                  data: { confirm: "刪除這張便條？" },
+                  class: "btn btn-link p-0 ml-2 text-muted", title: "刪除" do %>
+              <i class="fal fa-times"></i>
+            <% end %>
+          </div>
+        <% end %>
+        <% if notes.any?(&:done?) %>
+          <div class="small text-muted mt-1">已完成的便條保留 14 天後自動清除</div>
+        <% end %>
       </div>
     </div>
   </div>
