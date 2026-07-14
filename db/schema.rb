@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_13_230000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_14_050000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -29,6 +29,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_13_230000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["shopline_customer_id"], name: "index_albums_on_shopline_customer_id"
+  end
+
+  create_table "bulletin_notes", force: :cascade do |t|
+    t.text "content", null: false
+    t.boolean "done", default: false, null: false
+    t.string "created_by"
+    t.datetime "done_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["done", "created_at"], name: "index_bulletin_notes_on_done_and_created_at"
   end
 
   create_table "calendar_events", force: :cascade do |t|

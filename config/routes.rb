@@ -14,6 +14,9 @@ Rails.application.routes.draw do
   resources :calendar_events, only: [:index, :new, :create, :edit, :update, :destroy] do
     collection { post :sync_departments }
   end
+  resources :bulletin_notes, only: [:create, :destroy] do
+    member { patch :toggle }
+  end
 
   resources :livestreams, only: [:index, :new, :create, :edit, :update, :destroy] do
     resources :livestream_images, only: [:create, :destroy]

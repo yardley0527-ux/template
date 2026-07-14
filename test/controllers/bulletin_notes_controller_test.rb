@@ -1,0 +1,75 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class BulletinNotesControllerTest < ActionDispatch::IntegrationTest
+  include Devise::Test::IntegrationHelpers
+
+  setup do
+    @user = User.create!(email: "note@test.com", username: "serena_t", password: "password123")
+    DepartmentSheetSync.mark_run! # 首頁載入不觸發真同步
+    sign_in @user
+  end
+
+  test "creates a note with author and shows it on the homepage" do
+    assert_difference -> { BulletinNote.count }, 1 do
+      post bulletin_notes_path, params: { bulletin_note: { content: "訂 7/17 直播贈品" } }
+    end
+    note = BulletinNote.last
+    assert_equal "serena_t", note.created_by
+
+    get root_path
+    assert_includes response.body, "訂 7/17 直播贈品"
+    assert_includes response.body, "佈告欄"
+  end
+
+  test "rejects blank content with an alert" do
+    assert_no_difference -> { BulletinNote.count } do
+      post bulletin_notes_path, params: { bulletin_note: { content: "   " } }
+    end
+    assert_redirected_to root_path
+    assert flash[:alert].present?
+  end
+
+  test "toggle marks done with timestamp and back" do
+    note = BulletinNote.create!(content: "測試")
+
+    patch toggle_bulletin_note_path(note)
+    assert note.reload.done?
+    assert note.done_at.present?
+
+    patch toggle_bulletin_note_path(note)
+    assert_not note.reload.done?
+    assert_nil note.done_at
+  end
+
+  test "destroy removes the note" do
+    note = BulletinNote.create!(content: "刪我")
+    assert_difference -> { BulletinNote.count }, -1 do
+      delete bulletin_note_path(note)
+    end
+  end
+
+  test "board purges done notes older than 14 days but keeps recent ones" do
+    BulletinNote.create!(content: "老完成", done: true, done_at: 20.days.ago)
+    BulletinNote.create!(content: "新完成", done: true, done_at: 2.days.ago)
+    BulletinNote.create!(content: "未完成")
+
+    board = BulletinNote.board
+    contents = board.map(&:content)
+    assert_includes contents, "未完成"
+    assert_includes contents, "新完成"
+    assert_not_includes contents, "老完成"
+    assert_equal "未完成", board.first.content, "未完成的排前面"
+  end
+
+  test "works for a non-admin department account" do
+    staff_role = Role.create!(key: "staff2", name: "Staff")
+    staff = User.create!(email: "dept@test.com", username: "dept_t", password: "password123", role: staff_role)
+    sign_in staff
+
+    post bulletin_notes_path, params: { bulletin_note: { content: "部門帳號也能貼" } }
+    assert_redirected_to root_path
+    assert_equal "部門帳號也能貼", BulletinNote.last.content
+  end
+end
