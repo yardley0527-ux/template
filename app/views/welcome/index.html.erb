@@ -151,8 +151,19 @@
 <% end %>
 
 <div class="row">
-  <%# ── 左欄：部門回報燈＋佈告欄 ── %>
+  <%# ── 左欄：公司佈告欄＋部門回報燈 ── %>
   <div class="col-lg-7 mb-3">
+    <%# ── 公司佈告欄 ── %>
+    <div class="card mb-3" style="border-left:6px solid #f0b429;">
+      <div class="card-header py-2">
+        <strong>📌 公司佈告欄</strong>
+        <span class="small text-muted ml-2">隨手記的待辦與備忘，全公司看得到</span>
+      </div>
+      <div class="card-body py-2">
+        <%= render "bulletin_notes/notes", notes: @snapshot[:bulletin_notes], department: nil %>
+      </div>
+    </div>
+
     <div class="card mb-3">
       <div class="card-header py-2 d-flex align-items-center">
         <strong><i class="fal fa-users mr-1"></i> 部門今日回報</strong>
