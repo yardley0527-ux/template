@@ -102,9 +102,11 @@ end %>
             <th style="width:9%;">姓名</th>
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
-            <th style="width:<%= is_new ? 52 : 61 %>%;">購買商品</th>
+            <th style="width:<%= is_new ? 52 : 32 %>%;">購買商品</th>
             <% if is_new %>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
+            <% else %>
+              <th style="width:29%;">是否購買過同產品</th>
             <% end %>
           </tr>
         </thead>
@@ -148,12 +150,24 @@ end %>
                     <span class="text-muted">—</span>
                   <% end %>
                 </td>
+              <% else %>
+                <td>
+                  <% (@products_by_order[row.order_number] || []).each do |p| %>
+                    <div style="font-size:0.78rem;">
+                      <% if p[:prior_date] %>
+                        <span class="text-success">✓</span> <%= p[:name] %>（<%= p[:prior_date].strftime('%Y/%m/%d') %>）
+                      <% else %>
+                        <span class="text-muted">　</span> <%= p[:name] %>（首次購買）
+                      <% end %>
+                    </div>
+                  <% end %>
+                </td>
               <% end %>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="<%= is_new ? 6 : 5 %>" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="6" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>

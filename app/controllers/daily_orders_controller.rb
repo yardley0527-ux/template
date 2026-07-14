@@ -1,4 +1,6 @@
 class DailyOrdersController < ApplicationController
+  include HighValueOrderScoping
+
   TIERS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
   TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig health_inquiry_declined].freeze
   PURCHASE_SUMMARY_FIELDS = %w[line_bound].freeze
@@ -117,6 +119,7 @@ class DailyOrdersController < ApplicationController
         "MAX(o.order_date) AS ord_date",
         "#{ORDER_TOTAL_SQL} AS order_total",
         "STRING_AGG(DISTINCT o.product_name || ' ×' || o.quantity::text, '、' ORDER BY o.product_name || ' ×' || o.quantity::text) AS products_list",
+        "ARRAY_AGG(DISTINCT o.product_name) AS product_names_arr",
         "SUM(o.quantity) AS total_quantity"
       )
       .where("o.payment_status = '已付款'")
@@ -128,6 +131,9 @@ class DailyOrdersController < ApplicationController
     emails = raw_orders.map(&:email_val).compact.uniq
 
     prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
+
+    old_raw_orders = raw_orders.select { |o| o.email_val.present? && prior_emails.include?(o.email_val) }
+    @products_by_order = build_products_by_order(old_raw_orders)
 
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
     summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
