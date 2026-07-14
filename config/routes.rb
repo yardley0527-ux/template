@@ -17,6 +17,8 @@ Rails.application.routes.draw do
   resources :bulletin_notes, only: [:create, :destroy] do
     member { patch :toggle }
   end
+  get "/boards/:department", to: "bulletin_notes#board", as: :department_board,
+                             constraints: { department: /[^\/]+/ }
 
   resources :livestreams, only: [:index, :new, :create, :edit, :update, :destroy] do
     resources :livestream_images, only: [:create, :destroy]
