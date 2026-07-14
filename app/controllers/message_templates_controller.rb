@@ -48,8 +48,8 @@ class MessageTemplatesController < ApplicationController
       meta = MessageTemplate::CATEGORY_META[key]
       next unless meta
 
-      if key == "bulk"
-        subcategories = MessageTemplate::BULK_SUBCATEGORIES.map do |sub_name|
+      if (sub_names = MessageTemplate::SUBCATEGORY_MAP[key])
+        subcategories = sub_names.map do |sub_name|
           { name: sub_name, templates: MessageTemplate.in_category(key, sub_name) }
         end
         { key: key, title: meta[:title], icon: meta[:icon], description: meta[:description], subcategories: subcategories }
