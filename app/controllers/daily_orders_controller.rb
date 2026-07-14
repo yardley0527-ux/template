@@ -31,6 +31,9 @@ class DailyOrdersController < ApplicationController
 
     new_rows = @groups.first.last
     @line_bound_count = new_rows.count(&:line_bound)
+
+    old_order_nums = @groups.drop(1).flat_map { |_, rows| rows.map(&:order_number) }
+    @gift_records = OrderGiftRecord.where(order_number: old_order_nums).index_by(&:order_number)
   end
 
   def toggle_customer_flag

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_14_090000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_14_090001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -571,6 +571,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_14_090000) do
     t.boolean "custom_message_sent", default: false, null: false
     t.text "follow_up_note"
     t.datetime "followed_up_at"
+    t.boolean "first_purchase_message_sent", default: false, null: false
     t.index ["order_number"], name: "index_order_gift_records_on_order_number", unique: true
   end
 
