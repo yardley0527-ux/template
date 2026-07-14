@@ -1,6 +1,15 @@
 class WelcomeController < ApplicationController
   def index
     @snapshot = CommandCenterSnapshot.call
+
+    # 月曆（原「公司行事曆」頁搬進首頁）
+    @month = parse_month
+    range = @month.beginning_of_month..@month.end_of_month
+    @events_by_date = CalendarEvent.in_range_with_livestreams(range).group_by(&:event_date)
+    @department_updates_by_date = DepartmentUpdate.in_range(range)
+      .sort_by { |u| DepartmentUpdate::DEPARTMENTS.index(u.department) || 99 }
+      .group_by(&:log_date)
+
     SyncDepartmentSheetsJob.schedule_if_stale
   end
 
@@ -34,5 +43,13 @@ class WelcomeController < ApplicationController
         instagram_account: c.instagram_account.presence
       }
     }
+  end
+
+  private
+
+  def parse_month
+    Date.strptime(params[:month], "%Y-%m")
+  rescue ArgumentError, TypeError
+    Date.current.beginning_of_month
   end
 end

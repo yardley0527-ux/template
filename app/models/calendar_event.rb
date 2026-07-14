@@ -17,6 +17,27 @@ class CalendarEvent < ApplicationRecord
 
   scope :in_range, ->(range) { where(event_date: range) }
 
+  # 區間內的事件＋直播歷史（Livestream）虛擬事件：直播紀錄已有日期資料，
+  # 直接帶進行事曆顯示，不用重複輸入；同一天已有手動直播事件就不重複帶。
+  def self.in_range_with_livestreams(range)
+    events = in_range(range).order(:event_date, :created_at).to_a
+    manual_livestream_dates = events
+      .select { |e| e.event_type == "livestream" }
+      .map(&:event_date).to_set
+
+    events + Livestream.unscoped.where(date: range).includes(:livestream_products).filter_map do |ls|
+      next if manual_livestream_dates.include?(ls.date)
+
+      products = ls.livestream_products.map { |p| p.name.split(/[（(]/).first.to_s.strip }.reject(&:blank?).uniq
+      new(
+        title:       products.any? ? "直播：#{products.join('、')}" : "直播",
+        event_type:  "livestream",
+        event_date:  ls.date,
+        description: ls.notes
+      )
+    end
+  end
+
   # 由年度行事曆 Excel 同步進來的事件（AnnualCalendarSync），
   # 在系統內唯讀，修改要回 Excel 改
   def synced?

@@ -11,12 +11,6 @@ class SidebarEntry
       effective_key = product_key || JourneyProducts::DEFAULT_PRODUCT_KEY
       [
         {
-          group_title: "公司公告",
-          children: [
-            { href: calendar_events_path, title: "公司行事曆", icon: "fa-calendar-alt" },
-          ]
-        },
-        {
           group_title: "會員管理",
           children: [
             { href: customers_path,          title: "客人資料庫",     icon: "fa-address-book" },

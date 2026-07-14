@@ -1,0 +1,106 @@
+<%# 公司行事曆月曆（原 /calendar_events 頁搬進首頁，桌機顯示）。
+    格子裡的「N 部門」點開彈窗看當日各部門日誌原文（晨報出處查證用）。 %>
+<div class="card mb-3 d-none d-lg-block" id="calendar">
+  <div class="card-header py-2 d-flex align-items-center flex-wrap">
+    <strong class="mr-3"><i class="fal fa-calendar-alt mr-1"></i> 公司行事曆</strong>
+    <div class="btn-group btn-group-sm mr-2">
+      <%= link_to root_path(month: (@month - 1.month).strftime("%Y-%m")) + "#calendar", class: "btn btn-outline-secondary" do %>
+        <i class="fal fa-chevron-left"></i>
+      <% end %>
+      <span class="btn btn-outline-secondary disabled font-weight-bold" style="min-width:100px; opacity:1;">
+        <%= @month.strftime("%Y 年 %-m 月") %>
+      </span>
+      <%= link_to root_path(month: (@month + 1.month).strftime("%Y-%m")) + "#calendar", class: "btn btn-outline-secondary" do %>
+        <i class="fal fa-chevron-right"></i>
+      <% end %>
+    </div>
+    <%= link_to "回到本月", root_path + "#calendar", class: "btn btn-sm btn-outline-primary mr-3" %>
+    <span class="small mr-auto">
+      <% CalendarEvent::EVENT_TYPES.each_value do |type| %>
+        <span class="mr-2 text-nowrap">
+          <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:<%= type[:color] %>;"></span>
+          <%= type[:label] %>
+        </span>
+      <% end %>
+    </span>
+    <span class="text-muted small mr-2">
+      部門日誌：<%= @snapshot[:sync_last_run] ? "#{time_ago_in_words(@snapshot[:sync_last_run])}前同步" : "尚未同步" %>
+    </span>
+    <%= button_to "立即同步", sync_departments_calendar_events_path(month: @month.strftime("%Y-%m")),
+          class: "btn btn-sm btn-outline-secondary mr-2", form_class: "d-inline" %>
+    <%= link_to new_calendar_event_path, class: "btn btn-sm btn-primary" do %>
+      <i class="fal fa-plus mr-1"></i> 新增事件
+    <% end %>
+  </div>
+  <table class="table table-bordered mb-0" style="table-layout:fixed;">
+    <thead class="thead-light">
+      <tr>
+        <% %w[週日 週一 週二 週三 週四 週五 週六].each do |day_name| %>
+          <th class="text-center py-2 small"><%= day_name %></th>
+        <% end %>
+      </tr>
+    </thead>
+    <tbody>
+      <% grid_start = @month.beginning_of_month.beginning_of_week(:sunday) %>
+      <% grid_end   = @month.end_of_month.end_of_week(:sunday) %>
+      <% (grid_start..grid_end).each_slice(7) do |week| %>
+        <tr>
+          <% week.each do |date| %>
+            <% in_month = date.month == @month.month %>
+            <td class="p-1 align-top" style="height:100px; <%= 'background:#f8f9fa;' unless in_month %> <%= 'background:#fff9e0;' if date == Date.current %>">
+              <div class="d-flex align-items-center mb-1">
+                <span class="small font-weight-bold <%= in_month ? '' : 'text-muted' %> <%= 'badge badge-primary' if date == Date.current %>">
+                  <%= date.day %>
+                </span>
+                <% if in_month %>
+                  <%= link_to new_calendar_event_path(date: date), class: "ml-auto text-muted small", title: "在這天新增事件" do %>
+                    <i class="fal fa-plus"></i>
+                  <% end %>
+                <% end %>
+              </div>
+              <% (@events_by_date[date] || []).each do |event| %>
+                <% chip_style = "display:block; background:#{event.type_color}; color:#fff; border-radius:3px; padding:1px 5px; margin-bottom:2px; font-size:11px; line-height:1.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" %>
+                <% chip_title = [event.type_label, event.title, event.time_info].compact_blank.join("｜") %>
+                <% if event.persisted? && !event.synced? %>
+                  <%= link_to event.title, edit_calendar_event_path(event), class: "calendar-chip", style: chip_style, title: chip_title %>
+                <% else %>
+                  <span style="<%= chip_style %>" title="<%= chip_title %>"><%= event.title %></span>
+                <% end %>
+              <% end %>
+              <% if (@department_updates_by_date[date] || []).any? %>
+                <a href="#" class="d-block small text-muted" style="font-size:10px;"
+                   data-toggle="modal" data-target="#day-logs-<%= date %>" title="點開看各部門當日日誌原文">
+                  <i class="fal fa-users"></i> <%= @department_updates_by_date[date].size %> 部門
+                </a>
+              <% end %>
+            </td>
+          <% end %>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<%# 各日部門日誌彈窗 %>
+<% @department_updates_by_date.each do |date, updates| %>
+  <div class="modal fade" id="day-logs-<%= date %>" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header py-2">
+          <strong>
+            <%= date.strftime("%-m/%-d") %>（週<%= %w[日 一 二 三 四 五 六][date.wday] %>）部門日誌
+          </strong>
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+        </div>
+        <div class="modal-body py-2">
+          <% updates.each do |update| %>
+            <div class="mb-3">
+              <span class="badge badge-secondary"><%= update.department %></span>
+              <div class="small mt-1" style="white-space:pre-wrap; word-break:break-word;"><%= auto_link_urls(update.content) %></div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

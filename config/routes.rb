@@ -11,7 +11,9 @@ Rails.application.routes.draw do
   end
   resources :message_template_images, only: [:create, :destroy]
 
-  resources :calendar_events, only: [:index, :new, :create, :edit, :update, :destroy] do
+  # 月曆已搬進首頁；舊網址導回首頁（保留 month 參數）
+  get "calendar_events", to: redirect(path: "/")
+  resources :calendar_events, only: [:new, :create, :edit, :update, :destroy] do
     collection { post :sync_departments }
   end
   resources :bulletin_notes, only: [:create, :destroy] do

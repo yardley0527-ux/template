@@ -13,7 +13,7 @@
 <% @snapshot[:sync_alerts].each do |alert| %>
   <div class="alert alert-danger py-2 mb-2">
     <i class="fal fa-exclamation-triangle mr-1"></i><%= alert %>
-    <%= link_to "查看行事曆", calendar_events_path, class: "alert-link ml-2" %>
+    <a href="#calendar" class="alert-link ml-2">查看行事曆</a>
   </div>
 <% end %>
 
@@ -108,7 +108,7 @@
             </div>
           <% end %>
         <% end %>
-        <div class="small text-muted mt-2">出處日誌原文請到 <%= link_to "行事曆", calendar_events_path %> 對應日期查看</div>
+        <div class="small text-muted mt-2">出處日誌原文：到下方<a href="#calendar">行事曆</a>點該日期的「N 部門」查看</div>
       <% end %>
     </div>
   </div>
@@ -149,6 +149,9 @@
     </div>
   </div>
 <% end %>
+
+<%# ── 公司行事曆（桌機） ── %>
+<%= render "calendar" %>
 
 <div class="row">
   <%# ── 左欄：公司佈告欄＋部門回報燈 ── %>
@@ -200,7 +203,7 @@
           <% end %>
         </div>
         <div class="small text-muted mt-1">
-          點部門卡打開該部門的佈告欄；日誌完整內容看 <%= link_to "行事曆", calendar_events_path %>
+          點部門卡打開該部門的佈告欄；日誌完整內容點下方<a href="#calendar">行事曆</a>該日的「N 部門」
         </div>
       </div>
     </div>
@@ -212,7 +215,7 @@
     <div class="card mb-3">
       <div class="card-header py-2">
         <strong><i class="fal fa-calendar-alt mr-1"></i> 近期大事</strong>
-        <%= link_to "完整行事曆 →", calendar_events_path, class: "small float-right" %>
+        <a href="#calendar" class="small float-right d-none d-lg-inline">完整行事曆 ↓</a>
       </div>
       <div class="list-group list-group-flush">
         <% if @snapshot[:upcoming_events].empty? %>

@@ -58,6 +58,6 @@
 
   <div class="mb-5">
     <%= f.submit event.persisted? ? "更新事件" : "建立事件", class: "btn btn-primary" %>
-    <%= link_to "取消", calendar_events_path(month: (event.event_date || Date.current).strftime("%Y-%m")), class: "btn btn-outline-secondary ml-2" %>
+    <%= link_to "取消", root_path(month: (event.event_date || Date.current).strftime("%Y-%m")) + "#calendar", class: "btn btn-outline-secondary ml-2" %>
   </div>
 <% end %>
