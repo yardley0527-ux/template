@@ -17,6 +17,8 @@ Rails.application.routes.draw do
   resources :bulletin_notes, only: [:create, :destroy] do
     member { patch :toggle }
   end
+  # 便條只有 POST；瀏覽器重整/歷史記錄會用 GET 打到這裡，導回首頁而不是 500
+  get "/bulletin_notes", to: redirect("/")
   get "/boards/:department", to: "bulletin_notes#board", as: :department_board,
                              constraints: { department: /[^\/]+/ }
   post "/boards/:department/sections", to: "bulletin_notes#create_section", as: :department_board_sections,
