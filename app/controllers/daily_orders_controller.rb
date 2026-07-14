@@ -135,7 +135,10 @@ class DailyOrdersController < ApplicationController
 
     prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
 
-    old_raw_orders = raw_orders.select { |o| o.email_val.present? && prior_emails.include?(o.email_val) }
+    # 首購判斷只做 8000 以下的訂單；≥8000 由破8000速覽頁的流程處理
+    old_raw_orders = raw_orders.select do |o|
+      o.email_val.present? && prior_emails.include?(o.email_val) && o.order_total.to_f < HighValueOrderScoping::THRESHOLD
+    end
     @products_by_order = build_products_by_order(old_raw_orders)
 
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
