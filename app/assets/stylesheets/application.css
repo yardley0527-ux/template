@@ -113,6 +113,12 @@ table thead tr th,
   color: #6e4a2e !important;
 }
 
+/* 行事曆事件 chip 是色塊底，維持白字，不吃上面的表格連結色 */
+.table td a.calendar-chip,
+.table td a.calendar-chip:hover {
+  color: #fff !important;
+}
+
 /* 查詢按鈕 */
 .btn-primary,
 .btn-danger {

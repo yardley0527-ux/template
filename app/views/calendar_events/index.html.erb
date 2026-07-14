@@ -115,7 +115,7 @@
                   <% chip_style = "display:block; background:#{event.type_color}; color:#fff; border-radius:3px; padding:1px 5px; margin-bottom:2px; font-size:11px; line-height:1.5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" %>
                   <% chip_title = [event.type_label, event.title, event.time_info].compact_blank.join("｜") %>
                   <% if event.persisted? && !event.synced? %>
-                    <%= link_to event.title, edit_calendar_event_path(event), style: chip_style, title: chip_title %>
+                    <%= link_to event.title, edit_calendar_event_path(event), class: "calendar-chip", style: chip_style, title: chip_title %>
                   <% else %>
                     <span style="<%= chip_style %>" title="<%= chip_title %>"><%= event.title %></span>
                   <% end %>
