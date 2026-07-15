@@ -103,6 +103,94 @@ end %>
   </div>
 </div>
 
+<%# 分類回購成效：各分類人數/回購率 + 傳送後累積回購曲線 %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-3">
+    <div class="fw-bold mb-2" style="color:#2f2a24;">
+      <i class="fal fa-chart-line me-1" style="color:#8f6340;"></i>分類回購成效
+    </div>
+    <div class="row g-3">
+      <div class="col-lg-4">
+        <table class="table table-sm mb-0" style="font-size:0.85rem;">
+          <thead>
+            <tr class="text-muted" style="font-size:0.78rem;">
+              <th class="border-0">分類</th>
+              <th class="border-0 text-end">人數</th>
+              <th class="border-0 text-end">已回購</th>
+              <th class="border-0 text-end">回購率</th>
+              <th class="border-0 text-end">帶回營業額</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @segment_rows.each do |row| %>
+              <tr>
+                <td>
+                  <% seg_color = { "回購鐵粉" => "#a4611f", "召回回購" => "#2a78d6" }.fetch(row[:segment], "#6c757d") %>
+                  <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background:<%= seg_color %>; margin-right:6px;"></span><%= row[:segment] %>
+                </td>
+                <td class="text-end"><%= row[:total] %></td>
+                <td class="text-end fw-bold" style="color:#188038;"><%= row[:repurchased] %></td>
+                <td class="text-end"><%= row[:rate] %>%</td>
+                <td class="text-end">NT$<%= number_with_delimiter(row[:revenue]) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      <div class="col-lg-8">
+        <% if @stats[:repurchased].positive? %>
+          <div style="height:220px;"><canvas id="segment-repurchase-chart"></canvas></div>
+        <% else %>
+          <div class="d-flex align-items-center justify-content-center text-muted small" style="height:120px; background:#faf7f2; border:1px dashed #e4d3bd; border-radius:8px;">
+            還沒有人回購。開始有回購後，這裡會顯示各分類「傳送後第 N 天累積回購人數」的走勢。
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @stats[:repurchased].positive? %>
+  <% content_for :head_block do %>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <% end %>
+  <% content_for :scripts_block do %>
+    <script>
+      (function () {
+        var curve = <%= raw @curve.to_json %>;
+        var colors = { "回購鐵粉": "#a4611f", "召回回購": "#2a78d6" };
+        var fallbacks = ["#6c757d", "#188038", "#7b5ea7"];
+        var fi = 0;
+        new Chart(document.getElementById("segment-repurchase-chart"), {
+          type: "line",
+          data: {
+            labels: curve.days.map(function (d) { return "第" + d + "天"; }),
+            datasets: curve.series.map(function (s) {
+              var color = colors[s.name] || fallbacks[fi++ % fallbacks.length];
+              return {
+                label: s.name, data: s.data, borderColor: color, backgroundColor: color,
+                borderWidth: 2, pointRadius: 2, pointHoverRadius: 5, tension: 0, stepped: true
+              };
+            })
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            plugins: {
+              legend: { position: "top", align: "start", labels: { boxWidth: 12, boxHeight: 12, font: { size: 12 } } },
+              tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + "：累積 " + ctx.parsed.y + " 人回購"; } } }
+            },
+            scales: {
+              x: { grid: { display: false }, title: { display: true, text: "傳送後天數", font: { size: 11 } }, ticks: { maxTicksLimit: 15, font: { size: 11 } } },
+              y: { beginAtZero: true, ticks: { precision: 0, font: { size: 11 } }, grid: { color: "rgba(0,0,0,0.05)" }, title: { display: true, text: "累積回購人數", font: { size: 11 } } }
+            }
+          }
+        });
+      })();
+    </script>
+  <% end %>
+<% end %>
+
 <%# 已回購／未回購 tabs %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">

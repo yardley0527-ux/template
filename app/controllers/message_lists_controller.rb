@@ -22,6 +22,9 @@ class MessageListsController < ApplicationController
     recipients = sorted_recipients(@list)
     @repurchased_rows, @pending_rows = recipients.partition { |r| @repurchases.key?(r.email) }
     @rows = @tab == "repurchased" ? @repurchased_rows : @pending_rows
+
+    @segment_rows = segment_stats(recipients, @repurchases)
+    @curve = repurchase_curve(@list, recipients, @repurchases)
   end
 
   def update
@@ -107,6 +110,40 @@ class MessageListsController < ApplicationController
     SQL
 
     connection.select_all(sql).to_a.index_by { |r| r["email_key"] }
+  end
+
+  # 各分類的人數／回購數／回購率／帶回營業額；沒設定分類的歸「未分類」。
+  def segment_stats(recipients, repurchases)
+    recipients.group_by { |r| r.segment.presence || "未分類" }.map do |segment, rows|
+      reps = rows.filter_map { |r| repurchases[r.email] }
+      {
+        segment: segment,
+        total: rows.size,
+        repurchased: reps.size,
+        rate: (reps.size * 100.0 / rows.size).round(1),
+        revenue: reps.sum { |r| r["order_total"].to_i }
+      }
+    end.sort_by { |h| -h[:total] }
+  end
+
+  # 傳送後累積回購曲線（依分類分series）：x=傳送後第N天、y=累積回購人數。
+  def repurchase_curve(list, recipients, repurchases)
+    segment_by_email = recipients.to_h { |r| [r.email, r.segment.presence || "未分類"] }
+    max_day = [(Date.current - list.sent_on).to_i, 0].max
+    days = (0..max_day).to_a
+
+    day_counts = Hash.new { |h, k| h[k] = Hash.new(0) }
+    repurchases.each do |email, rep|
+      day = (rep["order_date"].to_date - list.sent_on).to_i.clamp(0, max_day)
+      day_counts[segment_by_email.fetch(email, "未分類")][day] += 1
+    end
+
+    series = segment_by_email.values.uniq.sort.map do |segment|
+      cumulative = 0
+      { name: segment, data: days.map { |d| cumulative += day_counts[segment][d] } }
+    end
+
+    { days: days, series: series }
   end
 
   def build_stats(list, repurchases)
