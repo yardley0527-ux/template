@@ -26,6 +26,38 @@ end %>
   </div>
 </div>
 
+<%# 傳送的訊息內容：留存文案，供比較各類型訊息的回購成效 %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
+      <div class="fw-bold" style="color:#2f2a24;">
+        <i class="fal fa-comment-lines me-1" style="color:#8f6340;"></i>傳送的訊息內容
+      </div>
+      <a href="javascript:void(0);" class="btn btn-sm btn-outline-secondary"
+         data-toggle="collapse" data-target="#message-content-form" aria-expanded="false">
+        <i class="fal fa-pen me-1"></i><%= @list.message_content.present? ? "編輯" : "上傳訊息內容" %>
+      </a>
+    </div>
+
+    <% if @list.message_content.present? %>
+      <div class="mt-2 px-3 py-2" style="background:#faf7f2; border:1px solid #e9e2d8; border-radius:8px; white-space:pre-wrap; font-size:0.88rem; color:#2f2a24;"><%= @list.message_content %></div>
+    <% else %>
+      <p class="text-muted small mb-0 mt-2">尚未上傳訊息內容。貼上這批名單實際傳送的文案，之後就能比較哪種訊息的回購率比較好。</p>
+    <% end %>
+
+    <div class="collapse mt-2" id="message-content-form">
+      <%= form_with url: message_list_path(@list), method: :patch, local: true do |f| %>
+        <%= f.text_area "message_list[message_content]", value: @list.message_content,
+              rows: 8, class: "form-control", style: "font-size:0.88rem;",
+              placeholder: "貼上這批名單實際傳送的訊息文案…" %>
+        <div class="mt-2 text-right">
+          <%= f.submit "儲存", class: "btn btn-sm btn-primary" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
 <%# 成效統計：名單人數=灰（分母）、已回購=綠（成果）、間隔=藍（參考）、營業額=品牌棕（重點） %>
 <div class="d-flex flex-wrap mb-3" style="gap:10px;">
   <div class="d-flex align-items-center px-3 py-2" style="background:#fff; border:1px solid #e9e2d8; border-left:4px solid #6c757d; border-radius:10px; gap:10px; box-shadow:0 1px 2px rgba(78,51,32,.05); min-width:150px;">

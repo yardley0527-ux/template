@@ -24,6 +24,12 @@ class MessageListsController < ApplicationController
     @rows = @tab == "repurchased" ? @repurchased_rows : @pending_rows
   end
 
+  def update
+    list = MessageList.find(params[:id])
+    list.update!(params.require(:message_list).permit(:message_content))
+    redirect_to message_list_path(list), notice: "訊息內容已儲存"
+  end
+
   def export
     list = MessageList.find(params[:id])
     repurchases = repurchases_for(list)

@@ -32,6 +32,15 @@
               <% if list.source_note.present? %>
                 <div class="text-muted" style="font-size:0.75rem;"><%= list.source_note %></div>
               <% end %>
+              <% if list.message_content.present? %>
+                <div style="font-size:0.75rem; color:#8f6340;">
+                  <i class="fal fa-comment-lines me-1"></i><%= truncate(list.message_content.gsub(/\s+/, " "), length: 60) %>
+                </div>
+              <% else %>
+                <div class="text-muted" style="font-size:0.75rem;">
+                  <i class="fal fa-comment-slash me-1 opacity-50"></i>尚未上傳訊息內容
+                </div>
+              <% end %>
             </td>
             <td class="text-nowrap"><%= list.sent_on.strftime("%Y/%-m/%-d") %></td>
             <td><span class="badge bg-light text-dark border"><%= list.target_product %></span></td>

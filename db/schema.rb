@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_14_093452) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_15_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -512,6 +512,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_14_093452) do
     t.text "source_note"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "message_content"
   end
 
   create_table "message_template_blocks", force: :cascade do |t|
