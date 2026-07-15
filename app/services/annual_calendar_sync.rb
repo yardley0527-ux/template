@@ -51,19 +51,19 @@ class AnnualCalendarSync
   rescue StandardError => e
     Rails.logger.error("[AnnualCalendarSync] #{e.class} #{e.message}")
     { events: 0, error: "#{e.class}: #{e.message}" }
+  ensure
+    @xlsx&.close
+    @file&.close!
   end
-
-  private
 
   def find_year_sheet(year)
     url = "https://docs.google.com/spreadsheets/d/#{SHEET_ID}/export?format=xlsx"
-    io = URI.parse(url).open(open_timeout: 15, read_timeout: 60)
-    file = Tempfile.new(["annual_calendar", ".xlsx"], binmode: true)
-    file.write(io.read)
-    file.rewind
-    xlsx = Roo::Excelx.new(file.path)
-    tab = xlsx.sheets.find { |name| name.include?("#{year % 100}總表") }
-    tab && xlsx.sheet(tab)
+    @file = Tempfile.new(["annual_calendar", ".xlsx"], binmode: true)
+    URI.parse(url).open(open_timeout: 15, read_timeout: 60) { |io| @file.write(io.read) }
+    @file.rewind
+    @xlsx = Roo::Excelx.new(@file.path)
+    tab = @xlsx.sheets.find { |name| name.include?("#{year % 100}總表") }
+    tab && @xlsx.sheet(tab)
   end
 
   def parse_livestreams(sheet, year)
