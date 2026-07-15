@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_15_090000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_15_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -501,6 +501,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_15_090000) do
     t.bigint "shopline_customer_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "segment"
     t.index ["message_list_id", "email"], name: "index_message_list_recipients_on_message_list_id_and_email", unique: true
     t.index ["message_list_id"], name: "index_message_list_recipients_on_message_list_id"
   end

@@ -125,6 +125,7 @@ end %>
           <th class="ps-3" style="width:130px;">姓名</th>
           <th style="width:160px;">IG</th>
           <th style="width:90px;">卡別</th>
+          <th style="width:110px;">分類</th>
           <th>回購狀態</th>
         </tr>
       </thead>
@@ -163,6 +164,14 @@ end %>
               <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= r.membership_level.presence || "—" %></span>
             </td>
             <td>
+              <% if r.segment.present? %>
+                <% seg_bg, seg_fg = r.segment == "回購鐵粉" ? ["#6e4a2e", "#fff"] : ["#f0e2cf", "#6e4a2e"] %>
+                <span class="badge" style="background:<%= seg_bg %>; color:<%= seg_fg %>; font-size:0.75rem;"><%= r.segment %></span>
+              <% else %>
+                <span class="text-muted small">—</span>
+              <% end %>
+            </td>
+            <td>
               <% if rep %>
                 <div style="font-size:0.8rem;">
                   <span class="text-success fw-bold">✓</span>
@@ -179,7 +188,7 @@ end %>
         <% end %>
         <% if @rows.empty? %>
           <tr>
-            <td colspan="4" class="text-center py-5 text-muted">
+            <td colspan="5" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
               <%= @tab == 'repurchased' ? "這批名單還沒有人回購目標商品" : "這批名單沒有未回購的客人" %>
             </td>

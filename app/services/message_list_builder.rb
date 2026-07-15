@@ -9,10 +9,11 @@
 #     sent_on: Date.new(2026, 7, 10),
 #     target_product: "清纖粉",
 #     source_note: "代謝錠回購 cohort × 買過清纖粉",
-#     emails: [...]
+#     emails: [...],
+#     segments: { "a@x.com" => "回購鐵粉" }   # 選填：email → 分類標籤
 #   )
 class MessageListBuilder
-  def self.create!(name:, sent_on:, target_product:, emails:, source_note: nil)
+  def self.create!(name:, sent_on:, target_product:, emails:, source_note: nil, segments: {})
     normalized = emails.filter_map { |e| e.to_s.strip.downcase.presence }.uniq
     raise ArgumentError, "emails 不可為空" if normalized.empty?
 
@@ -32,6 +33,7 @@ class MessageListBuilder
           full_name: c["full_name"],
           instagram_account: igs[email],
           membership_level: c["membership_level"],
+          segment: segments[email],
           shopline_customer_id: c["id"],
           created_at: now,
           updated_at: now
