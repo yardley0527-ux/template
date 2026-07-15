@@ -10,6 +10,7 @@ class MessageTemplate < ApplicationRecord
   CATEGORY_META = {
     "zhongzu"    => { title: "中租零卡分期", icon: "fa-credit-card",    description: "付款提醒訊息" },
     "bulk"       => { title: "新客訊息",     icon: "fa-boxes",          description: "客人一次購買大量時使用" },
+    "big_set"    => { title: "大組數",       icon: "fa-layer-group",    description: "客人一次帶走大組數（多盒）時的售後關懷訊息，依產品挑選" },
     "omnipotent" => { title: "全能膠囊",     icon: "fa-capsules",       description: "依序發送" },
     "whitening"  => { title: "美白膠囊",     icon: "fa-star",           description: "依序發送" },
     "metabolism" => { title: "代謝錠",       icon: "fa-fire",           description: "依序發送" },
@@ -28,7 +29,8 @@ class MessageTemplate < ApplicationRecord
   }.freeze
 
   BULK_SUBCATEGORIES    = %w[全能 美白 全能＋美白 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
+  BIG_SET_SUBCATEGORIES = %w[全能 美白 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
   UPGRADE_SUBCATEGORIES = %w[白卡 銀卡 金卡 黑卡].freeze
-  SUBCATEGORY_MAP       = { "bulk" => BULK_SUBCATEGORIES, "upgrade" => UPGRADE_SUBCATEGORIES }.freeze
-  CATEGORY_ORDER        = %w[binding zhongzu birthday upgrade bulk].freeze
+  SUBCATEGORY_MAP       = { "bulk" => BULK_SUBCATEGORIES, "big_set" => BIG_SET_SUBCATEGORIES, "upgrade" => UPGRADE_SUBCATEGORIES }.freeze
+  CATEGORY_ORDER        = %w[binding zhongzu birthday upgrade bulk big_set].freeze
 end
