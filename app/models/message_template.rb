@@ -28,8 +28,8 @@ class MessageTemplate < ApplicationRecord
     "vitamin_d_calcium" => { title: "D鈣",      icon: "fa-bone",       description: "依情境挑選版本" },
   }.freeze
 
-  BULK_SUBCATEGORIES    = %w[全能 美白 全能＋美白 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
-  BIG_SET_SUBCATEGORIES = %w[全能 美白 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
+  BULK_SUBCATEGORIES    = %w[全能 冰晶番茄 全能＋冰晶番茄 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
+  BIG_SET_SUBCATEGORIES = %w[全能 冰晶番茄 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
   UPGRADE_SUBCATEGORIES = %w[白卡 銀卡 金卡 黑卡].freeze
   SUBCATEGORY_MAP       = { "bulk" => BULK_SUBCATEGORIES, "big_set" => BIG_SET_SUBCATEGORIES, "upgrade" => UPGRADE_SUBCATEGORIES }.freeze
   CATEGORY_ORDER        = %w[binding zhongzu birthday upgrade bulk big_set].freeze
