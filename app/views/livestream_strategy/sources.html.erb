@@ -1,11 +1,13 @@
-<%# app/views/omnipotent_restock/broadcast_performance.html.erb %>
+<%# app/views/livestream_strategy/sources.html.erb %>
 <% content_for :page_title, "直播來源分析" %>
 
 <% content_for :head_block do %>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <% end %>
 
-<% switcher_links = @all_products.map { |p| { product: p, href: crm_broadcasts_path(product: p[:key]) } } %>
+<%= render "tabs" %>
+
+<% switcher_links = @all_products.map { |p| { product: p, href: livestream_strategy_sources_path(product: p[:key]) } } %>
 <%= render 'shared/product_switcher', links: switcher_links %>
 
 <div class="row g-3 mb-3">

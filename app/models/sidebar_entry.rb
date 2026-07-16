@@ -54,7 +54,6 @@ class SidebarEntry
             { href: metabolism_analysis_path,   title: "直播分析 - 代謝錠",       icon: "fa-video" },
             { href: glutathione_analysis_path,  title: "直播分析 - 穀胱甘肽",     icon: "fa-video" },
             { href: livestream_strategy_path,   title: "直播策略報表",             icon: "fa-chart-line" },
-            { href: crm_broadcasts_path(product: effective_key), title: "直播來源分析", icon: "fa-video" },
           ]
         },
         {
