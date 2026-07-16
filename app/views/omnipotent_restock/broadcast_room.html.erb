@@ -14,114 +14,137 @@
   </div>
 </div>
 
-<%# ── 四個 KPI 快覽卡 ── %>
-<div class="row g-3 mb-4">
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center py-3" style="border-left:4px solid #1d4ed8 !important;">
-      <div class="fw-bold mb-1" style="font-size:0.72rem; color:#1d4ed8;">🔵 VIP 常購客</div>
-      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#1d4ed8;"><%= @loyal_buyers.count { |r| r[:customer_type][:key] == :vip } %></div>
-      <div class="text-muted" style="font-size:0.68rem;">每場必邀</div>
+<%# ── 第一層：一句話結論 ── %>
+<div class="card border-0 shadow-sm mb-4" style="border-left:4px solid <%= @product[:color] %> !important;">
+  <div class="card-body py-3">
+    <div class="mb-2" style="font-size:1.02rem;">
+      本場 <%= @product[:icon] %> <strong><%= @product[:label] %></strong> 直播可觸及舊客
+      <strong style="font-size:1.25rem; color:<%= @product[:color] %>;"><%= @reachable_count %></strong> 位，
+      其中高價值客（VIP＋大套組）<strong><%= @pool_high_value + @vip_buyers.size %></strong> 位。
+      <% if @avg_order_value > 0 %>
+        以平均客單價 NT$<%= number_with_delimiter(@avg_order_value) %> 估，
+        一成回購 ≈ <strong style="color:#166534;">NT$<%= number_with_delimiter(@potential_revenue) %></strong>。
+      <% end %>
     </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center py-3" style="border-left:4px solid #dc3545 !important;">
-      <div class="fw-bold mb-1" style="font-size:0.72rem; color:#dc3545;">🔴 提醒中</div>
-      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#dc3545;"><%= @remind_now.size %></div>
-      <div class="text-muted" style="font-size:0.68rem;">快吃完了</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center py-3" style="border-left:4px solid #b45309 !important;">
-      <div class="fw-bold mb-1" style="font-size:0.72rem; color:#b45309;">⚠️ 逾期未回購</div>
-      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#b45309;"><%= @overdue.size %></div>
-      <div class="text-muted" style="font-size:0.68rem;">0–60 天逾期</div>
-    </div>
-  </div>
-  <div class="col-6 col-md-3">
-    <div class="card border-0 shadow-sm text-center py-3" style="border-left:4px solid #7c3aed !important;">
-      <div class="fw-bold mb-1" style="font-size:0.72rem; color:#7c3aed;">🟣 值得喚醒</div>
-      <div class="fw-bold" style="font-size:2rem; line-height:1; color:#7c3aed;"><%= @rescue_worthy.size %></div>
-      <div class="text-muted" style="font-size:0.68rem;">流失且買過 2 次+</div>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="text-muted small">邀請進度</span>
+      <div class="progress flex-grow-1" style="height:0.9rem; max-width:340px;">
+        <% pct = @pool_size > 0 ? (@invited_count * 100.0 / @pool_size).round : 0 %>
+        <div class="progress-bar bg-success" role="progressbar" style="width:<%= pct %>%;"
+             aria-valuenow="<%= pct %>" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <span class="small fw-semibold"><%= @invited_count %> / <%= @pool_size %> 已通知（<%= pct %>%）</span>
     </div>
   </div>
 </div>
 
-<%# ── VIP 常購客 ── %>
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#1d4ed8;">
-    <span class="fw-bold">🔵 VIP 常購客（直播前必邀）</span>
-    <div class="d-flex gap-2 align-items-center">
-      <span class="badge bg-white text-dark"><%= @loyal_buyers.count { |r| r[:customer_type][:key] == :vip } %> 人</span>
-      <%= link_to "⬇ 匯出常購名單", omnipotent_restock_export_loyal_path(product: @product_key), class: "btn btn-sm btn-light" %>
-    </div>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-hover mb-0" style="font-size:0.82rem;">
-        <thead class="table-light"><tr><th>#</th><th>姓名</th><th>卡別</th><th>購買次數</th><th>累計瓶數</th><th>IG</th></tr></thead>
-        <tbody>
-          <% @loyal_buyers.select { |r| r[:customer_type][:key] == :vip }.each_with_index do |r, i| %>
-            <% c = r[:customer] %>
-            <tr>
-              <td><%= i + 1 %></td>
-              <td>
-                <%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %>
-                <%= link_to "旅程", crm_customer_journey_path(c.id, product: @product_key), class: "text-muted ms-1", style: "font-size:0.7rem;" %>
-              </td>
-              <td><span class="badge bg-light text-dark"><%= c.membership_level %></span></td>
-              <td class="text-center"><strong><%= r[:order_count] %></strong></td>
-              <td class="text-center"><%= r[:total_bottles] %> 瓶</td>
-              <td>
-                <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>
-                  <% ig = c.instagram_account.gsub('@','').strip %>
-                  <a href="https://instagram.com/<%= ig %>" target="_blank" class="text-decoration-none small">@<%= ig %></a>
-                <% else %>
-                  <span class="text-muted">—</span>
-                <% end %>
-              </td>
-            </tr>
+<%# ── 第二層：四張摘要卡（點卡展開名單） ── %>
+<%
+  sections = [
+    { id: "vip", color: "#1d4ed8", emoji: "🔵", title: "VIP 常購客", sub: "每場必邀",
+      rows: @vip_buyers, export: omnipotent_restock_export_loyal_path(product: @product_key), export_label: "匯出常購名單" },
+    { id: "remind", color: "#dc3545", emoji: "🔴", title: "提醒中", sub: "快吃完了，直播正好推",
+      rows: @remind_now, export: omnipotent_restock_export_path(product: @product_key), export_label: "匯出今日名單" },
+    { id: "overdue", color: "#b45309", emoji: "⚠️", title: "逾期未回購", sub: "過了預計回購日 0–60 天",
+      rows: @overdue, export: nil, export_label: nil },
+    { id: "rescue", color: "#7c3aed", emoji: "🟣", title: "值得喚醒", sub: "流失但買過 2 次以上",
+      rows: @rescue_worthy, export: omnipotent_restock_export_at_risk_path(product: @product_key), export_label: "匯出流失名單" }
+  ]
+%>
+
+<% sections.each do |s| %>
+  <% rows = s[:rows] %>
+  <%
+    # 卡別分布（黑卡在前）
+    level_counts = rows.group_by { |r| r[:customer].membership_level.presence || "一般會員" }
+                       .transform_values(&:size)
+    level_order  = ["黑卡", "金卡", "銀卡", "白卡"]
+    level_badges = (level_order & level_counts.keys).map { |lv| [lv, level_counts[lv]] }
+    other_count  = level_counts.reject { |lv, _| level_order.include?(lv) }.values.sum
+  %>
+  <div class="card border-0 shadow-sm mb-3">
+    <a href="javascript:void(0);" class="card-header d-flex justify-content-between align-items-center collapsed text-decoration-none"
+       data-toggle="collapse" data-target="#section-<%= s[:id] %>" aria-expanded="false"
+       style="background-color:<%= s[:color] %>; color:#fff;">
+      <div class="d-flex align-items-baseline gap-2 flex-wrap">
+        <span class="fw-bold"><%= s[:emoji] %> <%= s[:title] %></span>
+        <span class="fw-bold" style="font-size:1.35rem; line-height:1;"><%= rows.size %></span>
+        <span class="small opacity-75">位・<%= s[:sub] %></span>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap justify-content-end">
+        <% level_badges.each do |lv, n| %>
+          <span class="badge bg-white text-dark"><%= lv %> <%= n %></span>
+        <% end %>
+        <% if other_count > 0 %>
+          <span class="badge bg-white text-dark">其他 <%= other_count %></span>
+        <% end %>
+        <%
+          hv = if s[:id] == "vip"
+                 nil # VIP 全是高價值，不重複標
+               else
+                 rows.count { |r| [:vip, :big].include?(r[:customer_type][:key]) }
+               end
+        %>
+        <% if hv && hv > 0 %>
+          <span class="badge" style="background:#fff3; color:#fff;">高價值 <%= hv %></span>
+        <% end %>
+        <% if s[:id] == "vip" && rows.any? %>
+          <span class="badge" style="background:#fff3; color:#fff;">
+            累計消費 NT$<%= number_with_delimiter(rows.sum { |r| r[:total_spend] }.to_i) %>
+          </span>
+        <% end %>
+        <span class="small opacity-75">▾ 點開名單</span>
+      </div>
+    </a>
+    <div class="collapse" id="section-<%= s[:id] %>">
+      <div class="d-flex justify-content-end px-3 pt-2">
+        <% if s[:export] %>
+          <%= link_to "⬇ #{s[:export_label]}", s[:export], class: "btn btn-sm btn-outline-secondary" %>
+        <% end %>
+      </div>
+      <div class="card-body p-0">
+        <% if s[:id] == "vip" %>
+          <% if rows.empty? %>
+            <p class="text-muted small p-3 mb-0">目前沒有符合的客戶。</p>
+          <% else %>
+            <div class="table-responsive">
+              <table class="table table-hover mb-0" style="font-size:0.82rem;">
+                <thead class="table-light"><tr><th>#</th><th>姓名</th><th>卡別</th><th>購買次數</th><th>累計瓶數</th><th>累計消費</th><th>IG</th></tr></thead>
+                <tbody>
+                  <% rows.each_with_index do |r, i| %>
+                    <% c = r[:customer] %>
+                    <tr>
+                      <td><%= i + 1 %></td>
+                      <td>
+                        <%= link_to c.full_name, customer_path(c.id), target: "_blank", class: "fw-semibold text-decoration-none" %>
+                        <%= link_to "旅程", crm_customer_journey_path(c.id, product: @product_key), class: "text-muted ms-1", style: "font-size:0.7rem;" %>
+                      </td>
+                      <td><span class="badge bg-light text-dark"><%= c.membership_level %></span></td>
+                      <td class="text-center"><strong><%= r[:order_count] %></strong></td>
+                      <td class="text-center"><%= r[:total_bottles] %> 瓶</td>
+                      <td class="text-right">NT$<%= number_with_delimiter(r[:total_spend].to_i) %></td>
+                      <td>
+                        <% if c.instagram_account.present? && c.instagram_account != "無ig帳號" %>
+                          <% ig = c.instagram_account.gsub('@','').strip %>
+                          <a href="https://instagram.com/<%= ig %>" target="_blank" class="text-decoration-none small">@<%= ig %></a>
+                        <% else %>
+                          <span class="text-muted">—</span>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
           <% end %>
-        </tbody>
-      </table>
+        <% else %>
+          <%= render 'broadcast_mini_table', rows: rows %>
+        <% end %>
+      </div>
     </div>
   </div>
-</div>
+<% end %>
 
-<%# ── 提醒中 ── %>
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#dc3545;">
-    <span class="fw-bold">🔴 提醒中（已到建議提醒日）</span>
-    <div class="d-flex gap-2 align-items-center">
-      <span class="badge bg-white text-dark"><%= @remind_now.size %> 人</span>
-      <%= link_to "⬇ 匯出今日名單", omnipotent_restock_export_path(product: @product_key), class: "btn btn-sm btn-light" %>
-    </div>
-  </div>
-  <div class="card-body p-0">
-    <%= render 'broadcast_mini_table', rows: @remind_now %>
-  </div>
-</div>
-
-<%# ── 逾期未回購 ── %>
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#b45309;">
-    <span class="fw-bold">⚠️ 逾期未回購（0–60 天）</span>
-    <span class="badge bg-white text-dark"><%= @overdue.size %> 人</span>
-  </div>
-  <div class="card-body p-0">
-    <%= render 'broadcast_mini_table', rows: @overdue %>
-  </div>
-</div>
-
-<%# ── 值得喚醒 ── %>
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-header text-white d-flex justify-content-between align-items-center" style="background-color:#7c3aed;">
-    <span class="fw-bold">🟣 值得喚醒（流失但買過 2 次以上）</span>
-    <div class="d-flex gap-2 align-items-center">
-      <span class="badge bg-white text-dark"><%= @rescue_worthy.size %> 人</span>
-      <%= link_to "⬇ 匯出流失名單", omnipotent_restock_export_at_risk_path(product: @product_key), class: "btn btn-sm btn-light" %>
-    </div>
-  </div>
-  <div class="card-body p-0">
-    <%= render 'broadcast_mini_table', rows: @rescue_worthy %>
-  </div>
-</div>
+<p class="text-muted mt-3 mb-0" style="font-size:0.74rem;">
+  數字為開頁當下即時計算（訂單匯入後重新整理即更新）。潛在營收＝（提醒中＋逾期＋值得喚醒）人數 × 本產品平均客單價 × 10% 回購率保守估算。
+</p>
