@@ -103,6 +103,7 @@ Rails.application.routes.draw do
   get   '/crm/analytics/broadcasts',   to: 'omnipotent_restock#broadcast_performance', as: :crm_broadcasts
   get   '/crm/customer/:id',           to: 'omnipotent_restock#customer_journey',      as: :crm_customer_journey
   get   '/crm/export',                 to: 'omnipotent_restock#export',                as: :crm_export
+  get   '/crm/export_daily',           to: 'omnipotent_restock#export_daily',          as: :crm_export_daily
   get   '/crm/export_at_risk',         to: 'omnipotent_restock#export_at_risk',        as: :crm_export_at_risk
   get   '/crm/export_loyal',           to: 'omnipotent_restock#export_loyal',          as: :crm_export_loyal
   patch '/crm/update_status',          to: 'omnipotent_restock#update_status',         as: :crm_update_status

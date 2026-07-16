@@ -292,6 +292,14 @@ class OmnipotentRestockController < ApplicationController
               type: "text/csv; charset=utf-8"
   end
 
+  # 「今日待辦」合併名單（所有有庫存產品），含優先序與 CRM 分數。
+  def export_daily
+    build_daily_combined_list
+    send_data "\xEF\xBB\xBF" + daily_csv(@combined_today),
+              filename: "今日待辦名單_#{Date.today}.csv",
+              type: "text/csv; charset=utf-8"
+  end
+
   def update_status
     ns = OmnipotentNotificationStatus.find_or_initialize_by(
       email:          params[:email],
@@ -591,6 +599,33 @@ class OmnipotentRestockController < ApplicationController
           r[:expected_return_date]&.strftime("%Y/%m/%d"),
           r[:days_left],
           r[:notification]&.status || "未通知"
+        ]
+      end
+    end
+  end
+
+  def daily_csv(rows)
+    require "csv"
+    CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["優先序", "產品", "狀態", "客戶類型", "優先分數", "姓名", "卡別", "手機", "IG",
+              "來源場次", "上次購買", "該次瓶數", "累計瓶數", "購買次數",
+              "預估吃完日", "建議提醒日", "預計回購日", "逾期天數", "通知狀態", "聯絡結果"]
+      rows.each_with_index do |r, i|
+        c  = r[:customer]
+        ig = c.instagram_account&.gsub('@', '')&.strip
+        csv << [
+          i + 1, "#{r[:product_icon]} #{r[:product_label]}",
+          r[:days_left] > 0 ? "提醒中" : "逾期",
+          r[:customer_type][:label], r[:crm_score],
+          c.full_name, c.membership_level, c.mobile_phone, ig,
+          r[:source_event],
+          r[:bought_date]&.strftime("%Y/%m/%d"), r[:bottles], r[:total_omni_bottles], r[:omni_count],
+          r[:estimated_finish_date]&.strftime("%Y/%m/%d"),
+          r[:suggested_reminder_date]&.strftime("%Y/%m/%d"),
+          r[:expected_return_date]&.strftime("%Y/%m/%d"),
+          r[:days_left] < 0 ? -r[:days_left] : "尚未逾期",
+          r[:notification]&.status || "未通知",
+          r[:notification]&.result
         ]
       end
     end

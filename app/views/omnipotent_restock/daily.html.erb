@@ -22,6 +22,9 @@
         合併所有目前有庫存的產品，把提醒中＋逾期未回購的客人排在一起，依 CRM Score 排序・每天打開這頁就是今天要聯絡的人
       </p>
     </div>
+    <%= link_to crm_export_daily_path, class: "btn btn-sm btn-outline-dark" do %>
+      ⬇ 匯出今日名單 CSV
+    <% end %>
   </div>
 </div>
 
