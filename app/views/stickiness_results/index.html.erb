@@ -126,21 +126,24 @@ end %>
               <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= s[:level] %></span>
             </div>
             <div class="d-flex align-items-center" style="gap:8px; min-width:0;" title="<%= tooltip %>">
-              <% if s[:revenue] > 0 %>
-                <div style="height:16px; width:<%= (s[:revenue] * 100.0 / max_revenue).round(1) %>%; min-width:4px; background:#8f6340; border-radius:0 4px 4px 0; flex-shrink:0;"></div>
-                <span style="font-size:0.8rem; color:#2f2a24; white-space:nowrap;">NT$<%= number_with_delimiter(s[:revenue]) %></span>
-              <% else %>
-                <div style="height:16px; width:2px; background:#e9e2d8; flex-shrink:0;"></div>
-                <span class="text-muted" style="font-size:0.8rem;">NT$0</span>
-              <% end %>
-            </div>
-            <div class="d-flex align-items-center" style="gap:8px; min-width:0;" title="<%= tooltip %>">
-              <div style="height:16px; width:<%= (s[:list_count] * 100.0 / max_list).round(1) %>%; min-width:8px; background:#f0e7db; border-radius:0 4px 4px 0; position:relative; flex-shrink:0;">
-                <% if s[:repurchase_count] > 0 %>
-                  <div style="position:absolute; left:0; top:0; height:100%; width:<%= (s[:repurchase_count] * 100.0 / s[:list_count]).round(1) %>%; min-width:4px; background:#8f6340; border-radius:0 4px 4px 0;"></div>
+              <div style="flex:1 1 auto; min-width:0;">
+                <% if s[:revenue] > 0 %>
+                  <div style="height:16px; width:<%= (s[:revenue] * 100.0 / max_revenue).round(1) %>%; min-width:4px; background:#8f6340; border-radius:0 4px 4px 0;"></div>
+                <% else %>
+                  <div style="height:16px; width:2px; background:#e9e2d8;"></div>
                 <% end %>
               </div>
-              <span style="font-size:0.8rem; color:#2f2a24; white-space:nowrap;">
+              <span style="font-size:0.8rem; color:<%= s[:revenue] > 0 ? '#2f2a24' : '#8a8073' %>; white-space:nowrap; flex-shrink:0; min-width:88px;">NT$<%= number_with_delimiter(s[:revenue]) %></span>
+            </div>
+            <div class="d-flex align-items-center" style="gap:8px; min-width:0;" title="<%= tooltip %>">
+              <div style="flex:1 1 auto; min-width:0;">
+                <div style="height:16px; width:<%= (s[:list_count] * 100.0 / max_list).round(1) %>%; min-width:8px; background:#f0e7db; border-radius:0 4px 4px 0; position:relative;">
+                  <% if s[:repurchase_count] > 0 %>
+                    <div style="position:absolute; left:0; top:0; height:100%; width:<%= (s[:repurchase_count] * 100.0 / s[:list_count]).round(1) %>%; min-width:4px; background:#8f6340; border-radius:0 4px 4px 0;"></div>
+                  <% end %>
+                </div>
+              </div>
+              <span style="font-size:0.8rem; color:#2f2a24; white-space:nowrap; flex-shrink:0; min-width:100px;">
                 <%= s[:repurchase_count] %>/<%= s[:list_count] %><span class="text-muted">（<%= rate %>%）</span>
               </span>
             </div>
