@@ -140,6 +140,7 @@ Rails.application.routes.draw do
   get  '/duplicate_customers',         to: 'duplicate_customers#index', as: :duplicate_customers
   post '/duplicate_customers/merge',   to: 'duplicate_customers#merge', as: :merge_duplicate_customers
   get '/product_strategy',      to: 'product_strategy#index',      as: :product_strategy
+  get '/product_inventory',     to: 'product_inventory#index',     as: :product_inventory
   get '/subscription_strategy', to: 'subscription_strategy#index', as: :subscription_strategy
   get   '/high_spender_first_purchase',             to: 'high_spender_first_purchase#index',       as: :high_spender_first_purchase
   post  '/high_spender_first_purchase/snapshot',    to: 'high_spender_first_purchase#snapshot',    as: :high_spender_first_purchase_snapshot

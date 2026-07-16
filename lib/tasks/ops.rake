@@ -15,7 +15,10 @@ namespace :ops do
     annual = AnnualCalendarSync.call
     puts "[ops:sync] 年度行事曆: #{annual[:error] || "#{annual[:events]} events"}"
 
-    failures = dept.count { |_, r| r[:error] } + (annual[:error] ? 1 : 0)
+    inventory = DandyInventorySync.call
+    puts "[ops:sync] 產品庫存表: #{inventory[:error] || 'ok'}"
+
+    failures = dept.count { |_, r| r[:error] } + (annual[:error] ? 1 : 0) + (inventory[:error] ? 1 : 0)
     abort("[ops:sync] #{failures} source(s) failed") if failures.positive?
   end
 

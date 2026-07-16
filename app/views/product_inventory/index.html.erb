@@ -1,0 +1,145 @@
+<% content_for :page_title, "產品庫存" %>
+
+<div class="pi-page">
+
+  <div class="pi-header">
+    <div>
+      <h4 class="pi-title">📦 產品庫存</h4>
+      <p class="pi-subtitle">同步自 DANDY 庫存試算表（庫存_X月＋按摩棒、藥盒庫存）</p>
+    </div>
+    <div class="pi-meta">
+      <% if @snapshot %>
+        <div>最後同步：<%= @snapshot.synced_at.in_time_zone("Taipei").strftime("%Y/%m/%d %H:%M") %></div>
+        <div>資料最新記錄日：<%= @snapshot.latest_entry_date&.strftime("%Y/%m/%d") || "—" %></div>
+      <% else %>
+        <div>尚未同步</div>
+      <% end %>
+    </div>
+  </div>
+
+  <% if @last_run&.status == "failed" %>
+    <div class="alert alert-danger">
+      上次同步失敗：<%= @last_run.error_messages.join("；") %>
+      <br>請確認試算表已開啟「知道連結的人可檢視」。下方顯示的是最後一次成功同步的資料。
+    </div>
+  <% end %>
+
+  <% if @snapshot.nil? %>
+    <div class="alert alert-warning">
+      還沒有庫存資料。請先確認 DANDY 庫存試算表已開啟「知道連結的人可檢視」，
+      同步會每小時自動執行（或重新整理此頁觸發）。
+    </div>
+  <% else %>
+
+    <% supplements = @snapshot.supplements %>
+    <div class="pi-section">
+      <div class="pi-section-head">
+        <h5><%= supplements["title"].presence || "保健品庫存" %></h5>
+        <span class="pi-sheet-tag">分頁：<%= supplements["sheet_name"] %></span>
+      </div>
+      <div class="pi-table-wrap">
+        <table class="pi-table">
+          <thead>
+            <tr>
+              <th class="pi-th-name">品項</th>
+              <% supplements["columns"].each do |col| %>
+                <th><%= col %></th>
+              <% end %>
+              <th>預定到貨日期</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% supplements["rows"].each do |row| %>
+              <tr>
+                <td class="pi-td-name"><%= row["name"] %></td>
+                <% row["values"].each_with_index do |value, i| %>
+                  <td class="<%= 'pi-outbound' if [2, 3].include?(i) %>">
+                    <%= value.is_a?(Numeric) ? number_with_delimiter(value) : value %>
+                  </td>
+                <% end %>
+                <td class="pi-arrival"><%= row["arrival"] %></td>
+              </tr>
+            <% end %>
+            <% if (total = supplements["total"]) %>
+              <tr class="pi-total-row">
+                <td class="pi-td-name">小計</td>
+                <% total["values"].each_with_index do |value, i| %>
+                  <td class="<%= 'pi-outbound' if [2, 3].include?(i) %>">
+                    <%= value.is_a?(Numeric) ? number_with_delimiter(value) : value %>
+                  </td>
+                <% end %>
+                <td></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <% accessories = @snapshot.accessories %>
+    <div class="pi-section">
+      <div class="pi-section-head">
+        <h5>按摩棒、藥盒庫存</h5>
+        <span class="pi-sheet-tag">首列日期為當月期初量，之後為每日異動</span>
+      </div>
+      <div class="pi-table-wrap">
+        <table class="pi-table pi-grid">
+          <thead>
+            <tr>
+              <th class="pi-th-name pi-sticky">日期</th>
+              <% accessories["products"].each do |product| %>
+                <th class="pi-th-product"><%= product["name"] %></th>
+              <% end %>
+            </tr>
+            <tr class="pi-realtime-row">
+              <th class="pi-th-name pi-sticky">即時庫存</th>
+              <% accessories["products"].each do |product| %>
+                <th><%= product["realtime"].is_a?(Numeric) ? number_with_delimiter(product["realtime"]) : product["realtime"] %></th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody>
+            <% accessories["daily"].each do |row| %>
+              <tr>
+                <td class="pi-td-name pi-sticky"><%= Date.parse(row["date"]).strftime("%m/%d") %></td>
+                <% row["values"].each do |value| %>
+                  <td class="<%= 'pi-negative' if value.is_a?(Numeric) && value.negative? %>">
+                    <%= value.is_a?(Numeric) ? number_with_delimiter(value) : value %>
+                  </td>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  <% end %>
+</div>
+
+<style>
+  .pi-page { padding: 0.5rem 0.25rem; }
+  .pi-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+  .pi-title { margin-bottom: 0.25rem; font-weight: 700; }
+  .pi-subtitle { color: #6b7280; margin-bottom: 0; font-size: 0.85rem; }
+  .pi-meta { text-align: right; color: #6b7280; font-size: 0.85rem; }
+
+  .pi-section { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; margin-bottom: 1.25rem; }
+  .pi-section-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .pi-section-head h5 { margin: 0; font-weight: 700; }
+  .pi-sheet-tag { color: #9ca3af; font-size: 0.8rem; }
+
+  .pi-table-wrap { overflow-x: auto; }
+  .pi-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; white-space: nowrap; }
+  .pi-table th, .pi-table td { border: 1px solid #e5e7eb; padding: 0.35rem 0.6rem; text-align: center; }
+  .pi-table thead th { background: #f3f4f6; font-weight: 700; }
+  .pi-th-name, .pi-td-name { text-align: center; font-weight: 700; background: #fafafa; }
+  .pi-outbound { color: #dc2626; }
+  .pi-negative { color: #dc2626; }
+  .pi-arrival { color: #b45309; font-size: 0.8rem; }
+  .pi-total-row td { font-weight: 700; background: #f9fafb; }
+
+  .pi-grid .pi-th-product { min-width: 5.5rem; white-space: normal; font-size: 0.78rem; }
+  .pi-realtime-row th { background: #fff7ed; color: #b45309; }
+  .pi-sticky { position: sticky; left: 0; z-index: 1; }
+</style>

@@ -6,7 +6,8 @@
 class SyncRun < ApplicationRecord
   SOURCES = {
     "department_sheets" => "部門日誌",
-    "annual_calendar"   => "年度行事曆"
+    "annual_calendar"   => "年度行事曆",
+    "dandy_inventory"   => "產品庫存表"
   }.freeze
   STATUSES = %w[running success partial failed].freeze
 
