@@ -26,7 +26,7 @@ class SpendingRankingsReport
 
   COOLING_RATIO   = 0.5   # 2026 至今 < 2025 同期 × 0.5 → 流失警訊
   RISING_TRENDS   = %i[new returning surpassed].freeze
-  LIVESTREAM_WINDOW_DAYS = 3 # 沿用 broadcast_performance 的直播歸因窗（直播日起 3 天內下單）
+  LIVESTREAM_WINDOW_DAYS = 3 # 沿用直播來源分析（livestream_strategy#sources）的直播歸因窗（直播日起 3 天內下單）
 
   attr_reader :today
 
@@ -319,7 +319,7 @@ class SpendingRankingsReport
     end
   end
 
-  # 最近參與直播：沿用 broadcast_performance 的歸因窗 —
+  # 最近參與直播：沿用直播來源分析（livestream_strategy#sources）的歸因窗 —
   # 訂單日落在某場直播日起 3 天內，取最近一場。無精確的個人參與紀錄，
   # 此為「直播檔期購買」推定，非觀看名單。
   def last_livestream_for(emails)

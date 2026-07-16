@@ -32,6 +32,7 @@ class PageView < ApplicationRecord
     "member_contacts#export"                => "會員聯絡名單匯出",
     "livestream_analysis#index"             => "直播分析總覽",
     "livestream_strategy#index"             => "直播策略報表",
+    "livestream_strategy#sources"           => "直播來源分析",
     "turmeric_analysis#index"               => "直播分析 - 薑黃",
     "turmeric_analysis#export_missing"      => "薑黃未回購匯出",
     "turmeric_analysis#export_event"        => "薑黃本場匯出",

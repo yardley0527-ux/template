@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
 class LivestreamStrategyController < ApplicationController
+  include JourneyProducts
+
+  before_action :set_product, only: :sources
+
   LEVELS = %w[黑卡 金卡 銀卡 白卡].freeze
 
   SERIES_KEYWORDS = %w[薑黃 代謝錠 膠原 蝦紅素 NMN 魚油 穀胱甘肽 益生菌 清纖粉 美白 私密粉 維DK鈣 全能 B群].freeze
@@ -134,6 +138,56 @@ class LivestreamStrategyController < ApplicationController
 
     # 結論摘要
     @summaries = build_summaries
+  end
+
+  # 直播來源分析（原 CRM 的 /crm/analytics/broadcasts）：單一產品視角，
+  # 直播日起 3 天內下單算該場買家，追蹤這批人的後續回購。
+  def sources
+    events = OmnipotentAnalysisController::OMNI_EVENTS.select { |e| e[:date] <= Date.today }
+
+    all_event_emails = []
+    events.each do |ev|
+      win_start = ev[:date]; win_end = ev[:date] + 3
+      emails = ShoplineOrder.where(@product[:sql])
+        .where("order_date::date BETWEEN ? AND ?", win_start, win_end)
+        .where.not(email: [nil, ""]).distinct.pluck(:email)
+      all_event_emails.concat(emails)
+    end
+    all_event_emails.uniq!
+
+    all_later_orders = Hash.new { |h, k| h[k] = [] }
+    if all_event_emails.any?
+      ShoplineOrder.where(@product[:sql]).where(email: all_event_emails)
+        .order(:email, :order_date)
+        .pluck(:email, :order_date, :order_number)
+        .each { |em, od, on_| all_later_orders[em] << { date: od.to_date, order_number: on_ } }
+    end
+
+    @event_stats = events.map do |ev|
+      win_start = ev[:date]; win_end = ev[:date] + 3
+      event_orders = ShoplineOrder.where(@product[:sql])
+        .where("order_date::date BETWEEN ? AND ?", win_start, win_end)
+        .where.not(email: [nil, ""])
+      buyer_emails = event_orders.distinct.pluck(:email)
+      next if buyer_emails.empty?
+
+      order_nums = event_orders.distinct.pluck(:order_number).compact
+      event_revenue = 0
+      if order_nums.any?
+        event_revenue = ShoplineOrder.where(order_number: order_nums)
+          .group(:order_number)
+          .pluck(Arel.sql("COALESCE(MAX(NULLIF(total_amount,0)), SUM(COALESCE(checkout_amount,0)))"))
+          .sum(&:to_f).round
+      end
+
+      repurchased_emails = buyer_emails.select { |em| all_later_orders[em].any? { |o| o[:date] > win_end } }
+
+      { label: "#{ev[:year]}/#{ev[:label]}", date: ev[:date], note: ev[:note],
+        buyers: buyer_emails.size, revenue: event_revenue,
+        avg_value: buyer_emails.size > 0 ? (event_revenue.to_f / buyer_emails.size).round : 0,
+        repurchased: repurchased_emails.size,
+        repurchase_rate: buyer_emails.size > 0 ? (repurchased_emails.size.to_f / buyer_emails.size * 100).round(1) : 0 }
+    end.compact.sort_by { |e| -e[:date].to_time.to_i }
   end
 
   private

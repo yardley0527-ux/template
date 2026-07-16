@@ -100,7 +100,10 @@ Rails.application.routes.draw do
   get   '/crm/analytics/roi',          to: 'omnipotent_restock#roi_dashboard',         as: :crm_roi
   get   '/crm/analytics/accuracy',     to: 'omnipotent_restock#journey_accuracy',      as: :crm_accuracy
   get   '/crm/analytics/operations',   to: 'omnipotent_restock#crm_analysis',          as: :crm_operations
-  get   '/crm/analytics/broadcasts',   to: 'omnipotent_restock#broadcast_performance', as: :crm_broadcasts
+  # 直播來源分析已併入直播策略報表的「來源分析」頁籤，舊網址保留轉跳
+  get   '/crm/analytics/broadcasts',   to: redirect { |_params, req|
+    ["/livestream_strategy/sources", req.query_string.presence].compact.join("?")
+  }, as: :crm_broadcasts
   get   '/crm/customer/:id',           to: 'omnipotent_restock#customer_journey',      as: :crm_customer_journey
   get   '/crm/export',                 to: 'omnipotent_restock#export',                as: :crm_export
   get   '/crm/export_daily',           to: 'omnipotent_restock#export_daily',          as: :crm_export_daily
@@ -148,6 +151,7 @@ Rails.application.routes.draw do
   post '/high_spender_follow_ups',              to: 'high_spender_follow_ups#create',        as: :high_spender_follow_ups
   get '/shopping_credits',    to: 'shopping_credits#index',    as: :shopping_credits
   get '/livestream_strategy', to: 'livestream_strategy#index', as: :livestream_strategy
+  get '/livestream_strategy/sources', to: 'livestream_strategy#sources', as: :livestream_strategy_sources
 
   # ── Product Registry Review UI (Epic B2-0C) ─────────────────────────
   get   '/product_registry',                    to: 'product_registry#index',          as: :product_registry
