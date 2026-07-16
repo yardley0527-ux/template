@@ -15,21 +15,6 @@ end %>
       <p class="text-muted small mb-0">已標客人類型的客人，依客人類型＋卡別分類，追蹤後續與回購</p>
     </div>
     <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
-      <%
-        today = Date.current
-        range_presets = {
-          "本週" => [today.beginning_of_week, today.end_of_week],
-          "上週" => [(today - 1.week).beginning_of_week, (today - 1.week).end_of_week],
-          "本月" => [today.beginning_of_month, today.end_of_month],
-          "上月" => [(today - 1.month).beginning_of_month, (today - 1.month).end_of_month],
-        }
-      %>
-      <% range_presets.each do |label, (from, to)| %>
-        <% active = @start_date == from && @end_date == to %>
-        <%= link_to label,
-              stickiness_follow_ups_path(status: @status, start_date: from, end_date: to),
-              class: "btn btn-sm #{active ? 'btn-primary' : 'btn-outline-secondary'}" %>
-      <% end %>
       <%= form_tag stickiness_follow_ups_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
         <%= hidden_field_tag :status, @status %>
         <span class="text-muted small">最後購買日</span>
@@ -68,95 +53,6 @@ end %>
     </div>
   </div>
 </div>
-
-<%# 追蹤成效：KPI 列＋依卡別的回購業績/回購人數雙欄長條（跟著上方日期篩選，不受下方 tab 影響）%>
-<% if @level_stats.present? %>
-  <%
-    total_list        = @level_stats.sum { |s| s[:list_count] }
-    total_repurchased = @level_stats.sum { |s| s[:repurchase_count] }
-    total_revenue     = @level_stats.sum { |s| s[:revenue] }
-    repurchase_rate   = total_list.zero? ? 0 : (total_repurchased * 100.0 / total_list).round
-    max_revenue       = [@level_stats.map { |s| s[:revenue] }.max, 1].compact.max
-    max_list          = [@level_stats.map { |s| s[:list_count] }.max, 1].compact.max
-  %>
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
-      <span class="fw-bold">追蹤成效（依卡別）</span>
-      <span class="text-muted" style="font-size:0.75rem;">
-        回購＝追蹤後再次購買追蹤前買過的系列・<%= @start_date.present? ? "回購日 #{@start_date.strftime('%Y/%m/%d')}〜#{@end_date.strftime('%Y/%m/%d')}" : "全部期間" %>
-      </span>
-    </div>
-    <div class="card-body pt-3">
-      <%# KPI 列 %>
-      <div class="d-flex flex-wrap mb-4" style="gap:12px;">
-        <% [
-          ["回購業績", "NT$#{number_with_delimiter(total_revenue)}"],
-          ["回購人數", "#{total_repurchased} 人"],
-          ["回購率",   "#{repurchase_rate}%（#{total_repurchased}/#{total_list}）"],
-        ].each do |label, value| %>
-          <div class="px-3 py-2" style="background:#faf6f0; border-radius:10px; min-width:150px;">
-            <div class="text-muted" style="font-size:0.75rem;"><%= label %></div>
-            <div class="fw-bold" style="font-size:1.25rem; color:#2f2a24;"><%= value %></div>
-          </div>
-        <% end %>
-      </div>
-
-      <%# 雙欄長條：共用卡別軸 %>
-      <div style="overflow-x:auto;">
-        <div style="display:grid; grid-template-columns:72px minmax(180px,1fr) minmax(180px,1fr); column-gap:24px; row-gap:14px; align-items:center; min-width:560px;">
-          <div></div>
-          <div class="text-muted" style="font-size:0.75rem;">回購業績</div>
-          <div class="text-muted" style="font-size:0.75rem;">回購人數／名單人數</div>
-
-          <% @level_stats.each do |s| %>
-            <%
-              rate    = s[:list_count].zero? ? 0 : (s[:repurchase_count] * 100.0 / s[:list_count]).round
-              tooltip = "#{s[:level]}：回購 #{s[:repurchase_count]}/#{s[:list_count]} 人（#{rate}%）・業績 NT$#{number_with_delimiter(s[:revenue])}"
-              badge_bg, badge_fg = case s[:level]
-                                   when '黑卡' then ['#333', '#fff']
-                                   when '金卡' then ['#b8860b', '#fff']
-                                   when '銀卡' then ['#6c757d', '#fff']
-                                   when '白卡' then ['#dee2e6', '#333']
-                                   else             ['#adb5bd', '#333']
-                                   end
-            %>
-            <div title="<%= tooltip %>">
-              <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= s[:level] %></span>
-            </div>
-            <div class="d-flex align-items-center" style="gap:8px; min-width:0;" title="<%= tooltip %>">
-              <% if s[:revenue] > 0 %>
-                <div style="height:16px; width:<%= (s[:revenue] * 100.0 / max_revenue).round(1) %>%; min-width:4px; background:#8f6340; border-radius:0 4px 4px 0; flex-shrink:0;"></div>
-                <span style="font-size:0.8rem; color:#2f2a24; white-space:nowrap;">NT$<%= number_with_delimiter(s[:revenue]) %></span>
-              <% else %>
-                <div style="height:16px; width:2px; background:#e9e2d8; flex-shrink:0;"></div>
-                <span class="text-muted" style="font-size:0.8rem;">NT$0</span>
-              <% end %>
-            </div>
-            <div class="d-flex align-items-center" style="gap:8px; min-width:0;" title="<%= tooltip %>">
-              <div style="height:16px; width:<%= (s[:list_count] * 100.0 / max_list).round(1) %>%; min-width:8px; background:#f0e7db; border-radius:0 4px 4px 0; position:relative; flex-shrink:0;">
-                <% if s[:repurchase_count] > 0 %>
-                  <div style="position:absolute; left:0; top:0; height:100%; width:<%= (s[:repurchase_count] * 100.0 / s[:list_count]).round(1) %>%; min-width:4px; background:#8f6340; border-radius:0 4px 4px 0;"></div>
-                <% end %>
-              </div>
-              <span style="font-size:0.8rem; color:#2f2a24; white-space:nowrap;">
-                <%= s[:repurchase_count] %>/<%= s[:list_count] %><span class="text-muted">（<%= rate %>%）</span>
-              </span>
-            </div>
-          <% end %>
-        </div>
-      </div>
-
-      <div class="d-flex align-items-center mt-3" style="gap:14px; font-size:0.72rem; color:#8a8073;">
-        <span class="d-flex align-items-center" style="gap:5px;">
-          <span style="width:12px; height:12px; background:#8f6340; border-radius:3px; display:inline-block;"></span>已回購
-        </span>
-        <span class="d-flex align-items-center" style="gap:5px;">
-          <span style="width:12px; height:12px; background:#f0e7db; border-radius:3px; display:inline-block;"></span>名單人數（淺色底）
-        </span>
-      </div>
-    </div>
-  </div>
-<% end %>
 
 <%# 全部／未追蹤／已追蹤 篩選 %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">

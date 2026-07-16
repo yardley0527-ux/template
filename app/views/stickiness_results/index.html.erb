@@ -15,6 +15,21 @@ end %>
       <p class="text-muted small mb-0">已追蹤（有填黏著度備註）的客人，追蹤後是否回購同系列產品</p>
     </div>
     <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+      <%
+        today = Date.current
+        range_presets = {
+          "本週" => [today.beginning_of_week, today.end_of_week],
+          "上週" => [(today - 1.week).beginning_of_week, (today - 1.week).end_of_week],
+          "本月" => [today.beginning_of_month, today.end_of_month],
+          "上月" => [(today - 1.month).beginning_of_month, (today - 1.month).end_of_month],
+        }
+      %>
+      <% range_presets.each do |label, (from, to)| %>
+        <% active = @start_date == from && @end_date == to %>
+        <%= link_to label,
+              stickiness_results_path(tab: @tab, start_date: from, end_date: to),
+              class: "btn btn-sm #{active ? 'btn-primary' : 'btn-outline-secondary'}" %>
+      <% end %>
       <%= form_tag stickiness_results_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
         <%= hidden_field_tag :tab, @tab %>
         <span class="text-muted small">追蹤日期</span>
@@ -74,6 +89,76 @@ end %>
     </div>
   </div>
 </div>
+
+<%# 依卡別回購成效：業績/人數雙欄長條（口徑同上方統計卡，跟著追蹤日期篩選，不受下方 tab 影響）%>
+<% if @level_stats.present? %>
+  <%
+    max_revenue = [@level_stats.map { |s| s[:revenue] }.max, 1].compact.max
+    max_list    = [@level_stats.map { |s| s[:list_count] }.max, 1].compact.max
+  %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
+      <span class="fw-bold">依卡別回購成效</span>
+      <span class="text-muted" style="font-size:0.75rem;">
+        回購＝追蹤後再次購買追蹤前買過的系列・<%= @start_date.present? ? "追蹤日 #{@start_date.strftime('%Y/%m/%d')}〜#{@end_date.strftime('%Y/%m/%d')}" : "全部期間" %>
+      </span>
+    </div>
+    <div class="card-body pt-3">
+      <div style="overflow-x:auto;">
+        <div style="display:grid; grid-template-columns:72px minmax(180px,1fr) minmax(180px,1fr); column-gap:24px; row-gap:14px; align-items:center; min-width:560px;">
+          <div></div>
+          <div class="text-muted" style="font-size:0.75rem;">回購業績</div>
+          <div class="text-muted" style="font-size:0.75rem;">回購人數／已追蹤人數</div>
+
+          <% @level_stats.each do |s| %>
+            <%
+              rate    = s[:list_count].zero? ? 0 : (s[:repurchase_count] * 100.0 / s[:list_count]).round
+              tooltip = "#{s[:level]}：回購 #{s[:repurchase_count]}/#{s[:list_count]} 人（#{rate}%）・業績 NT$#{number_with_delimiter(s[:revenue])}"
+              badge_bg, badge_fg = case s[:level]
+                                   when '黑卡' then ['#333', '#fff']
+                                   when '金卡' then ['#b8860b', '#fff']
+                                   when '銀卡' then ['#6c757d', '#fff']
+                                   when '白卡' then ['#dee2e6', '#333']
+                                   else             ['#adb5bd', '#333']
+                                   end
+            %>
+            <div title="<%= tooltip %>">
+              <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.75rem;"><%= s[:level] %></span>
+            </div>
+            <div class="d-flex align-items-center" style="gap:8px; min-width:0;" title="<%= tooltip %>">
+              <% if s[:revenue] > 0 %>
+                <div style="height:16px; width:<%= (s[:revenue] * 100.0 / max_revenue).round(1) %>%; min-width:4px; background:#8f6340; border-radius:0 4px 4px 0; flex-shrink:0;"></div>
+                <span style="font-size:0.8rem; color:#2f2a24; white-space:nowrap;">NT$<%= number_with_delimiter(s[:revenue]) %></span>
+              <% else %>
+                <div style="height:16px; width:2px; background:#e9e2d8; flex-shrink:0;"></div>
+                <span class="text-muted" style="font-size:0.8rem;">NT$0</span>
+              <% end %>
+            </div>
+            <div class="d-flex align-items-center" style="gap:8px; min-width:0;" title="<%= tooltip %>">
+              <div style="height:16px; width:<%= (s[:list_count] * 100.0 / max_list).round(1) %>%; min-width:8px; background:#f0e7db; border-radius:0 4px 4px 0; position:relative; flex-shrink:0;">
+                <% if s[:repurchase_count] > 0 %>
+                  <div style="position:absolute; left:0; top:0; height:100%; width:<%= (s[:repurchase_count] * 100.0 / s[:list_count]).round(1) %>%; min-width:4px; background:#8f6340; border-radius:0 4px 4px 0;"></div>
+                <% end %>
+              </div>
+              <span style="font-size:0.8rem; color:#2f2a24; white-space:nowrap;">
+                <%= s[:repurchase_count] %>/<%= s[:list_count] %><span class="text-muted">（<%= rate %>%）</span>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center mt-3" style="gap:14px; font-size:0.72rem; color:#8a8073;">
+        <span class="d-flex align-items-center" style="gap:5px;">
+          <span style="width:12px; height:12px; background:#8f6340; border-radius:3px; display:inline-block;"></span>已回購
+        </span>
+        <span class="d-flex align-items-center" style="gap:5px;">
+          <span style="width:12px; height:12px; background:#f0e7db; border-radius:3px; display:inline-block;"></span>已追蹤人數（淺色底）
+        </span>
+      </div>
+    </div>
+  </div>
+<% end %>
 
 <%# 已回購／未回購 tabs %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">

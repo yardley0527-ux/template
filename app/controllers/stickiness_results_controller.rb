@@ -19,6 +19,8 @@ class StickinessResultsController < ApplicationController
       end
     end
 
+    @level_stats = build_level_stats(rows)
+
     repurchased, pending = rows.partition { |r| r.repurchases.any? }
     @repurchased_count = repurchased.size
     @pending_count     = pending.size
