@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_15_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_16_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -289,6 +289,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_15_100000) do
     t.integer "api_push"
     t.integer "api_reply"
     t.index ["stat_date"], name: "index_daily_member_stats_on_stat_date", unique: true
+  end
+
+  create_table "dandy_inventory_snapshots", force: :cascade do |t|
+    t.date "snapshot_date", null: false
+    t.datetime "synced_at", null: false
+    t.date "latest_entry_date"
+    t.jsonb "data", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["snapshot_date"], name: "index_dandy_inventory_snapshots_on_snapshot_date", unique: true
   end
 
   create_table "department_updates", force: :cascade do |t|
