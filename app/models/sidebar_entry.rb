@@ -62,7 +62,7 @@ class SidebarEntry
             { href: crm_home_path(product: effective_key),      title: "CRM 首頁",    icon: "fa-chart-pie" },
             { href: crm_journey_path(product: effective_key),   title: "客戶旅程管理", icon: "fa-route" },
             { href: crm_broadcast_path(product: effective_key), title: "直播戰情室",   icon: "fa-broadcast-tower" },
-            { href: message_lists_path, title: "訊息名單追蹤", icon: "fa-envelope-open-text" },
+            { href: message_lists_path, title: "訊息名單追蹤", icon: "fa-envelope-open" },
             { href: "#", title: "CRM 效益分析", icon: "fa-chart-bar", children: [
               { href: crm_roi_path(product: effective_key),        title: "ROI Dashboard",  icon: "fa-dollar-sign" },
               { href: crm_accuracy_path(product: effective_key),   title: "Journey 預測驗證", icon: "fa-crosshairs" },
