@@ -11,6 +11,9 @@ class StickinessFollowUpsController < ApplicationController
 
     rows = build_rows
 
+    # 圖表口徑：日期區間套在「回購日」（區間內發生的回購），分母是整份追蹤名單
+    @level_stats = build_level_stats(rows, from: @start_date, to: @end_date)
+
     # 日期區間篩選「最後購買日」
     if @start_date.present?
       rows = rows.select do |r|
@@ -19,8 +22,6 @@ class StickinessFollowUpsController < ApplicationController
           r.last_purchase_date <= @end_date.end_of_day
       end
     end
-
-    @level_stats = build_level_stats(rows)
 
     pending, done  = rows.partition { |r| !r.tracked? }
     @total_count   = rows.size

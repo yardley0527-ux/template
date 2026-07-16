@@ -15,6 +15,21 @@ end %>
       <p class="text-muted small mb-0">已標客人類型的客人，依客人類型＋卡別分類，追蹤後續與回購</p>
     </div>
     <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+      <%
+        today = Date.current
+        range_presets = {
+          "本週" => [today.beginning_of_week, today.end_of_week],
+          "上週" => [(today - 1.week).beginning_of_week, (today - 1.week).end_of_week],
+          "本月" => [today.beginning_of_month, today.end_of_month],
+          "上月" => [(today - 1.month).beginning_of_month, (today - 1.month).end_of_month],
+        }
+      %>
+      <% range_presets.each do |label, (from, to)| %>
+        <% active = @start_date == from && @end_date == to %>
+        <%= link_to label,
+              stickiness_follow_ups_path(status: @status, start_date: from, end_date: to),
+              class: "btn btn-sm #{active ? 'btn-primary' : 'btn-outline-secondary'}" %>
+      <% end %>
       <%= form_tag stickiness_follow_ups_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
         <%= hidden_field_tag :status, @status %>
         <span class="text-muted small">最後購買日</span>
@@ -68,7 +83,7 @@ end %>
     <div class="card-header bg-white d-flex align-items-center justify-content-between flex-wrap" style="gap:8px;">
       <span class="fw-bold">追蹤成效（依卡別）</span>
       <span class="text-muted" style="font-size:0.75rem;">
-        回購＝追蹤後再次購買追蹤前買過的系列<%= "・最後購買日 #{@start_date.strftime('%Y/%m/%d')}〜#{@end_date.strftime('%Y/%m/%d')}" if @start_date.present? %>
+        回購＝追蹤後再次購買追蹤前買過的系列・<%= @start_date.present? ? "回購日 #{@start_date.strftime('%Y/%m/%d')}〜#{@end_date.strftime('%Y/%m/%d')}" : "全部期間" %>
       </span>
     </div>
     <div class="card-body pt-3">

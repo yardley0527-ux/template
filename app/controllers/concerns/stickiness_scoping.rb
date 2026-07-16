@@ -81,18 +81,28 @@ module StickinessScoping
     end
   end
 
-  # 追蹤成效圖表用：依卡別彙總名單人數、回購人數、回購業績
-  def build_level_stats(rows)
+  # 追蹤成效圖表用：依卡別彙總名單人數、回購人數、回購業績。
+  # 有給日期區間時以「回購日」為口徑（區間內發生的回購才算），分母維持整份追蹤名單
+  def build_level_stats(rows, from: nil, to: nil)
     rows.group_by(&:membership_level)
         .sort_by { |level, _| LEVELS.index(level) || LEVELS.size }
         .map do |level, members|
+          reps_by_member = members.map { |r| repurchases_within(r, from, to) }
           {
             level:            level,
             list_count:       members.size,
-            repurchase_count: members.count { |r| r.repurchases.any? },
-            revenue:          members.sum { |r| r.repurchases.sum { |rep| rep[:amount] } },
+            repurchase_count: reps_by_member.count(&:any?),
+            revenue:          reps_by_member.sum { |reps| reps.sum { |rep| rep[:amount] } },
           }
         end
+  end
+
+  def repurchases_within(row, from, to)
+    return row.repurchases if from.blank?
+
+    row.repurchases.select do |rep|
+      rep[:date] >= from.beginning_of_day && rep[:date] <= to.end_of_day
+    end
   end
 
   # 依客人類型分組，組內照卡別排序
