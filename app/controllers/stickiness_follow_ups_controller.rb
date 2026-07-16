@@ -20,6 +20,8 @@ class StickinessFollowUpsController < ApplicationController
       end
     end
 
+    @level_stats = build_level_stats(rows)
+
     pending, done  = rows.partition { |r| !r.tracked? }
     @total_count   = rows.size
     @pending_count = pending.size

@@ -81,6 +81,20 @@ module StickinessScoping
     end
   end
 
+  # 追蹤成效圖表用：依卡別彙總名單人數、回購人數、回購業績
+  def build_level_stats(rows)
+    rows.group_by(&:membership_level)
+        .sort_by { |level, _| LEVELS.index(level) || LEVELS.size }
+        .map do |level, members|
+          {
+            level:            level,
+            list_count:       members.size,
+            repurchase_count: members.count { |r| r.repurchases.any? },
+            revenue:          members.sum { |r| r.repurchases.sum { |rep| rep[:amount] } },
+          }
+        end
+  end
+
   # 依客人類型分組，組內照卡別排序
   def group_by_customer_type(rows)
     CustomerProfile::CUSTOMER_TYPE_OPTIONS.map do |type|
