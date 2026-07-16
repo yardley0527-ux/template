@@ -61,7 +61,7 @@ yarn install
 
 ### Controllers of Note
 
-`CustomersController` is the core — filterable/sortable customer list backed by the analytics cache. `WelcomeController` drives the main dashboard. Dedicated controllers exist for analytical views: `LoyalCustomersController`, `FirstPurchaseController`, `HighSpendersController`.
+`CustomersController` is the core — filterable/sortable customer list backed by the analytics cache. `WelcomeController` drives the main dashboard. Dedicated controllers exist for analytical views: `LoyalCustomersController`, `HighSpendersController`.
 
 ### Database Patterns
 

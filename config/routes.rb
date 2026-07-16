@@ -127,8 +127,6 @@ Rails.application.routes.draw do
   resources :expiring_members, only: [:index] do
     post :confirm_renewal, on: :member
   end  
-  get '/first_purchase', to: 'first_purchase#index', as: :first_purchase_index
-  get '/first_purchase/export', to: 'first_purchase#export', as: :export_first_purchase
   get '/loyal_customers',            to: 'loyal_customers#index',      as: :loyal_customers
   get '/product_high_value_customers', to: 'product_high_value_customers#index', as: :product_high_value_customers
   get '/spending_rankings', to: 'spending_rankings#index', as: :spending_rankings
