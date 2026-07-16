@@ -6,16 +6,26 @@ class ProductStrategyController < ApplicationController
       build_report
     end
 
+    # 平均回購率只算有首購資料的系列，剛納入分析的新產品（total 0）不稀釋整體數字
+    with_data = @report.select { |r| r[:total].positive? }
+
     @overview = {
       total_customers:  @report.sum { |r| r[:total] },
-      avg_return_rate:  @report.any? ? (@report.sum { |r| r[:return_rate] }.to_f / @report.size).round(1) : 0.0,
+      avg_return_rate:  with_data.any? ? (with_data.sum { |r| r[:return_rate] }.to_f / with_data.size).round(1) : 0.0,
       total_silent:     @report.sum { |r| r[:silent].to_i + r[:watching].to_i },
       total_iron:       @report.sum { |r| r[:iron] },
-      best_retention:   @report.max_by { |r| r[:return_rate] }
+      best_retention:   with_data.max_by { |r| r[:return_rate] }
     }
   end
 
   private
+
+  # crm_products 剛納入分析、summaries 還沒有該系列首購資料時的空白列，
+  # 缺任何一個鍵都會讓 index 的加總 500
+  EMPTY_SERIES_STAT = {
+    total: 0, returned: 0, silent: 0, watching: 0,
+    return_rate: 0.0, avg_first: 0, threshold: 0
+  }.freeze
 
   def build_report
     # 各系列基本統計
@@ -71,7 +81,7 @@ class ProductStrategyController < ApplicationController
       end
 
     CrmProduct.series_labels_for_filter.map do |series|
-      stat    = series_stats[series] || {}
+      stat    = series_stats[series] || EMPTY_SERIES_STAT
       loyalty = loyalty_stats[series] || { loyal: 0, iron: 0, avg_count: 0 }
       second  = second_purchase[series] || []
 
