@@ -1,0 +1,96 @@
+<%# app/views/ig_email_lookup/index.html.erb %>
+<% content_for :page_title, "IG 查 Email" %>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+
+    <div class="mb-3 text-center mt-3">
+      <h4 class="fw-bold mb-1"><i class="fab fa-instagram mr-1"></i> IG 查 Email</h4>
+      <p class="text-muted small mb-0">輸入客人的 IG 帳號（可不加 @，大小寫不限）</p>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <%= form_with url: ig_email_lookup_path, method: :get, local: true do %>
+          <div class="input-group input-group-lg">
+            <div class="input-group-prepend">
+              <span class="input-group-text">@</span>
+            </div>
+            <input type="text" name="q" value="<%= @query %>" class="form-control"
+                   placeholder="例如：chloe_1234" autofocus autocomplete="off">
+            <div class="input-group-append">
+              <button type="submit" class="btn btn-primary px-4"><i class="fal fa-search mr-1"></i>查詢</button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <% if @query.present? %>
+      <%
+        rows = Array(@customers).map { |c| { name: c.full_name, ig: c.instagram_account, email: c.email, id: c.id } }
+        rows += Array(@order_only_emails).map { |e| { name: "（僅訂單紀錄）", ig: nil, email: e, id: nil } }
+        rows_with_email = rows.select { |r| r[:email].present? }
+      %>
+
+      <% if rows_with_email.empty? %>
+        <div class="card border-0 shadow-sm">
+          <div class="card-body text-center py-5">
+            <div class="text-danger fw-bold" style="font-size:1.6rem;">查詢無</div>
+            <div class="text-muted small mt-1">「<%= @query %>」找不到對應的 Email</div>
+          </div>
+        </div>
+      <% else %>
+        <% if @fuzzy %>
+          <p class="text-muted small mb-2"><i class="fal fa-info-circle"></i> 沒有完全相同的帳號，以下是相近的結果：</p>
+        <% elsif @from_orders %>
+          <p class="text-muted small mb-2"><i class="fal fa-info-circle"></i> 從訂單紀錄反查到的結果：</p>
+        <% end %>
+
+        <% rows_with_email.each do |r| %>
+          <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body d-flex align-items-center justify-content-between flex-wrap" style="gap:.5rem;">
+              <div>
+                <div class="fw-bold"><%= r[:name].presence || "—" %></div>
+                <div class="text-muted small">
+                  <% if r[:ig].present? %>
+                    <a href="https://www.instagram.com/<%= r[:ig].delete_prefix('@') %>" target="_blank" rel="noopener">@<%= r[:ig].delete_prefix("@") %></a>
+                  <% end %>
+                  <% if r[:id] %>
+                    <%= link_to "客人資料", customer_path(r[:id]), class: "ml-2" %>
+                  <% end %>
+                </div>
+              </div>
+              <div class="d-flex align-items-center" style="gap:.5rem;">
+                <span class="fw-bold" style="font-size:1.15rem;"><%= r[:email] %></span>
+                <button type="button" class="btn btn-outline-primary js-copy-email" data-email="<%= r[:email] %>">
+                  <i class="fal fa-copy mr-1"></i>複製
+                </button>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    <% end %>
+
+  </div>
+</div>
+
+<% content_for :scripts_block do %>
+  <script>
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".js-copy-email");
+      if (!btn) return;
+      navigator.clipboard.writeText(btn.dataset.email).then(function () {
+        btn.innerHTML = '<i class="fal fa-check mr-1"></i>已複製';
+        btn.classList.remove("btn-outline-primary");
+        btn.classList.add("btn-success");
+        setTimeout(function () {
+          btn.innerHTML = '<i class="fal fa-copy mr-1"></i>複製';
+          btn.classList.remove("btn-success");
+          btn.classList.add("btn-outline-primary");
+        }, 1500);
+      });
+    });
+  </script>
+<% end %>

@@ -150,6 +150,7 @@ Rails.application.routes.draw do
   patch '/high_spender_first_purchase/update_field', to: 'high_spender_first_purchase#update_field', as: :high_spender_first_purchase_update_field
   post '/high_spender_follow_ups',              to: 'high_spender_follow_ups#create',        as: :high_spender_follow_ups
   get '/shopping_credits',    to: 'shopping_credits#index',    as: :shopping_credits
+  get '/ig_email_lookup',     to: 'ig_email_lookup#index',     as: :ig_email_lookup
   get '/livestream_strategy', to: 'livestream_strategy#index', as: :livestream_strategy
   get '/livestream_strategy/sources', to: 'livestream_strategy#sources', as: :livestream_strategy_sources
 
