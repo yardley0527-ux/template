@@ -17,7 +17,7 @@ ACCOUNTS = [
     "shengting.fishoil",
     "shengting.probiotic",
     "shengting.glow",
-    "shengting.nmnq10",
+    "shengting.light",
     "shengting.eyeprotect",
 ]
 
@@ -39,14 +39,40 @@ def save_data(data):
 
 
 def login(L, username, password):
+    # 1. Cached session file
     if os.path.exists(SESSION_FILE):
         try:
-            L.load_session_from_file(username, SESSION_FILE)
-            print("Loaded cached session")
-            return True
-        except Exception:
-            pass
+            L.load_session_from_file(username or "cached", SESSION_FILE)
+            actual = L.test_login()
+            if actual:
+                L.context.username = actual
+                print(f"Loaded cached session ({actual})")
+                return True
+            print("Cached session expired")
+        except Exception as e:
+            print(f"Cached session unusable: {e}")
 
+    # 2. Instagram session from Chrome (avoids checkpoint challenges)
+    try:
+        import browser_cookie3
+
+        cj = browser_cookie3.chrome(domain_name="instagram.com")
+        cookies = {c.name: c.value for c in cj}
+        if cookies.get("sessionid"):
+            L.context.update_cookies(cookies)
+            actual = L.test_login()
+            if actual:
+                L.context.username = actual
+                L.save_session_to_file(SESSION_FILE)
+                print(f"Imported session from Chrome ({actual})")
+                return True
+        print("No active Instagram session in Chrome")
+    except Exception as e:
+        print(f"Chrome cookie import failed: {e}")
+
+    # 3. Password login (may trigger a checkpoint challenge)
+    if not (username and password):
+        return False
     try:
         L.login(username, password)
         L.save_session_to_file(SESSION_FILE)
@@ -69,14 +95,10 @@ def main():
         request_timeout=30,
     )
 
-    if os.path.exists(SESSION_FILE):
-        ig_user = os.environ.get("IG_USERNAME")
-        if ig_user:
-            try:
-                L.load_session_from_file(ig_user, SESSION_FILE)
-                print("Loaded cached session")
-            except Exception:
-                pass
+    ig_user = os.environ.get("IG_USERNAME")
+    ig_pass = os.environ.get("IG_PASSWORD")
+    if not login(L, ig_user, ig_pass):
+        print("WARNING: proceeding without login; business accounts will fail")
 
     data = load_data()
     today = str(date.today())

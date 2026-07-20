@@ -13,7 +13,7 @@ class IgFollowersController < ApplicationController
     "shengting.fishoil"       => "魚油",
     "shengting.probiotic"     => "益生菌",
     "shengting.glow"          => "穀胱甘肽",
-    "shengting.nmnq10"        => "抗老",
+    "shengting.light"         => "抗老",
     "shengting.eyeprotect"    => "蝦紅素",
     "chloechao0527"           => "Chloe IG",
   }.freeze

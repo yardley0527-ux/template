@@ -1,1 +1,2 @@
-instaloader==4.13.1
+instaloader==4.15.2
+browser_cookie3
