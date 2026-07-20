@@ -20,7 +20,7 @@ class DailyDashboardController < ApplicationController
       @end_date   = parse_date(params[:end_date])   || @start_date
       @end_date   = @start_date if @end_date < @start_date
     end
-    @yesterday_insights   = build_yesterday_insights
+    @order_insights       = build_order_insights(@start_date, @end_date)
     @summary              = build_summary(@start_date, @end_date)
     @product_stats        = build_product_stats(@start_date, @end_date)
     @daily_stats          = build_daily_stats(@start_date, @end_date)
@@ -29,12 +29,12 @@ class DailyDashboardController < ApplicationController
 
   private
 
-  # ── 昨日訂單洞察 ──────────────────────────────────────────────────────────
+  # ── 訂單洞察（跟隨查詢區間）──────────────────────────────────────────────
 
-  def build_yesterday_insights
-    yesterday = Time.zone.yesterday
-    rs = yesterday.beginning_of_day
-    re = yesterday.end_of_day
+  def build_order_insights(start_date, end_date)
+    rs = start_date.beginning_of_day
+    re = end_date.end_of_day
+    label = start_date == end_date && start_date == Time.zone.yesterday ? "昨日" : "期間"
 
     raw = ShoplineOrder.from("shopline_orders o")
       .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
@@ -59,7 +59,7 @@ class DailyDashboardController < ApplicationController
       .where("order_date < ?", rs)
       .distinct.pluck(:email).to_set : Set.new
 
-    # A. 昨日主力商品 Top 5（依銷售數量排序）
+    # A. 期間主力商品 Top 5（依銷售數量排序）
     product_rows = ShoplineOrder
       .where(payment_status: "已付款")
       .where("order_date >= ? AND order_date <= ?", rs, re)
@@ -86,12 +86,12 @@ class DailyDashboardController < ApplicationController
       }
     end
 
-    # 昨日主力商品：客戶類型細分（新客 / 舊客首購 / 舊客回購）
+    # 主力商品：客戶類型細分（新客 / 舊客首購 / 舊客回購）
     if top_products.any?
       top_names  = top_products.map { |p| p[:name] }
       old_emails = emails.select { |e| prior_emails.include?(e) }
 
-      # 舊客中，昨日前曾買過這些商品的 email 集合（依商品）
+      # 舊客中，區間開始前曾買過這些商品的 email 集合（依商品）
       prior_product_buyers = Hash.new { |h, k| h[k] = Set.new }
       if old_emails.any?
         ShoplineOrder
@@ -102,7 +102,7 @@ class DailyDashboardController < ApplicationController
           .each { |(email, product)| prior_product_buyers[product.to_s.strip] << email }
       end
 
-      # 昨日各訂單 × 商品的 email（用於分類）
+      # 區間內各訂單 × 商品的 email（用於分類）
       li_rows = ShoplineOrder.from("shopline_orders o")
         .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
         .where("o.payment_status = '已付款'")
@@ -146,7 +146,7 @@ class DailyDashboardController < ApplicationController
       end
     end
 
-    # B. 昨日主要購買卡別
+    # B. 主要購買卡別
     tier_data = Hash.new { |h, k| h[k] = { emails: Set.new, orders: 0, amount: 0.0 } }
 
     raw.each do |o|
@@ -174,7 +174,7 @@ class DailyDashboardController < ApplicationController
       }
     end.sort_by { |t| -t[:amount] }
 
-    # C. 昨日主要年齡層
+    # C. 主要年齡層
     today_year = Date.today.year
     age_data = Hash.new { |h, k| h[k] = { emails: Set.new, orders: 0, amount: 0.0 } }
 
@@ -204,12 +204,14 @@ class DailyDashboardController < ApplicationController
     top_age      = by_age.reject { |a| a[:band] == "未知" }.max_by { |a| a[:order_count] }
 
     parts = []
-    parts << "昨日訂單主要來自【#{top_old_tier[:tier]}】"        if top_old_tier
+    parts << "#{label}訂單主要來自【#{top_old_tier[:tier]}】"    if top_old_tier
     parts << "熱賣商品為【#{top_product[:name]}】"              if top_product
     parts << "主要購買年齡層集中在【#{top_age[:band]}歲】"        if top_age && top_age[:order_count] > 0
 
     {
-      date:         yesterday,
+      label:        label,
+      start_date:   start_date,
+      end_date:     end_date,
       top_products: top_products,
       by_tier:      by_tier,
       by_age:       by_age,
