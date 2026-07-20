@@ -1593,124 +1593,6 @@
       "followers": 107
     }
   ],
-  "shengting.nmnq10": [
-    {
-      "date": "2026-06-01",
-      "followers": 35
-    },
-    {
-      "date": "2026-06-02",
-      "followers": 35
-    },
-    {
-      "date": "2026-06-03",
-      "followers": 36
-    },
-    {
-      "date": "2026-06-04",
-      "followers": 36
-    },
-    {
-      "date": "2026-06-05",
-      "followers": 36
-    },
-    {
-      "date": "2026-06-08",
-      "followers": 37
-    },
-    {
-      "date": "2026-06-09",
-      "followers": 37
-    },
-    {
-      "date": "2026-06-10",
-      "followers": 37
-    },
-    {
-      "date": "2026-06-11",
-      "followers": 37
-    },
-    {
-      "date": "2026-06-12",
-      "followers": 37
-    },
-    {
-      "date": "2026-06-14",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-15",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-16",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-17",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-18",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-20",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-22",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-23",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-24",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-25",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-26",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-29",
-      "followers": 38
-    },
-    {
-      "date": "2026-06-30",
-      "followers": 38
-    },
-    {
-      "date": "2026-07-01",
-      "followers": 39
-    },
-    {
-      "date": "2026-07-02",
-      "followers": 39
-    },
-    {
-      "date": "2026-07-03",
-      "followers": 39
-    },
-    {
-      "date": "2026-07-06",
-      "followers": 41
-    },
-    {
-      "date": "2026-07-07",
-      "followers": 41
-    },
-    {
-      "date": "2026-07-08",
-      "followers": 42
-    }
-  ],
   "shengting.eyeprotect": [
     {
       "date": "2026-06-01",
@@ -1985,6 +1867,124 @@
     {
       "date": "2026-07-17",
       "followers": 140052
+    }
+  ],
+  "shengting.light": [
+    {
+      "date": "2026-06-01",
+      "followers": 35
+    },
+    {
+      "date": "2026-06-02",
+      "followers": 35
+    },
+    {
+      "date": "2026-06-03",
+      "followers": 36
+    },
+    {
+      "date": "2026-06-04",
+      "followers": 36
+    },
+    {
+      "date": "2026-06-05",
+      "followers": 36
+    },
+    {
+      "date": "2026-06-08",
+      "followers": 37
+    },
+    {
+      "date": "2026-06-09",
+      "followers": 37
+    },
+    {
+      "date": "2026-06-10",
+      "followers": 37
+    },
+    {
+      "date": "2026-06-11",
+      "followers": 37
+    },
+    {
+      "date": "2026-06-12",
+      "followers": 37
+    },
+    {
+      "date": "2026-06-14",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-15",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-16",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-17",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-18",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-20",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-22",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-23",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-24",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-25",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-26",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-29",
+      "followers": 38
+    },
+    {
+      "date": "2026-06-30",
+      "followers": 38
+    },
+    {
+      "date": "2026-07-01",
+      "followers": 39
+    },
+    {
+      "date": "2026-07-02",
+      "followers": 39
+    },
+    {
+      "date": "2026-07-03",
+      "followers": 39
+    },
+    {
+      "date": "2026-07-06",
+      "followers": 41
+    },
+    {
+      "date": "2026-07-07",
+      "followers": 41
+    },
+    {
+      "date": "2026-07-08",
+      "followers": 42
     }
   ]
 }
