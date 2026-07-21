@@ -164,6 +164,13 @@ Rails.application.routes.draw do
   get '/livestream_strategy/sources', to: 'livestream_strategy#sources', as: :livestream_strategy_sources
   get '/livestream_strategy/windows', to: 'livestream_strategy#windows', as: :livestream_strategy_windows
 
+  # ── 營運提醒中心 (Notification Board MVP) ────────────────────────────
+  get  '/notification_board',              to: 'notification_board#index',      as: :notification_board
+  get  '/notification_board/:id/customers', to: 'notification_board#customers', as: :notification_board_customers
+  post '/notification_board/:id/mark_read', to: 'notification_board#mark_read', as: :notification_board_mark_read
+  post '/notification_board/:id/resolve',   to: 'notification_board#resolve',   as: :notification_board_resolve
+  post '/notification_board/:id/dismiss',   to: 'notification_board#dismiss',   as: :notification_board_dismiss
+
   # ── Product Registry Review UI (Epic B2-0C) ─────────────────────────
   get   '/product_registry',                    to: 'product_registry#index',          as: :product_registry
   patch '/product_registry/products/:id/inventory', to: 'product_registry#update_inventory', as: :product_registry_inventory

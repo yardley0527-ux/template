@@ -9,7 +9,16 @@ class SidebarEntry
 
     def all(product_key: nil)
       effective_key = product_key || JourneyProducts::DEFAULT_PRODUCT_KEY
+      unread_notifications = Notification.unread.count
       [
+        {
+          group_title: "營運提醒",
+          children: [
+            { href: notification_board_path, title: "營運提醒", icon: "fa-bell",
+              subtitle: (unread_notifications.positive? ? unread_notifications.to_s : nil),
+              subtitle_class: "badge badge-danger" },
+          ]
+        },
         {
           group_title: "會員管理",
           children: [

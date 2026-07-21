@@ -1,0 +1,83 @@
+<%# app/views/notification_board/index.html.erb %>
+<% content_for :page_title, "營運提醒" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-bell"></i>
+    營運提醒中心
+    <small>今日注意／客戶商機／產品變化／系統健康／已完成 — 未讀 <strong><%= @unread_count %></strong> 則</small>
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-container show">
+        <div class="panel-content">
+
+          <ul class="nav nav-tabs mb-3">
+            <% [
+                 ["today", "今日注意"], ["opportunities", "客戶商機"], ["products", "產品變化"],
+                 ["system", "系統健康"], ["completed", "已完成"]
+               ].each do |key, label| %>
+              <li class="nav-item">
+                <%= link_to notification_board_path(section: key),
+                    class: "nav-link #{'active' if @section == key}" do %>
+                  <%= label %>
+                  <% if @tab_counts&.key?(key) && @tab_counts[key].to_i.positive? %>
+                    <span class="badge badge-pill badge-danger ml-1"><%= @tab_counts[key] %></span>
+                  <% end %>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+
+          <% if @section == "system" %>
+            <%= render "system_status", status: @system_status %>
+          <% end %>
+
+          <% if @section == "completed" %>
+            <%= render "completed_list", notifications: @notifications, page: @page, total_pages: @total_pages, total: @total %>
+          <% else %>
+            <% if @notifications.blank? %>
+              <div class="text-center text-muted py-5">
+                <i class="fal fa-check-circle fa-2x mb-2 d-block"></i>
+                <%= notification_empty_state_message(@section) %>
+              </div>
+            <% else %>
+              <%= render partial: "card", collection: @notifications, as: :notification, locals: { section: @section } %>
+            <% end %>
+          <% end %>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // 每次展開都即時打 server 重查一次（live recheck），不快取上一次展開的結果，
+  // 避免顯示「已經回購但卡片還沒被下一輪 Rollup+Engine 更新」的過時名單。
+  document.addEventListener("click", function(e) {
+    var btn = e.target.closest(".js-expand-customers");
+    if (!btn) return;
+
+    var target = document.querySelector(btn.dataset.target);
+    if (!target) return;
+
+    if (target.style.display !== "none") {
+      target.style.display = "none";
+      return;
+    }
+
+    target.style.display = "block";
+    target.innerHTML = '<div class="text-muted small py-2">載入中...</div>';
+    fetch(btn.dataset.url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(function(res) { return res.text(); })
+      .then(function(html) { target.innerHTML = html; })
+      .catch(function() { target.innerHTML = '<div class="text-danger small py-2">載入失敗，請重試</div>'; });
+  });
+})();
+</script>
+

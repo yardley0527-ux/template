@@ -1,0 +1,41 @@
+<%# locals: notification, section %>
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body d-flex justify-content-between align-items-start flex-wrap">
+    <div class="pe-3" style="min-width:0;">
+      <span class="badge <%= notification_severity_badge_class(notification.severity) %>">
+        <%= notification_severity_label(notification.severity) %>
+      </span>
+      <span class="badge badge-light text-muted border"><%= notification_category_label(notification.category) %></span>
+      <% unless notification.read? %><span class="badge badge-secondary">未讀</span><% end %>
+
+      <h6 class="fw-bold mt-2 mb-1"><%= notification.title %></h6>
+      <% if notification.message.present? %>
+        <p class="text-muted small mb-1"><%= notification.message %></p>
+      <% end %>
+      <div class="text-muted" style="font-size:0.75rem;">
+        最後偵測：<%= notification.last_detected_at.strftime("%Y/%m/%d %H:%M") %>
+      </div>
+
+      <% if notification_expandable?(notification) %>
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-2 js-expand-customers"
+                data-url="<%= notification_board_customers_path(notification, section: section) %>"
+                data-target="#customers-<%= notification.id %>">
+          查看名單
+        </button>
+        <div id="customers-<%= notification.id %>" class="mt-2" style="display:none;"></div>
+      <% end %>
+    </div>
+
+    <div class="d-flex flex-column align-items-end" style="gap:4px; min-width:110px;">
+      <% unless notification.read? %>
+        <%= button_to "標為已讀", notification_board_mark_read_path(notification, section: section),
+              method: :post, class: "btn btn-sm btn-outline-primary", form: { style: "width:100%;" } %>
+      <% end %>
+      <%= button_to "已處理", notification_board_resolve_path(notification, section: section),
+            method: :post, class: "btn btn-sm btn-outline-success", form: { style: "width:100%;" } %>
+      <%= button_to "忽略", notification_board_dismiss_path(notification, section: section),
+            method: :post, class: "btn btn-sm btn-outline-secondary", form: { style: "width:100%;" },
+            data: { confirm: "確定要忽略這則提醒嗎？" } %>
+    </div>
+  </div>
+</div>

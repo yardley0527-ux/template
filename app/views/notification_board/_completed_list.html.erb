@@ -1,0 +1,41 @@
+<%# locals: notifications, page, total_pages, total %>
+<% if notifications.blank? %>
+  <div class="text-center text-muted py-5">
+    <i class="fal fa-inbox fa-2x mb-2 d-block"></i>
+    尚無已完成的通知
+  </div>
+<% else %>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
+      <thead class="table-light">
+        <tr><th>狀態</th><th>嚴重度</th><th>分類</th><th>標題</th><th>結案時間</th></tr>
+      </thead>
+      <tbody>
+        <% notifications.each do |n| %>
+          <tr>
+            <td>
+              <% if n.status == "resolved" %>
+                <span class="badge badge-success"><%= n.metadata["resolved_by"] == "auto" ? "自動解除" : "已處理" %></span>
+              <% else %>
+                <span class="badge badge-secondary">已忽略</span>
+              <% end %>
+            </td>
+            <td><span class="badge <%= notification_severity_badge_class(n.severity) %>"><%= notification_severity_label(n.severity) %></span></td>
+            <td><%= notification_category_label(n.category) %></td>
+            <td><%= n.title %></td>
+            <td><%= (n.resolved_at || n.dismissed_at)&.strftime("%Y/%m/%d %H:%M") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex justify-content-between align-items-center mt-3">
+    <div class="text-muted small">共 <%= total %> 筆，第 <%= page %> / <%= total_pages %> 頁</div>
+    <div class="btn-group btn-group-sm">
+      <%= link_to "上一頁", notification_board_path(section: "completed", page: page - 1),
+            class: "btn btn-outline-secondary #{'disabled' if page <= 1}" %>
+      <%= link_to "下一頁", notification_board_path(section: "completed", page: page + 1),
+            class: "btn btn-outline-secondary #{'disabled' if page >= total_pages}" %>
+    </div>
+  </div>
+<% end %>

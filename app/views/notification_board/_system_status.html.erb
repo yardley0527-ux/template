@@ -1,0 +1,56 @@
+<%# locals: status %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header fw-semibold">資料來源狀態</div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0" style="font-size:0.875rem;">
+      <thead class="table-light">
+        <tr><th>來源</th><th>狀態</th><th>最後更新時間</th></tr>
+      </thead>
+      <tbody>
+        <% status[:imports].each do |imp| %>
+          <tr>
+            <td><%= imp[:label] %>（匯入）</td>
+            <td>
+              <% if imp[:last_finished_at].nil? %>
+                <span class="badge badge-danger">從未完成</span>
+              <% elsif imp[:last_finished_at] < 36.hours.ago %>
+                <span class="badge badge-danger">已超過 36 小時</span>
+              <% else %>
+                <span class="badge badge-success">正常</span>
+              <% end %>
+            </td>
+            <td><%= imp[:last_finished_at]&.strftime("%Y/%m/%d %H:%M") || "—" %></td>
+          </tr>
+        <% end %>
+        <tr>
+          <td>CRM 旅程快取（Rollup）</td>
+          <td>
+            <% if status[:rollup_last_finished_at].nil? %>
+              <span class="badge badge-secondary">尚未執行過</span>
+            <% elsif status[:rollup_last_finished_at] < 26.hours.ago %>
+              <span class="badge badge-danger">已超過 26 小時</span>
+            <% else %>
+              <span class="badge badge-success">正常</span>
+            <% end %>
+          </td>
+          <td><%= status[:rollup_last_finished_at]&.strftime("%Y/%m/%d %H:%M") || "—" %></td>
+        </tr>
+        <% status[:sync_sources].each do |s| %>
+          <tr>
+            <td><%= s[:label] %></td>
+            <td>
+              <% case s[:status]
+                 when "success" %><span class="badge badge-success">成功</span>
+              <% when "running" %><span class="badge badge-info">執行中</span>
+              <% when "partial" %><span class="badge badge-warning">部分失敗</span>
+              <% when "failed" %><span class="badge badge-danger">失敗</span>
+              <% else %><span class="badge badge-secondary">尚未執行過</span>
+              <% end %>
+            </td>
+            <td><%= s[:finished_at]&.strftime("%Y/%m/%d %H:%M") || "—" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

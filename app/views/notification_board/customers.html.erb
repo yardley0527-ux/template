@@ -1,0 +1,46 @@
+<%# app/views/notification_board/customers.html.erb — rendered layout:false, fetched via JS %>
+<% if @rows.blank? %>
+  <div class="text-muted small py-2">目前沒有符合條件的客人（可能都已回購或資料已更新）</div>
+<% else %>
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.8rem;">
+      <thead class="table-light">
+        <tr>
+          <th>姓名</th><th>卡別</th><th>電話</th><th>IG</th>
+          <% if @rows.first.key?(:expected_return_date) %><th>預計用完</th><% end %>
+          <% if @rows.first.key?(:first_amount) %><th>首購金額</th><% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rows.each do |r| %>
+          <tr>
+            <td>
+              <% if r[:customer_id] %>
+                <%= link_to (r[:full_name].presence || "（無名）"), customer_path(r[:customer_id]), target: "_blank", class: "fw-semibold text-decoration-none" %>
+              <% else %>
+                <span class="text-muted">（查無會員資料）</span>
+              <% end %>
+            </td>
+            <td><span class="text-muted small"><%= r[:membership_level].presence || "一般" %></span></td>
+            <td>
+              <% if r[:mobile_phone].present? %>
+                <%= link_to "📞 #{r[:mobile_phone]}", "tel:#{r[:mobile_phone]}", class: "text-decoration-none text-muted small" %>
+              <% end %>
+            </td>
+            <td>
+              <% if r[:instagram_account].present? %>
+                <%= link_to "📷 #{r[:instagram_account]}", "https://instagram.com/#{r[:instagram_account].to_s.delete_prefix('@')}", target: "_blank", class: "text-decoration-none small" %>
+              <% end %>
+            </td>
+            <% if r.key?(:expected_return_date) %>
+              <td><%= r[:expected_return_date]&.strftime("%m/%d") %></td>
+            <% end %>
+            <% if r.key?(:first_amount) %>
+              <td>NT$<%= number_with_delimiter(r[:first_amount]) %></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
