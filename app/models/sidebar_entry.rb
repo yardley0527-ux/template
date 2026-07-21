@@ -47,14 +47,10 @@ class SidebarEntry
         {
           group_title: "直播管理",
           children: [
-            { href: livestreams_path,           title: "直播歷史",                icon: "fa-film" },
-            { href: omnipotent_analysis_path,   title: "直播分析 - 全能",         icon: "fa-video" },
-            { href: probiotic_analysis_path,    title: "直播分析 - 益生菌",       icon: "fa-video" },
-            { href: livestream_analysis_path,   title: "直播分析 - 品牌之夜總覽", icon: "fa-video" },
-            { href: turmeric_analysis_path,     title: "直播分析 - 薑黃",         icon: "fa-video" },
-            { href: metabolism_analysis_path,   title: "直播分析 - 代謝錠",       icon: "fa-video" },
-            { href: glutathione_analysis_path,  title: "直播分析 - 穀胱甘肽",     icon: "fa-video" },
-            { href: livestream_strategy_path,   title: "直播策略報表",             icon: "fa-chart-line" },
+            { href: livestream_overview_path,          title: "直播成效總覽", icon: "fa-broadcast-tower" },
+            { href: livestreams_path,                  title: "直播場次",     icon: "fa-film" },
+            { href: livestream_product_analysis_path,  title: "產品直播分析", icon: "fa-video" },
+            { href: livestream_strategy_path,          title: "直播策略",     icon: "fa-chart-line" },
           ]
         },
         {
@@ -62,7 +58,7 @@ class SidebarEntry
           children: [
             { href: crm_home_path(product: effective_key),      title: "CRM 首頁",    icon: "fa-chart-pie" },
             { href: crm_journey_path(product: effective_key),   title: "客戶旅程管理", icon: "fa-route" },
-            { href: crm_broadcast_path(product: effective_key), title: "直播戰情室",   icon: "fa-broadcast-tower" },
+            { href: crm_broadcast_path(product: effective_key), title: "直播邀請管理", icon: "fa-broadcast-tower" },
             { href: message_lists_path, title: "訊息名單追蹤", icon: "fa-envelope-open-text" },
             { href: "#", title: "CRM 效益分析", icon: "fa-chart-bar", children: [
               { href: crm_roi_path(product: effective_key),        title: "ROI Dashboard",  icon: "fa-dollar-sign" },

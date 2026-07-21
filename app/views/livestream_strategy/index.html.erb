@@ -11,6 +11,20 @@
 
 <%= render "tabs" %>
 
+<% if @events.blank? %>
+  <div class="text-center py-5 text-muted">
+    <i class="fal fa-chart-line fa-3x mb-3 d-block opacity-25"></i>
+    尚無已完成的直播場次可供分析。
+  </div>
+<% else %>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  以下「營收／訂單」為<strong>推定檔期</strong>數字（場次日至各場自訂窗口天數，非訂單真實來源）；
+  部分場次另有「歷史登記」數字，兩者可能有落差。卡別為<strong>現值卡別</strong>，非直播當時卡別。
+  詳細口徑比較請見「歸因窗」頁籤。
+</div>
+
 <%# ── 結論摘要 ────────────────────────────────────────────── %>
 <div class="row mb-4">
   <div class="col-12">
@@ -164,7 +178,7 @@
           <div class="ls-table-wrap">
             <table class="ls-table">
               <thead>
-                <tr><th>#</th><th>場次</th><th>主力產品</th><th class="text-end">業績</th></tr>
+                <tr><th>#</th><th>場次</th><th>主力產品</th><th class="text-end">推定業績</th><th class="text-end">歷史登記</th></tr>
               </thead>
               <tbody>
                 <% @top_revenue.each_with_index do |e, i| %>
@@ -173,6 +187,7 @@
                     <td class="ls-nowrap"><%= e[:year] %>/<%= e[:label] %></td>
                     <td class="ls-muted-sm"><%= e[:note] %></td>
                     <td class="text-end ls-nowrap">NT$<%= number_with_delimiter(e[:revenue]) %></td>
+                    <td class="text-end ls-nowrap ls-muted-sm"><%= e[:reported_revenue] ? "NT$#{number_with_delimiter(e[:reported_revenue])}" : "—" %></td>
                   </tr>
                 <% end %>
               </tbody>
@@ -231,7 +246,8 @@
                 </tr>
               </thead>
               <tbody>
-                <% max_att = @monthly_stats.map { |m| m[:avg_att] }.max || 1 %>
+                <% max_att = @monthly_stats.map { |m| m[:avg_att] }.max.to_f %>
+                <% max_att = 1.0 if max_att.zero? %>
                 <% @monthly_stats.sort_by { |m| -(m[:avg_rev] || 0) }.each do |m| %>
                   <tr>
                     <td class="fw-semibold"><%= m[:month] %> 月</td>
@@ -385,6 +401,8 @@
     </div>
   </div>
 </div>
+
+<% end %>
 
 <style>
 .ls-year-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }

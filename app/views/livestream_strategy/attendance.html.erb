@@ -1,0 +1,127 @@
+<% content_for :page_title, "出席與回流" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-users"></i>
+    出席與回流
+    <small>全場次（不分產品）出席與連場回流分析，原「品牌之夜總覽」內容</small>
+  </h1>
+</div>
+
+<%= render "tabs" %>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  以下買家為<strong>推定歸因</strong>（各場自訂窗口天數，非訂單真實來源）。
+</div>
+
+<% if @events_data.blank? %>
+  <div class="text-center py-5 text-muted">
+    <i class="fal fa-users fa-3x mb-3 d-block opacity-25"></i>
+    尚無已完成的直播場次。
+  </div>
+<% else %>
+
+  <div class="panel mb-3">
+    <div class="panel-container show">
+      <div class="panel-content">
+        <%= form_with url: livestream_strategy_attendance_path, method: :get, local: true, class: "form-inline" do %>
+          <label class="mr-2">選擇場次
+            <%= select_tag :event,
+                  options_for_select(@events_data.map { |e| ["#{e[:year]}/#{e[:label]}", e[:date].iso8601] }, @selected[:date].iso8601),
+                  class: "form-control form-control-sm ml-1", onchange: "this.form.submit()" %>
+          </label>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel mb-3">
+    <div class="panel-hdr"><h2>洞察</h2></div>
+    <div class="panel-container show">
+      <div class="panel-content">
+        <% @insights.each do |i| %>
+          <div class="small mb-1"><%= i[:text] %></div>
+        <% end %>
+        <% if @insights.empty? %><p class="text-muted small mb-0">資料不足以產生洞察（需至少 2 場）</p><% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-6 mb-4">
+      <div class="panel h-100">
+        <div class="panel-hdr"><h2>連場回流率</h2></div>
+        <div class="panel-container show">
+          <div class="panel-content" style="overflow-x:auto;">
+            <% if @return_rates.empty? %>
+              <p class="text-muted small mb-0">無資料</p>
+            <% else %>
+              <table class="table table-sm table-bordered text-center small mb-0">
+                <thead class="thead-light"><tr><th>從</th><th>到</th><th>回流</th><th>回流率</th></tr></thead>
+                <tbody>
+                  <% @return_rates.each do |r| %>
+                    <tr><td><%= r[:from] %></td><td><%= r[:to] %></td><td><%= r[:count] %>/<%= r[:from_total] %></td><td><%= r[:rate] %>%</td></tr>
+                  <% end %>
+                </tbody>
+              </table>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+      <div class="panel h-100">
+        <div class="panel-hdr"><h2>未出席名單<span class="text-muted small ml-2">（近期曾出席但本場缺席）</span></h2></div>
+        <div class="panel-container show">
+          <div class="panel-content" style="max-height:320px; overflow-y:auto;">
+            <% if @missing_customers.empty? %>
+              <p class="text-muted small mb-0">無資料</p>
+            <% else %>
+              <ul class="list-unstyled small mb-0">
+                <% @missing_customers.each do |r| %>
+                  <li class="py-1 border-bottom"><%= r[:customer].full_name %>（<%= r[:customer].membership_level %>）曾出席 <%= r[:appeared_in].join('、') %></li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+      <div class="panel h-100">
+        <div class="panel-hdr"><h2>近三場全勤</h2></div>
+        <div class="panel-container show">
+          <div class="panel-content" style="max-height:280px; overflow-y:auto;">
+            <% if @loyal_3_customers.empty? %>
+              <p class="text-muted small mb-0">無資料</p>
+            <% else %>
+              <ul class="list-unstyled small mb-0">
+                <% @loyal_3_customers.each do |r| %><li class="py-1 border-bottom"><%= r[:customer].full_name %>（<%= r[:customer].membership_level %>）</li><% end %>
+              </ul>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+      <div class="panel h-100">
+        <div class="panel-hdr"><h2>近三場出席兩場</h2></div>
+        <div class="panel-container show">
+          <div class="panel-content" style="max-height:280px; overflow-y:auto;">
+            <% if @loyal_2_customers.empty? %>
+              <p class="text-muted small mb-0">無資料</p>
+            <% else %>
+              <ul class="list-unstyled small mb-0">
+                <% @loyal_2_customers.each do |r| %><li class="py-1 border-bottom"><%= r[:customer].full_name %>（<%= r[:customer].membership_level %>）</li><% end %>
+              </ul>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

@@ -33,6 +33,10 @@ Rails.application.routes.draw do
     resources :livestream_gifts, only: [:create, :update, :destroy]
   end
   get '/livestream_overview', to: 'livestream_overview#index', as: :livestream_overview
+  get '/livestream_product_analysis',               to: 'livestream_product_analysis#index',         as: :livestream_product_analysis
+  get '/livestream_product_analysis/export_missing', to: 'livestream_product_analysis#export_missing', as: :export_missing_livestream_product_analysis
+  get '/livestream_product_analysis/export_event',   to: 'livestream_product_analysis#export_event',   as: :export_event_livestream_product_analysis
+  get '/livestream_product_analysis/export_action',  to: 'livestream_product_analysis#export_action',  as: :export_action_livestream_product_analysis
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
   resources :users, only: [:index, :new, :create, :update]
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
@@ -76,21 +80,24 @@ Rails.application.routes.draw do
   get    '/threads_dashboard/hidden',                     to: 'threads_dashboard#hidden_posts',     as: :threads_dashboard_hidden
   patch  '/threads_dashboard/posts/:id/restore',          to: 'threads_dashboard#restore_post',     as: :threads_dashboard_restore_post
   get "/api/birthday_customers", to: "welcome#birthday_customers"
-  get '/livestream_analysis', to: 'livestream_analysis#index', as: :livestream_analysis
-  get '/turmeric_analysis',                to: 'turmeric_analysis#index',          as: :turmeric_analysis
+  # 方案 B PR4：舊直播分析頁併入共用產品分析頁／策略頁「出席與回流」頁籤。
+  # 302（非 301）轉址，保留舊網址相容性；舊 controller/view 原封不動保留，
+  # 只有這個 index route 被取代（export_* 子路由仍指向舊 controller，未轉址）。
+  get '/livestream_analysis', to: redirect(path: "/livestream_strategy/attendance", status: 302), as: :livestream_analysis
+  get '/turmeric_analysis',   to: redirect(path: "/livestream_product_analysis?product=turmeric", status: 302), as: :turmeric_analysis
   get '/turmeric_analysis/export_missing', to: 'turmeric_analysis#export_missing',  as: :turmeric_export_missing
   get '/turmeric_analysis/export_event',   to: 'turmeric_analysis#export_event',    as: :turmeric_export_event
-  get '/metabolism_analysis',                to: 'metabolism_analysis#index',          as: :metabolism_analysis
+  get '/metabolism_analysis', to: redirect(path: "/livestream_product_analysis?product=metabolism", status: 302), as: :metabolism_analysis
   get '/metabolism_analysis/export_missing', to: 'metabolism_analysis#export_missing', as: :metabolism_export_missing
   get '/metabolism_analysis/export_event',   to: 'metabolism_analysis#export_event',   as: :metabolism_export_event
-  get '/glutathione_analysis',                to: 'glutathione_analysis#index',          as: :glutathione_analysis
+  get '/glutathione_analysis', to: redirect(path: "/livestream_product_analysis?product=glutathione", status: 302), as: :glutathione_analysis
   get '/glutathione_analysis/export_missing', to: 'glutathione_analysis#export_missing',  as: :glutathione_export_missing
   get '/glutathione_analysis/export_event',   to: 'glutathione_analysis#export_event',    as: :glutathione_export_event
-  get '/probiotic_analysis',                to: 'probiotic_analysis#index',          as: :probiotic_analysis
+  get '/probiotic_analysis', to: redirect(path: "/livestream_product_analysis?product=probiotic", status: 302), as: :probiotic_analysis
   get '/probiotic_analysis/export_missing', to: 'probiotic_analysis#export_missing',  as: :probiotic_export_missing
   get '/probiotic_analysis/export_event',   to: 'probiotic_analysis#export_event',    as: :probiotic_export_event
   get '/probiotic_analysis/export_action',  to: 'probiotic_analysis#export_action',   as: :probiotic_export_action
-  get '/omnipotent_analysis',                to: 'omnipotent_analysis#index',          as: :omnipotent_analysis
+  get '/omnipotent_analysis', to: redirect(path: "/livestream_product_analysis?product=omnipotent", status: 302), as: :omnipotent_analysis
   get '/omnipotent_analysis/export_missing',    to: 'omnipotent_analysis#export_missing',    as: :omnipotent_export_missing
   get '/omnipotent_analysis/export_event',     to: 'omnipotent_analysis#export_event',      as: :omnipotent_export_event
   get '/omnipotent_analysis/export_whitening', to: 'omnipotent_analysis#export_whitening',  as: :omnipotent_export_whitening
@@ -153,7 +160,9 @@ Rails.application.routes.draw do
   get '/shopping_credits',    to: 'shopping_credits#index',    as: :shopping_credits
   get '/ig_email_lookup',     to: 'ig_email_lookup#index',     as: :ig_email_lookup
   get '/livestream_strategy', to: 'livestream_strategy#index', as: :livestream_strategy
+  get '/livestream_strategy/attendance', to: 'livestream_strategy#attendance', as: :livestream_strategy_attendance
   get '/livestream_strategy/sources', to: 'livestream_strategy#sources', as: :livestream_strategy_sources
+  get '/livestream_strategy/windows', to: 'livestream_strategy#windows', as: :livestream_strategy_windows
 
   # ── Product Registry Review UI (Epic B2-0C) ─────────────────────────
   get   '/product_registry',                    to: 'product_registry#index',          as: :product_registry
