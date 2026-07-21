@@ -20,6 +20,16 @@ class ImportCustomersJob < ApplicationJob
 
     CustomerSeriesLoyaltyRefreshService.call
     Rails.logger.info "[ImportCustomersJob] series loyalty refreshed"
+
+    # perform_now（非 perform_later）：匯入已完全成功並落地之後才呼叫，刷新
+    # 失敗只記 log、不 raise，不影響已成功的顧客匯入結果（此 rescue 只包住
+    # 刷新本身；匯入的成敗判定與寫入在這行之前已經完成）。
+    begin
+      RefreshLivestreamStatsJob.perform_now
+      Rails.logger.info "[ImportCustomersJob] livestream stats refresh done (secondary trigger)"
+    rescue => e
+      Rails.logger.warn "[ImportCustomersJob] livestream stats refresh failed (secondary trigger): #{e.class} - #{e.message}"
+    end
   rescue => e
     Rails.logger.error "[ImportCustomersJob] FAILED #{e.class} - #{e.message}"
     Rails.logger.error e.backtrace.first(10).join("\n")
