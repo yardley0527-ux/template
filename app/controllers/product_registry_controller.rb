@@ -3,7 +3,10 @@
 class ProductRegistryController < ApplicationController
   PER_PAGE = 20
 
+  before_action :set_paper_trail_whodunnit, only: :update_inventory
+
   def index
+    @inventory_products = CrmProduct.confirmed.includes(:inventory_status_updated_by).order(:id)
     @q      = params[:q].to_s.strip
     @status = params[:status].to_s.strip
     @page   = [params[:page].to_i, 1].max
@@ -21,6 +24,30 @@ class ProductRegistryController < ApplicationController
     @mappings    = scope.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
 
     @status_options = ProductNameMapping::MAPPING_STATUSES
+  end
+
+  # 庫存維護：只開放正式（confirmed）產品；狀態變更一律人工明確操作，
+  # 不做任何自動轉換（到貨日過期／actual_restock_date 填入都不改狀態）。
+  def update_inventory
+    product = CrmProduct.find(params[:id])
+
+    unless product.status == "confirmed"
+      redirect_back fallback_location: product_registry_path,
+        alert: "只有正式產品可以管理庫存"
+      return
+    end
+
+    product.assign_attributes(inventory_params)
+    product.inventory_status_updated_at    = Time.current
+    product.inventory_status_updated_by_id = current_user.id
+
+    if product.save
+      redirect_back fallback_location: product_registry_path,
+        notice: "已更新「#{product.label}」庫存狀態"
+    else
+      redirect_back fallback_location: product_registry_path,
+        alert: "庫存更新失敗：#{product.errors.full_messages.join('、')}"
+    end
   end
 
   def confirm
@@ -97,5 +124,13 @@ class ProductRegistryController < ApplicationController
   rescue ActiveRecord::RecordNotUnique
     redirect_back fallback_location: product_registry_path,
       alert: "Key「#{params[:product_key]}」已存在，請使用其他 key"
+  end
+
+  private
+
+  def inventory_params
+    params.require(:crm_product).permit(
+      :availability_status, :expected_restock_date, :actual_restock_date, :inventory_note
+    )
   end
 end

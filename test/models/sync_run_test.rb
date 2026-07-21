@@ -57,4 +57,39 @@ class SyncRunTest < ActiveSupport::TestCase
 
     assert_empty SyncRun.current_alerts
   end
+
+  test "accepts crm_rollup as a source" do
+    assert SyncRun.new(source: "crm_rollup", status: "running", started_at: Time.current).valid?
+  end
+
+  test "current_alerts stays quiet when crm_rollup has never run" do
+    assert_empty SyncRun.current_alerts
+  end
+
+  test "current_alerts flags crm_rollup staleness after 26 hours" do
+    SyncRun.create!(source: "crm_rollup", status: "success",
+                    started_at: 30.hours.ago, finished_at: 30.hours.ago)
+
+    assert(SyncRun.current_alerts.any? { |a| a.include?("CRM 旅程快取") && a.include?("未更新") })
+  end
+
+  test "current_alerts quiet for a fresh successful crm_rollup" do
+    SyncRun.create!(source: "crm_rollup", status: "success",
+                    started_at: 2.hours.ago, finished_at: 2.hours.ago)
+
+    assert_empty SyncRun.current_alerts
+  end
+
+  test "current_alerts reports failed crm_rollup with product detail" do
+    SyncRun.create!(
+      source: "crm_rollup", status: "partial",
+      started_at: 1.hour.ago, finished_at: 1.hour.ago,
+      meta: { "omnipotent" => { "tracking_rows" => 10, "error" => nil },
+              "turmeric"   => { "tracking_rows" => nil, "error" => "PG::ConnectionBad" } }
+    )
+
+    alert = SyncRun.current_alerts.find { |a| a.include?("CRM 旅程快取") }
+    assert alert
+    assert_includes alert, "turmeric"
+  end
 end
