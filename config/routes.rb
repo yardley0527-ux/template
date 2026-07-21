@@ -156,6 +156,7 @@ Rails.application.routes.draw do
 
   # ── Product Registry Review UI (Epic B2-0C) ─────────────────────────
   get   '/product_registry',                    to: 'product_registry#index',          as: :product_registry
+  patch '/product_registry/products/:id/inventory', to: 'product_registry#update_inventory', as: :product_registry_inventory
   patch '/product_registry/:id/confirm',         to: 'product_registry#confirm',        as: :confirm_product_registry_mapping
   patch '/product_registry/:id/ignore',          to: 'product_registry#ignore',         as: :ignore_product_registry_mapping
   post  '/product_registry/:id/create_product',  to: 'product_registry#create_product', as: :create_product_registry_mapping

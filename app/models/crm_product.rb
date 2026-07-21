@@ -8,6 +8,15 @@ class CrmProduct < ApplicationRecord
   # 沒有 in_stock boolean —— 一律經由下面的語意 method 判定。
   AVAILABILITY_STATUSES = %w[unknown in_stock low_stock out_of_stock preorder discontinued].freeze
 
+  AVAILABILITY_STATUS_LABELS = {
+    "unknown"      => "未確認",
+    "in_stock"     => "有貨",
+    "low_stock"    => "低庫存",
+    "out_of_stock" => "缺貨",
+    "preorder"     => "預購",
+    "discontinued" => "停售"
+  }.freeze
+
   # 只留庫存相關欄位的變更歷史（audit：誰在何時改了庫存狀態）。
   has_paper_trail on: %i[update],
     only: %w[availability_status expected_restock_date actual_restock_date inventory_note]

@@ -36,6 +36,72 @@
       </div>
     </div>
 
+    <%# ── 正式產品庫存 ──────────────────────────────────────────── %>
+    <%# 只列 confirmed 產品；candidate/merged/ignored 不出現在此區、
+        也沒有任何庫存編輯入口。狀態不因到貨日過期自動變更。 %>
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2>
+          正式產品庫存
+          <span class="badge badge-secondary ml-2"><%= @inventory_products.size %></span>
+        </h2>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <p class="text-muted small mb-3">
+            庫存狀態與下方映射審核狀態互相獨立。到貨日過期不會自動轉「有貨」——
+            請在確認實際到貨後手動更新狀態並填入實際到貨日。
+          </p>
+          <% @inventory_products.each do |product| %>
+            <%= form_with url: product_registry_inventory_path(product), method: :patch,
+                          local: true, class: "border rounded p-2 mb-2" do %>
+              <div class="row gx-2 gy-2 align-items-end">
+                <div class="col-md-2">
+                  <div class="font-weight-bold"><%= product.label %></div>
+                  <div class="text-muted small"><%= product.key %></div>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small mb-0">目前狀態</label>
+                  <%= select_tag "crm_product[availability_status]",
+                        options_for_select(
+                          CrmProduct::AVAILABILITY_STATUS_LABELS.map { |k, v| [v, k] },
+                          product.availability_status),
+                        class: "form-control form-control-sm" %>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small mb-0">預計到貨日</label>
+                  <%= date_field_tag "crm_product[expected_restock_date]",
+                        product.expected_restock_date, class: "form-control form-control-sm" %>
+                </div>
+                <div class="col-md-2">
+                  <label class="form-label small mb-0">實際到貨日</label>
+                  <%= date_field_tag "crm_product[actual_restock_date]",
+                        product.actual_restock_date, class: "form-control form-control-sm" %>
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label small mb-0">庫存備註</label>
+                  <%= text_field_tag "crm_product[inventory_note]",
+                        product.inventory_note, class: "form-control form-control-sm",
+                        placeholder: "例：到貨延至月底" %>
+                </div>
+                <div class="col-md-1 text-right">
+                  <%= button_tag "儲存", type: "submit", class: "btn btn-primary btn-sm" %>
+                </div>
+              </div>
+              <div class="text-muted small mt-1">
+                <% if product.inventory_status_updated_at %>
+                  最後更新：<%= product.inventory_status_updated_at.strftime("%Y-%m-%d %H:%M") %>
+                  by <%= product.inventory_status_updated_by&.username || "—" %>
+                <% else %>
+                  尚未人工確認過庫存狀態
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
     <%# ── Mapping Table ────────────────────────────────────────── %>
     <div class="panel">
       <div class="panel-hdr">
