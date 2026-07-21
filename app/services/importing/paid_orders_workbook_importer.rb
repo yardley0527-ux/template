@@ -51,6 +51,13 @@ module Importing
       upserted = 0
       skipped = 0
       error_rows = 0
+      # (order_number, content signature) => how many times seen so far in
+      # this import run. Feeds ShoplineOrder.content_hash's `occurrence:` so
+      # two genuinely-identical line items within one order get distinct
+      # identities instead of collapsing into one. Scoped to the whole run
+      # (not per-sheet) since re-imports of the same file must reproduce the
+      # same counts to stay idempotent.
+      occurrence_counts = Hash.new(0)
 
       book.sheets.each do |sheet_name|
         month = sheet_name.to_i
@@ -90,12 +97,20 @@ module Importing
           customer = resolve_customer!(raw, run.id)
           payload = build_order_payload(raw, order_number, customer, month)
 
+          signature = [
+            order_number,
+            ShoplineOrder.normalize_product_name(payload[:product_name]),
+            payload[:quantity].to_i,
+            ShoplineOrder.format_decimal(payload[:checkout_amount])
+          ]
+          occurrence_counts[signature] += 1
+
           row_hash = ShoplineOrder.content_hash(
             order_number: order_number,
             product_name: payload[:product_name],
             quantity: payload[:quantity],
             checkout_amount: payload[:checkout_amount],
-            total_amount: payload[:total_amount]
+            occurrence: occurrence_counts[signature]
           )
 
           order = ShoplineOrder.find_or_initialize_by(source_row_hash: row_hash)
@@ -225,7 +240,17 @@ module Importing
 
     def to_decimal(v)
       return nil if v.nil?
-      BigDecimal(v.to_s) rescue nil
+
+      # Strip thousands separators ("2,670") before parsing — without this,
+      # a comma-formatted cell silently becomes nil instead of a value,
+      # which would otherwise change this line's content_hash signature
+      # every time the source formatting varies and create a duplicate row.
+      cleaned = v.to_s.strip.delete(",")
+      return nil if cleaned.blank?
+
+      BigDecimal(cleaned)
+    rescue ArgumentError
+      nil
     end
 
     def safe_int(v)
