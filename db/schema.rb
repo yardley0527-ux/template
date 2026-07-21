@@ -571,6 +571,32 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_21_140000) do
     t.index ["category_key", "subcategory", "position"], name: "idx_on_category_key_subcategory_position_4bbf348cdd"
   end
 
+  create_table "notifications", force: :cascade do |t|
+    t.string "notification_key", null: false
+    t.string "kind", null: false
+    t.string "category", null: false
+    t.string "severity", null: false
+    t.string "title", null: false
+    t.text "message"
+    t.string "subject_type"
+    t.string "subject_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "deduplication_key", null: false
+    t.string "status", default: "open", null: false
+    t.datetime "first_detected_at", null: false
+    t.datetime "last_detected_at", null: false
+    t.datetime "read_at"
+    t.datetime "resolved_at"
+    t.datetime "dismissed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["deduplication_key"], name: "index_notifications_on_deduplication_key", unique: true
+    t.index ["notification_key"], name: "index_notifications_on_notification_key"
+    t.index ["status", "category"], name: "index_notifications_on_status_and_category"
+    t.index ["status", "severity"], name: "index_notifications_on_status_and_severity"
+    t.index ["subject_type", "subject_id"], name: "index_notifications_on_subject_type_and_subject_id"
+  end
+
   create_table "omnipotent_notification_statuses", force: :cascade do |t|
     t.string "email", null: false
     t.date "reference_date", null: false
