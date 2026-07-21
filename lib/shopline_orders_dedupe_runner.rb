@@ -60,7 +60,12 @@ class ShoplineOrdersDedupeRunner
     puts "  skipped_reasons=#{report[:skipped_reasons]}"
     puts "  affected_customers=#{report[:affected_customers]} affected_orders=#{report[:affected_orders]}"
     puts "  per_product=#{report[:per_product]}"
-    puts "  amount_impact(checkout_amount_double_counted)=#{report[:amount_impact][:checkout_amount_double_counted]}"
+    puts "  row_count_change=#{report[:row_count_change]}"
+    puts "  amount_impact=#{report[:amount_impact]}"
+    puts "  revenue_impact_by_year=#{report[:revenue_impact_by_year]}"
+    puts "  revenue_impact_by_month=#{report[:revenue_impact_by_month]}"
+    puts "  cache_impact=#{report[:cache_impact].except(:notes)}"
+    puts "  cache_impact_notes=#{report[:cache_impact][:notes]}" unless apply
 
     if apply
       puts "  dedupe_run_id=#{report[:dedupe_run_id]}"

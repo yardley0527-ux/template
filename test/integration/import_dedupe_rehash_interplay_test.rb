@@ -154,4 +154,100 @@ class ImportDedupeRehashInterplayTest < ActiveSupport::TestCase
     assert_equal 0, post_report[:candidate_delete_count], "pipeline must not generate fresh pattern-A groups"
     assert ShoplineOrder.exists?(b.id), "pattern B/C row must survive untouched"
   end
+
+  # ────────────────────────────────────────────────────────────────────
+  # Occurrence stability (Section 3's 10 scenarios). 1/3/4/5/6/7 are
+  # covered above by the scenario-N tests; the remaining four (row-order
+  # changes, a line disappearing, cross-file overlap, later backfill) are
+  # covered here.
+  # ────────────────────────────────────────────────────────────────────
+
+  # 2) 相同資料但列順序改變 — genuinely identical lines swapping position in
+  # the file must not create a new duplicate; the earlier content_hash
+  # comment documents WHY this is harmless (both rows have identical
+  # content, so it does not matter observably which physical row ends up
+  # holding occurrence 1 vs 2).
+  test "occurrence scenario: reordering two genuinely identical lines within one order does not duplicate" do
+    order_number = "#O2"
+    import_csv([
+      row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683),
+      row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683)
+    ])
+    first_pass_hashes = ShoplineOrder.where(order_number: order_number).order(:id).pluck(:source_row_hash)
+    assert_equal 2, first_pass_hashes.size
+
+    # 同一批內容，但檔案內兩列互換位置重新匯入（模擬匯出排序改變）——
+    # 因為兩列內容完全相同，換位置在觀察面上沒有任何影響。
+    import_csv([
+      row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683),
+      row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683)
+    ])
+
+    assert_equal 2, ShoplineOrder.where(order_number: order_number).count, "must not create a 3rd row"
+    assert_equal first_pass_hashes.sort,
+      ShoplineOrder.where(order_number: order_number).order(:id).pluck(:source_row_hash).sort
+  end
+
+  # 8) 部分商品列從匯出檔消失 — the importer is upsert-only and never
+  # deletes; a line that stops appearing in later exports leaves its DB
+  # row stale but present (a known, documented data-quality gap, not a
+  # crash/corruption risk).
+  test "occurrence scenario: a line disappearing from a later export leaves a stale but harmless orphan row" do
+    order_number = "#O8"
+    import_csv([
+      row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683),
+      row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683)
+    ])
+    assert_equal 2, ShoplineOrder.where(order_number: order_number).count
+    ids_before = ShoplineOrder.where(order_number: order_number).order(:id).pluck(:id)
+
+    # 後續匯出檔只剩 1 條（另一條「消失」——真實情境如取消其中一件）
+    import_csv([row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683)])
+
+    # Upsert-only：兩列都還在，其中一列現在代表已不存在的真實資料
+    # （已知限制，交由後續的資料盤點/dedupe 類工具另行處理，不在本 importer 範圍）。
+    assert_equal ids_before, ShoplineOrder.where(order_number: order_number).order(:id).pluck(:id)
+    assert_equal 2, ShoplineOrder.where(order_number: order_number).count
+  end
+
+  # 9) 不同月份檔案重疊涵蓋同一訂單 — the SAME order+line appearing in two
+  # SEPARATE import runs (e.g. a late arrival first swept into December's
+  # file, then correctly re-exported in January's) must converge to ONE
+  # row, not two, since each run independently computes occurrence=1 for
+  # its own single encounter of that signature.
+  test "occurrence scenario: the same order appearing in two separate monthly import files converges to one row" do
+    order_number = "#O9"
+    import_csv([row(order_number: order_number, product_name: "全能3", checkout_amount: 3200, total_amount: 3200)],
+              source_month: 12)
+    import_csv([row(order_number: order_number, product_name: "全能3", checkout_amount: 3200, total_amount: 3200)],
+              source_month: 1)
+
+    orders = ShoplineOrder.where(order_number: order_number)
+    assert_equal 1, orders.count, "cross-file overlap of the same line must not duplicate"
+    assert_equal 1, orders.first.source_month, "the later import's source_month wins (latest-import-wins is existing behavior)"
+  end
+
+  # 10) 同一訂單在後續匯出檔補上欄位 — filling in a previously-blank
+  # unrelated field (city) must update the same row in place; content_hash
+  # never depends on such fields.
+  test "occurrence scenario: a later export backfilling an unrelated field updates the same row in place" do
+    order_number = "#O10"
+    file1 = Tempfile.new(["orders", ".csv"])
+    file1.write(CSV.generate_line(HEADERS))
+    file1.write(CSV.generate_line(["#{order_number}", "2026-01-15", "測試客", "清纖粉2", 3683, 3683, 1,
+                                   "", "已付款", "backfill@example.com", "", "信用卡", "一般會員", ""]))
+    file1.flush
+    Importing::PaidOrdersWorkbookImporter.new(file_path: file1.path, source_year: 2026, source_month: 1,
+                                              verbose: false).call
+    original_id = ShoplineOrder.find_by!(order_number: order_number).id
+    assert_nil ShoplineOrder.find(original_id).city.presence
+
+    import_csv([row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683)])
+
+    assert_equal 1, ShoplineOrder.where(order_number: order_number).count
+    assert_equal original_id, ShoplineOrder.find_by!(order_number: order_number).id
+    assert_equal "台北", ShoplineOrder.find(original_id).city
+  ensure
+    file1&.close
+  end
 end

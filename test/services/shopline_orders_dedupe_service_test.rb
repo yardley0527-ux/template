@@ -18,6 +18,23 @@ class ShoplineOrdersDedupeServiceTest < ActiveSupport::TestCase
     [present, blank]
   end
 
+  # ── N+1 防護：discover 不應每組各查一次 ────────────────────────
+
+  test "discover fetches candidate rows in one query, not one per group" do
+    10.times { |i| create_pair(order_number: "#DN#{i}", product_name: "薑黃#{i}") }
+
+    queries = []
+    subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+      queries << payload[:sql] if payload[:sql].match?(/FROM "shopline_orders"/) && payload[:sql].include?("WHERE")
+    end
+    ShoplineOrdersDedupeService.call(apply: false)
+    ActiveSupport::Notifications.unsubscribe(subscriber)
+
+    # 10 組候選：應該只需要 1 次 "WHERE id IN (...)" 撈列查詢，
+    # 不是每組各一次（否則會看到 10 次）。
+    assert_operator queries.size, :<=, 1, "expected one batched fetch, got: #{queries}"
+  end
+
   # ── 標準模式 A ──────────────────────────────────────────────────
 
   test "standard pattern A: identifies the NULL row as candidate, present row as keep" do
@@ -32,13 +49,49 @@ class ShoplineOrdersDedupeServiceTest < ActiveSupport::TestCase
     assert_equal 2, ShoplineOrder.where(order_number: "#D1").count, "dry-run must not delete"
   end
 
-  test "amount_impact sums the checkout_amount that would be double-counted" do
+  test "amount_impact sums the checkout_amount that would be double-counted, and proves total_amount impact is zero" do
     create_pair(order_number: "#D2", checkout_amount: 10050)
     create_pair(order_number: "#D3", checkout_amount: 3683)
 
     report = ShoplineOrdersDedupeService.call(apply: false)
 
-    assert_equal BigDecimal("13733"), report[:amount_impact][:checkout_amount_double_counted]
+    assert_equal BigDecimal("13733"), report[:amount_impact][:checkout_amount_sum_removed]
+    assert_equal BigDecimal("0"), report[:amount_impact][:total_amount_sum_removed]
+  end
+
+  test "row_count_change reports the shopline_orders row delta" do
+    create_pair(order_number: "#D2A")
+    create_pair(order_number: "#D2B")
+
+    report = ShoplineOrdersDedupeService.call(apply: false)
+
+    assert_equal(-2, report[:row_count_change][:shopline_orders])
+  end
+
+  test "revenue_impact_by_year and by_month group candidates by the kept row's order_date" do
+    create_pair(order_number: "#D2C", checkout_amount: 1000, order_date: Time.zone.local(2025, 6, 15))
+    create_pair(order_number: "#D2D", checkout_amount: 2000, order_date: Time.zone.local(2026, 1, 10))
+
+    report = ShoplineOrdersDedupeService.call(apply: false)
+
+    assert_equal({ "2025" => BigDecimal("1000"), "2026" => BigDecimal("2000") }, report[:revenue_impact_by_year])
+    assert_equal({ "2025-06" => BigDecimal("1000"), "2026-01" => BigDecimal("2000") }, report[:revenue_impact_by_month])
+  end
+
+  test "cache_impact counts distinct affected customers present in CPS/series-loyalty caches, no PII" do
+    create_pair(order_number: "#D2E", email: "cache-impact@example.com")
+    CustomerPurchaseSummary.create!(email: "cache-impact@example.com", identity_key: "cache-impact@example.com")
+    CustomerSeriesLoyalty.create!(email: "cache-impact@example.com", series: "薑黃", order_count: 1,
+                                  total_amount: 10050, first_date: Date.current, last_date: Date.current,
+                                  days_since_last: 0, tier: "回購客")
+
+    report = ShoplineOrdersDedupeService.call(apply: false)
+
+    assert_equal 1, report[:cache_impact][:customer_purchase_summaries_customers_present]
+    assert_equal 1, report[:cache_impact][:customer_series_loyalties_customers_present]
+    assert_not_includes report[:cache_impact].to_s, "cache-impact@example.com"
+    assert report[:cache_impact][:notes][:spending_rankings].present?
+    assert report[:cache_impact][:notes][:livestream_d0_d3_attribution].present?
   end
 
   # ── total_amount 方向相反 ───────────────────────────────────────
@@ -259,21 +312,39 @@ class ShoplineOrdersDedupeServiceTest < ActiveSupport::TestCase
   # "another run holds the lock" requires a genuinely separate physical
   # connection, not just a second `ActiveRecord::Base.connection` call.
 
-  test "aborts without touching data when another dedupe run holds the lock" do
+  test "apply aborts without touching data when the shared maintenance lock is held elsewhere" do
     create_pair(order_number: "#D24")
 
     db_config = ActiveRecord::Base.connection_db_config.configuration_hash
     other = PG.connect(dbname: db_config[:database], host: db_config[:host],
                        port: db_config[:port], user: db_config[:username],
                        password: db_config[:password])
-    other.exec("SELECT pg_advisory_lock(hashtext('shopline_orders_dedupe'))")
+    other.exec("SELECT pg_advisory_lock(hashtext('shopline_orders_write'))")
     begin
       report = ShoplineOrdersDedupeService.call(apply: true)
       assert report[:aborted]
       assert_equal 2, ShoplineOrder.where(order_number: "#D24").count
       assert_equal 0, ShoplineOrdersDedupeBackup.count
     ensure
-      other.exec("SELECT pg_advisory_unlock(hashtext('shopline_orders_dedupe'))")
+      other.exec("SELECT pg_advisory_unlock(hashtext('shopline_orders_write'))")
+      other.close
+    end
+  end
+
+  test "dry-run does not need the lock and still reports while apply lock is held elsewhere" do
+    create_pair(order_number: "#D25X")
+
+    db_config = ActiveRecord::Base.connection_db_config.configuration_hash
+    other = PG.connect(dbname: db_config[:database], host: db_config[:host],
+                       port: db_config[:port], user: db_config[:username],
+                       password: db_config[:password])
+    other.exec("SELECT pg_advisory_lock(hashtext('shopline_orders_write'))")
+    begin
+      report = ShoplineOrdersDedupeService.call(apply: false)
+      assert_not report[:aborted]
+      assert_equal 1, report[:candidate_delete_count]
+    ensure
+      other.exec("SELECT pg_advisory_unlock(hashtext('shopline_orders_write'))")
       other.close
     end
   end

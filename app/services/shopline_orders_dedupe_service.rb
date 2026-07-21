@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require Rails.root.join("lib/shopline_orders_maintenance_lock") if defined?(Rails)
+
 # Safe cleanup for the "pattern A" duplicate rows discovered in Phase 0A:
 # the same real order line, re-exported by Shopline across two different
 # import runs, where total_amount is populated in the older import and NULL
@@ -20,15 +22,14 @@
 # apply always re-runs group discovery itself (never accepts an externally
 # passed id list, so a stale dry-run snapshot can't be replayed blindly),
 # wraps the whole batch in one transaction, backs up every row it is about
-# to delete into shopline_orders_dedupe_backups first, and takes a Postgres
-# advisory lock so two dedupe runs can't step on each other (this does NOT
-# by itself block a concurrently-running import — see the deployment runbook
-# for why apply is scheduled outside the import window instead).
+# to delete into shopline_orders_dedupe_backups first, and takes the shared
+# ShoplineOrdersMaintenanceLock (also held by the importer and by
+# ShoplineOrdersRehashService#apply) so none of the three can run at the
+# same time as another.
 class ShoplineOrdersDedupeService
-  LOCK_NAME = "shopline_orders_dedupe"
-
   Candidate = Struct.new(:keep_id, :delete_id, :order_number, :product_name,
-                        :quantity, :checkout_amount, :email, keyword_init: true)
+                        :quantity, :checkout_amount, :email, :order_date, :deleted_total_amount,
+                        keyword_init: true)
 
   def self.call(apply: false)
     new(apply: apply).call
@@ -40,41 +41,33 @@ class ShoplineOrdersDedupeService
   end
 
   def call
-    with_advisory_lock do
-      candidates, skipped_reasons = discover
-      report = build_report(candidates, skipped_reasons)
+    return dry_run_report unless @apply
 
-      if @apply
-        delete!(candidates)
-        report[:applied] = true
-        report[:dedupe_run_id] = @run_id
-        report[:verification] = verify_after_apply(candidates)
-      else
-        report[:applied] = false
-      end
+    acquired, result = ShoplineOrdersMaintenanceLock.try_with_lock { run_apply }
+    return result if acquired
 
-      report
-    end
+    { group_count: 0, applied: false, aborted: true,
+      abort_reason: "lock_busy — the importer or another rehash/dedupe run holds " \
+                    "#{ShoplineOrdersMaintenanceLock::NAME}" }
   end
 
   private
 
-  def with_advisory_lock
-    conn = ActiveRecord::Base.connection
-    lock_key = conn.quote(LOCK_NAME)
-    acquired = ActiveModel::Type::Boolean.new.cast(
-      conn.select_value("SELECT pg_try_advisory_lock(hashtext(#{lock_key}))")
-    )
-    unless acquired
-      return { group_count: 0, applied: false, aborted: true,
-                abort_reason: "lock_busy — another dedupe run is in progress" }
-    end
+  def dry_run_report
+    candidates, skipped_reasons = discover
+    build_report(candidates, skipped_reasons).merge(applied: false)
+  end
 
-    begin
-      yield
-    ensure
-      conn.execute("SELECT pg_advisory_unlock(hashtext(#{lock_key}))")
-    end
+  def run_apply
+    candidates, skipped_reasons = discover # re-run fresh, even though only used for apply here
+    report = build_report(candidates, skipped_reasons)
+
+    delete!(candidates)
+    report[:applied] = true
+    report[:dedupe_run_id] = @run_id
+    report[:verification] = verify_after_apply(candidates)
+
+    report
   end
 
   # ── Discovery (always re-run fresh; apply never trusts a cached list) ──
@@ -87,15 +80,23 @@ class ShoplineOrdersDedupeService
 
     candidates = []
     skipped_reasons = Hash.new(0)
+    two_row_groups = []
 
     groups.each do |order_number, product_name, checkout_amount, quantity, ids|
       if ids.size != 2
         skipped_reasons["group_size_not_2 (#{ids.size} rows)"] += 1
-        next
+      else
+        two_row_groups << [order_number, product_name, checkout_amount, quantity, ids]
       end
+    end
 
-      rows = ShoplineOrder.where(id: ids).order(:id).to_a
-      a, b = rows
+    # 一次把所有候選組的列都撈出來，避免每組各查一次（production 規模下
+    # 是 1,000+ 組，逐組查會是 1,000+ 次往返）。
+    all_ids = two_row_groups.flat_map { |group| group.last }
+    rows_by_id = all_ids.empty? ? {} : ShoplineOrder.where(id: all_ids).index_by(&:id)
+
+    two_row_groups.each do |order_number, product_name, checkout_amount, quantity, ids|
+      a, b = ids.map { |id| rows_by_id.fetch(id) }
 
       candidate = classify_pair(a, b, order_number, product_name, quantity, checkout_amount)
       if candidate
@@ -122,7 +123,8 @@ class ShoplineOrdersDedupeService
 
     Candidate.new(keep_id: present.id, delete_id: blank.id, order_number: order_number,
                  product_name: product_name, quantity: quantity, checkout_amount: checkout_amount,
-                 email: present.email)
+                 email: present.email, order_date: present.order_date,
+                 deleted_total_amount: blank.total_amount)
   end
 
   def skip_reason_for(a, b)
@@ -149,11 +151,68 @@ class ShoplineOrdersDedupeService
       affected_customers: candidates.map(&:email).uniq.compact.size,
       affected_orders: candidates.map(&:order_number).uniq.size,
       per_product: per_product_breakdown(candidates),
-      amount_impact: {
-        # 這是「修正」不是「損失」：被刪除的列與保留的列 checkout_amount 相同，
-        # 任何逐列 SUM(checkout_amount) 的營收聚合過去把這筆金額算了兩次；
-        # 刪除後該類聚合會下降這個總額，屬於雙重計算的修正。
-        checkout_amount_double_counted: candidates.sum { |c| c.checkout_amount.to_d }
+      row_count_change: {
+        shopline_orders: -candidates.size
+      },
+      amount_impact: amount_impact(candidates),
+      revenue_impact_by_year: revenue_by_period(candidates) { |d| d.year.to_s },
+      revenue_impact_by_month: revenue_by_period(candidates) { |d| d.strftime("%Y-%m") },
+      cache_impact: cache_impact(candidates)
+    }
+  end
+
+  # amount_impact 明確區分「已證實會被修正的雙重計算」與「已證實不受影響」：
+  # - checkout_amount_sum_removed：被刪除列的 checkout_amount 加總。這個金額
+  #   目前確實被逐列（非依 order_number 去重）加總的聚合重複計算一次，例如
+  #   CrmProductMonthlyStatsRefreshService#natural_revenue（app/services/
+  #   crm_product_monthly_stats_refresh_service.rb 對 shopline_orders 直接
+  #   SUM(checkout_amount) GROUP BY 月份+產品，未依 order_number 去重）與
+  #   SpendingRankingsReport 的「各系列消費」明細（GROUP BY email,
+  #   product_name，未依 order_number 去重）。清理後這兩處的數字會下降這個
+  #   金額——這是修正，不是營收損失：保留的那一列本來就已經算過一次同樣的
+  #   金額。
+  # - total_amount_sum_removed：被刪除列的 total_amount 一定是 NULL（模式 A
+  #   的定義本身），所以恆為 0。任何以 total_amount／MAX(total_amount) GROUP
+  #   BY order_number 為基礎的聚合（CustomerPurchaseSummaryRefreshService、
+  #   SpendingRankingsReport 的排行本身、Analytics::ProductAnalysis 的
+  #   sum(:total_amount)）完全不受本次清理影響——這裡回傳 0 是實際算出來的
+  #   結果，不是假設。
+  def amount_impact(candidates)
+    {
+      checkout_amount_sum_removed: candidates.sum { |c| c.checkout_amount.to_d },
+      # 用「刪除列的實際 total_amount」加總，不是假設 0——只是模式 A 的定義
+      # 本身保證這個值一定是 nil/0（分類邏輯只選出 total_amount 為空的那一
+      # 列刪除），所以這裡算出來的結果會是 0，證明而非假設。
+      total_amount_sum_removed: candidates.sum { |c| c.deleted_total_amount.to_d }
+    }
+  end
+
+  def revenue_by_period(candidates)
+    candidates.group_by { |c| yield(c.order_date) }
+              .transform_values { |cs| cs.sum { |c| c.checkout_amount.to_d } }
+              .sort.to_h
+  end
+
+  # 只回報「有多少候選客戶的 email 同時出現在這些快取表裡」（純計數，不含
+  # 個資），標明哪些表已證實不受影響、哪些建議 refresh 但屬於衛生性重算
+  # （因為 refresh 本身冪等、成本低，即使數字不變也不影響正確性）。
+  def cache_impact(candidates)
+    emails = candidates.map(&:email).uniq.compact
+    {
+      customer_purchase_summaries_customers_present:
+        emails.empty? ? 0 : CustomerPurchaseSummary.where(email: emails).count,
+      customer_series_loyalties_customers_present:
+        emails.empty? ? 0 : CustomerSeriesLoyalty.where(email: emails).count,
+      notes: {
+        customer_purchase_summaries: "order_amount 用 MAX(total_amount) GROUP BY order_number 計算，" \
+                                     "已證實不受本次清理影響（見 total_amount_sum_removed=0）；" \
+                                     "建議仍列入 refresh 排程作為衛生性重算，非必要修正",
+        customer_series_loyalties: "同上（金額估算邏輯不依賴逐列 checkout_amount 加總方式）",
+        spending_rankings: "排行榜本身（Top100/200 依 order-level 金額）不受影響；" \
+                           "系列別消費明細（GROUP BY email,product_name，未去重 order_number）" \
+                           "會反映本次修正，屬即時查詢頁面，無需額外 refresh",
+        livestream_d0_d3_attribution: "LivestreamAnalysisController 目前讀寫在程式碼內的固定歷史陣列，" \
+                                      "不查詢 shopline_orders，不受本次清理影響"
       }
     }
   end
