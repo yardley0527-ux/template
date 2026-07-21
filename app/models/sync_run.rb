@@ -5,9 +5,10 @@
 # 不能只活在 Rails.cache（production 是 per-process memory store，重啟即失憶）。
 class SyncRun < ApplicationRecord
   SOURCES = {
-    "department_sheets" => "部門日誌",
-    "annual_calendar"   => "年度行事曆",
-    "dandy_inventory"   => "產品庫存表"
+    "department_sheets"  => "部門日誌",
+    "annual_calendar"    => "年度行事曆",
+    "dandy_inventory"    => "產品庫存表",
+    "livestream_backfill" => "直播場次回填"
   }.freeze
   STATUSES = %w[running success partial failed].freeze
 

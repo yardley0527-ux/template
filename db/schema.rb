@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_16_090000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_21_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -483,6 +483,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_16_090000) do
     t.decimal "level_white_amount", precision: 14, scale: 2, default: "0.0", null: false
     t.integer "level_normal_count", default: 0, null: false
     t.decimal "level_normal_amount", precision: 14, scale: 2, default: "0.0", null: false
+    t.string "title"
+    t.integer "reported_orders"
+    t.decimal "reported_revenue", precision: 14, scale: 2
+    t.integer "window_days", default: 3, null: false
+    t.integer "total_buyers", default: 0, null: false
+    t.integer "new_buyers", default: 0, null: false
+    t.datetime "stats_refreshed_at"
     t.index ["date"], name: "index_livestreams_on_date", unique: true
     t.index ["product_keys"], name: "index_livestreams_on_product_keys", using: :gin
   end
