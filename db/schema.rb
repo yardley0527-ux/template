@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_21_113000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_21_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -872,6 +872,23 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_21_113000) do
     t.index ["shopline_customer_id"], name: "index_shopline_orders_on_shopline_customer_id"
     t.index ["source_row_hash"], name: "index_shopline_orders_on_source_row_hash", unique: true
     t.index ["source_year", "source_month"], name: "index_shopline_orders_on_source_year_and_source_month"
+  end
+
+  create_table "shopline_orders_dedupe_backups", force: :cascade do |t|
+    t.bigint "original_id", null: false
+    t.bigint "kept_id", null: false
+    t.string "dedupe_run_id", null: false
+    t.string "order_number"
+    t.string "product_name"
+    t.integer "quantity"
+    t.decimal "checkout_amount", precision: 14, scale: 2
+    t.decimal "total_amount", precision: 14, scale: 2
+    t.string "email"
+    t.datetime "order_date"
+    t.bigint "import_run_id"
+    t.datetime "created_at", null: false
+    t.index ["dedupe_run_id"], name: "index_shopline_orders_dedupe_backups_on_dedupe_run_id"
+    t.index ["original_id"], name: "index_shopline_orders_dedupe_backups_on_original_id"
   end
 
   create_table "storage_cn_transactions", force: :cascade do |t|
