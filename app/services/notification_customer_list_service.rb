@@ -47,11 +47,13 @@ class NotificationCustomerListService
       end
 
     sql_pattern = tracking_sql_pattern(product_key)
+    rows = scope.order(:expected_return_date).limit(RESULT_LIMIT).to_a
+    customers = customers_by_email(rows.map(&:email))
 
-    scope.order(:expected_return_date).limit(RESULT_LIMIT).filter_map do |row|
+    rows.filter_map do |row|
       next if repurchased_since?(email: row.email, sql_pattern: sql_pattern, since: row.last_order_date)
 
-      row_hash(email: row.email, last_order_date: row.last_order_date,
+      row_hash(email: row.email, customer: customers[row.email], last_order_date: row.last_order_date,
                expected_return_date: row.expected_return_date)
     end
   end
@@ -72,10 +74,14 @@ class NotificationCustomerListService
     # back to null-or-blank rather than an equality filter.
     scope = series == "未分類" ? scope.where(first_series: [nil, ""]) : scope.where(first_series: series)
 
-    scope.order(first_date: :asc).limit(RESULT_LIMIT).filter_map do |summary|
+    summaries = scope.order(first_date: :asc).limit(RESULT_LIMIT).to_a
+    customers = customers_by_email(summaries.map(&:email))
+
+    summaries.filter_map do |summary|
       next if genuine_second_purchase_exists?(summary.email, since: summary.first_date)
 
-      row_hash(email: summary.email, first_date: summary.first_date&.to_date, first_amount: summary.first_amount.to_i)
+      row_hash(email: summary.email, customer: customers[summary.email],
+               first_date: summary.first_date&.to_date, first_amount: summary.first_amount.to_i)
     end
   end
 
@@ -99,11 +105,15 @@ class NotificationCustomerListService
       LIMIT #{RESULT_LIMIT}
     SQL
 
-    ActiveRecord::Base.connection.select_all(sql).to_a.filter_map do |r|
+    result_rows = ActiveRecord::Base.connection.select_all(sql).to_a
+    customers = customers_by_email(result_rows.map { |r| r["email"] })
+
+    result_rows.filter_map do |r|
       last_order_date = r["last_order_date"]&.to_date
       next if repurchased_since?(email: r["email"], sql_pattern: nil, since: last_order_date)
 
-      row_hash(email: r["email"], last_order_date: last_order_date, membership_level: r["membership_level"])
+      row_hash(email: r["email"], customer: customers[r["email"]],
+               last_order_date: last_order_date, membership_level: r["membership_level"])
     end
   end
 
@@ -129,8 +139,12 @@ class NotificationCustomerListService
     ShoplineOrder.where(email: email).where("order_date >= ?", since + 7.days).exists?
   end
 
-  def row_hash(email:, **extra)
-    customer = ShoplineCustomer.find_by(email: email)
+  # 一次撈整批 email 對應的客戶資料，避免每一列各自查一次（N+1）。
+  def customers_by_email(emails)
+    ShoplineCustomer.where(email: emails.compact.uniq).index_by(&:email)
+  end
+
+  def row_hash(email:, customer:, **extra)
     {
       customer_id: customer&.id, full_name: customer&.full_name,
       membership_level: customer&.membership_level, mobile_phone: customer&.mobile_phone,

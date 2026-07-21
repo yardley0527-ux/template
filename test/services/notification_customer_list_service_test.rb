@@ -15,6 +15,13 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
     ShoplineCustomer.create!(email: email, membership_level: membership_level)
   end
 
+  def count_queries
+    count = 0
+    counter = ->(*, payload) { count += 1 unless payload[:name].in?(%w[SCHEMA CACHE]) }
+    ActiveSupport::Notifications.subscribed(counter, "sql.active_record") { yield }
+    count
+  end
+
   # ── customer_runout ────────────────────────────────────────────────
 
   test "customer_runout: a candidate who has not repurchased the product is included" do
@@ -155,6 +162,29 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
     })
 
     assert_equal 1, NotificationCustomerListService.call(n).size
+  end
+
+  # ── query efficiency (no N+1 customer lookups) ──────────────────────
+
+  test "customer_runout batches customer lookups instead of querying once per row" do
+    CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
+    3.times do |i|
+      customer(email: "runout#{i}@example.com")
+      CrmCustomerProductTracking.create!(
+        email: "runout#{i}@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
+        last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
+        order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      )
+    end
+    n = build_notification(category: "customer_runout", metadata: {
+      "query" => { "product_key" => "metabolism", "expected_return_date_from" => Date.current.to_s,
+                   "expected_return_date_to" => (Date.current + 7).to_s }
+    })
+
+    query_count = count_queries { NotificationCustomerListService.call(n) }
+    # 1 tracking-row query + 1 batched customer query + (up to 3) live-recheck existence
+    # queries — must NOT scale with an extra ShoplineCustomer query per row.
+    assert_operator query_count, :<, 8, "expected a small, row-count-independent number of queries, got #{query_count}"
   end
 
   test "an unrecognized category returns an empty list rather than raising" do
