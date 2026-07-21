@@ -240,14 +240,16 @@ module Importing
       Time.zone.parse(v.to_s) rescue nil
     end
 
-    # 訂單號碼內嵌真實下單時間（#YYYYMMDDHHMMSS…）。來源 Excel 的「訂單日期」
-    # 上游產檔時多加了 8 小時，16:00 後下單的訂單日期會變成隔天，
-    # 因此一律以訂單號碼的日期為準，取不出來才退回 Excel 的值。
+    # 訂單號碼內嵌下單時間（#YYYYMMDDHHMMSS…），但那是 UTC 時間；
+    # 加 8 小時才是台灣（Asia/Taipei）的下單日期，Excel 的「訂單日期」也是台灣日期。
+    # 一律以台灣日期為準，訂單號碼解析不出來才退回 Excel 的值。
     def order_date_for(order_number, raw_date)
-      m = order_number.match(/\A#(\d{4})(\d{2})(\d{2})\d{6}/)
+      m = order_number.match(/\A#(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/)
       return to_time(raw_date) unless m
 
-      Time.utc(m[1].to_i, m[2].to_i, m[3].to_i)
+      utc = Time.utc(m[1].to_i, m[2].to_i, m[3].to_i, m[4].to_i, m[5].to_i, m[6].to_i)
+      local_date = (utc + 8 * 3600).to_date
+      Time.utc(local_date.year, local_date.month, local_date.day)
     rescue ArgumentError
       to_time(raw_date)
     end
