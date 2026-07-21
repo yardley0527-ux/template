@@ -590,7 +590,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_21_140000) do
     t.datetime "dismissed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["deduplication_key"], name: "index_notifications_on_deduplication_key", unique: true
+    t.index ["deduplication_key"], name: "idx_notifications_dedup_key_unique_open", unique: true, where: "((status)::text = 'open'::text)"
     t.index ["notification_key"], name: "index_notifications_on_notification_key"
     t.index ["status", "category"], name: "index_notifications_on_status_and_category"
     t.index ["status", "severity"], name: "index_notifications_on_status_and_severity"

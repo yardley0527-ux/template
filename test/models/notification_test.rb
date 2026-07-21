@@ -40,9 +40,23 @@ class NotificationTest < ActiveSupport::TestCase
     assert_not build_notification(status: "bogus").valid?
   end
 
-  test "deduplication_key must be unique" do
-    build_notification(deduplication_key: "dupe:key").save!
-    assert_not build_notification(deduplication_key: "dupe:key").valid?
+  test "deduplication_key must be unique while status is open" do
+    build_notification(deduplication_key: "dupe:key", status: "open").save!
+    assert_not build_notification(deduplication_key: "dupe:key", status: "open").valid?
+  end
+
+  test "a resolved row does not block a new open row with the same deduplication_key" do
+    build_notification(deduplication_key: "dupe:key2", status: "resolved", resolved_at: Time.current)
+      .save!(validate: false)
+
+    assert build_notification(deduplication_key: "dupe:key2", status: "open").valid?
+  end
+
+  test "two resolved rows may share the same deduplication_key (full history)" do
+    build_notification(deduplication_key: "dupe:key3", status: "resolved", resolved_at: Time.current)
+      .save!(validate: false)
+
+    assert build_notification(deduplication_key: "dupe:key3", status: "resolved", resolved_at: Time.current).valid?
   end
 
   test "metadata defaults to empty hash" do

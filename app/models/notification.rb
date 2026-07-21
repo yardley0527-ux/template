@@ -16,7 +16,12 @@ class Notification < ApplicationRecord
   validates :category, inclusion: { in: CATEGORIES }
   validates :severity, inclusion: { in: SEVERITIES }
   validates :status,   inclusion: { in: STATUSES }
-  validates :deduplication_key, uniqueness: true
+  # 只在「開啟中」範圍內檢查唯一，對齊 DB 的 partial unique index
+  # （idx_notifications_dedup_key_unique_open, WHERE status='open'）——
+  # 同一個 dedup_key 的歷史 resolved/dismissed 列本來就允許並存，
+  # 這裡的驗證條件必須跟資料庫索引的條件完全一致，否則 Rails 驗證層
+  # 會比資料庫更嚴格，擋下資料庫其實允許的「條件恢復後開新週期」寫入。
+  validates :deduplication_key, uniqueness: { conditions: -> { where(status: "open") } }
 
   scope :open_status,  -> { where(status: "open") }
   scope :unread,       -> { open_status.where(read_at: nil) }

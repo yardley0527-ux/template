@@ -13,7 +13,8 @@ class SyncRun < ApplicationRecord
     "crm_rollup"              => "CRM 旅程快取",
     "shopline_orders_dedupe"  => "訂單重複列清理",
     "shopline_orders_rehash"  => "訂單 Hash 遷移",
-    "shopline_orders_restore" => "訂單清理回復"
+    "shopline_orders_restore" => "訂單清理回復",
+    "notifications"           => "營運提醒產生器"
   }.freeze
   STATUSES = %w[running success partial failed].freeze
 
