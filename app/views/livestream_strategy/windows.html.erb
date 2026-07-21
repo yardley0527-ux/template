@@ -1,0 +1,67 @@
+<% content_for :page_title, "歸因窗比較" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-window-restore"></i>
+    歸因窗
+    <small>D0／D+1／D+3／D+7 口徑比較，及重疊歸因警告</small>
+  </h1>
+</div>
+
+<%= render "tabs" %>
+
+<div class="alert alert-warning small mb-3">
+  <i class="fal fa-exclamation-triangle mr-1"></i>
+  歸因窗越長，涵蓋的訂單與營收越多，但兩場相距過近時同一張訂單可能被算進兩場（重複歸因）。
+</div>
+
+<% if @events.blank? %>
+  <div class="text-center py-5 text-muted">
+    <i class="fal fa-window-restore fa-3x mb-3 d-block opacity-25"></i>
+    尚無已完成的直播場次。
+  </div>
+<% else %>
+
+  <div class="panel mb-3">
+    <div class="panel-hdr"><h2>重疊歸因警告</h2></div>
+    <div class="panel-container show">
+      <div class="panel-content" style="overflow-x:auto;">
+        <table class="table table-sm table-bordered text-center small mb-0">
+          <thead class="thead-light"><tr><th>窗口天數</th><th>相鄰場次重疊組數</th></tr></thead>
+          <tbody>
+            <% @overlap_counts.each do |w, count| %>
+              <tr class="<%= 'table-danger' if count.positive? %>">
+                <td>D+<%= w %></td>
+                <td><%= count %><%= count.positive? ? "（有重複歸因風險）" : "" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-hdr"><h2>各場次 D0/D+1/D+3/D+7 比較</h2></div>
+    <div class="panel-container show">
+      <div class="panel-content" style="overflow-x:auto;">
+        <table class="table table-sm table-bordered text-center small mb-0">
+          <thead class="thead-light">
+            <tr><th>場次</th><th colspan="4">推定訂單</th><th colspan="4">推定營收</th></tr>
+            <tr><th></th><th>D0</th><th>D+1</th><th>D+3</th><th>D+7</th><th>D0</th><th>D+1</th><th>D+3</th><th>D+7</th></tr>
+          </thead>
+          <tbody>
+            <% @window_comparisons.each do |wc| %>
+              <% by_window = wc[:comparison].index_by { |c| c[:window_days] } %>
+              <tr>
+                <td class="ls-nowrap"><%= link_to wc[:livestream].date.strftime("%Y/%m/%d"), livestream_path(wc[:livestream]) %></td>
+                <% [0, 1, 3, 7].each do |w| %><td><%= by_window[w]&.dig(:orders) || "—" %></td><% end %>
+                <% [0, 1, 3, 7].each do |w| %><td><%= number_with_delimiter(by_window[w]&.dig(:revenue).to_i) %></td><% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>

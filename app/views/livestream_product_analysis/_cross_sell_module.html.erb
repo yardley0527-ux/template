@@ -1,0 +1,54 @@
+<div class="panel">
+  <div class="panel-hdr"><h2>全能 × <%= @cross_sell_target_label %> 交叉推薦</h2></div>
+  <div class="panel-container show">
+    <div class="panel-content">
+      <% if @cross_sell_buyers.empty? %>
+        <p class="text-muted small mb-0">無資料</p>
+      <% else %>
+        <table class="table table-sm table-bordered small mb-0">
+          <thead class="thead-light"><tr><th>姓名</th><th>卡別</th><th>全能出席場次數</th></tr></thead>
+          <tbody>
+            <% @cross_sell_buyers.each do |r| %>
+              <tr>
+                <td><%= r[:customer].full_name %></td>
+                <td><%= r[:customer].membership_level %></td>
+                <td><%= r[:source_event_count] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% if @ig_discount&.entries&.any? %>
+  <div class="panel">
+    <div class="panel-hdr"><h2>IG 折扣碼使用名單</h2></div>
+    <div class="panel-container show">
+      <div class="panel-content">
+        <p class="text-muted small">
+          來源：<%= @ig_discount.source %>｜用途：<%= @ig_discount.purpose %>｜
+          回顧日期：<%= @ig_discount.review_date %>
+          <% if @ig_discount.review_due? %>
+            <span class="badge badge-warning">已到回顧日期，請確認是否封存</span>
+          <% end %>
+        </p>
+        <table class="table table-sm table-bordered small mb-0">
+          <thead class="thead-light"><tr><th>折扣碼</th><th>姓名</th><th>卡別</th><th>金額</th><th>使用時間</th></tr></thead>
+          <tbody>
+            <% @ig_discount.entries.each do |r| %>
+              <tr>
+                <td><%= r["code"] %></td>
+                <td><%= r["name"] %></td>
+                <td><%= r["level"] %></td>
+                <td><%= number_with_delimiter(r["amount"]) %></td>
+                <td><%= r["used_at"] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>

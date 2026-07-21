@@ -1,0 +1,223 @@
+<% content_for :page_title, "產品直播分析 - #{@product_label}" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-video mr-2 text-danger"></i> 產品直播分析
+  </h1>
+</div>
+
+<div class="panel">
+  <div class="panel-container show">
+    <div class="panel-content">
+      <%= form_with url: livestream_product_analysis_path, method: :get, local: true, class: "form-inline mb-3" do %>
+        <label class="mr-2 mb-2">產品
+          <%= select_tag :product, options_for_select(@product_options.map { |k, l| [l, k] }, @product_key),
+                class: "form-control form-control-sm ml-1", onchange: "this.form.submit()" %>
+        </label>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  以下數字為<strong>推定歸因</strong>（場次日至 D+窗口天數，非訂單真實來源）；卡別為<strong>現值卡別</strong>，非直播當時卡別。
+  <% if @recognition_coverage %>
+    產品辨識覆蓋率約 <strong><%= @recognition_coverage %>%</strong>（場次窗內可辨識商品名稱訂單列比例）。
+  <% end %>
+  <% unless @bundle_components_decomposed %>
+    <span class="text-danger">組合包成分尚未完整拆解，本頁產品層營收／訂單可能低估大組數銷售。</span>
+  <% end %>
+</div>
+
+<% if @analytics.events.empty? %>
+  <div class="text-center py-5 text-muted">
+    <i class="fal fa-video fa-3x mb-3 d-block opacity-25"></i>
+    <%= @product_label %>目前沒有關聯的直播場次，請先到「直播場次」頁為場次勾選本場銷售產品。
+  </div>
+<% else %>
+
+  <%# ── 最新場 KPI ── %>
+  <div class="panel">
+    <div class="panel-hdr"><h2>最新場 KPI</h2></div>
+    <div class="panel-container show">
+      <div class="panel-content">
+        <% if @latest_event %>
+          <% latest_stat = @cross_event_stats.last %>
+          <div class="row text-center">
+            <div class="col-6 col-md-3 mb-2">
+              <div class="text-muted small">場次</div>
+              <div class="h5 mb-0"><%= @latest_event.date.strftime("%Y/%m/%d") %></div>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+              <div class="text-muted small">推定買家</div>
+              <div class="h5 mb-0"><%= latest_stat[:buyers] %></div>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+              <div class="text-muted small">推定營收</div>
+              <div class="h5 mb-0"><%= number_with_delimiter(latest_stat[:revenue].to_i) %></div>
+            </div>
+            <div class="col-6 col-md-3 mb-2">
+              <div class="text-muted small">回流率</div>
+              <div class="h5 mb-0"><%= latest_stat[:return_rate] ? "#{latest_stat[:return_rate]}%" : "—" %></div>
+            </div>
+          </div>
+        <% else %>
+          <div class="text-muted text-center py-3">尚無已完成場次</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# ── 跨場趨勢 ── %>
+  <div class="panel">
+    <div class="panel-hdr"><h2>跨場趨勢</h2></div>
+    <div class="panel-container show">
+      <div class="panel-content" style="overflow-x:auto;">
+        <table class="table table-sm table-bordered text-center small mb-0">
+          <thead class="thead-light">
+            <tr><th>場次</th><th>推定買家</th><th>推定營收</th><th>客單價</th><th>回流率</th></tr>
+          </thead>
+          <tbody>
+            <% @cross_event_stats.each do |s| %>
+              <tr>
+                <td><%= link_to s[:livestream].date.strftime("%Y/%m/%d"), livestream_path(s[:livestream]) %></td>
+                <td><%= s[:buyers] %></td>
+                <td><%= number_with_delimiter(s[:revenue].to_i) %></td>
+                <td><%= number_with_delimiter(s[:aov]) %></td>
+                <td><%= s[:return_rate] ? "#{s[:return_rate]}%" : "—" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-6 mb-4">
+      <div class="panel h-100">
+        <div class="panel-hdr d-flex align-items-center">
+          <h2>未回購名單</h2>
+          <%= link_to "匯出CSV", export_missing_livestream_product_analysis_path(product: @product_key), class: "ml-auto btn btn-xs btn-outline-secondary" %>
+        </div>
+        <div class="panel-container show">
+          <div class="panel-content" style="max-height:320px; overflow-y:auto;">
+            <% if @missing_customers.empty? %>
+              <p class="text-muted small mb-0">無資料</p>
+            <% else %>
+              <ul class="list-unstyled small mb-0">
+                <% @missing_customers.each do |r| %>
+                  <li class="py-1 border-bottom">
+                    <%= r[:customer].full_name %>（<%= r[:customer].membership_level %>）逾期 <%= r[:overdue_days] %> 天
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+      <div class="panel h-100">
+        <div class="panel-hdr"><h2>即將回購</h2></div>
+        <div class="panel-container show">
+          <div class="panel-content" style="max-height:320px; overflow-y:auto;">
+            <% if @expiring_soon.empty? %>
+              <p class="text-muted small mb-0">無資料</p>
+            <% else %>
+              <ul class="list-unstyled small mb-0">
+                <% @expiring_soon.each do |r| %>
+                  <li class="py-1 border-bottom">
+                    <%= r[:customer].full_name %>（<%= r[:customer].membership_level %>）
+                    <%= r[:days_left].negative? ? "已逾期 #{r[:days_left].abs} 天" : "#{r[:days_left]} 天後預期回購" %>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+      <div class="panel h-100">
+        <div class="panel-hdr d-flex align-items-center">
+          <h2>鐵粉</h2>
+          <%= link_to "匯出最新場買家CSV", export_event_livestream_product_analysis_path(product: @product_key), class: "ml-auto btn btn-xs btn-outline-secondary" %>
+        </div>
+        <div class="panel-container show">
+          <div class="panel-content" style="max-height:320px; overflow-y:auto;">
+            <% if @iron_fans.empty? %>
+              <p class="text-muted small mb-0">無資料（需至少 2 場才有鐵粉計算）</p>
+            <% else %>
+              <ul class="list-unstyled small mb-0">
+                <% @iron_fans.each do |r| %>
+                  <li class="py-1 border-bottom"><%= r[:customer].full_name %>（<%= r[:customer].membership_level %>）全勤 <%= r[:attended_count] %> 場</li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+      <div class="panel h-100">
+        <div class="panel-hdr"><h2>流失黑金卡</h2></div>
+        <div class="panel-container show">
+          <div class="panel-content" style="max-height:320px; overflow-y:auto;">
+            <% if @high_risk_lost.empty? %>
+              <p class="text-muted small mb-0">無資料</p>
+            <% else %>
+              <ul class="list-unstyled small mb-0">
+                <% @high_risk_lost.each do |r| %>
+                  <li class="py-1 border-bottom">
+                    <%= r[:customer].full_name %>（<%= r[:customer].membership_level %>）曾出席 <%= r[:attended_labels].join('、') %>
+                  </li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── 卡別出席率（最新場）── %>
+  <div class="panel">
+    <div class="panel-hdr"><h2>卡別出席率<span class="text-muted small ml-2">（最新場，現值卡別）</span></h2></div>
+    <div class="panel-container show">
+      <div class="panel-content" style="overflow-x:auto;">
+        <% if @level_attendance.empty? %>
+          <p class="text-muted small mb-0">無資料</p>
+        <% else %>
+          <table class="table table-sm table-bordered text-center small mb-0">
+            <thead class="thead-light">
+              <tr><th>卡別</th><th>出席</th><th>總人數</th><th>出席率</th></tr>
+            </thead>
+            <tbody>
+              <% @level_attendance.each do |row| %>
+                <tr>
+                  <td><%= row[:level] %></td>
+                  <td><%= row[:attended] %></td>
+                  <td><%= row[:total] %></td>
+                  <td><%= row[:rate] %>%</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# ── 特殊模組 ── %>
+  <% if @product_key == "probiotic" %>
+    <%= render "probiotic_module" %>
+  <% elsif @product_key == "omnipotent" && @cross_sell_buyers %>
+    <%= render "cross_sell_module" %>
+  <% end %>
+
+<% end %>

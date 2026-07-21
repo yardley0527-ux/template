@@ -1,0 +1,59 @@
+<div class="panel">
+  <div class="panel-hdr"><h2>益生菌 SKU 明細</h2></div>
+  <div class="panel-container show">
+    <div class="panel-content" style="overflow-x:auto;">
+      <% if @sku_by_event.empty? %>
+        <p class="text-muted small mb-0">無資料</p>
+      <% else %>
+        <% @sku_by_event.each do |e| %>
+          <h6 class="font-weight-bold mt-3"><%= e[:livestream].date.strftime("%Y/%m/%d") %>（買家 <%= e[:total_buyers] %>・訂單 <%= e[:total_orders] %>・營收 <%= number_with_delimiter(e[:total_revenue]) %>）</h6>
+          <table class="table table-sm table-bordered text-center small mb-3">
+            <thead class="thead-light">
+              <tr><th>品名</th><th>盒/瓶數</th><th>買家</th><th>訂單</th><th>營收</th><th>占比</th></tr>
+            </thead>
+            <tbody>
+              <% e[:skus].each do |s| %>
+                <tr>
+                  <td><%= s[:product_name] %></td>
+                  <td><%= s[:boxes] %></td>
+                  <td><%= s[:buyers] %></td>
+                  <td><%= s[:orders] %></td>
+                  <td><%= number_with_delimiter(s[:revenue]) %></td>
+                  <td><%= s[:rev_pct] %>%</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr d-flex align-items-center">
+    <h2>行動清單<span class="text-muted small ml-2">（快用完＋黑金流失＋本場未回購合併）</span></h2>
+    <%= link_to "匯出行動清單CSV", export_action_livestream_product_analysis_path(product: @product_key), class: "ml-auto btn btn-xs btn-outline-secondary" %>
+  </div>
+  <div class="panel-container show">
+    <div class="panel-content">
+      <% if @action_list.empty? %>
+        <p class="text-muted small mb-0">無資料</p>
+      <% else %>
+        <table class="table table-sm table-bordered small mb-0">
+          <thead class="thead-light"><tr><th>#</th><th>姓名</th><th>卡別</th><th>聯絡理由</th></tr></thead>
+          <tbody>
+            <% @action_list.each_with_index do |e, i| %>
+              <tr>
+                <td><%= i + 1 %></td>
+                <td><%= e[:customer].full_name %></td>
+                <td><%= e[:customer].membership_level %></td>
+                <td><%= e[:reasons].map { |r| "#{r[:badge]} #{r[:detail]}" }.join(" | ") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+    </div>
+  </div>
+</div>

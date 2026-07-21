@@ -1,0 +1,11 @@
+# 方案 B PR4：全能場 IG 折扣碼名單模組——中繼資料。
+#
+# 個資處理原則：此檔案「不」保存姓名／email／任何顧客識別資料。29 筆使用
+# 記錄的原始內容仍留在既有（PR4 之前就已 commit）的
+# OmnipotentAnalysisController::IG_DISCOUNT_CODES 常數，本檔只記錄模組的
+# 來源、用途與回顧日期；IgDiscountCohortLookup 在執行期讀取該常數，不把
+# PII 複製到第二個 git 追蹤的位置。
+event_date: 2026-06-05
+source: "IG 後台折扣碼報表（ST50/ST100），2026-06-09 人工匯入（commit b00c089，見 OmnipotentAnalysisController::IG_DISCOUNT_CODES）"
+purpose: "追蹤此 29 位折扣碼使用者在下一場全能場（2026-10-08 起算）是否回購"
+review_date: 2026-10-08

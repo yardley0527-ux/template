@@ -1,11 +1,19 @@
-<%# 直播策略報表／直播來源分析 共用頁籤（兩個 action 各自載入自己的資料） %>
+<%# 直播策略 4 個頁籤（各 action 各自載入自己的資料） %>
 <ul class="nav nav-tabs mb-3">
   <li class="nav-item">
-    <%= link_to "📈 策略總覽", livestream_strategy_path,
+    <%= link_to "📈 總覽", livestream_strategy_path,
                 class: "nav-link #{'active' if action_name == 'index'}" %>
   </li>
   <li class="nav-item">
-    <%= link_to "🎥 來源分析", livestream_strategy_sources_path,
+    <%= link_to "🙋 出席與回流", livestream_strategy_attendance_path,
+                class: "nav-link #{'active' if action_name == 'attendance'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "🎥 來源回購", livestream_strategy_sources_path,
                 class: "nav-link #{'active' if action_name == 'sources'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "🪟 歸因窗", livestream_strategy_windows_path,
+                class: "nav-link #{'active' if action_name == 'windows'}" %>
   </li>
 </ul>
