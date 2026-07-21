@@ -1,0 +1,211 @@
+<% content_for :page_title, "#{@livestream.date.strftime('%Y/%m/%d')} 直播詳情" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-video mr-2 text-danger"></i>
+    <%= @livestream.date.strftime("%Y/%m/%d") %> <%= @livestream.title.presence || "（未命名場次）" %>
+  </h1>
+  <div class="ml-auto">
+    <%= link_to livestreams_path, class: "btn btn-outline-secondary btn-sm mr-1" do %>
+      <i class="fal fa-arrow-left mr-1"></i>返回列表
+    <% end %>
+    <%= link_to edit_livestream_path(@livestream), class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="fal fa-edit mr-1"></i>編輯
+    <% end %>
+  </div>
+</div>
+
+<div class="alert alert-warning small mb-3">
+  <i class="fal fa-exclamation-triangle mr-1"></i>
+  <strong>推定歸因：場次日至 D+<%= @livestream.window_days %>，非訂單真實來源。</strong>
+  以下「推定檔期」數字是依此時間窗計算的推定值，非訂單上的直播標記（目前系統無此欄位）。
+</div>
+
+<% if LivestreamStatsPresenter.provisional?(@livestream) %>
+  <div class="alert alert-info small mb-3">
+    <i class="fal fa-clock mr-1"></i>
+    本場窗口尚未走完（今天仍在 D0～D+<%= @livestream.window_days %> 之內），<strong>數據未定版</strong>，之後刷新可能再變動。
+  </div>
+<% end %>
+
+<div class="row">
+  <%# ── 左：原始資料 ── %>
+  <div class="col-lg-4 mb-4">
+    <div class="panel">
+      <div class="panel-hdr"><h2>場次原始資料</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <dl class="row mb-0 small">
+            <dt class="col-5">日期</dt>
+            <dd class="col-7"><%= @livestream.date.strftime("%Y/%m/%d") %></dd>
+            <dt class="col-5">標題</dt>
+            <dd class="col-7"><%= @livestream.title.presence || "—" %></dd>
+            <dt class="col-5">備註</dt>
+            <dd class="col-7"><%= @livestream.notes.presence || "—" %></dd>
+          </dl>
+
+          <hr>
+          <h6 class="font-weight-bold">商品</h6>
+          <% if @livestream.livestream_products.any? %>
+            <ul class="list-unstyled small">
+              <% @livestream.livestream_products.each do |p| %>
+                <li class="py-1 border-bottom"><%= p.name %> <span class="text-danger"><%= number_with_delimiter(p.price) %> 元</span></li>
+              <% end %>
+            </ul>
+          <% else %>
+            <p class="text-muted small">無紀錄</p>
+          <% end %>
+
+          <h6 class="font-weight-bold mt-3">贈品</h6>
+          <% if @livestream.livestream_gifts.any? %>
+            <ul class="list-unstyled small">
+              <% @livestream.livestream_gifts.each do |g| %>
+                <li class="py-1 border-bottom <%= 'font-weight-bold text-danger' if g.highlight? %>"><%= g.description %></li>
+              <% end %>
+            </ul>
+          <% else %>
+            <p class="text-muted small">無紀錄</p>
+          <% end %>
+
+          <% if @livestream.livestream_images.any? %>
+            <h6 class="font-weight-bold mt-3">圖片</h6>
+            <div class="d-flex flex-wrap">
+              <% @livestream.livestream_images.each do |img| %>
+                <img src="<%= img.url %>" style="width:33%; object-fit:cover; border-radius:4px; padding:2px;" loading="lazy">
+              <% end %>
+            </div>
+          <% end %>
+
+          <hr>
+          <h6 class="font-weight-bold">本場銷售產品</h6>
+          <% if @livestream.product_keys.any? %>
+            <% @livestream.product_keys.each do |key| %>
+              <span class="badge badge-light border mr-1 mb-1"><%= @product_labels[key] || key %></span>
+            <% end %>
+          <% else %>
+            <p class="text-muted small">無紀錄</p>
+          <% end %>
+
+          <% if @unmapped_products.any? %>
+            <h6 class="font-weight-bold mt-3">未納入產品分析品項</h6>
+            <p class="small text-muted mb-1">以下品項未建立對應產品，不計入任何產品分析：</p>
+            <% @unmapped_products.each do |name| %>
+              <span class="badge badge-secondary mr-1 mb-1"><%= name %></span>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── 右：推定檔期 + 歷史登記 + 每日 + 卡別 ── %>
+  <div class="col-lg-8">
+
+    <% if LivestreamStatsPresenter.never_refreshed?(@livestream) %>
+      <div class="panel">
+        <div class="panel-container show">
+          <div class="panel-content text-center py-5 text-muted">
+            <i class="fal fa-chart-bar fa-3x mb-3 d-block opacity-25"></i>
+            這場尚未執行過統計刷新，暫無推定檔期數字。
+          </div>
+        </div>
+      </div>
+    <% else %>
+
+      <div class="panel">
+        <div class="panel-hdr d-flex align-items-center">
+          <h2>推定檔期 KPI</h2>
+          <span class="ml-auto small text-muted">
+            統計更新：<%= @livestream.stats_refreshed_at.strftime("%Y/%m/%d %H:%M") %>
+          </span>
+        </div>
+        <div class="panel-container show">
+          <div class="panel-content">
+            <div class="row text-center">
+              <div class="col-6 col-md-3 mb-3">
+                <div class="text-muted small">推定檔期營收</div>
+                <div class="h4 mb-0"><%= number_with_delimiter(@livestream.total_revenue.to_i) %></div>
+                <div class="text-muted small">歷史登記：<%= @livestream.reported_revenue.present? ? number_with_delimiter(@livestream.reported_revenue.to_i) : "—" %></div>
+              </div>
+              <div class="col-6 col-md-3 mb-3">
+                <div class="text-muted small">推定訂單</div>
+                <div class="h4 mb-0"><%= @livestream.total_orders %></div>
+                <div class="text-muted small">歷史登記：<%= @livestream.reported_orders.presence || "—" %></div>
+              </div>
+              <div class="col-6 col-md-3 mb-3">
+                <div class="text-muted small">推定買家</div>
+                <div class="h4 mb-0"><%= @livestream.total_buyers %></div>
+                <div class="text-muted small">客單價：<%= number_with_delimiter(LivestreamStatsPresenter.aov(@livestream)) %></div>
+              </div>
+              <div class="col-6 col-md-3 mb-3">
+                <div class="text-muted small">新客</div>
+                <div class="h4 mb-0"><%= @livestream.new_buyers %></div>
+                <div class="text-muted small">占比 <%= LivestreamStatsPresenter.new_buyer_pct(@livestream) %>%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr"><h2>D0～D+<%= @livestream.window_days %> 每日表現</h2></div>
+        <div class="panel-container show">
+          <div class="panel-content" style="overflow-x:auto;">
+            <table class="table table-sm table-bordered text-center small mb-0">
+              <thead class="thead-light">
+                <tr>
+                  <th>日期</th>
+                  <% @daily_breakdown.each do |d| %><th>D+<%= d[:offset] %><br><%= d[:date].strftime("%m/%d") %></th><% end %>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-muted">訂單</td>
+                  <% @daily_breakdown.each do |d| %><td><%= d[:orders] %></td><% end %>
+                </tr>
+                <tr>
+                  <td class="text-muted">買家</td>
+                  <% @daily_breakdown.each do |d| %><td><%= d[:buyers] %></td><% end %>
+                </tr>
+                <tr>
+                  <td class="text-muted">營收</td>
+                  <% @daily_breakdown.each do |d| %><td><%= number_with_delimiter(d[:revenue].to_i) %></td><% end %>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-hdr"><h2>卡別人數與金額<span class="text-muted small ml-2">（現值卡別，非直播當時卡別）</span></h2></div>
+        <div class="panel-container show">
+          <div class="panel-content" style="overflow-x:auto;">
+            <table class="table table-sm table-bordered text-center small mb-0">
+              <thead class="thead-light">
+                <tr>
+                  <% LivestreamStatsPresenter.level_rows(@livestream).each do |row| %><th><%= row[:name] %></th><% end %>
+                  <th>未匹配</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <% LivestreamStatsPresenter.level_rows(@livestream).each do |row| %><td><%= row[:count] %> 人</td><% end %>
+                  <td class="text-muted"><%= LivestreamStatsPresenter.unmatched_buyers(@livestream) %> 人</td>
+                </tr>
+                <tr>
+                  <% LivestreamStatsPresenter.level_rows(@livestream).each do |row| %><td><%= number_with_delimiter(row[:amount].to_i) %></td><% end %>
+                  <td class="text-muted"><%= number_with_delimiter(LivestreamStatsPresenter.unmatched_revenue(@livestream).to_i) %></td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="text-muted small mt-2 mb-0">
+              「未匹配」＝訂單有 email 但找不到對應會員資料的買家與金額，不計入任何卡別（不算一般會員）。
+            </p>
+          </div>
+        </div>
+      </div>
+
+    <% end %>
+  </div>
+</div>

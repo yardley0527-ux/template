@@ -1,0 +1,164 @@
+<% content_for :page_title, "直播成效總覽" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-broadcast-tower mr-2 text-danger"></i> 直播成效總覽
+  </h1>
+  <div class="ml-auto">
+    <%= link_to livestreams_path, class: "btn btn-outline-secondary btn-sm mr-1" do %>
+      <i class="fal fa-list mr-1"></i>前往直播場次
+    <% end %>
+    <%= link_to crm_broadcast_path, class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="fal fa-bullhorn mr-1"></i>前往直播邀請管理
+    <% end %>
+  </div>
+</div>
+
+<% if @sync_run && @sync_run.status.in?(%w[failed partial]) %>
+  <div class="alert alert-danger small mb-3">
+    <i class="fal fa-exclamation-triangle mr-1"></i>
+    直播統計刷新<%= @sync_run.status == "failed" ? "失敗" : "部分失敗" %>（<%= @sync_run.finished_at&.strftime("%m/%d %H:%M") || @sync_run.started_at.strftime("%m/%d %H:%M") %>）。
+    <% if @sync_run.error_messages.present? %>詳情：<%= @sync_run.error_messages.join("；") %><% end %>
+  </div>
+<% end %>
+
+<div class="row">
+  <%# ── 下一場直播 ── %>
+  <div class="col-lg-4 mb-4">
+    <div class="panel h-100">
+      <div class="panel-hdr"><h2>下一場直播</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <% if @next_event %>
+            <div class="h4 mb-1"><%= @next_event.event_date.strftime("%Y/%m/%d") %></div>
+            <div class="text-muted"><%= @next_event.title %></div>
+            <% if @next_event.description.present? %>
+              <div class="small text-muted mt-2"><%= @next_event.description %></div>
+            <% end %>
+          <% else %>
+            <div class="text-center py-4 text-muted">
+              <i class="fal fa-calendar fa-2x mb-2 d-block opacity-25"></i>
+              尚無已排定的下一場直播
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── 統計狀態 ── %>
+  <div class="col-lg-4 mb-4">
+    <div class="panel h-100">
+      <div class="panel-hdr"><h2>統計刷新狀態</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <% if @sync_run %>
+            <div>
+              狀態：
+              <span class="badge badge-<%= { 'success' => 'success', 'partial' => 'warning', 'failed' => 'danger', 'running' => 'info' }[@sync_run.status] || 'secondary' %>">
+                <%= { 'success' => '成功', 'partial' => '部分成功', 'failed' => '失敗', 'running' => '執行中' }[@sync_run.status] || @sync_run.status %>
+              </span>
+            </div>
+            <div class="text-muted small mt-2">
+              最近一次：<%= (@sync_run.finished_at || @sync_run.started_at).strftime("%Y/%m/%d %H:%M") %>
+            </div>
+          <% else %>
+            <div class="text-muted">尚未執行過統計刷新</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# ── 行動提醒（摘要入口，不含聯絡工作流）── %>
+  <div class="col-lg-4 mb-4">
+    <div class="panel h-100">
+      <div class="panel-hdr"><h2>行動提醒</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <% if @latest.nil? || LivestreamStatsPresenter.never_refreshed?(@latest) %>
+            <div class="text-muted">暫無可用摘要</div>
+          <% else %>
+            <div class="small mb-2">
+              最新場次新客 <strong><%= @latest.new_buyers %></strong> 位（<%= LivestreamStatsPresenter.new_buyer_pct(@latest) %>%）
+            </div>
+            <div class="small mb-2">
+              未匹配會員買家 <strong><%= LivestreamStatsPresenter.unmatched_buyers(@latest) %></strong> 位
+            </div>
+            <%= link_to "查看單場詳情 →", livestream_path(@latest), class: "small" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 最新完成場次 KPI ── %>
+<div class="panel">
+  <div class="panel-hdr"><h2>最新完成場次</h2></div>
+  <div class="panel-container show">
+    <div class="panel-content">
+      <% if @latest.nil? %>
+        <div class="text-center py-5 text-muted">
+          <i class="fal fa-video fa-3x mb-3 d-block opacity-25"></i>
+          尚無已完成的直播場次
+        </div>
+      <% elsif LivestreamStatsPresenter.never_refreshed?(@latest) %>
+        <div class="text-center py-4 text-muted">
+          最新場次（<%= @latest.date.strftime("%Y/%m/%d") %>）尚未刷新統計。
+        </div>
+      <% else %>
+        <div class="d-flex align-items-center mb-3">
+          <div>
+            <div class="h5 mb-0"><%= link_to @latest.date.strftime("%Y/%m/%d"), livestream_path(@latest) %> <%= @latest.title %></div>
+            <% if LivestreamStatsPresenter.provisional?(@latest) %>
+              <span class="badge badge-warning">數據未定版</span>
+            <% end %>
+          </div>
+          <div class="ml-auto text-muted small">統計更新：<%= @latest.stats_refreshed_at.strftime("%m/%d %H:%M") %></div>
+        </div>
+
+        <div class="row text-center mb-3">
+          <% [
+               ["推定檔期營收", @latest.total_revenue.to_i, @previous&.total_revenue&.to_i],
+               ["推定訂單", @latest.total_orders, @previous&.total_orders],
+               ["推定買家", @latest.total_buyers, @previous&.total_buyers],
+               ["客單價", LivestreamStatsPresenter.aov(@latest), @previous && LivestreamStatsPresenter.aov(@previous)],
+               ["新客", @latest.new_buyers, @previous&.new_buyers]
+             ].each do |label, value, prev_value| %>
+            <div class="col-6 col-md mb-3">
+              <div class="text-muted small"><%= label %></div>
+              <div class="h5 mb-0"><%= number_with_delimiter(value) %></div>
+              <% change = LivestreamStatsPresenter.pct_change(value, prev_value) %>
+              <% if change %>
+                <div class="small <%= change >= 0 ? 'text-success' : 'text-danger' %>">
+                  <i class="fal fa-arrow-<%= change >= 0 ? 'up' : 'down' %>"></i> <%= change.abs %>% 較前一場
+                </div>
+              <% else %>
+                <div class="small text-muted">無前一場可比較</div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+
+        <h6 class="font-weight-bold">卡別組成<span class="text-muted small ml-2">（現值卡別）</span></h6>
+        <div style="overflow-x:auto;">
+          <table class="table table-sm table-bordered text-center small mb-0">
+            <thead class="thead-light">
+              <tr>
+                <% LivestreamStatsPresenter.level_rows(@latest).each do |row| %><th><%= row[:name] %></th><% end %>
+                <th>未匹配</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <% LivestreamStatsPresenter.level_rows(@latest).each do |row| %><td><%= row[:count] %> 人</td><% end %>
+                <td class="text-muted"><%= LivestreamStatsPresenter.unmatched_buyers(@latest) %> 人</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
