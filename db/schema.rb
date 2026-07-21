@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_21_090000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_21_113000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -147,6 +147,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_21_090000) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "availability_status", default: "unknown", null: false
+    t.date "expected_restock_date"
+    t.date "actual_restock_date"
+    t.datetime "inventory_status_updated_at"
+    t.bigint "inventory_status_updated_by_id"
+    t.text "inventory_note"
+    t.index ["availability_status"], name: "index_crm_products_on_availability_status"
     t.index ["key"], name: "index_crm_products_on_key", unique: true
     t.index ["status"], name: "index_crm_products_on_status"
   end
@@ -1044,6 +1051,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_21_090000) do
 
   add_foreign_key "albums", "shopline_customers"
   add_foreign_key "crm_product_aliases", "crm_products"
+  add_foreign_key "crm_products", "users", column: "inventory_status_updated_by_id"
   add_foreign_key "crm_products", "users", column: "reviewed_by_user_id"
   add_foreign_key "health_assessment_products", "products"
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"

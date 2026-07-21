@@ -4,6 +4,14 @@ class CrmProduct < ApplicationRecord
   KEY_FORMAT = /\A[a-z][a-z0-9_]*\z/
   STATUSES   = %w[candidate confirmed merged ignored].freeze
 
+  # 庫存狀態（與映射審核狀態 status 完全獨立）。
+  # 沒有 in_stock boolean —— 一律經由下面的語意 method 判定。
+  AVAILABILITY_STATUSES = %w[unknown in_stock low_stock out_of_stock preorder discontinued].freeze
+
+  # 只留庫存相關欄位的變更歷史（audit：誰在何時改了庫存狀態）。
+  has_paper_trail on: %i[update],
+    only: %w[availability_status expected_restock_date actual_restock_date inventory_note]
+
   has_many :crm_product_aliases, dependent: :destroy
   has_many :active_aliases, -> { where(status: "active") },
            class_name: "CrmProductAlias", inverse_of: :crm_product
@@ -12,13 +20,46 @@ class CrmProduct < ApplicationRecord
   has_many :suggested_for_mappings, class_name: "ProductNameMapping",
            foreign_key: :suggested_crm_product_id, inverse_of: :suggested_crm_product
   belongs_to :reviewed_by, class_name: "User", foreign_key: :reviewed_by_user_id, optional: true
+  belongs_to :inventory_status_updated_by, class_name: "User",
+             foreign_key: :inventory_status_updated_by_id, optional: true
 
   validates :key, presence: true, uniqueness: true, format: { with: KEY_FORMAT }
   validates :label, presence: true
   validates :status, presence: true, inclusion: { in: STATUSES }
+  validates :availability_status, presence: true, inclusion: { in: AVAILABILITY_STATUSES }
 
   scope :confirmed,     -> { where(status: "confirmed") }
   scope :for_analysis,  -> { confirmed.where(include_in_analysis: true) }
+
+  # ── 庫存語意（刻意沒有任何 callback：actual_restock_date 填入或
+  #    expected_restock_date 過期都「不會」自動改 availability_status，
+  #    狀態變更必須由使用者明確操作）──────────────────────────────
+
+  # 回購/用完提醒是否照發。preorder 回傳 true，但呼叫端必須為預購情境
+  # 加上「預購中」標注（卡片與訊息模板）。
+  def available_for_reminders?
+    %w[in_stock low_stock preorder].include?(availability_status)
+  end
+
+  # 產品趨勢異常規則（drop/surge/新客變化）是否允許下結論。
+  # unknown 與 preorder/out_of_stock/discontinued 一律停用，避免缺貨期誤報。
+  def product_trend_detection_enabled?
+    %w[in_stock low_stock].include?(availability_status)
+  end
+
+  def preorder?
+    availability_status == "preorder"
+  end
+
+  # discontinued：停止所有回購與補貨提醒（available_for_reminders? 已為 false，
+  # 呼叫端另需將既有 open 通知自動 resolve）。
+  def discontinued?
+    availability_status == "discontinued"
+  end
+
+  def availability_unknown?
+    availability_status == "unknown"
+  end
 
   # ── Repository helpers (Single Source of Truth for product metadata) ──
 
