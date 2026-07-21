@@ -156,5 +156,44 @@ module Importing
       assert_equal 2, ShoplineOrder.where(order_number: "#20260115120000011").count,
         "documents pre-fix state: rehash migration is required before deploying this importer"
     end
+
+    # ── 共用 advisory lock：與 rehash/dedupe 互斥 ─────────────────────
+
+    test "import aborts before any write when the shared maintenance lock is held elsewhere" do
+      db_config = ActiveRecord::Base.connection_db_config.configuration_hash
+      other = PG.connect(dbname: db_config[:database], host: db_config[:host],
+                         port: db_config[:port], user: db_config[:username], password: db_config[:password])
+      other.exec("SELECT pg_advisory_lock(hashtext('shopline_orders_write'))")
+      begin
+        assert_raises(Importing::ImportLockedError) do
+          import_csv([row(order_number: "#20260115120000012", product_name: "薑黃6", checkout_amount: 10050)])
+        end
+      ensure
+        other.exec("SELECT pg_advisory_unlock(hashtext('shopline_orders_write'))")
+        other.close
+      end
+
+      assert_equal 0, ShoplineOrder.where(order_number: "#20260115120000012").count
+      assert_equal 0, ImportRun.where(kind: "paid_orders_workbook").count,
+        "no ImportRun should be created when the import aborts before starting"
+    end
+
+    test "a normal import (lock free) proceeds and releases the lock afterward" do
+      import_csv([row(order_number: "#20260115120000013", product_name: "薑黃6", checkout_amount: 10050)])
+
+      assert_equal 1, ShoplineOrder.where(order_number: "#20260115120000013").count
+
+      # 鎖已釋放：另一個唯讀連線現在應該能立刻取得同一把鎖。
+      db_config = ActiveRecord::Base.connection_db_config.configuration_hash
+      other = PG.connect(dbname: db_config[:database], host: db_config[:host],
+                         port: db_config[:port], user: db_config[:username], password: db_config[:password])
+      begin
+        acquired = other.exec("SELECT pg_try_advisory_lock(hashtext('shopline_orders_write'))").getvalue(0, 0)
+        assert_equal "t", acquired
+        other.exec("SELECT pg_advisory_unlock(hashtext('shopline_orders_write'))")
+      ensure
+        other.close
+      end
+    end
   end
 end

@@ -1,6 +1,7 @@
 require "roo"
 require "digest"
 require "json"
+require Rails.root.join("lib/shopline_orders_maintenance_lock") if defined?(Rails)
 
 module Importing
   class PaidOrdersWorkbookImporter
@@ -31,7 +32,26 @@ module Importing
       @verbose = verbose
     end
 
+    # Acquires the shared ShoplineOrdersMaintenanceLock for the entire import
+    # (released in an ensure inside try_with_lock) — a rehash or dedupe run
+    # in progress holds the same lock, so this fails fast, loudly, and
+    # before any ImportRun or row is written, rather than interleaving
+    # writes with a maintenance operation that is rewriting the same table.
+    # No retry/backoff: this importer is invoked manually via rake by a
+    # human operator (see lib/tasks/import_paid_orders.rake) who sees the
+    # error directly and can simply re-run once the maintenance window ends.
     def call
+      acquired, result = ShoplineOrdersMaintenanceLock.try_with_lock { perform_import }
+      return result if acquired
+
+      raise Importing::ImportLockedError,
+        "shopline_orders maintenance lock (#{ShoplineOrdersMaintenanceLock::NAME}) is held by a rehash or " \
+        "dedupe run — import aborted before any write. Re-run once that finishes."
+    end
+
+    private
+
+    def perform_import
       log "[import] start file=#{@file_path} year=#{@source_year} only_payment_status=#{@only_payment_status.inspect}"
 
       run = ImportRun.create!(
@@ -142,8 +162,6 @@ module Importing
       log "[import] done run_id=#{run.id} processed=#{processed} upserted=#{upserted} skipped=#{skipped} errors=#{error_rows}"
       run
     end
-
-    private
 
     def infer_month_from_filename
       File.basename(@file_path, ".*")
