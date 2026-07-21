@@ -58,5 +58,17 @@ namespace :import do
     puts "[task] refreshing series loyalty cache..."
     CustomerSeriesLoyaltyRefreshService.call
     puts "[task] series loyalty done."
+
+    # perform_now（非 perform_later）：import:paid_orders 是一次性 rake process，
+    # process 結束後 :async 佇列裡尚未執行的 job 會遺失，所以必須在匯入完全
+    # 成功（run 已 finished_at）之後、process 還活著時同步執行。刷新失敗只記
+    # log、不 raise，不影響已成功寫入的訂單匯入結果。
+    begin
+      RefreshLivestreamStatsJob.perform_now
+      puts "[task] livestream stats refresh done."
+    rescue => e
+      Rails.logger.warn "[import:paid_orders] livestream stats refresh failed: #{e.class} - #{e.message}"
+      puts "[task] livestream stats refresh FAILED (import itself still succeeded): #{e.class} - #{e.message}"
+    end
   end
 end

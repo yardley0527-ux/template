@@ -282,4 +282,50 @@ class LivestreamBackfillTest < ActiveSupport::TestCase
     assert_nil Livestream.unscoped.find_by(date: Date.new(2030, 1, 1)).title
     assert_raises(LivestreamBackfill::ValidationError) { svc.revert(sync_run_id: run.id + 999) }
   end
+
+  # ── PR1 安全補強：original_date 交叉驗證 ─────────────────────────────────
+
+  test "yaml validation rejects duplicate original_date across entries" do
+    entries = [
+      entry(date: Date.new(2030, 1, 1), original_date: Date.new(2030, 1, 10)),
+      entry(date: Date.new(2030, 1, 2), original_date: Date.new(2030, 1, 10))
+    ]
+    err = assert_raises(LivestreamBackfill::ValidationError) { service(entries).preview }
+    assert_match "original_date 有重複", err.message
+  end
+
+  test "yaml validation rejects original_date overlapping another entry's date" do
+    entries = [
+      entry(date: Date.new(2030, 1, 5)),
+      entry(date: Date.new(2030, 1, 1), original_date: Date.new(2030, 1, 5))
+    ]
+    err = assert_raises(LivestreamBackfill::ValidationError) { service(entries).preview }
+    assert_match "original_date 與其他場次的 date 重疊", err.message
+  end
+
+  # ── PR1 安全補強：apply advisory lock ────────────────────────────────────
+
+  test "apply aborts when another apply holds the advisory lock" do
+    Livestream.create!(date: Date.new(2030, 1, 1))
+    svc = service([entry(date: Date.new(2030, 1, 1))])
+
+    other_conn = ActiveRecord::Base.connection_pool.checkout
+    begin
+      got = other_conn.select_value("SELECT pg_try_advisory_lock(#{LivestreamBackfill::LOCK_ID})")
+      assert_equal true, got
+
+      assert_no_difference "SyncRun.where(status: 'success').count" do
+        err = assert_raises(LivestreamBackfill::ValidationError) { svc.apply }
+        assert_match "另一個 livestream backfill apply 正在執行中", err.message
+      end
+      assert_nil Livestream.unscoped.find_by(date: Date.new(2030, 1, 1)).title
+    ensure
+      other_conn.execute("SELECT pg_advisory_unlock(#{LivestreamBackfill::LOCK_ID})")
+      ActiveRecord::Base.connection_pool.checkin(other_conn)
+    end
+
+    # 鎖釋放後恢復正常
+    result = svc.apply
+    assert_equal 1, result[:changed]
+  end
 end

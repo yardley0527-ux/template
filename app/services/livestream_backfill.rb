@@ -2,6 +2,7 @@
 
 require "csv"
 require "digest"
+require "zlib"
 
 # 方案 B PR1：一次性回填 livestreams 的 title / product_keys / reported_* /（兩場）date。
 # 唯一資料來源是 db/data/livestream_reconciliation.yml；由 lib/tasks/livestream_backfill.rake 驅動。
@@ -20,6 +21,8 @@ class LivestreamBackfill
   BACKFILL_COLUMNS = %w[date title product_keys reported_orders reported_revenue].freeze
   SOURCES_ENUM = %w[shopline_backend consensus all_events live_events manual].freeze
   CONFIDENCE_ENUM = %w[confirmed probable].freeze
+  LOCK_KEY = "livestream_backfill"
+  LOCK_ID = Zlib.crc32(LOCK_KEY)
 
   class ValidationError < StandardError; end
 
@@ -74,6 +77,14 @@ class LivestreamBackfill
     sync_run = nil
     begin
       ActiveRecord::Base.transaction do
+        # PR1 安全補強：transaction-scoped advisory lock，避免兩個 apply 併發寫入
+        # 同一批場次。非阻塞（try）＋立即 abort，讓操作者馬上知道有人在跑，
+        # 而不是無聲卡住等待。鎖隨 transaction 結束自動釋放。
+        acquired = ActiveRecord::Base.connection.select_value(
+          "SELECT pg_try_advisory_xact_lock(#{LOCK_ID})"
+        )
+        raise ValidationError, "另一個 livestream backfill apply 正在執行中，abort" unless acquired
+
         sync_run = SyncRun.create!(
           source: SYNC_SOURCE, status: "running", started_at: Time.current,
           meta: {
@@ -142,6 +153,14 @@ class LivestreamBackfill
 
     dates = entries.map { |e| e["date"] }
     raise ValidationError, "date 有重複或缺漏" if dates.any?(&:nil?) || dates.uniq.size != dates.size
+
+    # PR1 安全補強：original_date 不得重複，也不得與任何其他 entry 的 date 重疊
+    # （否則 find_record 依 original_date 查找時可能對到錯誤的場次）。
+    originals = entries.filter_map { |e| e["original_date"] }
+    raise ValidationError, "original_date 有重複：#{originals.tally.select { |_, n| n > 1 }.keys.join(', ')}" if originals.uniq.size != originals.size
+
+    overlap = originals & dates
+    raise ValidationError, "original_date 與其他場次的 date 重疊：#{overlap.join(', ')}" if overlap.any?
 
     valid_keys = CrmProduct.pluck(:key)
     entries.each { |entry| validate_entry!(entry, valid_keys) }
