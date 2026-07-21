@@ -85,4 +85,34 @@ class OpsRiskScanTest < ActiveSupport::TestCase
 
     assert_empty OpsRiskScan.call(radar: radar)
   end
+
+  # ── Section 八 regression: stock-conflict detection stays on JourneyProducts ──
+  # crm_products.availability_status is NOT yet wired into OpsRiskScan (Gate 3,
+  # 2026-07-21, found all 13 crm_products still "unknown" — switching this
+  # danger-level rule to a source that's 100% unconfirmed would silently
+  # disable a currently-working safety check). These prove that populating
+  # crm_products has no effect either way until that switch is deliberately made.
+  test "a confirmed in_stock crm_products row does not suppress an existing out-of-stock risk" do
+    entry = JourneyProducts::PRODUCTS.values.find { |p| p[:in_stock] == false && p[:restock_date].nil? }
+    skip "JourneyProducts 目前沒有缺貨且無補貨日的產品" if entry.nil?
+    CrmProduct.create!(key: entry[:key], label: entry[:label], status: "confirmed", availability_status: "in_stock")
+
+    CalendarEvent.create!(title: "品牌之夜：#{entry[:label]}", event_type: "livestream", event_date: Date.current + 7)
+
+    risks = OpsRiskScan.call
+    assert(risks.any? { |r| r[:level] == "danger" && r[:message].include?("標記缺貨") },
+      "crm_products must not be able to silently turn off an existing JourneyProducts-driven risk this round")
+  end
+
+  test "a confirmed out_of_stock crm_products row does not fabricate a risk for an in-stock JourneyProducts product" do
+    entry = JourneyProducts::PRODUCTS.values.find { |p| p[:in_stock] == true }
+    skip "JourneyProducts 目前沒有有庫存的產品" if entry.nil?
+    CrmProduct.create!(key: entry[:key], label: entry[:label], status: "confirmed", availability_status: "out_of_stock")
+
+    CalendarEvent.create!(title: "品牌之夜：#{entry[:label]}", event_type: "livestream", event_date: Date.current + 7)
+
+    risks = OpsRiskScan.call
+    assert(risks.none? { |r| r[:level] == "danger" && r[:message].include?("標記缺貨") },
+      "crm_products must not be able to fabricate a new risk this round either")
+  end
 end

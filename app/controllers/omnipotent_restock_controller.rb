@@ -351,15 +351,26 @@ class OmnipotentRestockController < ApplicationController
   end
 
   # 沒帶 ?product= 時：合併所有 in_stock: true 產品的「今日應聯絡」名單。
+  #
+  # 篩選/名單產生仍以 JourneyProducts.in_stock（手動維護旗標）為準——
+  # crm_products.availability_status 這 13 個產品目前全部是 unknown（Gate 3
+  # 2026-07-21 查證），尚未有任何一個經人工確認，若這時把「是否要不要產生名單」
+  # 這種判斷切到 crm_products，等於用一個全新表全部都是「未確認」的訊號去關掉
+  # 現在正常運作的名單產生（等同一次靜默 regression）。crm_availability_status
+  # 只做「附加顯示」用──在名單上多秀一個徽章，讓使用者知道 CRM 庫存表對這個
+  # 產品「還沒確認」，但不影響這份名單原本該不該存在、該不該顯示這一列。
   def build_daily_combined_list
     @in_stock_products = JourneyProducts::PRODUCTS.values.select { |p| p[:in_stock] }
 
     @combined_today = @in_stock_products.flat_map do |product|
+      crm_product = NotificationRules::ProductKeyMapping.crm_product_for(product[:key])
       compute_restock_rows(product)[:today].each do |r|
-        r[:product_key]   = product[:key]
-        r[:product_label] = product[:label]
-        r[:product_icon]  = product[:icon]
-        r[:product_color] = product[:color]
+        r[:product_key]              = product[:key]
+        r[:product_label]            = product[:label]
+        r[:product_icon]             = product[:icon]
+        r[:product_color]            = product[:color]
+        r[:crm_availability_status]  = crm_product&.availability_status || "unknown"
+        r[:crm_availability_label]   = CrmProduct::AVAILABILITY_STATUS_LABELS.fetch(r[:crm_availability_status], "未確認")
       end
     end.sort_by { |r| [-r[:crm_score], r[:days_left]] }
 

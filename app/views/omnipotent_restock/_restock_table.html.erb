@@ -38,6 +38,13 @@
               <span class="fw-semibold small" style="color:<%= r[:product_color] %>;">
                 <%= r[:product_icon] %> <%= r[:product_label] %>
               </span>
+              <% if r[:crm_availability_status] && r[:crm_availability_status] != "in_stock" %>
+                <div>
+                  <span class="badge badge-light text-muted border" style="font-size:0.6rem;" title="CRM 產品庫存表狀態，不影響此名單的產生依據">
+                    <%= r[:crm_availability_label] %>
+                  </span>
+                </div>
+              <% end %>
             </td>
           <% end %>
           <td>
