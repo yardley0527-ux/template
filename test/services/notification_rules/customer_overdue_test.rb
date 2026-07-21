@@ -1,0 +1,87 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+module NotificationRules
+  class CustomerOverdueTest < ActiveSupport::TestCase
+    def customer(email:, membership_level: "一般")
+      ShoplineCustomer.create!(email: email, membership_level: membership_level)
+    end
+
+    def track(product_key:, email:, overdue_days:)
+      CrmCustomerProductTracking.create!(
+        email: email, product_key: product_key, last_order_date: 60.days.ago.to_date,
+        last_order_bottles: 1, expected_return_date: Date.current - overdue_days,
+        suggested_reminder_date: Date.current - overdue_days - 7,
+        order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      )
+    end
+
+    test "aggregates overdue customers for a product into one card, split high-value vs general" do
+      customer(email: "gold@example.com", membership_level: "金卡")
+      customer(email: "regular@example.com", membership_level: "一般")
+      track(product_key: "metabolism", email: "gold@example.com", overdue_days: 10)
+      track(product_key: "metabolism", email: "regular@example.com", overdue_days: 10)
+
+      result = CustomerOverdue.call.find { |r| r[:subject_id] == "metabolism" }
+
+      assert result.present?
+      assert_equal 2, result[:metadata][:total_count]
+      assert_equal 1, result[:metadata][:high_value_count]
+      assert_equal 1, result[:metadata][:general_count]
+      assert_equal "warning", result[:severity], "presence of a high-value customer bumps severity to warning"
+    end
+
+    test "no high-value customer keeps severity at opportunity, not critical" do
+      customer(email: "regular@example.com", membership_level: "一般")
+      track(product_key: "metabolism", email: "regular@example.com", overdue_days: 10)
+
+      result = CustomerOverdue.call.find { |r| r[:subject_id] == "metabolism" }
+      assert_equal "opportunity", result[:severity]
+    end
+
+    test "glutathione is excluded entirely regardless of overdue rows" do
+      customer(email: "a@example.com")
+      track(product_key: "glutathione", email: "a@example.com", overdue_days: 10)
+
+      assert_empty CustomerOverdue.call.select { |r| r[:subject_id] == "glutathione" }
+    end
+
+    test "qingxian and simi are tagged as estimated-cycle in metadata and title" do
+      customer(email: "a@example.com")
+      track(product_key: "qingxian", email: "a@example.com", overdue_days: 10)
+
+      result = CustomerOverdue.call.find { |r| r[:subject_id] == "qingxian" }
+      assert result[:metadata][:estimated_cycle]
+      assert_includes result[:title], "估計值"
+    end
+
+    test "a product with no rows outside the excluded list is not tagged estimated-cycle" do
+      customer(email: "a@example.com")
+      track(product_key: "metabolism", email: "a@example.com", overdue_days: 10)
+
+      result = CustomerOverdue.call.find { |r| r[:subject_id] == "metabolism" }
+      assert_not result[:metadata][:estimated_cycle]
+    end
+
+    test "discontinued product is excluded from customer_overdue" do
+      CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "discontinued")
+      customer(email: "a@example.com")
+      track(product_key: "metabolism", email: "a@example.com", overdue_days: 10)
+
+      assert_empty CustomerOverdue.call.select { |r| r[:subject_id] == "metabolism" }
+    end
+
+    test "no email or phone appears in metadata (PII safety)" do
+      customer(email: "leak-me@example.com")
+      track(product_key: "metabolism", email: "leak-me@example.com", overdue_days: 10)
+
+      result = CustomerOverdue.call.find { |r| r[:subject_id] == "metabolism" }
+      assert_not_includes result[:metadata].to_s, "leak-me@example.com"
+    end
+
+    test "no rows produces no card" do
+      assert_empty CustomerOverdue.call
+    end
+  end
+end
