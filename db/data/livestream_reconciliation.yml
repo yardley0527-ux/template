@@ -1,0 +1,917 @@
+# 直播場次 reconciliation（方案 B PR1）— livestreams:backfill 的唯一資料來源
+#
+# 產出：2026-07-21 Phase 0 稽核（45 場逐筆對照，正式站 read-only 查核）
+# 裁定：2026-07-21 使用者核准 — 日期修正（2025-11-22→11-21、2025-12-07→12-05）、
+#       同義名（NMN白藜蘆醇=美白、B群/B群+C鋅鎂=全能、瘦身粉=清纖粉）、
+#       塑身褲/V-Lift美容儀/酵素 不建 crm_product（列 unmapped_products）
+#
+# reported_* 規則（不得任選 AE/LE）：
+#   兩套一致 → value 回填，source: consensus
+#   僅一套有值且證據合理 → 回填並記實際來源（all_events / live_events）
+#   衝突且無原始報表 → value: null，原值保留於 raw 與 conflict_note
+#   人工核對 Shopline 後台後 → 填值、source: shopline_backend、confidence: confirmed
+# source 列舉：shopline_backend | consensus | all_events | live_events | manual | null
+# confidence 列舉：confirmed（有原始報表）| probable（雙套一致或單套合理）| null
+#
+# product_keys＝「本場銷售產品」：可付費購買（含主打、搭配、組合成分、加購），不含純贈品。
+# 本檔不含任何顧客個資。
+
+- date: 2024-08-09
+  original_date: null
+  title: "品牌之夜：全能、薑黃、代謝錠"
+  product_keys: [omnipotent, turmeric, metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: 127
+    source: all_events
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 登記為 0（缺值）"
+  raw:
+    all_events: { note: "B群+C鋅鎂、薑黃、代謝", orders: 127, revenue: 0 }
+    live_events: null
+    calendar: null
+
+- date: 2024-09-13
+  original_date: null
+  title: "品牌之夜：美白"
+  product_keys: [whitening]
+  unmapped_products: []
+  reported_orders:
+    value: 315
+    source: all_events
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 2992194
+    source: all_events
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "NMN白藜蘆醇", orders: 315, revenue: 2992194 }
+    live_events: null
+    calendar: null
+
+- date: 2024-10-14
+  original_date: null
+  title: "品牌之夜：全能"
+  product_keys: [omnipotent]
+  unmapped_products: []
+  reported_orders:
+    value: 245
+    source: all_events
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 登記為 0（缺值）"
+  raw:
+    all_events: { note: "B群+C鋅鎂", orders: 245, revenue: 0 }
+    live_events: null
+    calendar: null
+
+- date: 2024-11-08
+  original_date: null
+  title: "品牌之夜：雙11套組"
+  product_keys: [whitening, omnipotent, metabolism, turmeric]
+  unmapped_products: []
+  reported_orders:
+    value: 280
+    source: all_events
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 登記為 0（缺值）"
+  raw:
+    all_events: { note: "雙11套組", orders: 280, revenue: 0 }
+    live_events: null
+    calendar: null
+
+- date: 2024-11-22
+  original_date: null
+  title: "品牌之夜：家庭代謝"
+  product_keys: [metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: 312
+    source: all_events
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 登記為 0（缺值）"
+  raw:
+    all_events: { note: "代謝錠", orders: 312, revenue: 0 }
+    live_events: null
+    calendar: null
+
+- date: 2024-12-13
+  original_date: null
+  title: "品牌之夜：薑黃"
+  product_keys: [turmeric]
+  unmapped_products: []
+  reported_orders:
+    value: 323
+    source: all_events
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 登記為 0（缺值）"
+  raw:
+    all_events: { note: "薑黃", orders: 323, revenue: 0 }
+    live_events: null
+    calendar: null
+
+- date: 2024-12-23
+  original_date: null
+  title: "品牌之夜：美白、酵素"
+  product_keys: [whitening]
+  unmapped_products: ["酵素"]
+  reported_orders:
+    value: 134
+    source: all_events
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1045098
+    source: all_events
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "NMN白藜蘆醇", orders: 134, revenue: 1045098 }
+    live_events: null
+    calendar: null
+
+- date: 2025-01-05
+  original_date: null
+  title: "品牌之夜：膠原飲"
+  product_keys: [collagen]
+  unmapped_products: []
+  reported_orders:
+    value: 626
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 5,229,296 vs LE 5,242,335（差 13,039），無原始報表可核"
+  raw:
+    all_events: { note: "膠原飲", orders: 626, revenue: 5229296 }
+    live_events: { name: "一月品牌之夜", products: "膠原", orders: 626, revenue: 5242335 }
+    calendar: null
+
+- date: 2025-01-13
+  original_date: null
+  title: "品牌之夜：V-Lift美容儀"
+  product_keys: [metabolism, omnipotent]
+  unmapped_products: ["V-Lift美容儀"]
+  reported_orders:
+    value: 531
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 4465615
+    source: live_events
+    confidence: probable
+    conflict_note: "AE 登記為 0（缺值），採 live_events 值"
+  raw:
+    all_events: { note: "V-Lift美容儀", orders: 531, revenue: 0 }
+    live_events: { name: "一月品牌之夜", products: "美容儀 全品項", orders: 531, revenue: 4465615 }
+    calendar: null
+
+- date: 2025-02-20
+  original_date: null
+  title: "品牌之夜：美白+膠原"
+  product_keys: [whitening, collagen]
+  unmapped_products: []
+  reported_orders:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 134 vs LE 155，無原始報表可核"
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 806,262 vs LE 908,177，無原始報表可核"
+  raw:
+    all_events: { note: "NMN+膠原", orders: 134, revenue: 806262 }
+    live_events: { name: "二月品牌之夜", products: "膠原、美白", orders: 155, revenue: 908177 }
+    calendar: null
+
+- date: 2025-03-10
+  original_date: null
+  title: "品牌之夜：薑黃+全能"
+  product_keys: [turmeric, omnipotent]
+  unmapped_products: []
+  reported_orders:
+    value: 209
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 1,329,698 vs LE 1,329,689（尾數對調），無原始報表可核"
+  raw:
+    all_events: { note: "薑黃+B群+全能", orders: 209, revenue: 1329698 }
+    live_events: { name: "三月品牌之夜", products: "B群", orders: 209, revenue: 1329689 }
+    calendar: null
+
+- date: 2025-03-21
+  original_date: null
+  title: "品牌之夜：蝦紅素"
+  product_keys: [astaxanthin]
+  unmapped_products: []
+  reported_orders:
+    value: 225
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1783597
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "蝦紅素", orders: 225, revenue: 1783597 }
+    live_events: { name: "三月品牌之夜", products: "蝦紅素", orders: 225, revenue: 1783597 }
+    calendar: null
+
+- date: 2025-04-11
+  original_date: null
+  title: "品牌之夜：膠原飲"
+  product_keys: [collagen, turmeric, whitening]
+  unmapped_products: []
+  reported_orders:
+    value: 391
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 5909289
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "膠原飲", orders: 391, revenue: 5909289 }
+    live_events: { name: "四月品牌之夜", products: "膠原", orders: 391, revenue: 5909289 }
+    calendar: null
+
+- date: 2025-04-22
+  original_date: null
+  title: "品牌之夜：代謝錠"
+  product_keys: [metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: 415
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 4243944
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "代謝錠", orders: 415, revenue: 4243944 }
+    live_events: { name: "四月品牌之夜", products: "代謝錠", orders: 415, revenue: 4243944 }
+    calendar: null
+
+- date: 2025-05-09
+  original_date: null
+  title: "品牌之夜：全能、塑身褲"
+  product_keys: [omnipotent]
+  unmapped_products: ["塑身褲"]
+  reported_orders:
+    value: 215
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 2602549
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "B群+全能", orders: 215, revenue: 2602549 }
+    live_events: { name: "五月品牌之夜", products: "B群、塑身褲", orders: 215, revenue: 2602549 }
+    calendar: null
+
+- date: 2025-05-20
+  original_date: null
+  title: "品牌之夜：蝦紅素"
+  product_keys: [astaxanthin]
+  unmapped_products: []
+  reported_orders:
+    value: 108
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1004215
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "蝦紅素", orders: 108, revenue: 1004215 }
+    live_events: { name: "五月品牌之夜", products: "蝦紅素", orders: 108, revenue: 1004215 }
+    calendar: null
+
+- date: 2025-06-09
+  original_date: null
+  title: "品牌之夜：美白"
+  product_keys: [whitening]
+  unmapped_products: []
+  reported_orders:
+    value: 99
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1150864
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "NMN白藜蘆醇", orders: 99, revenue: 1150864 }
+    live_events: { name: "六月品牌之夜", products: "美白", orders: 99, revenue: 1150864 }
+    calendar: null
+
+- date: 2025-06-20
+  original_date: null
+  title: "品牌之夜：魚油"
+  product_keys: [fish_oil]
+  unmapped_products: []
+  reported_orders:
+    value: 164
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1615396
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "魚油", orders: 164, revenue: 1615396 }
+    live_events: { name: "六月品牌之夜", products: "魚油、健康食品", orders: 164, revenue: 1615396 }
+    calendar: null
+
+- date: 2025-07-04
+  original_date: null
+  title: "品牌之夜：薑黃+代謝"
+  product_keys: [turmeric, metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: 130
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1248037
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "薑黃+代謝", orders: 130, revenue: 1248037 }
+    live_events: { name: "七月品牌之夜", products: "代謝、薑黃", orders: 130, revenue: 1248037 }
+    calendar: null
+
+- date: 2025-07-22
+  original_date: null
+  title: "品牌之夜：薑黃+代謝"
+  product_keys: [turmeric, metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: 86
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 697312
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "薑黃+代謝", orders: 86, revenue: 697312 }
+    live_events: { name: "七月品牌之夜", products: "代謝、薑黃", orders: 86, revenue: 697312 }
+    calendar: null
+
+- date: 2025-08-04
+  original_date: null
+  title: "品牌之夜：清纖粉+面膜"
+  product_keys: [cleanse_powder, mask]
+  unmapped_products: []
+  reported_orders:
+    value: 234
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 2341288
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "清纖粉+面膜", orders: 234, revenue: 2341288 }
+    live_events: { name: "八月品牌之夜", products: "清纖粉、面膜", orders: 234, revenue: 2341288 }
+    calendar: null
+
+- date: 2025-08-21
+  original_date: null
+  title: "品牌之夜：膠原飲"
+  product_keys: [collagen, cleanse_powder]
+  unmapped_products: []
+  reported_orders:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 108 vs LE 94（營收相同），無原始報表可核"
+  reported_revenue:
+    value: 1327230
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "膠原飲", orders: 108, revenue: 1327230 }
+    live_events: { name: "八月品牌之夜", products: "膠原", orders: 94, revenue: 1327230 }
+    calendar: null
+
+- date: 2025-09-04
+  original_date: null
+  title: "品牌之夜：全能+美白"
+  product_keys: [omnipotent, whitening]
+  unmapped_products: []
+  reported_orders:
+    value: 129
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1559607
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "B群+全能+NMN", orders: 129, revenue: 1559607 }
+    live_events: { name: "九月品牌之夜", products: "美白、B群", orders: 129, revenue: 1559607 }
+    calendar: null
+
+- date: 2025-09-15
+  original_date: null
+  title: "品牌之夜：私密粉"
+  product_keys: [intimate_powder]
+  unmapped_products: []
+  reported_orders:
+    value: 107
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 966143
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "私密粉", orders: 107, revenue: 966143 }
+    live_events: { name: "九月品牌之夜", products: "私密處", orders: 107, revenue: 966143 }
+    calendar: null
+
+- date: 2025-10-09
+  original_date: null
+  title: "品牌之夜：代謝錠"
+  product_keys: [metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: 204
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 2,156,712 vs LE 2,516,712（15↔51 對調，差 36 萬）— P0 待 Shopline 後台核對"
+  raw:
+    all_events: { note: "代謝錠", orders: 204, revenue: 2156712 }
+    live_events: { name: "十月品牌之夜", products: "代謝錠", orders: 204, revenue: 2516712 }
+    calendar: null
+
+- date: 2025-10-20
+  original_date: null
+  title: "品牌之夜：蝦紅素"
+  product_keys: [astaxanthin]
+  unmapped_products: []
+  reported_orders:
+    value: 59
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 582696
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "蝦紅素", orders: 59, revenue: 582696 }
+    live_events: { name: "十月品牌之夜", products: "蝦紅素", orders: 59, revenue: 582696 }
+    calendar: null
+
+- date: 2025-11-07
+  original_date: null
+  title: "品牌之夜：薑黃"
+  product_keys: [turmeric]
+  unmapped_products: []
+  reported_orders:
+    value: 177
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 2380269
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "薑黃", orders: 177, revenue: 2380269 }
+    live_events: { name: "十一月品牌之夜", products: "薑黃", orders: 177, revenue: 2380269 }
+    calendar: null
+
+- date: 2025-11-21
+  original_date: 2025-11-22
+  title: "品牌之夜：魚油"
+  product_keys: [fish_oil, turmeric, metabolism, collagen]
+  unmapped_products: []
+  reported_orders:
+    value: 68
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 1,036,397 vs LE 1,036,399（差 2 元），無原始報表可核"
+  raw:
+    all_events: { note: "魚油（原記 2025-11-22）", orders: 68, revenue: 1036397 }
+    live_events: { name: "十一月品牌之夜", products: "魚油", orders: 68, revenue: 1036399 }
+    calendar: null
+
+- date: 2025-12-05
+  original_date: 2025-12-07
+  title: "品牌之夜：美白"
+  product_keys: [whitening, collagen]
+  unmapped_products: []
+  reported_orders:
+    value: 53
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 623632
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "美白（原記 2025-12-07）", orders: 53, revenue: 623632 }
+    live_events: { name: "十二月品牌之夜", products: "美白", orders: 53, revenue: 623632 }
+    calendar: null
+
+- date: 2025-12-19
+  original_date: null
+  title: "品牌之夜：DK鈣+全能"
+  product_keys: [vitamin_dk_calcium, omnipotent]
+  unmapped_products: []
+  reported_orders:
+    value: 82
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1007664
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "維DK鈣", orders: 82, revenue: 1007664 }
+    live_events: { name: "十二月品牌之夜", products: "維生素D", orders: 82, revenue: 1007664 }
+    calendar: null
+
+- date: 2025-12-24
+  original_date: null
+  title: "品牌之夜：清纖粉"
+  product_keys: [cleanse_powder]
+  unmapped_products: []
+  reported_orders:
+    value: 91
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 822364
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "瘦身粉（=清纖粉）", orders: 91, revenue: 822364 }
+    live_events: { name: "十二月品牌之夜", products: "瘦身粉", orders: 91, revenue: 822364 }
+    calendar: null
+
+- date: 2026-01-09
+  original_date: null
+  title: "品牌之夜：三薑（薑黃、代謝+膠原）"
+  product_keys: [turmeric, metabolism, collagen]
+  unmapped_products: []
+  reported_orders:
+    value: 129
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1452573
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "代謝+膠原、薑黃", orders: 129, revenue: 1452573 }
+    live_events: { name: "一月品牌之夜", products: "薑黃", orders: 129, revenue: 1452573 }
+    calendar: { title: "品牌之夜：三薑" }
+
+- date: 2026-01-23
+  original_date: null
+  title: "品牌之夜：穀胱甘肽"
+  product_keys: [glutathione, metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: 161
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1908734
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "穀胱甘肽", orders: 161, revenue: 1908734 }
+    live_events: { name: "一月品牌之夜", products: "穀胱甘肽", orders: 161, revenue: 1908734 }
+    calendar: { title: "品牌之夜：上錠下液 穀胱甘肽" }
+
+- date: 2026-02-06
+  original_date: null
+  title: "品牌之夜：益生菌"
+  product_keys: [probiotic, metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: 67
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 905036
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "益生菌", orders: 67, revenue: 905036 }
+    live_events: { name: "二月品牌之夜", products: "益生菌", orders: 67, revenue: 905036 }
+    calendar: { title: "品牌之夜：益生菌" }
+
+- date: 2026-02-25
+  original_date: null
+  title: "品牌之夜：薑黃、清纖粉、益生菌、代謝錠"
+  product_keys: [turmeric, cleanse_powder, probiotic, metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: 173
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1391860
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "薑黃、清纖粉、代謝", orders: 173, revenue: 1391860 }
+    live_events: { name: "二月品牌之夜", products: "清纖粉、益生菌、薑黃、代謝錠", orders: 173, revenue: 1391860 }
+    calendar: { title: "品牌之夜：瘦身粉" }
+
+- date: 2026-03-05
+  original_date: null
+  title: "品牌之夜：膠原+益生菌"
+  product_keys: [collagen, probiotic]
+  unmapped_products: []
+  reported_orders:
+    value: 86
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 1034106
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "膠原、益生菌", orders: 86, revenue: 1034106 }
+    live_events: { name: "三月品牌之夜", products: "膠原", orders: 86, revenue: 1034106 }
+    calendar: { title: "品牌之夜：膠原送瘦身粉" }
+
+- date: 2026-03-20
+  original_date: null
+  title: "品牌之夜：全能、私密粉、益生菌"
+  product_keys: [omnipotent, intimate_powder, probiotic, fish_oil, astaxanthin, vitamin_dk_calcium]
+  unmapped_products: []
+  reported_orders:
+    value: 208
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 3480382
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "全能、私密粉、益生菌", orders: 208, revenue: 3480382 }
+    live_events: { name: "三月品牌之夜", products: "B群、私密處、益生菌 +999（蝦、魚、D）", orders: 208, revenue: 3480382 }
+    calendar: { title: "品牌之夜：b群、私密處、益生菌、+999 （蝦、魚、D）" }
+
+- date: 2026-03-27
+  original_date: null
+  title: "品牌之夜：蝦魚D 任選3件"
+  product_keys: [fish_oil, astaxanthin, vitamin_dk_calcium]
+  unmapped_products: []
+  reported_orders:
+    value: 70
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 470191
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "魚油、蝦紅素、維DK鈣", orders: 70, revenue: 470191 }
+    live_events: { name: "三月品牌之夜", products: "蝦、魚、D 3600", orders: 70, revenue: 470191 }
+    calendar: { title: "品牌之夜：蝦、魚、D 3 件3600" }
+
+- date: 2026-04-10
+  original_date: null
+  title: "品牌之夜：薑黃"
+  product_keys: [turmeric, cleanse_powder, intimate_powder, probiotic]
+  unmapped_products: []
+  reported_orders:
+    value: 103
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 1,505,901 vs LE 1,501,901（差 4,000），無原始報表可核"
+  raw:
+    all_events: { note: "薑黃", orders: 103, revenue: 1505901 }
+    live_events: { name: "四月品牌之夜", products: "薑黃", orders: 103, revenue: 1501901 }
+    calendar: { title: "品牌之夜：薑黃" }
+
+- date: 2026-04-24
+  original_date: null
+  title: "品牌之夜：代謝錠+薑黃"
+  product_keys: [metabolism, turmeric]
+  unmapped_products: []
+  reported_orders:
+    value: 77
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 676698
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "代謝錠、薑黃", orders: 77, revenue: 676698 }
+    live_events: { name: "四月品牌之夜", products: "代謝薑黃", orders: 77, revenue: 676698 }
+    calendar: { title: "品牌之夜：代謝" }
+
+- date: 2026-05-08
+  original_date: null
+  title: "母親節特別場：面膜與任選組合"
+  product_keys: [mask, collagen, metabolism, turmeric, astaxanthin, vitamin_dk_calcium, cleanse_powder, intimate_powder, probiotic]
+  unmapped_products: []
+  reported_orders:
+    value: 70
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 633562
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "蝦紅素、維DK鈣、薑黃", orders: 70, revenue: 633562 }
+    live_events: { name: "五月品牌之夜", products: "任選3件 5200", orders: 70, revenue: 633562 }
+    calendar: { title: "品牌之夜：母親節2.0傳明酸外泌體美白面膜" }
+
+- date: 2026-05-22
+  original_date: null
+  title: "品牌之夜：穀胱甘肽+代謝錠"
+  product_keys: [glutathione, metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 165 vs LE 104 — P0 待 Shopline 後台核對"
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "AE 2,263,491 vs LE 1,963,769 — P0 待 Shopline 後台核對"
+  raw:
+    all_events: { note: "穀胱甘肽、代謝錠、清纖粉、益生菌", orders: 165, revenue: 2263491 }
+    live_events: { name: "五月品牌之夜", products: "穀胱甘肽", orders: 104, revenue: 1963769 }
+    calendar: { title: "品牌之夜：穀胱甘肽" }
+
+- date: 2026-06-05
+  original_date: null
+  title: "品牌之夜：全能"
+  product_keys: [omnipotent]
+  unmapped_products: []
+  reported_orders:
+    value: 384
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  reported_revenue:
+    value: 3887274
+    source: consensus
+    confidence: probable
+    conflict_note: null
+  raw:
+    all_events: { note: "全能", orders: 384, revenue: 3887274 }
+    live_events: { name: "六月品牌之夜", products: "全能", orders: 384, revenue: 3887274 }
+    calendar: { title: "品牌之夜：全能" }
+
+- date: 2026-06-25
+  original_date: null
+  title: "品牌之夜：6180 組合（益生菌）"
+  product_keys: [probiotic, intimate_powder, cleanse_powder, metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "無登記來源（AE/LE 皆無此場），待 Shopline 後台數字"
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "無登記來源（AE/LE 皆無此場），待 Shopline 後台數字"
+  raw:
+    all_events: null
+    live_events: null
+    calendar: { title: "品牌之夜：6180 組合" }
+
+- date: 2026-07-17
+  original_date: null
+  title: "品牌之夜：年中慶收單（代謝、清纖粉）"
+  product_keys: [probiotic, intimate_powder, cleanse_powder, metabolism]
+  unmapped_products: []
+  reported_orders:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "無登記來源（AE/LE 皆無此場），待 Shopline 後台數字"
+  reported_revenue:
+    value: null
+    source: null
+    confidence: null
+    conflict_note: "無登記來源（AE/LE 皆無此場），待 Shopline 後台數字"
+  raw:
+    all_events: null
+    live_events: null
+    calendar: { title: "品牌之夜：代謝、清纖粉年中慶收單直播" }
