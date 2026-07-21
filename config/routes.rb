@@ -27,11 +27,12 @@ Rails.application.routes.draw do
                                        constraints: { department: /[^\/]+/ }
   delete "/board_sections/:id", to: "bulletin_notes#destroy_section", as: :board_section
 
-  resources :livestreams, only: [:index, :new, :create, :edit, :update, :destroy] do
+  resources :livestreams, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
     resources :livestream_images, only: [:create, :destroy]
     resources :livestream_products, only: [:create, :update, :destroy]
     resources :livestream_gifts, only: [:create, :update, :destroy]
   end
+  get '/livestream_overview', to: 'livestream_overview#index', as: :livestream_overview
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
   resources :users, only: [:index, :new, :create, :update]
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
