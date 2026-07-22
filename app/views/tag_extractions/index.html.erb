@@ -1,0 +1,64 @@
+<%# app/views/tag_extractions/index.html.erb %>
+<% content_for :page_title, "加Tag名單" %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex justify-content-between align-items-end flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">加Tag名單</h4>
+      <p class="text-muted small mb-0">
+        代謝、全能、清纖、薑黃、膠原蛋白、美白 — 只買過一次的客人，抓出來在 Omnichat 上加 tag 用
+      </p>
+    </div>
+    <%= form_with url: tag_extractions_path, method: :post do %>
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fal fa-download me-1"></i>
+        抓取下一批（<%= @next_range_start.strftime("%Y/%-m/%-d") %> ~ <%= @next_range_end.strftime("%Y/%-m/%-d") %>）
+      </button>
+    <% end %>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0" style="font-size:0.88rem;">
+      <thead style="background-color:#4a4a4a; color:white;">
+        <tr>
+          <th class="ps-3" style="width:160px;">期間</th>
+          <th class="text-end" style="width:90px;">人數</th>
+          <th>各系列小計</th>
+          <th style="width:140px;">抓取時間</th>
+          <th style="width:80px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @runs.each do |run| %>
+          <tr>
+            <td class="ps-3 text-nowrap">
+              <%= run.range_start.strftime("%Y/%-m/%-d") %> ~ <%= run.range_end.strftime("%Y/%-m/%-d") %>
+            </td>
+            <td class="text-end fw-bold"><%= run.customer_count %></td>
+            <td>
+              <% TagExtractionRun::CATEGORIES.each_key do |category| %>
+                <span class="badge bg-light text-dark border me-1">
+                  <%= category %> <%= run.category_counts[category].to_i %>
+                </span>
+              <% end %>
+            </td>
+            <td class="text-nowrap text-muted"><%= run.created_at.strftime("%Y/%-m/%-d %H:%M") %></td>
+            <td class="text-end pe-3">
+              <%= link_to "下載CSV", export_tag_extraction_path(run), class: "btn btn-sm btn-outline-primary" %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @runs.empty? %>
+          <tr>
+            <td colspan="5" class="text-center py-5 text-muted">
+              <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+              目前還沒有抓取紀錄，點右上角「抓取下一批」開始。
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

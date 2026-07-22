@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_22_060100) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_22_080000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1023,6 +1023,28 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_22_060100) do
     t.index ["source", "created_at"], name: "index_sync_runs_on_source_and_created_at"
   end
 
+  create_table "tag_extraction_recipients", force: :cascade do |t|
+    t.bigint "tag_extraction_run_id", null: false
+    t.string "category", null: false
+    t.string "email", null: false
+    t.string "full_name"
+    t.string "line_id"
+    t.string "purchase_month"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tag_extraction_run_id", "category", "email"], name: "index_tag_extraction_recipients_on_run_category_email", unique: true
+    t.index ["tag_extraction_run_id"], name: "index_tag_extraction_recipients_on_tag_extraction_run_id"
+  end
+
+  create_table "tag_extraction_runs", force: :cascade do |t|
+    t.date "range_start", null: false
+    t.date "range_end", null: false
+    t.integer "customer_count", default: 0, null: false
+    t.jsonb "category_counts", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "threads_analyses", force: :cascade do |t|
     t.date "fetched_on", null: false
     t.text "ai_summary"
@@ -1125,5 +1147,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_22_060100) do
   add_foreign_key "shopline_customer_health_assessments", "shopline_customers"
   add_foreign_key "shopline_customer_health_questionnaires", "shopline_customers"
   add_foreign_key "shopline_orders", "shopline_customers"
+  add_foreign_key "tag_extraction_recipients", "tag_extraction_runs"
   add_foreign_key "users", "roles"
 end
