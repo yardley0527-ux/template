@@ -100,9 +100,9 @@ class SidebarEntry
           ]
         },
         {
-          group_title: "加Tag名單",
+          group_title: "Omnichat 加 tag 名單",
           children: [
-            { href: tag_extractions_path, title: "只買一次加Tag名單", icon: "fa-tag" },
+            { href: tag_extractions_path, title: "Omnichat 加 tag 名單", icon: "fa-tag" },
           ]
         },
         {
