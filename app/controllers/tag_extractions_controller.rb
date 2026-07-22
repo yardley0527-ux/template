@@ -32,7 +32,7 @@ class TagExtractionsController < ApplicationController
     csv = CSV.generate(encoding: "UTF-8") do |rows|
       rows << ["姓名", "購買產品", "LINE ID", "Email", "購買年月"]
       run.recipients.order(:category, :purchase_month).each do |r|
-        rows << [r.full_name, r.category, r.line_id, r.email, r.purchase_month]
+        rows << [r.full_name, r.product_name.presence || r.category, r.line_id, r.email, r.purchase_month]
       end
     end
 

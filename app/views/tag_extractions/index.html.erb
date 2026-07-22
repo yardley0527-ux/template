@@ -6,7 +6,7 @@
     <div>
       <h4 class="fw-bold mb-0">加Tag名單</h4>
       <p class="text-muted small mb-0">
-        代謝、全能、清纖、薑黃、膠原蛋白、美白 — 只買過一次的客人，抓出來在 Omnichat 上加 tag 用
+        代謝、全能、清纖、薑黃、膠原蛋白、美白 — 只買過一次的客人；新客 — 第一次消費的新客，抓出來在 Omnichat 上加 tag 用
       </p>
     </div>
     <%= form_with url: tag_extractions_path, method: :post do %>
@@ -38,7 +38,7 @@
             </td>
             <td class="text-end fw-bold"><%= run.customer_count %></td>
             <td>
-              <% TagExtractionRun::CATEGORIES.each_key do |category| %>
+              <% TagExtractionRun::ALL_CATEGORIES.each do |category| %>
                 <span class="badge bg-light text-dark border me-1">
                   <%= category %> <%= run.category_counts[category].to_i %>
                 </span>

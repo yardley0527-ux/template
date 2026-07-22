@@ -14,6 +14,11 @@ class TagExtractionRun < ApplicationRecord
     "美白" => "%美白%"
   }.freeze
 
+  # 不是特定系列，而是「全店史上第一筆已付款訂單」落在區間內的新客，走獨立邏輯。
+  NEW_CUSTOMER_CATEGORY = "新客"
+
+  ALL_CATEGORIES = (CATEGORIES.keys + [NEW_CUSTOMER_CATEGORY]).freeze
+
   has_many :recipients, class_name: "TagExtractionRecipient", dependent: :destroy
 
   validates :range_start, :range_end, presence: true

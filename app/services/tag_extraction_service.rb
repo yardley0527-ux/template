@@ -17,6 +17,7 @@ class TagExtractionService
 
   def call
     rows = TagExtractionRun::CATEGORIES.flat_map { |category, pattern| fetch(category, pattern) }
+    rows += fetch_new_customers
 
     TagExtractionRun.transaction do
       run = TagExtractionRun.create!(
@@ -34,6 +35,7 @@ class TagExtractionService
           full_name: r["full_name"],
           line_id: r["line_id"],
           purchase_month: r["purchase_month"],
+          product_name: r["product_name"],
           created_at: now,
           updated_at: now
         }
@@ -44,6 +46,44 @@ class TagExtractionService
   end
 
   private
+
+  # 全店史上第一筆已付款訂單（不限系列）落在區間內的新客；
+  # 「購買產品」欄位顯示首購訂單實際的 product_name，不是固定分類標籤。
+  def fetch_new_customers
+    sql = <<~SQL
+      WITH first_order AS (
+        SELECT DISTINCT ON (LOWER(TRIM(email)))
+          LOWER(TRIM(email)) AS email, order_number, order_date::date AS order_date
+        FROM shopline_orders
+        WHERE payment_status = '已付款' AND email IS NOT NULL
+        ORDER BY LOWER(TRIM(email)), order_date ASC, order_number ASC
+      ),
+      qualifying AS (
+        SELECT * FROM first_order
+        WHERE order_date BETWEEN #{connection.quote(@range_start)} AND #{connection.quote(@range_end)}
+      ),
+      products AS (
+        SELECT q.email, STRING_AGG(DISTINCT o.product_name, ' / ') AS product_name
+        FROM qualifying q
+        JOIN shopline_orders o
+          ON o.order_number = q.order_number AND LOWER(TRIM(o.email)) = q.email
+        WHERE o.payment_status = '已付款'
+        GROUP BY q.email
+      )
+      SELECT
+        q.email,
+        COALESCE(sc.full_name, '') AS full_name,
+        COALESCE(sc.line_id, '') AS line_id,
+        p.product_name,
+        TO_CHAR(q.order_date, 'YYYY/MM') AS purchase_month
+      FROM qualifying q
+      JOIN products p ON p.email = q.email
+      LEFT JOIN shopline_customers sc ON LOWER(TRIM(sc.email)) = q.email
+      ORDER BY q.order_date
+    SQL
+
+    connection.select_all(sql).to_a.each { |r| r["category"] = TagExtractionRun::NEW_CUSTOMER_CATEGORY }
+  end
 
   def fetch(category, pattern)
     sql = <<~SQL
