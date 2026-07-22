@@ -18,12 +18,21 @@
     #faqImageLightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; }
     #faqImageLightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 4px 32px rgba(0,0,0,0.5); }
 
-    .faq-category-heading { display: none; font-weight: 600; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #dee2e6; }
+    .faq-category-heading { display: none; font-weight: 600; margin: 16px 0 8px; padding: 3px 10px 3px 8px; border-left: 3px solid hsl(var(--h) 62% 44%); background: hsl(var(--h) 55% 95%); color: hsl(var(--h) 65% 32%); border-radius: 0 4px 4px 0; }
     .faq-category-heading:first-of-type { margin-top: 0; }
     .faq-search-mode #faqTabs { display: none; }
     .faq-search-mode .tab-pane { opacity: 1 !important; }
-    .faq-search-mode .faq-category-heading { display: block; }
+    .faq-search-mode .faq-category-heading { display: inline-flex; align-items: center; }
     .faq-search-mode .faq-add-btn { display: none; }
+
+    /* ── per-category color (hue set inline per tab/card, see FaqCategory#hue) ── */
+    .faq-cat-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: hsl(var(--h) 62% 44%); margin-right: 6px; flex-shrink: 0; }
+    #faqTabs { flex-wrap: wrap; overflow-x: visible; }
+    #faqTabs .nav-link { border-bottom: 3px solid hsl(var(--h) 55% 88%); }
+    #faqTabs .nav-link.active { background: hsl(var(--h) 55% 95%); border-bottom-color: hsl(var(--h) 62% 44%); }
+    #faqTabs .faq-cat-badge { background: hsl(var(--h) 55% 90%); color: hsl(var(--h) 65% 32%); }
+    #faqTabs .nav-link.active .faq-cat-badge { background: hsl(var(--h) 62% 44%); color: #fff; }
+    .faq-card { border-left: 4px solid hsl(var(--h) 62% 44%); }
   </style>
 <% end %>
 
@@ -49,15 +58,16 @@
     </div>
     <p id="faqSearchSummary" class="text-muted small mb-2"></p>
 
-    <ul class="nav nav-tabs flex-nowrap" id="faqTabs" role="tablist" style="overflow-x:auto;flex-wrap:nowrap;">
+    <ul class="nav nav-tabs" id="faqTabs" role="tablist">
       <% @categories.each_with_index do |cat, i| %>
         <li class="nav-item" data-category-id="<%= cat.id %>" style="white-space:nowrap;">
-          <a class="nav-link <%= 'active' if i == 0 %> d-flex align-items-center" data-toggle="tab" href="#panel-<%= cat.id %>" role="tab">
+          <a class="nav-link <%= 'active' if i == 0 %> d-flex align-items-center" data-toggle="tab" href="#panel-<%= cat.id %>" role="tab" style="--h: <%= FaqCategory.hue_for_index(i) %>">
             <span class="faq-tab-drag-handle mr-1 text-muted" title="拖拉排序分類"><i class="fal fa-grip-vertical"></i></span>
+            <span class="faq-cat-dot"></span>
             <input type="text" class="faq-tab-rename" value="<%= h(cat.name) %>"
                    onclick="event.preventDefault(); event.stopPropagation();"
                    onblur="renameCategory(<%= cat.id %>, this)">
-            <span class="badge badge-light ml-1"><%= cat.faqs.size %></span>
+            <span class="badge faq-cat-badge ml-1"><%= cat.faqs.size %></span>
             <button type="button" class="btn btn-xs btn-link text-danger p-0 ml-1" title="刪除分類"
                     onclick="event.preventDefault(); event.stopPropagation(); deleteCategory(<%= cat.id %>, this)">
               <i class="fal fa-trash"></i>
@@ -78,7 +88,7 @@
           </button>
           <div class="faq-list" data-category-id="<%= cat.id %>">
             <% cat.faqs.each do |faq| %>
-              <%= render 'faq_card', faq: faq %>
+              <%= render 'faq_card', faq: faq, hue: FaqCategory.hue_for_index(i) %>
             <% end %>
           </div>
           <button type="button" class="btn btn-sm btn-outline-secondary mt-2 faq-add-btn" data-category-id="<%= cat.id %>" onclick="addFaq(this)">
@@ -102,6 +112,11 @@
 <script>
 var CSRF = document.querySelector('meta[name="csrf-token"]').content;
 
+// Mirrors FaqCategory.hue_for_index — keep formulas in sync.
+function categoryHue(index) {
+  return (index * 30 + 12) % 360;
+}
+
 // ─── Category CRUD ──────────────────────────────────────────────────
 function addCategory(e) {
   e.preventDefault();
@@ -115,15 +130,19 @@ function addCategory(e) {
     var tabs = document.getElementById('faqTabs');
     var addTab = tabs.lastElementChild;
 
+    var newIndex = tabs.querySelectorAll('li[data-category-id]').length;
+    var hue = categoryHue(newIndex);
+
     var li = document.createElement('li');
     li.className = 'nav-item';
     li.dataset.categoryId = data.id;
     li.style.whiteSpace = 'nowrap';
-    li.innerHTML = '<a class="nav-link d-flex align-items-center" data-toggle="tab" href="#panel-' + data.id + '" role="tab">' +
+    li.innerHTML = '<a class="nav-link d-flex align-items-center" data-toggle="tab" href="#panel-' + data.id + '" role="tab" style="--h: ' + hue + '">' +
       '<span class="faq-tab-drag-handle mr-1 text-muted" title="拖拉排序分類"><i class="fal fa-grip-vertical"></i></span>' +
+      '<span class="faq-cat-dot"></span>' +
       '<input type="text" class="faq-tab-rename" value="' + escapeHtml(data.name) + '" ' +
       'onclick="event.preventDefault(); event.stopPropagation();" onblur="renameCategory(' + data.id + ', this)">' +
-      '<span class="badge badge-light ml-1">0</span>' +
+      '<span class="badge faq-cat-badge ml-1">0</span>' +
       '<button type="button" class="btn btn-xs btn-link text-danger p-0 ml-1" title="刪除分類" ' +
       'onclick="event.preventDefault(); event.stopPropagation(); deleteCategory(' + data.id + ', this)"><i class="fal fa-trash"></i></button></a>';
     tabs.insertBefore(li, addTab);
@@ -353,8 +372,10 @@ function performSearch(query) {
   var totalMatches = 0;
   document.querySelectorAll('.faq-list').forEach(function(list) {
     var categoryId = list.dataset.categoryId;
-    var tabInput = document.querySelector('#faqTabs li[data-category-id="' + categoryId + '"] .faq-tab-rename');
+    var tabLink = document.querySelector('#faqTabs li[data-category-id="' + categoryId + '"] a');
+    var tabInput = tabLink ? tabLink.querySelector('.faq-tab-rename') : null;
     var categoryName = tabInput ? tabInput.value : '';
+    var hue = tabLink ? tabLink.style.getPropertyValue('--h') : 0;
     var pane = list.closest('.tab-pane');
 
     var visibleCount = 0;
@@ -371,7 +392,8 @@ function performSearch(query) {
       pane.style.display = 'block';
       var heading = document.createElement('div');
       heading.className = 'faq-category-heading';
-      heading.textContent = categoryName + '（' + visibleCount + '）';
+      heading.style.setProperty('--h', hue);
+      heading.innerHTML = '<span class="faq-cat-dot"></span>' + escapeHtml(categoryName) + '（' + visibleCount + '）';
       list.parentNode.insertBefore(heading, list);
     } else {
       pane.style.display = 'none';

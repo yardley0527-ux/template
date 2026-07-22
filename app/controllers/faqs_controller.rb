@@ -43,6 +43,6 @@ class FaqsController < ApplicationController
   end
 
   def render_card(faq)
-    render_to_string(partial: "faqs/faq_card", locals: { faq: faq })
+    render_to_string(partial: "faqs/faq_card", locals: { faq: faq, hue: faq.faq_category.hue })
   end
 end

@@ -1,4 +1,4 @@
-<div class="faq-card" data-id="<%= faq.id %>">
+<div class="faq-card" data-id="<%= faq.id %>" style="--h: <%= local_assigns[:hue] || faq.faq_category.hue %>">
   <div class="d-flex align-items-start">
     <span class="faq-drag-handle text-muted mr-2 mt-1" style="font-size:1.1rem;" title="拖拉排序">
       <i class="fal fa-grip-vertical"></i>
