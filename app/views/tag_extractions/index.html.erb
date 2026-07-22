@@ -23,7 +23,8 @@
     <table class="table align-middle mb-0" style="font-size:0.88rem;">
       <thead style="background-color:#4a4a4a; color:white;">
         <tr>
-          <th class="ps-3" style="width:160px;">期間</th>
+          <th class="ps-3" style="width:220px;">名單</th>
+          <th style="width:160px;">期間</th>
           <th class="text-end" style="width:90px;">人數</th>
           <th>各系列小計</th>
           <th style="width:140px;">抓取時間</th>
@@ -32,13 +33,15 @@
       </thead>
       <tbody>
         <% @runs.each do |run| %>
+          <% covered = TagExtractionRun::ALL_CATEGORIES.select { |c| run.category_counts.key?(c) } %>
           <tr>
-            <td class="ps-3 text-nowrap">
+            <td class="ps-3 fw-semibold"><%= covered.join("、") %></td>
+            <td class="text-nowrap">
               <%= run.range_start.strftime("%Y/%-m/%-d") %> ~ <%= run.range_end.strftime("%Y/%-m/%-d") %>
             </td>
             <td class="text-end fw-bold"><%= run.customer_count %></td>
             <td>
-              <% TagExtractionRun::ALL_CATEGORIES.each do |category| %>
+              <% covered.each do |category| %>
                 <span class="badge bg-light text-dark border me-1">
                   <%= category %> <%= run.category_counts[category].to_i %>
                 </span>
@@ -52,7 +55,7 @@
         <% end %>
         <% if @runs.empty? %>
           <tr>
-            <td colspan="5" class="text-center py-5 text-muted">
+            <td colspan="6" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
               目前還沒有抓取紀錄，點右上角「抓取下一批」開始。
             </td>
