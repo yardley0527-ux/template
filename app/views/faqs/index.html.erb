@@ -17,6 +17,13 @@
     .faq-tab-rename { border: none; background: transparent; padding: 0; width: 6em; }
     #faqImageLightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; align-items: center; justify-content: center; }
     #faqImageLightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 4px 32px rgba(0,0,0,0.5); }
+
+    .faq-category-heading { display: none; font-weight: 600; margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #dee2e6; }
+    .faq-category-heading:first-of-type { margin-top: 0; }
+    .faq-search-mode #faqTabs { display: none; }
+    .faq-search-mode .tab-pane { opacity: 1 !important; }
+    .faq-search-mode .faq-category-heading { display: block; }
+    .faq-search-mode .faq-list ~ button { display: none; }
   </style>
 <% end %>
 
@@ -29,6 +36,19 @@
 
 <div class="row">
   <div class="col-12">
+    <div class="input-group mb-3" style="max-width:420px;">
+      <div class="input-group-prepend">
+        <span class="input-group-text bg-white"><i class="fal fa-search"></i></span>
+      </div>
+      <input type="text" id="faqSearchInput" class="form-control" placeholder="搜尋問題或答案關鍵字..." oninput="performSearch(this.value)">
+      <div class="input-group-append">
+        <button type="button" class="btn btn-outline-secondary" id="faqSearchClear" onclick="document.getElementById('faqSearchInput').value=''; performSearch('');" title="清除搜尋">
+          <i class="fal fa-times"></i>
+        </button>
+      </div>
+    </div>
+    <p id="faqSearchSummary" class="text-muted small mb-2"></p>
+
     <ul class="nav nav-tabs flex-nowrap" id="faqTabs" role="tablist" style="overflow-x:auto;flex-wrap:nowrap;">
       <% @categories.each_with_index do |cat, i| %>
         <li class="nav-item" data-category-id="<%= cat.id %>" style="white-space:nowrap;">
@@ -289,6 +309,56 @@ function updateFaqCard(faqId, html) {
   var newCard = tmp.firstElementChild;
   card.replaceWith(newCard);
   initFaqSortables();
+}
+
+// ─── Search ─────────────────────────────────────────────────────────
+function performSearch(query) {
+  var trimmed = query.trim().toLowerCase();
+  var summary = document.getElementById('faqSearchSummary');
+
+  document.querySelectorAll('.faq-category-heading').forEach(function(h) { h.remove(); });
+
+  if (!trimmed) {
+    document.body.classList.remove('faq-search-mode');
+    document.querySelectorAll('.faq-card').forEach(function(c) { c.style.display = ''; });
+    document.querySelectorAll('.tab-pane').forEach(function(p) { p.style.display = ''; });
+    summary.textContent = '';
+    return;
+  }
+
+  document.body.classList.add('faq-search-mode');
+
+  var totalMatches = 0;
+  document.querySelectorAll('.faq-list').forEach(function(list) {
+    var categoryId = list.dataset.categoryId;
+    var tabInput = document.querySelector('#faqTabs li[data-category-id="' + categoryId + '"] .faq-tab-rename');
+    var categoryName = tabInput ? tabInput.value : '';
+    var pane = list.closest('.tab-pane');
+
+    var visibleCount = 0;
+    list.querySelectorAll('.faq-card').forEach(function(card) {
+      var q = (card.querySelector('.faq-question-input').value || '').toLowerCase();
+      var a = (card.querySelector('.faq-answer-textarea').value || '').toLowerCase();
+      var match = q.indexOf(trimmed) !== -1 || a.indexOf(trimmed) !== -1;
+      card.style.display = match ? '' : 'none';
+      if (match) visibleCount++;
+    });
+    totalMatches += visibleCount;
+
+    if (visibleCount > 0) {
+      pane.style.display = 'block';
+      var heading = document.createElement('div');
+      heading.className = 'faq-category-heading';
+      heading.textContent = categoryName + '（' + visibleCount + '）';
+      list.parentNode.insertBefore(heading, list);
+    } else {
+      pane.style.display = 'none';
+    }
+  });
+
+  summary.textContent = totalMatches > 0
+    ? ('共找到 ' + totalMatches + ' 筆符合「' + query.trim() + '」的問題')
+    : ('沒有符合「' + query.trim() + '」的問題');
 }
 
 // ─── Sortable ────────────────────────────────────────────────────────
