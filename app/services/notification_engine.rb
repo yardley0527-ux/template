@@ -48,6 +48,21 @@ class NotificationEngine
     new.run([category])
   end
 
+  def self.dry_run(categories)
+    new.dry_run(categories)
+  end
+
+  # Read-only preview: calls each rule's .call (rules only ever query, never
+  # write — writes live exclusively in upsert_and_resolve! below) and diffs
+  # the results against currently-open notifications, WITHOUT creating a
+  # SyncRun row, WITHOUT touching the advisory lock, and WITHOUT calling
+  # Notification.create!/update!/resolve! anywhere in this path.
+  def dry_run(categories)
+    per_rule = {}
+    categories.each { |category| per_rule[category] = dry_run_one_rule(category) }
+    { per_rule: per_rule }
+  end
+
   def run(categories)
     acquired, result = NotificationsMaintenanceLock.try_with_lock { run_locked(categories) }
     return result if acquired
@@ -81,6 +96,38 @@ class NotificationEngine
     klass = RULES.fetch(category).constantize
     results = klass.call
     upsert_and_resolve!(category, results)
+  end
+
+  # ── Dry run (read-only preview) ────────────────────────────────────
+
+  def dry_run_one_rule(category)
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    klass = RULES.fetch(category).constantize
+    results = klass.call
+    elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(3)
+    dry_run_diff(category, results, query_seconds: elapsed)
+  rescue StandardError => e
+    elapsed = (Process.clock_gettime(Process::CLOCK_MONOTONIC) - started).round(3)
+    { matched_subjects: 0, cards_to_create: 0, cards_to_update: 0, cards_to_resolve: 0,
+      severity_distribution: {}, metadata_bytes_estimate: 0, query_seconds: elapsed, error: e.class.name }
+  end
+
+  # Same dedup_key matching logic as upsert_and_resolve!, but only counts —
+  # never calls create!/update!/resolve!, so it cannot mutate the table.
+  def dry_run_diff(category, results, query_seconds:)
+    seen_keys = results.map { |r| r.fetch(:deduplication_key) }
+    existing_open_keys = Notification.open_status.where(category: category).pluck(:deduplication_key)
+
+    {
+      matched_subjects: results.size,
+      cards_to_create: (seen_keys - existing_open_keys).size,
+      cards_to_update: (seen_keys & existing_open_keys).size,
+      cards_to_resolve: (existing_open_keys - seen_keys).size,
+      severity_distribution: results.group_by { |r| r[:severity] }.transform_values(&:size),
+      metadata_bytes_estimate: results.sum { |r| (r[:metadata] || {}).to_json.bytesize },
+      query_seconds: query_seconds,
+      error: nil
+    }
   end
 
   # ── Upsert / auto-resolve (fatigue-control core) ──────────────────
