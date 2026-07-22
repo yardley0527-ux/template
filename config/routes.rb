@@ -11,6 +11,14 @@ Rails.application.routes.draw do
   end
   resources :message_template_images, only: [:create, :destroy]
 
+  resources :faq_categories, only: [:create, :update, :destroy] do
+    collection { patch :reorder }
+  end
+  resources :faqs, only: [:index, :create, :update, :destroy] do
+    collection { patch :reorder }
+  end
+  resources :faq_images, only: [:create, :destroy]
+
   # 月曆已搬進首頁；舊網址導回首頁（保留 month 參數）
   get "calendar_events", to: redirect(path: "/")
   resources :calendar_events, only: [:new, :create, :edit, :update, :destroy] do

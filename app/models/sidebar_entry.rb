@@ -106,6 +106,12 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "客服支援",
+          children: [
+            { href: faqs_path, title: "常見問題", icon: "fa-question-circle" },
+          ]
+        },
+        {
           group_title: "工具 & 系統",
           children: [
             { href: monitoring_path,        title: "功能使用監控", icon: "fa-chart-line" },

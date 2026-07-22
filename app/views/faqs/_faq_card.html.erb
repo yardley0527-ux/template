@@ -1,0 +1,34 @@
+<div class="faq-card" data-id="<%= faq.id %>">
+  <div class="d-flex align-items-start">
+    <span class="faq-drag-handle text-muted mr-2 mt-1" style="font-size:1.1rem;" title="拖拉排序">
+      <i class="fal fa-grip-vertical"></i>
+    </span>
+
+    <div class="flex-grow-1">
+      <textarea class="faq-question-input" rows="<%= [faq.question.to_s.count("\n") + 1, 1].max %>"
+                onblur="saveFaqField(<%= faq.id %>, 'question', this.value)"
+                placeholder="問題"><%= faq.question %></textarea>
+
+      <textarea class="form-control form-control-sm faq-answer-textarea mt-1" rows="4"
+                placeholder="答案"
+                onblur="saveFaqField(<%= faq.id %>, 'answer', this.value)"><%= faq.answer %></textarea>
+
+      <div class="d-flex flex-wrap mt-2" id="faq-imgs-<%= faq.id %>">
+        <% faq.faq_images.each do |img| %>
+          <span class="faq-img-thumb">
+            <img src="<%= img.url %>" onclick="openImageLightbox('<%= j img.url %>')">
+            <button type="button" class="del-img" onclick="deleteImage(<%= img.id %>, <%= faq.id %>, this)">&times;</button>
+          </span>
+        <% end %>
+      </div>
+
+      <button type="button" class="btn btn-xs btn-outline-secondary mt-2" onclick="uploadImage(<%= faq.id %>)">
+        <i class="fal fa-upload mr-1"></i>上傳圖片
+      </button>
+    </div>
+
+    <button type="button" class="btn btn-xs btn-outline-danger ml-2 flex-shrink-0" onclick="deleteFaq(<%= faq.id %>, this)" title="刪除">
+      <i class="fal fa-trash"></i>
+    </button>
+  </div>
+</div>

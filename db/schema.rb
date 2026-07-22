@@ -318,6 +318,34 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_22_080000) do
     t.index ["log_date"], name: "index_department_updates_on_log_date"
   end
 
+  create_table "faq_categories", force: :cascade do |t|
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "faq_images", force: :cascade do |t|
+    t.bigint "faq_id", null: false
+    t.string "cloudinary_public_id", null: false
+    t.string "url", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["faq_id"], name: "index_faq_images_on_faq_id"
+  end
+
+  create_table "faqs", force: :cascade do |t|
+    t.bigint "faq_category_id", null: false
+    t.text "question", null: false
+    t.text "answer"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["faq_category_id", "position"], name: "index_faqs_on_faq_category_id_and_position"
+    t.index ["faq_category_id"], name: "index_faqs_on_faq_category_id"
+  end
+
   create_table "health_assessment_products", force: :cascade do |t|
     t.bigint "shopline_customer_health_assessment_id", null: false
     t.bigint "product_id", null: false
@@ -1122,6 +1150,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_22_080000) do
   add_foreign_key "crm_product_aliases", "crm_products"
   add_foreign_key "crm_products", "users", column: "inventory_status_updated_by_id"
   add_foreign_key "crm_products", "users", column: "reviewed_by_user_id"
+  add_foreign_key "faq_images", "faqs"
+  add_foreign_key "faqs", "faq_categories"
   add_foreign_key "health_assessment_products", "products"
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"
   add_foreign_key "ig_posts", "ig_profiles"
