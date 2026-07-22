@@ -145,6 +145,93 @@ class NotificationEngineTest < ActiveSupport::TestCase
     assert_raises(ArgumentError) { NotificationEngine.run_rule("not_a_real_category") }
   end
 
+  # ── dry_run (read-only preview) ─────────────────────────────────────
+
+  test "dry_run reports cards_to_create for a brand-new condition and writes nothing" do
+    with_stub_rules("system_health" => StubRule) do
+      StubRule.results = [result(key: "r1", dedup: "dr:1", severity: "warning")]
+      notif_count = Notification.count
+      sync_count = SyncRun.count
+
+      out = NotificationEngine.dry_run(["system_health"])
+
+      stats = out[:per_rule]["system_health"]
+      assert_equal 1, stats[:matched_subjects]
+      assert_equal 1, stats[:cards_to_create]
+      assert_equal 0, stats[:cards_to_update]
+      assert_equal 0, stats[:cards_to_resolve]
+      assert_equal({ "warning" => 1 }, stats[:severity_distribution])
+      assert_operator stats[:metadata_bytes_estimate], :>=, 0
+      assert_nil stats[:error]
+      assert_equal notif_count, Notification.count, "dry_run must not create rows"
+      assert_equal sync_count, SyncRun.count, "dry_run must not create a SyncRun"
+    end
+  end
+
+  test "dry_run reports cards_to_update for a still-firing condition and does not touch the row" do
+    with_stub_rules("system_health" => StubRule) do
+      StubRule.results = [result(key: "r1", dedup: "dr:2")]
+      NotificationEngine.new.run(["system_health"])
+      existing = Notification.find_by(deduplication_key: "dr:2")
+      last_detected = existing.last_detected_at
+
+      travel 1.hour do
+        out = NotificationEngine.dry_run(["system_health"])
+        stats = out[:per_rule]["system_health"]
+        assert_equal 0, stats[:cards_to_create]
+        assert_equal 1, stats[:cards_to_update]
+        assert_equal 0, stats[:cards_to_resolve]
+      end
+
+      existing.reload
+      assert_equal last_detected.to_i, existing.last_detected_at.to_i, "dry_run must not bump last_detected_at"
+    end
+  end
+
+  test "dry_run reports cards_to_resolve for a condition that stopped firing and leaves it open" do
+    with_stub_rules("system_health" => StubRule) do
+      StubRule.results = [result(key: "r1", dedup: "dr:3")]
+      NotificationEngine.new.run(["system_health"])
+
+      StubRule.results = []
+      out = NotificationEngine.dry_run(["system_health"])
+
+      stats = out[:per_rule]["system_health"]
+      assert_equal 0, stats[:matched_subjects]
+      assert_equal 1, stats[:cards_to_resolve]
+      assert_equal "open", Notification.find_by(deduplication_key: "dr:3").status, "dry_run must not auto-resolve"
+    end
+  end
+
+  test "dry_run per-rule rescue: one rule erroring does not stop others or raise" do
+    with_stub_rules("system_health" => StubRule, "vip_silent" => FailingRule) do
+      StubRule.results = [result(key: "r1", dedup: "dr:4")]
+      out = NotificationEngine.dry_run(%w[system_health vip_silent])
+
+      assert_equal 1, out[:per_rule]["system_health"][:cards_to_create]
+      assert_equal "ArgumentError", out[:per_rule]["vip_silent"][:error]
+      assert_equal 0, out[:per_rule]["vip_silent"][:matched_subjects]
+    end
+  end
+
+  test "dry_run never advances the advisory lock's caller-visible state (no SyncRun, no lock dependency)" do
+    with_stub_rules("system_health" => StubRule) do
+      StubRule.results = [result(key: "r1", dedup: "dr:5")]
+
+      db_config = ActiveRecord::Base.connection_db_config.configuration_hash
+      other = PG.connect(dbname: db_config[:database], host: db_config[:host],
+                         port: db_config[:port], user: db_config[:username], password: db_config[:password])
+      other.exec("SELECT pg_advisory_lock(hashtext('notifications_generate'))")
+      begin
+        out = NotificationEngine.dry_run(["system_health"])
+        assert_equal 1, out[:per_rule]["system_health"][:cards_to_create], "dry_run must work even while the write lock is held elsewhere"
+      ensure
+        other.exec("SELECT pg_advisory_unlock(hashtext('notifications_generate'))")
+        other.close
+      end
+    end
+  end
+
   # ── advisory lock ────────────────────────────────────────────────
 
   test "a concurrent run aborts without writing when the lock is held elsewhere" do
