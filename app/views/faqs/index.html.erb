@@ -23,7 +23,7 @@
     .faq-search-mode #faqTabs { display: none; }
     .faq-search-mode .tab-pane { opacity: 1 !important; }
     .faq-search-mode .faq-category-heading { display: block; }
-    .faq-search-mode .faq-list ~ button { display: none; }
+    .faq-search-mode .faq-add-btn { display: none; }
   </style>
 <% end %>
 
@@ -73,12 +73,15 @@
     <div class="tab-content border border-top-0 p-3 bg-white">
       <% @categories.each_with_index do |cat, i| %>
         <div class="tab-pane fade <%= 'show active' if i == 0 %>" id="panel-<%= cat.id %>" role="tabpanel">
+          <button type="button" class="btn btn-sm btn-primary mb-3 faq-add-btn" data-category-id="<%= cat.id %>" onclick="addFaq(this)">
+            <i class="fal fa-plus mr-1"></i>新增問題
+          </button>
           <div class="faq-list" data-category-id="<%= cat.id %>">
             <% cat.faqs.each do |faq| %>
               <%= render 'faq_card', faq: faq %>
             <% end %>
           </div>
-          <button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-category-id="<%= cat.id %>" onclick="addFaq(this)">
+          <button type="button" class="btn btn-sm btn-outline-secondary mt-2 faq-add-btn" data-category-id="<%= cat.id %>" onclick="addFaq(this)">
             <i class="fal fa-plus mr-1"></i>新增問題
           </button>
         </div>
@@ -130,8 +133,10 @@ function addCategory(e) {
     pane.className = 'tab-pane fade';
     pane.id = 'panel-' + data.id;
     pane.setAttribute('role', 'tabpanel');
-    pane.innerHTML = '<div class="faq-list" data-category-id="' + data.id + '"></div>' +
-      '<button type="button" class="btn btn-sm btn-outline-secondary mt-2" data-category-id="' + data.id + '" onclick="addFaq(this)">' +
+    pane.innerHTML = '<button type="button" class="btn btn-sm btn-primary mb-3 faq-add-btn" data-category-id="' + data.id + '" onclick="addFaq(this)">' +
+      '<i class="fal fa-plus mr-1"></i>新增問題</button>' +
+      '<div class="faq-list" data-category-id="' + data.id + '"></div>' +
+      '<button type="button" class="btn btn-sm btn-outline-secondary mt-2 faq-add-btn" data-category-id="' + data.id + '" onclick="addFaq(this)">' +
       '<i class="fal fa-plus mr-1"></i>新增問題</button>';
     content.appendChild(pane);
 
@@ -179,7 +184,7 @@ function addFaq(btn) {
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    var list = btn.previousElementSibling;
+    var list = document.querySelector('.faq-list[data-category-id="' + categoryId + '"]');
     list.insertAdjacentHTML('beforeend', data.html);
     initFaqSortables();
     bumpCategoryCount(categoryId, 1);
