@@ -23,9 +23,11 @@
       <h4 class="fw-bold mb-0">KOC 業配名單</h4>
       <p class="text-muted small mb-0">從 IG 標記/業配貼文蒐集而來的 KOC 參考名單，供我們品牌挑選洽談業配對象</p>
     </div>
-    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#new-koc-modal">
-      <i class="fal fa-plus mr-1"></i>新增 KOC
-    </button>
+    <% if current_user.admin? %>
+      <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#new-koc-modal">
+        <i class="fal fa-plus mr-1"></i>新增 KOC
+      </button>
+    <% end %>
   </div>
 </div>
 
@@ -66,10 +68,13 @@
 
 <%# ── 篩選列 ── %>
 <div class="d-flex flex-wrap gap-2 mb-3">
-  <%= link_to "全部", kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank?} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank?}" %>
-  <%= link_to "只看已業配", kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1'} #{'btn-outline-secondary' unless params[:paid] == '1'}" %>
+  <%= link_to "全部", kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank? && !@show_hidden} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank? && !@show_hidden}" %>
+  <%= link_to "只看已業配", kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1' && !@show_hidden} #{'btn-outline-secondary' unless params[:paid] == '1' && !@show_hidden}" %>
   <% Koc::STATUSES.each do |s| %>
-    <%= link_to s, kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
+    <%= link_to s, kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s && !@show_hidden} #{'btn-outline-secondary' unless params[:status] == s && !@show_hidden}" %>
+  <% end %>
+  <% if current_user.admin? %>
+    <%= link_to "隱藏名單（#{@hidden_count}）", kocs_path(show_hidden: "1"), class: "btn btn-sm ml-auto #{'btn-dark' if @show_hidden} #{'btn-outline-secondary' unless @show_hidden}" %>
   <% end %>
 </div>
 
@@ -86,18 +91,19 @@
             <th>業配</th>
             <th class="text-end">貼文數</th>
             <th class="text-end">
-              <%= link_to kocs_path(status: params[:status], paid: params[:paid], sort: "views"), class: "text-decoration-none #{@sort == 'likes' ? 'text-muted' : 'text-dark fw-bold'}", style: "cursor:pointer" do %>
+              <%= link_to kocs_path(status: params[:status], paid: params[:paid], show_hidden: params[:show_hidden], sort: "views"), class: "text-decoration-none #{@sort == 'likes' ? 'text-muted' : 'text-dark fw-bold'}", style: "cursor:pointer" do %>
                 最高觀看<%= @sort != "likes" ? " ▾" : "" %>
               <% end %>
             </th>
             <th class="text-end">
-              <%= link_to kocs_path(status: params[:status], paid: params[:paid], sort: "likes"), class: "text-decoration-none #{@sort == 'likes' ? 'text-dark fw-bold' : 'text-muted'}", style: "cursor:pointer" do %>
+              <%= link_to kocs_path(status: params[:status], paid: params[:paid], show_hidden: params[:show_hidden], sort: "likes"), class: "text-decoration-none #{@sort == 'likes' ? 'text-dark fw-bold' : 'text-muted'}", style: "cursor:pointer" do %>
                 最高讚數<%= @sort == "likes" ? " ▾" : "" %>
               <% end %>
             </th>
             <th>最近標記貼文</th>
             <th>Email</th>
-            <th style="min-width:140px">狀態</th>
+            <th style="min-width:140px">接洽狀態</th>
+            <th style="min-width:120px">拍影片狀態</th>
             <th>備註</th>
             <th></th>
           </tr>
@@ -140,19 +146,40 @@
               </td>
               <td><span class="small"><%= koc.email %></span></td>
               <td>
-                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= f.select :status, Koc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
-                <% end %>
-              </td>
-              <td style="min-width:220px">
-                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
-                  <%= f.text_field :notes, value: koc.notes, class: "form-control form-control-sm", placeholder: "備註" %>
-                  <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                <% if current_user.admin? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.select :status, Koc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <% end %>
+                <% else %>
+                  <span class="badge <%= koc_status_badge_class(koc.status) %>"><%= koc.status %></span>
                 <% end %>
               </td>
               <td>
-                <%= link_to koc_path(koc), method: :delete, data: { confirm: "確定刪除 #{koc.ig_username}？" }, class: "btn btn-sm btn-outline-danger" do %>
-                  <i class="fal fa-trash-alt"></i>
+                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= f.select :video_shoot_status, Koc::VIDEO_SHOOT_STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                <% end %>
+              </td>
+              <td style="min-width:220px">
+                <% if current_user.admin? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                    <%= f.text_field :notes, value: koc.notes, class: "form-control form-control-sm", placeholder: "備註" %>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.notes %></span>
+                <% end %>
+              </td>
+              <td>
+                <% if current_user.admin? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= hidden_field_tag "koc[hidden]", !koc.hidden? %>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="<%= koc.hidden? ? '取消隱藏' : '隱藏' %>">
+                      <i class="fal <%= koc.hidden? ? 'fa-eye' : 'fa-eye-slash' %>"></i>
+                    </button>
+                  <% end %>
+                  <%= link_to koc_path(koc), method: :delete, data: { confirm: "確定刪除 #{koc.ig_username}？" }, class: "btn btn-sm btn-outline-danger" do %>
+                    <i class="fal fa-trash-alt"></i>
+                  <% end %>
                 <% end %>
               </td>
             </tr>
@@ -179,41 +206,43 @@
 <% end %>
 
 <%# ── 新增 KOC Modal ── %>
-<div class="modal fade" id="new-koc-modal" tabindex="-1" role="dialog">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <%= form_with model: Koc.new, url: kocs_path, local: true do |f| %>
-        <div class="modal-header">
-          <h5 class="modal-title">新增 KOC</h5>
-          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>IG 帳號（不含 @）</label>
-            <%= f.text_field :ig_username, class: "form-control", required: true %>
+<% if current_user.admin? %>
+  <div class="modal fade" id="new-koc-modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <%= form_with model: Koc.new, url: kocs_path, local: true do |f| %>
+          <div class="modal-header">
+            <h5 class="modal-title">新增 KOC</h5>
+            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
           </div>
-          <div class="form-group">
-            <label>別稱</label>
-            <%= f.text_field :alias, class: "form-control" %>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>IG 帳號（不含 @）</label>
+              <%= f.text_field :ig_username, class: "form-control", required: true %>
+            </div>
+            <div class="form-group">
+              <label>別稱</label>
+              <%= f.text_field :alias, class: "form-control" %>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <%= f.text_field :email, class: "form-control" %>
+            </div>
+            <div class="form-group">
+              <label>狀態</label>
+              <%= f.select :status, Koc::STATUSES, {}, class: "form-control" %>
+            </div>
+            <div class="form-group">
+              <label>備註</label>
+              <%= f.text_area :notes, class: "form-control", rows: 2 %>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Email</label>
-            <%= f.text_field :email, class: "form-control" %>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary">新增</button>
           </div>
-          <div class="form-group">
-            <label>狀態</label>
-            <%= f.select :status, Koc::STATUSES, {}, class: "form-control" %>
-          </div>
-          <div class="form-group">
-            <label>備註</label>
-            <%= f.text_area :notes, class: "form-control", rows: 2 %>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
-          <button type="submit" class="btn btn-primary">新增</button>
-        </div>
-      <% end %>
+        <% end %>
+      </div>
     </div>
   </div>
-</div>
+<% end %>

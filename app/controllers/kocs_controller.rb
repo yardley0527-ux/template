@@ -4,12 +4,17 @@ class KocsController < ApplicationController
   def index
     @sort = params[:sort]
     @kocs = @sort == "likes" ? Koc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : Koc.ordered_by_engagement
+
+    @show_hidden = params[:show_hidden] == "1" && current_user.admin?
+    @kocs = @show_hidden ? @kocs.where(hidden: true) : @kocs.visible
+
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
 
-    @total_count = Koc.count
-    @paid_count  = Koc.where(has_paid_partnership: true).count
-    @status_counts = Koc.group(:status).count
+    @total_count  = Koc.visible.count
+    @hidden_count = Koc.where(hidden: true).count
+    @paid_count   = Koc.visible.where(has_paid_partnership: true).count
+    @status_counts = Koc.visible.group(:status).count
 
     @page = [params[:page].to_i, 1].max
     @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max
@@ -18,6 +23,8 @@ class KocsController < ApplicationController
   end
 
   def create
+    return head :forbidden unless current_user.admin?
+
     @koc = Koc.new(koc_params)
     @koc.source = "手動新增"
 
@@ -35,6 +42,8 @@ class KocsController < ApplicationController
   end
 
   def destroy
+    return head :forbidden unless current_user.admin?
+
     @koc = Koc.find(params[:id])
     @koc.destroy
     redirect_to kocs_path, notice: "已刪除 #{@koc.ig_username}"
@@ -42,7 +51,12 @@ class KocsController < ApplicationController
 
   private
 
+  # 社群部帳號只能更新拍影片狀態，其他欄位（含 hidden、接洽狀態、備註）維持 admin 專用。
   def koc_params
-    params.require(:koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes)
+    if current_user.admin?
+      params.require(:koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes, :hidden, :video_shoot_status)
+    else
+      params.require(:koc).permit(:video_shoot_status)
+    end
   end
 end
