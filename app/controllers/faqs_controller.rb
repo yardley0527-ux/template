@@ -10,6 +10,8 @@ class FaqsController < ApplicationController
     position = category.faqs.maximum(:position).to_i + 1
     faq = category.faqs.create!(question: params.dig(:faq, :question).presence || "新問題", position: position)
     render json: { id: faq.id, html: render_card(faq) }
+  rescue ActiveRecord::RecordNotFound, ActiveRecord::RecordInvalid => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def update
