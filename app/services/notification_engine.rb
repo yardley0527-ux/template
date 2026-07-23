@@ -2,7 +2,7 @@
 
 require Rails.root.join("lib/notifications_maintenance_lock") if defined?(Rails)
 
-# Orchestrator for the 8 fixed notification rule categories. Each rule class
+# Orchestrator for the 9 fixed notification rule categories. Each rule class
 # (app/services/notification_rules/*.rb) implements .call and returns an
 # Array of result hashes:
 #   { notification_key:, kind:, severity:, title:, message:, subject_type:,
@@ -35,7 +35,8 @@ class NotificationEngine
     "customer_overdue"       => "NotificationRules::CustomerOverdue",
     "high_spender_no_second" => "NotificationRules::HighSpenderNoSecond",
     "vip_silent"             => "NotificationRules::VipSilent",
-    "product_attention"      => "NotificationRules::ProductAttention"
+    "product_attention"      => "NotificationRules::ProductAttention",
+    "promotion_opportunity"  => "NotificationRules::PromotionOpportunity"
   }.freeze
 
   def self.run_all

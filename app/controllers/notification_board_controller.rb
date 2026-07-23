@@ -6,7 +6,7 @@
 class NotificationBoardController < ApplicationController
   SECTIONS = %w[today opportunities products system completed].freeze
   TODAY_LIMIT = 8
-  OPPORTUNITY_CATEGORIES = %w[customer_runout customer_overdue high_spender_no_second vip_silent].freeze
+  OPPORTUNITY_CATEGORIES = %w[customer_runout customer_overdue high_spender_no_second vip_silent promotion_opportunity].freeze
   PRODUCT_CATEGORIES = %w[inventory_attention product_attention].freeze
   COMPLETED_PER_PAGE = 20
   SEVERITY_RANK = { "critical" => 0, "warning" => 1, "opportunity" => 2, "info" => 3 }.freeze
