@@ -1,10 +1,40 @@
 {
-  "last_updated": "2026-07-07",
+  "last_updated": "2026-07-23",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
   "kol": "chloechao0527",
   "campaigns": [
+    {
+      "id": "120252947165310022",
+      "name": "發光 2026/7/10 行銷活動",
+      "objective": "流量",
+      "status": "ACTIVE",
+      "daily_budget": 5000,
+      "start_date": "2026-07-10",
+      "creative": {
+        "thumbnail_url": "https://scontent-iad3-2.xx.fbcdn.net/v/t39.30808-1/530627748_758766640215986_2633837133629106510_n.jpg?_nc_cat=103&ccb=1-7&_nc_ohc=z3Fhtw3BE_QQ7kNvwFHVy9-&_nc_oc=Adpfq_ROPHix4vH-EoXRa4KHDlol2YTm1XJgbn-XOk_WTP-TRF7-dz7TuAGv_rpryuE&_nc_zt=24&_nc_ht=scontent-iad3-2.xx&edm=AEZPnVgEAAAA&_nc_gid=0mqcHVIi0ucLGtQ6F-oX9g&_nc_tpa=Q5bMBQFyKMr90vOeerDjCfwciFXzzxpyqjgapEdXgHnq4U18JB8U1Gai_kCtOWKLjO4rJiwtfbIwDCY9Rw&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=68aae3&_nc_sid=58080a&oh=00_AQDcIHT0B5OhLISjeL1otgCwTp1GztX1I5V8LWmdWcQ4bA&oe=6A6759DA"
+      },
+      "daily_data": [
+        {
+          "date": "2026-07-23",
+          "impressions": 25622,
+          "reach": 21766,
+          "clicks": 543,
+          "ctr": 2.12,
+          "cpm": 54,
+          "spend": 1394,
+          "video_3s": 453,
+          "video_25": 851,
+          "video_50": 778,
+          "video_75": 570,
+          "video_100": 421,
+          "shares": null,
+          "thruplay": 446,
+          "ig_followers_gained": -20
+        }
+      ]
+    },
     {
       "id": "120251699226940022",
       "name": "中醫水2",
@@ -43,7 +73,7 @@
       "id": "120250889608820022",
       "name": "Chloe 狀態",
       "objective": "流量",
-      "status": "ACTIVE",
+      "status": "PAUSED",
       "daily_budget": 6000,
       "start_date": null,
       "creative": {
