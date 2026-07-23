@@ -20,7 +20,7 @@ class NotificationCustomerListService
 
   def call
     case notification.category
-    when "customer_runout", "customer_overdue" then product_tracking_rows
+    when "customer_runout", "customer_overdue", "promotion_opportunity" then product_tracking_rows
     when "high_spender_no_second"                then high_spender_rows
     when "vip_silent"                            then vip_silent_rows
     else []

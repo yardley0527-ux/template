@@ -1,12 +1,13 @@
 # frozen_string_literal: true
 
 # Notification Board record. Generated exclusively by NotificationEngine's
-# 8 rule classes (app/services/notification_rules/*) via
+# 9 rule classes (app/services/notification_rules/*) via
 # upsert_open!/auto_resolve_stale! — never created directly by a controller.
 class Notification < ApplicationRecord
   KINDS       = %w[alert opportunity].freeze
   CATEGORIES  = %w[system_health inventory_attention event_attention customer_runout
-                   customer_overdue high_spender_no_second vip_silent product_attention].freeze
+                   customer_overdue high_spender_no_second vip_silent product_attention
+                   promotion_opportunity].freeze
   SEVERITIES  = %w[critical warning opportunity info].freeze
   STATUSES    = %w[open resolved dismissed].freeze
 

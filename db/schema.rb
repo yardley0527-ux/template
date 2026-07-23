@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_22_090000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_23_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -740,6 +740,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_22_090000) do
     t.index ["raw_name", "source"], name: "index_product_name_mappings_on_raw_name_and_source", unique: true
     t.index ["source"], name: "index_product_name_mappings_on_source"
     t.index ["suggested_crm_product_id"], name: "index_product_name_mappings_on_suggested_crm_product_id"
+  end
+
+  create_table "product_promotion_snapshots", force: :cascade do |t|
+    t.string "product_key", limit: 50, null: false
+    t.string "product_name", limit: 255, null: false
+    t.string "product_url", limit: 500, null: false
+    t.integer "regular_price", null: false
+    t.integer "sale_price", null: false
+    t.decimal "discount_pct", precision: 5, scale: 1, null: false
+    t.datetime "scraped_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["product_key", "scraped_at"], name: "idx_promotion_snapshots_on_product_scraped_at"
   end
 
   create_table "products", force: :cascade do |t|

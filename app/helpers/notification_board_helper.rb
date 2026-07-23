@@ -13,7 +13,8 @@ module NotificationBoardHelper
   CATEGORY_LABEL = {
     "system_health" => "系統健康", "inventory_attention" => "庫存", "event_attention" => "活動",
     "customer_runout" => "即將用完", "customer_overdue" => "逾期未回購",
-    "high_spender_no_second" => "破萬未二購", "vip_silent" => "VIP 沉睡", "product_attention" => "產品趨勢"
+    "high_spender_no_second" => "破萬未二購", "vip_silent" => "VIP 沉睡", "product_attention" => "產品趨勢",
+    "promotion_opportunity" => "官網優惠商機"
   }.freeze
 
   # Categories NotificationCustomerListService knows how to expand — must stay
@@ -22,7 +23,7 @@ module NotificationBoardHelper
   # since that reference forms a Zeitwerk autoload cycle: the controller loads
   # this helper via ActionController::Helpers, and this constant would in turn
   # trigger loading the controller mid-load).
-  EXPANDABLE_CATEGORIES = %w[customer_runout customer_overdue high_spender_no_second vip_silent].freeze
+  EXPANDABLE_CATEGORIES = %w[customer_runout customer_overdue high_spender_no_second vip_silent promotion_opportunity].freeze
 
   def notification_severity_badge_class(severity)
     SEVERITY_BADGE_CLASS.fetch(severity, "badge-secondary")
