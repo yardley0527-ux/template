@@ -1,5 +1,11 @@
 class WelcomeController < ApplicationController
+  COVER_ONLY_USERNAMES = %w[crmdata].freeze
+
   def index
+    if COVER_ONLY_USERNAMES.include?(current_user.username)
+      render :cover and return
+    end
+
     @snapshot = CommandCenterSnapshot.call
 
     # 月曆（原「公司行事曆」頁搬進首頁）
