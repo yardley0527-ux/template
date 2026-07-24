@@ -135,7 +135,7 @@ class DailyOrdersController < ApplicationController
 
     prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
 
-    # 舊客全部列出購買商品與同系列歷史；「傳首購產品訊息」勾選框仍只出現在 8000 以下（≥8000 走破8000速覽頁流程）
+    # 舊客全部列出購買商品與同系列歷史；「傳首購產品訊息」勾選框只要訂單內有任一產品是該系列首購就顯示，不限金額
     old_raw_orders = raw_orders.select do |o|
       o.email_val.present? && prior_emails.include?(o.email_val)
     end

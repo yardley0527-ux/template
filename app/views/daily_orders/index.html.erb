@@ -190,7 +190,7 @@ end %>
                     </div>
                   <% end %>
                 </td>
-                <% has_first_purchase = !high_value && (@products_by_order[row.order_number] || []).any? { |p| p[:prior_date].nil? } %>
+                <% has_first_purchase = (@products_by_order[row.order_number] || []).any? { |p| p[:prior_date].nil? } %>
                 <td class="text-center">
                   <% if has_first_purchase %>
                     <input type="checkbox"
