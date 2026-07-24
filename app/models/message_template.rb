@@ -26,11 +26,13 @@ class MessageTemplate < ApplicationRecord
     "feminine_powder"   => { title: "私密粉",   icon: "fa-shield-alt", description: "依情境挑選版本" },
     "glutathione"       => { title: "穀胱甘肽", icon: "fa-sun",        description: "依情境挑選版本" },
     "vitamin_d_calcium" => { title: "D鈣",      icon: "fa-bone",       description: "依情境挑選版本" },
+    "custom_first_purchase" => { title: "首購訊息", icon: "fa-gem", description: "依產品分類的首購客訊息" },
   }.freeze
 
-  BULK_SUBCATEGORIES    = %w[全能 冰晶番茄 全能＋冰晶番茄 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
-  BIG_SET_SUBCATEGORIES = %w[全能 冰晶番茄 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
-  UPGRADE_SUBCATEGORIES = %w[白卡 銀卡 金卡 黑卡].freeze
-  SUBCATEGORY_MAP       = { "bulk" => BULK_SUBCATEGORIES, "big_set" => BIG_SET_SUBCATEGORIES, "upgrade" => UPGRADE_SUBCATEGORIES }.freeze
-  CATEGORY_ORDER        = %w[binding zhongzu birthday upgrade bulk big_set].freeze
+  BULK_SUBCATEGORIES              = %w[全能 冰晶番茄 全能＋冰晶番茄 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
+  BIG_SET_SUBCATEGORIES           = %w[全能 冰晶番茄 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣 2.0面膜].freeze
+  UPGRADE_SUBCATEGORIES           = %w[白卡 銀卡 金卡 黑卡].freeze
+  CUSTOM_FIRST_PURCHASE_SUBCATEGORIES = %w[全能 冰晶番茄 代謝錠 薑黃 益生菌 蝦紅素 清纖粉 膠原蛋白 魚油 私密粉 穀胱甘肽 D鈣].freeze
+  SUBCATEGORY_MAP       = { "bulk" => BULK_SUBCATEGORIES, "big_set" => BIG_SET_SUBCATEGORIES, "upgrade" => UPGRADE_SUBCATEGORIES, "custom_first_purchase" => CUSTOM_FIRST_PURCHASE_SUBCATEGORIES }.freeze
+  CATEGORY_ORDER        = %w[binding zhongzu birthday upgrade bulk big_set custom_first_purchase].freeze
 end
