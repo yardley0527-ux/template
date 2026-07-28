@@ -2,7 +2,7 @@ class DailyOrdersController < ApplicationController
   include HighValueOrderScoping
 
   TIERS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig health_inquiry_declined].freeze
+  TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig health_inquiry_declined recipe_message_sent].freeze
   PURCHASE_SUMMARY_FIELDS = %w[line_bound].freeze
 
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
@@ -16,7 +16,7 @@ class DailyOrdersController < ApplicationController
     :order_number, :customer_name, :ig_account, :email, :order_total, :order_date,
     :is_new_customer, :membership_level, :products_list, :health_profile, :health_tags,
     :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
-    :line_bound, :total_quantity, :health_inquiry_declined,
+    :line_bound, :total_quantity, :health_inquiry_declined, :recipe_message_sent,
     keyword_init: true
   )
 
@@ -73,7 +73,7 @@ class DailyOrdersController < ApplicationController
     groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "購買商品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG", "綁定 LINE"]
+      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "購買商品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG", "綁定 LINE", "已傳送吃法訊息"]
       groups.each do |label, rows|
         rows.each do |row|
           csv << [
@@ -87,7 +87,8 @@ class DailyOrdersController < ApplicationController
             row.health_tags.join("、"),
             row.follows_chloe_ig ? "是" : "否",
             row.invited_to_follow_product_ig ? "是" : "否",
-            row.line_bound ? "是" : "否"
+            row.line_bound ? "是" : "否",
+            row.recipe_message_sent ? "是" : "否"
           ]
         end
       end
@@ -166,7 +167,8 @@ class DailyOrdersController < ApplicationController
         shopline_customer_id: customer&.id,
         line_bound: summary&.line_bound || false,
         total_quantity: o.total_quantity.to_i,
-        health_inquiry_declined: profile&.health_inquiry_declined || false
+        health_inquiry_declined: profile&.health_inquiry_declined || false,
+        recipe_message_sent: profile&.recipe_message_sent || false
       )
     end
 

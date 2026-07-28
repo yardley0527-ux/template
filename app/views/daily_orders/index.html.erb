@@ -103,8 +103,9 @@ end %>
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
             <% if is_new %>
-              <th style="width:52%;">購買商品</th>
+              <th style="width:45%;">購買商品</th>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
+              <th class="text-center" style="width:7%;">已傳送吃法訊息</th>
             <% else %>
               <th class="text-center" style="width:9%;">已加 IG tag</th>
               <th style="width:38%;">是否購買過同產品</th>
@@ -163,6 +164,18 @@ end %>
                     <span class="text-muted">—</span>
                   <% end %>
                 </td>
+                <td class="text-center">
+                  <% if row.shopline_customer_id %>
+                    <input type="checkbox"
+                      class="customer-flag-checkbox"
+                      data-customer-id="<%= row.shopline_customer_id %>"
+                      data-field="recipe_message_sent"
+                      <%= row.recipe_message_sent ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#fd7e14;">
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
               <% else %>
                 <% gift = @gift_records[row.order_number] %>
                 <% high_value = row.order_total.to_f >= HighValueOrderScoping::THRESHOLD %>
@@ -209,7 +222,7 @@ end %>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="<%= is_new ? 6 : 7 %>" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="7" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
