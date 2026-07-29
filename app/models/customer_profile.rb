@@ -11,7 +11,7 @@ class CustomerProfile < ApplicationRecord
     "葡萄糖胺", "軟骨素", "UC-II", "玻尿酸",
     "葉黃素", "蝦紅素",
     "薑黃",
-    "膠原蛋白", "神經醯胺", "穀胱甘肽", "冰晶蕃茄",
+    "膠原蛋白", "神經醯胺", "穀胱甘肽", "冰晶番茄",
     "蔓越莓", "甘露糖", "私密益生菌", "葉酸",
     "瑪卡",
     "藤黃果",
@@ -38,7 +38,8 @@ class CustomerProfile < ApplicationRecord
     "私密粉",
     "維DK鈣",
     "益生菌",
-    "穀胱甘肽"
+    "穀胱甘肽",
+    "冰晶番茄"
   ].freeze
 
   HEALTH_TAG_OPTIONS = [
