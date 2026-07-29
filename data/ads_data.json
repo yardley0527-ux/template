@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-07-23",
+  "last_updated": "2026-07-29",
   "account_id": "3578364032458474",
   "product": "BC葉全能膠囊",
   "company": "苼莛國際生技",
@@ -13,7 +13,7 @@
       "daily_budget": 5000,
       "start_date": "2026-07-10",
       "creative": {
-        "thumbnail_url": "https://scontent-iad3-2.xx.fbcdn.net/v/t39.30808-1/530627748_758766640215986_2633837133629106510_n.jpg?_nc_cat=103&ccb=1-7&_nc_ohc=z3Fhtw3BE_QQ7kNvwFHVy9-&_nc_oc=Adpfq_ROPHix4vH-EoXRa4KHDlol2YTm1XJgbn-XOk_WTP-TRF7-dz7TuAGv_rpryuE&_nc_zt=24&_nc_ht=scontent-iad3-2.xx&edm=AEZPnVgEAAAA&_nc_gid=0mqcHVIi0ucLGtQ6F-oX9g&_nc_tpa=Q5bMBQFyKMr90vOeerDjCfwciFXzzxpyqjgapEdXgHnq4U18JB8U1Gai_kCtOWKLjO4rJiwtfbIwDCY9Rw&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=68aae3&_nc_sid=58080a&oh=00_AQDcIHT0B5OhLISjeL1otgCwTp1GztX1I5V8LWmdWcQ4bA&oe=6A6759DA"
+        "thumbnail_url": "https://scontent-dfw6-1.xx.fbcdn.net/v/t39.30808-1/530627748_758766640215986_2633837133629106510_n.jpg?_nc_cat=103&ccb=1-7&_nc_ohc=wjeJe_6tMcAQ7kNvwFHOrNs&_nc_oc=AdrT1HWTGzgxRWymjORNuEZY1fbM644-9LdtJsZ3u7SQqRcnqm7pfMeheMy_hRO4F1s&_nc_zt=24&_nc_ht=scontent-dfw6-1.xx&edm=AEZPnVgEAAAA&_nc_gid=aMSxQDTu9_uohtDqKORTZw&_nc_tpa=Q5bMBQENAKkgAm4OJiL6kmGccdEkqXxAjmcam_1pnyfWVgN5QB4ycJUFyLaoXziHwmPO-1YS8rkthrDNbg&stp=c0.5000x0.5000f_dst-emg0_p64x64_q75_tt6&ur=68aae3&_nc_sid=58080a&oh=00_AQCRTEBXWzgraCwtY2V00_N9E4ya9DZwCdw5VWCzACTdug&oe=6A6F42DA"
       },
       "daily_data": [
         {
@@ -32,6 +32,23 @@
           "shares": null,
           "thruplay": 446,
           "ig_followers_gained": -20
+        },
+        {
+          "date": "2026-07-29",
+          "impressions": 22987,
+          "reach": 19720,
+          "clicks": 532,
+          "ctr": 2.31,
+          "cpm": 55,
+          "spend": 1261,
+          "video_3s": 408,
+          "video_25": 778,
+          "video_50": 700,
+          "video_75": 519,
+          "video_100": 384,
+          "shares": null,
+          "thruplay": 403,
+          "ig_followers_gained": null
         }
       ]
     },
