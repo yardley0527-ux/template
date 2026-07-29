@@ -30,7 +30,7 @@
             <td class="ps-3" style="max-width:220px;">
               <%= link_to list.name, message_list_path(list), class: "text-decoration-none fw-semibold" %>
               <% if list.source_note.present? %>
-                <div class="text-muted d-none d-md-block" style="font-size:0.75rem;"><%= list.source_note %></div>
+                <div class="text-muted d-none d-md-block" style="font-size:0.75rem;"><%= truncate(list.source_note.gsub(/\s+/, " "), length: 60) %></div>
               <% end %>
               <% if list.message_content.present? %>
                 <div class="d-none d-md-block" style="font-size:0.75rem; color:#8f6340;">
