@@ -86,6 +86,6 @@ class LivestreamsController < ApplicationController
   end
 
   def livestream_params
-    params.require(:livestream).permit(:date, :notes)
+    params.require(:livestream).permit(:date, :title, :notes)
   end
 end
