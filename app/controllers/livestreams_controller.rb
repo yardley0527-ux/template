@@ -29,6 +29,7 @@ class LivestreamsController < ApplicationController
 
   def new
     @livestream = Livestream.new
+    @product_options = CrmProduct.for_analysis.order(:label).pluck(:key, :label)
   end
 
   def create
@@ -36,17 +37,20 @@ class LivestreamsController < ApplicationController
     if @livestream.save
       redirect_to livestreams_path, notice: "直播已建立"
     else
+      @product_options = CrmProduct.for_analysis.order(:label).pluck(:key, :label)
       render :new, status: :unprocessable_entity
     end
   end
 
   def edit
+    @product_options = CrmProduct.for_analysis.order(:label).pluck(:key, :label)
   end
 
   def update
     if @livestream.update(livestream_params)
       redirect_to livestreams_path, notice: "直播已更新"
     else
+      @product_options = CrmProduct.for_analysis.order(:label).pluck(:key, :label)
       render :edit, status: :unprocessable_entity
     end
   end
@@ -86,6 +90,6 @@ class LivestreamsController < ApplicationController
   end
 
   def livestream_params
-    params.require(:livestream).permit(:date, :title, :notes)
+    params.require(:livestream).permit(:date, :title, :notes, product_keys: [])
   end
 end

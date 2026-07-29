@@ -13,5 +13,7 @@ class Livestream < ApplicationRecord
 
   validates :date, presence: true, uniqueness: true
 
+  before_validation { self.product_keys = product_keys.reject(&:blank?) if product_keys }
+
   default_scope { order(date: :desc) }
 end

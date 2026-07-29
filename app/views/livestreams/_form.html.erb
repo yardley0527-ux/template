@@ -24,6 +24,18 @@
         <%= f.label :notes, "備註" %>
         <%= f.text_area :notes, class: "form-control", rows: 2 %>
       </div>
+      <div class="form-group mb-0">
+        <%= f.label :product_keys, "本場銷售產品" %>
+        <p class="text-muted small mb-2">用於篩選與歸因分析，不等於下方「販售商品」逐筆品項；純贈品不列入。</p>
+        <div class="d-flex flex-wrap" style="gap:6px 16px;">
+          <%= f.collection_check_boxes :product_keys, product_options, :first, :last do |b| %>
+            <div class="form-check">
+              <%= b.check_box(class: "form-check-input") %>
+              <%= b.label(class: "form-check-label") %>
+            </div>
+          <% end %>
+        </div>
+      </div>
     </div>
   </div>
 
