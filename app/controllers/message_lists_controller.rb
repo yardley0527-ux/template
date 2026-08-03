@@ -24,7 +24,7 @@ class MessageListsController < ApplicationController
     @rows = @tab == "repurchased" ? @repurchased_rows : @pending_rows
 
     @segment_rows = segment_stats(recipients, @repurchases)
-    @curve = repurchase_curve(@list, recipients, @repurchases)
+    @curve = repurchase_curve(@list, recipients, @repurchases, top_segments: @segment_rows.map { |r| r[:segment] } - ["其他"])
   end
 
   def update
@@ -113,22 +113,42 @@ class MessageListsController < ApplicationController
   end
 
   # 各分類的人數／回購數／回購率／帶回營業額；沒設定分類的歸「未分類」。
+  # 只顯示人數前 SEGMENT_TOP_N 名的分類，其餘合併成「其他」，避免長尾（1~2人）分類洗版。
+  SEGMENT_TOP_N = 5
+
   def segment_stats(recipients, repurchases)
-    recipients.group_by { |r| r.segment.presence || "未分類" }.map do |segment, rows|
-      reps = rows.filter_map { |r| repurchases[r.email] }
+    rows = recipients.group_by { |r| r.segment.presence || "未分類" }.map do |segment, group|
+      reps = group.filter_map { |r| repurchases[r.email] }
       {
         segment: segment,
-        total: rows.size,
+        total: group.size,
         repurchased: reps.size,
-        rate: (reps.size * 100.0 / rows.size).round(1),
+        rate: (reps.size * 100.0 / group.size).round(1),
         revenue: reps.sum { |r| r["order_total"].to_i }
       }
     end.sort_by { |h| -h[:total] }
+
+    return rows if rows.size <= SEGMENT_TOP_N
+
+    top, rest = rows.first(SEGMENT_TOP_N), rows.drop(SEGMENT_TOP_N)
+    other_total = rest.sum { |h| h[:total] }
+    other_repurchased = rest.sum { |h| h[:repurchased] }
+    top + [{
+      segment: "其他",
+      total: other_total,
+      repurchased: other_repurchased,
+      rate: other_total.zero? ? 0.0 : (other_repurchased * 100.0 / other_total).round(1),
+      revenue: rest.sum { |h| h[:revenue] }
+    }]
   end
 
   # 傳送後累積回購曲線（依分類分series）：x=傳送後第N天、y=累積回購人數。
-  def repurchase_curve(list, recipients, repurchases)
-    segment_by_email = recipients.to_h { |r| [r.email, r.segment.presence || "未分類"] }
+  # top_segments 之外的分類併入「其他」，跟 segment_stats 的長尾合併規則一致。
+  def repurchase_curve(list, recipients, repurchases, top_segments:)
+    segment_by_email = recipients.to_h do |r|
+      raw = r.segment.presence || "未分類"
+      [r.email, top_segments.include?(raw) ? raw : "其他"]
+    end
     max_day = [(Date.current - list.sent_on).to_i, 0].max
     days = (0..max_day).to_a
 
