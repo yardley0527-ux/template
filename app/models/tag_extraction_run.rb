@@ -30,7 +30,8 @@ class TagExtractionRun < ApplicationRecord
     "私密粉" => ["私密"],
     "益生菌" => ["益生菌"],
     "冰晶蕃茄" => ["冰晶蕃茄", "冰晶番茄"],
-    "穀胱甘肽" => ["穀胱甘肽"]
+    "穀胱甘肽" => ["穀胱甘肽"],
+    "魚油" => ["魚油"]
   }.freeze
 
   OLD_CUSTOMER_FIRST_PURCHASE_PREFIX = "老客首購－"
