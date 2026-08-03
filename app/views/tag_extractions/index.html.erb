@@ -32,6 +32,8 @@
           <th class="text-end" style="width:90px;">人數</th>
           <th>各系列小計</th>
           <th style="width:140px;">抓取時間</th>
+          <th class="text-center" style="width:90px;">已加Tag</th>
+          <th style="width:220px;">備註</th>
           <th style="width:80px;"></th>
         </tr>
       </thead>
@@ -39,7 +41,7 @@
         <% @runs.each do |run| %>
           <% covered = TagExtractionRun::ALL_CATEGORIES.select { |c| run.category_counts.key?(c) } %>
           <tr>
-            <td class="ps-3 fw-semibold"><%= link_to covered.join("、"), tag_extraction_path(run) %></td>
+            <td class="ps-3 fw-semibold"><%= covered.join("、") %></td>
             <td class="text-nowrap">
               <%= run.range_start.strftime("%Y/%-m/%-d") %> ~ <%= run.range_end.strftime("%Y/%-m/%-d") %>
             </td>
@@ -60,15 +62,28 @@
               <% end %>
             </td>
             <td class="text-nowrap text-muted"><%= run.created_at.strftime("%Y/%-m/%-d %H:%M") %></td>
-            <td class="text-end pe-3 text-nowrap">
-              <%= link_to "查看名單", tag_extraction_path(run), class: "btn btn-sm btn-outline-secondary me-1" %>
+            <td class="text-center">
+              <input type="checkbox"
+                class="run-tagged-checkbox"
+                data-run-id="<%= run.id %>"
+                <%= run.tagged? ? "checked" : "" %>
+                style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
+            </td>
+            <td>
+              <input type="text"
+                class="form-control form-control-sm run-note-input"
+                data-run-id="<%= run.id %>"
+                value="<%= run.note %>"
+                placeholder="備註">
+            </td>
+            <td class="text-end pe-3">
               <%= link_to "下載CSV", export_tag_extraction_path(run), class: "btn btn-sm btn-outline-primary" %>
             </td>
           </tr>
         <% end %>
         <% if @runs.empty? %>
           <tr>
-            <td colspan="6" class="text-center py-5 text-muted">
+            <td colspan="8" class="text-center py-5 text-muted">
               <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
               目前還沒有抓取紀錄，點右上角「抓取下一批」開始。
             </td>
@@ -78,3 +93,40 @@
     </table>
   </div>
 </div>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var UPDATE_URL = "<%= update_tag_extraction_run_field_path %>";
+
+  function patchField(runId, field, value) {
+    return fetch(UPDATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ run_id: runId, field: field, value: value })
+    });
+  }
+
+  document.querySelectorAll('.run-tagged-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      patchField(cb.dataset.runId, 'tagged', cb.checked).then(function(r) {
+        if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
+      });
+    });
+  });
+
+  document.querySelectorAll('.run-note-input').forEach(function(input) {
+    var timer = null;
+    input.addEventListener('input', function() {
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        patchField(input.dataset.runId, 'note', input.value).then(function(r) {
+          if (!r.ok) alert('備註更新失敗，請重新整理頁面再試一次');
+        });
+      }, 500);
+    });
+  });
+})();
+</script>
+<% end %>
