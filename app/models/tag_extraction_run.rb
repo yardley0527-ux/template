@@ -17,23 +17,31 @@ class TagExtractionRun < ApplicationRecord
   # 不是特定系列，而是「全店史上第一筆已付款訂單」落在區間內的新客，走獨立邏輯。
   NEW_CUSTOMER_CATEGORY = "新客"
 
-  ALL_CATEGORIES = (CATEGORIES.keys + [NEW_CUSTOMER_CATEGORY]).freeze
-
-  # 新客名單顯示用：依首購 product_name 比對出是哪個系列，用來在頁面上顯示
-  # 「新客－代謝 3」這種細項小計，跟 CATEGORIES 分開是因為新客不限系列、
-  # product_name 是自由格式（含「預購-」「5送1」等），需要用關鍵字比對而非精準分類。
-  NEW_CUSTOMER_PRODUCT_FAMILIES = {
-    "代謝" => /代謝/,
-    "全能" => /全能/,
-    "清纖" => /清纖/,
-    "薑黃" => /薑黃/,
-    "膠原蛋白" => /膠原蛋白/,
-    "美白" => /美白/,
-    "私密粉" => /私密/,
-    "益生菌" => /益生菌/,
-    "冰晶蕃茄" => /冰晶(蕃|番)茄/,
-    "穀胱甘肽" => /穀胱甘肽/
+  # 系列關鍵字，共用於：(1) 新客名單頁面上依 product_name 顯示的系列細項小計、
+  # (2) 「老客首購」類別（TagExtractionService）判斷某張訂單屬於哪個系列。
+  # 用關鍵字比對而非精準分類，因為 product_name 是自由格式（含「預購-」「5送1」等）。
+  PRODUCT_FAMILIES = {
+    "代謝" => ["代謝"],
+    "全能" => ["全能"],
+    "清纖" => ["清纖"],
+    "薑黃" => ["薑黃"],
+    "膠原蛋白" => ["膠原蛋白"],
+    "美白" => ["美白"],
+    "私密粉" => ["私密"],
+    "益生菌" => ["益生菌"],
+    "冰晶蕃茄" => ["冰晶蕃茄", "冰晶番茄"],
+    "穀胱甘肽" => ["穀胱甘肽"]
   }.freeze
+
+  OLD_CUSTOMER_FIRST_PURCHASE_PREFIX = "老客首購－"
+
+  def self.old_customer_first_purchase_category(family)
+    "#{OLD_CUSTOMER_FIRST_PURCHASE_PREFIX}#{family}"
+  end
+
+  OLD_CUSTOMER_FIRST_PURCHASE_CATEGORIES = PRODUCT_FAMILIES.keys.map { |f| old_customer_first_purchase_category(f) }.freeze
+
+  ALL_CATEGORIES = (CATEGORIES.keys + [NEW_CUSTOMER_CATEGORY] + OLD_CUSTOMER_FIRST_PURCHASE_CATEGORIES).freeze
 
   has_many :recipients, class_name: "TagExtractionRecipient", dependent: :destroy
 
@@ -43,7 +51,7 @@ class TagExtractionRun < ApplicationRecord
     counts = Hash.new(0)
 
     recipients.where(category: NEW_CUSTOMER_CATEGORY).pluck(:product_name).each do |name|
-      family = NEW_CUSTOMER_PRODUCT_FAMILIES.find { |_, pattern| name =~ pattern }&.first || "其他"
+      family = PRODUCT_FAMILIES.find { |_, keywords| keywords.any? { |kw| name.include?(kw) } }&.first || "其他"
       counts[family] += 1
     end
 

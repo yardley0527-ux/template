@@ -18,6 +18,7 @@ class TagExtractionService
   def call
     rows = TagExtractionRun::CATEGORIES.flat_map { |category, pattern| fetch(category, pattern) }
     rows += fetch_new_customers
+    rows += fetch_old_customer_first_purchases
 
     TagExtractionRun.transaction do
       run = TagExtractionRun.create!(
@@ -83,6 +84,62 @@ class TagExtractionService
     SQL
 
     connection.select_all(sql).to_a.each { |r| r["category"] = TagExtractionRun::NEW_CUSTOMER_CATEGORY }
+  end
+
+  # 「老客首購」：客人全歷史第一筆已付款訂單早於這次區間（不是完全新客），
+  # 但這是他第一次買這個系列（該系列在全歷史裡最早的訂單日落在區間內）。
+  # 跟 fetch（只買過一次）不同：即使這位客人之後又回購同系列，只要「這次」
+  # 是他第一次買，一樣算數，不要求全歷史只買一次。
+  def fetch_old_customer_first_purchases
+    TagExtractionRun::PRODUCT_FAMILIES.flat_map { |family, keywords| fetch_old_first_purchase(family, keywords) }
+  end
+
+  def fetch_old_first_purchase(family, keywords)
+    like_sql = keywords.map { |kw| "o.product_name ILIKE #{connection.quote("%#{kw}%")}" }.join(" OR ")
+
+    sql = <<~SQL
+      WITH family_orders AS (
+        SELECT LOWER(TRIM(o.email)) AS email, o.order_date::date AS order_date
+        FROM shopline_orders o
+        WHERE (#{like_sql}) AND o.payment_status = '已付款' AND o.email IS NOT NULL
+      ),
+      first_family AS (
+        SELECT email, MIN(order_date) AS first_date FROM family_orders GROUP BY email
+      ),
+      first_ever AS (
+        SELECT LOWER(TRIM(email)) AS email, MIN(order_date::date) AS overall_first_date
+        FROM shopline_orders
+        WHERE payment_status = '已付款' AND email IS NOT NULL
+        GROUP BY LOWER(TRIM(email))
+      ),
+      qualifying AS (
+        SELECT ff.email, ff.first_date
+        FROM first_family ff
+        JOIN first_ever fe ON fe.email = ff.email
+        WHERE ff.first_date BETWEEN #{connection.quote(@range_start)} AND #{connection.quote(@range_end)}
+          AND ff.first_date > fe.overall_first_date
+      ),
+      products AS (
+        SELECT q.email, STRING_AGG(DISTINCT o.product_name, ' / ') AS product_name
+        FROM qualifying q
+        JOIN shopline_orders o
+          ON LOWER(TRIM(o.email)) = q.email AND o.order_date::date = q.first_date
+        WHERE o.payment_status = '已付款' AND (#{like_sql})
+        GROUP BY q.email
+      )
+      SELECT
+        q.email,
+        COALESCE(sc.full_name, '') AS full_name,
+        COALESCE(sc.line_id, '') AS line_id,
+        p.product_name,
+        TO_CHAR(q.first_date, 'YYYY/MM') AS purchase_month
+      FROM qualifying q
+      JOIN products p ON p.email = q.email
+      LEFT JOIN shopline_customers sc ON LOWER(TRIM(sc.email)) = q.email
+      ORDER BY q.first_date
+    SQL
+
+    connection.select_all(sql).to_a.each { |r| r["category"] = TagExtractionRun.old_customer_first_purchase_category(family) }
   end
 
   def fetch(category, pattern)
