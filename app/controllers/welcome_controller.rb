@@ -1,5 +1,5 @@
 class WelcomeController < ApplicationController
-  COVER_ONLY_USERNAMES = %w[crmdata].freeze
+  COVER_ONLY_USERNAMES = %w[crmdata social].freeze
 
   def index
     if COVER_ONLY_USERNAMES.include?(current_user.username)
