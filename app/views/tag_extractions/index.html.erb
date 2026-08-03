@@ -46,9 +46,17 @@
             <td class="text-end fw-bold"><%= run.customer_count %></td>
             <td>
               <% covered.each do |category| %>
-                <span class="badge bg-light text-dark border me-1">
-                  <%= category %> <%= run.category_counts[category].to_i %>
-                </span>
+                <% if category == TagExtractionRun::NEW_CUSTOMER_CATEGORY %>
+                  <% run.new_customer_family_counts.each do |family, count| %>
+                    <span class="badge bg-light text-dark border me-1">
+                      新客－<%= family %> <%= count %>
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="badge bg-light text-dark border me-1">
+                    <%= category %> <%= run.category_counts[category].to_i %>
+                  </span>
+                <% end %>
               <% end %>
             </td>
             <td class="text-nowrap text-muted"><%= run.created_at.strftime("%Y/%-m/%-d %H:%M") %></td>
