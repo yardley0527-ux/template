@@ -153,7 +153,9 @@ Rails.application.routes.draw do
   get '/metabolism_qingxian_customers/export', to: 'metabolism_qingxian_customers#export', as: :export_metabolism_qingxian_customers
   get '/tag_extractions',            to: 'tag_extractions#index',  as: :tag_extractions
   post '/tag_extractions',           to: 'tag_extractions#create'
+  get '/tag_extractions/:id',        to: 'tag_extractions#show',   as: :tag_extraction
   get '/tag_extractions/:id/export', to: 'tag_extractions#export', as: :export_tag_extraction
+  post '/tag_extraction_recipients/update_field', to: 'tag_extractions#update_recipient_field', as: :update_tag_extraction_recipient_field
   get '/message_lists',            to: 'message_lists#index',  as: :message_lists
   get '/message_lists/:id',        to: 'message_lists#show',   as: :message_list
   patch '/message_lists/:id',      to: 'message_lists#update'

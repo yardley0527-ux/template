@@ -39,7 +39,7 @@
         <% @runs.each do |run| %>
           <% covered = TagExtractionRun::ALL_CATEGORIES.select { |c| run.category_counts.key?(c) } %>
           <tr>
-            <td class="ps-3 fw-semibold"><%= covered.join("、") %></td>
+            <td class="ps-3 fw-semibold"><%= link_to covered.join("、"), tag_extraction_path(run) %></td>
             <td class="text-nowrap">
               <%= run.range_start.strftime("%Y/%-m/%-d") %> ~ <%= run.range_end.strftime("%Y/%-m/%-d") %>
             </td>
@@ -60,7 +60,8 @@
               <% end %>
             </td>
             <td class="text-nowrap text-muted"><%= run.created_at.strftime("%Y/%-m/%-d %H:%M") %></td>
-            <td class="text-end pe-3">
+            <td class="text-end pe-3 text-nowrap">
+              <%= link_to "查看名單", tag_extraction_path(run), class: "btn btn-sm btn-outline-secondary me-1" %>
               <%= link_to "下載CSV", export_tag_extraction_path(run), class: "btn btn-sm btn-outline-primary" %>
             </td>
           </tr>

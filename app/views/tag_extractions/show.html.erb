@@ -1,0 +1,101 @@
+<%# app/views/tag_extractions/show.html.erb %>
+<% content_for :page_title, "Omnichat 加 tag 名單明細" %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex justify-content-between align-items-end flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0"><%= @run.range_start.strftime("%Y/%-m/%-d") %> ~ <%= @run.range_end.strftime("%Y/%-m/%-d") %>（共 <%= @run.customer_count %> 人）</h4>
+    </div>
+    <div>
+      <%= link_to "← 回列表", tag_extractions_path, class: "btn btn-outline-secondary btn-sm" %>
+      <%= link_to "下載CSV", export_tag_extraction_path(@run), class: "btn btn-outline-primary btn-sm" %>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0" style="font-size:0.88rem;">
+      <thead style="background-color:#4a4a4a; color:white;">
+        <tr>
+          <th class="ps-3">姓名</th>
+          <th>系列</th>
+          <th>購買產品</th>
+          <th>LINE ID</th>
+          <th>Email</th>
+          <th style="width:100px;">購買年月</th>
+          <th class="text-center" style="width:90px;">已加Tag</th>
+          <th style="width:260px;">備註</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @recipients.each do |r| %>
+          <tr>
+            <td class="ps-3"><%= r.full_name %></td>
+            <td><%= r.category %></td>
+            <td><%= r.product_name %></td>
+            <td><%= r.line_id %></td>
+            <td><%= r.email %></td>
+            <td class="text-nowrap"><%= r.purchase_month %></td>
+            <td class="text-center">
+              <input type="checkbox"
+                class="recipient-tagged-checkbox"
+                data-recipient-id="<%= r.id %>"
+                <%= r.tagged? ? "checked" : "" %>
+                style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
+            </td>
+            <td>
+              <input type="text"
+                class="form-control form-control-sm recipient-note-input"
+                data-recipient-id="<%= r.id %>"
+                value="<%= r.note %>"
+                placeholder="備註">
+            </td>
+          </tr>
+        <% end %>
+        <% if @recipients.empty? %>
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">這批名單沒有資料。</td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  var UPDATE_URL = "<%= update_tag_extraction_recipient_field_path %>";
+
+  function patchField(recipientId, field, value) {
+    return fetch(UPDATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+      body: JSON.stringify({ recipient_id: recipientId, field: field, value: value })
+    });
+  }
+
+  document.querySelectorAll('.recipient-tagged-checkbox').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+      patchField(cb.dataset.recipientId, 'tagged', cb.checked).then(function(r) {
+        if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
+      });
+    });
+  });
+
+  document.querySelectorAll('.recipient-note-input').forEach(function(input) {
+    var timer = null;
+    input.addEventListener('input', function() {
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        patchField(input.dataset.recipientId, 'note', input.value).then(function(r) {
+          if (!r.ok) alert('備註更新失敗，請重新整理頁面再試一次');
+        });
+      }, 500);
+    });
+  });
+})();
+</script>
+<% end %>

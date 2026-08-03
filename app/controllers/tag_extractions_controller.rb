@@ -24,15 +24,35 @@ class TagExtractionsController < ApplicationController
     redirect_to tag_extractions_path, notice: "抓到 #{run.range_start} ~ #{run.range_end}：共 #{run.customer_count} 人"
   end
 
+  def show
+    @run = TagExtractionRun.find(params[:id])
+    @recipients = @run.recipients.order(:category, :purchase_month)
+  end
+
+  def update_recipient_field
+    recipient = TagExtractionRecipient.find(params[:recipient_id])
+
+    case params[:field]
+    when "tagged"
+      recipient.update!(tagged: ActiveModel::Type::Boolean.new.cast(params[:value]))
+    when "note"
+      recipient.update!(note: params[:value].to_s)
+    else
+      return head :bad_request
+    end
+
+    head :ok
+  end
+
   def export
     run = TagExtractionRun.find(params[:id])
 
     require "csv"
 
     csv = CSV.generate(encoding: "UTF-8") do |rows|
-      rows << ["姓名", "購買產品", "LINE ID", "Email", "購買年月"]
+      rows << ["姓名", "購買產品", "LINE ID", "Email", "購買年月", "已加Tag", "備註"]
       run.recipients.order(:category, :purchase_month).each do |r|
-        rows << [r.full_name, r.product_name.presence || r.category, r.line_id, r.email, r.purchase_month]
+        rows << [r.full_name, r.product_name.presence || r.category, r.line_id, r.email, r.purchase_month, r.tagged? ? "是" : "否", r.note]
       end
     end
 

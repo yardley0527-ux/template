@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_29_085657) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_03_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1075,6 +1075,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_085657) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "product_name"
+    t.boolean "tagged", default: false, null: false
+    t.string "note"
     t.index ["tag_extraction_run_id", "category", "email"], name: "index_tag_extraction_recipients_on_run_category_email", unique: true
     t.index ["tag_extraction_run_id"], name: "index_tag_extraction_recipients_on_tag_extraction_run_id"
   end
