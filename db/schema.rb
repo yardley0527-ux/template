@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_03_193000) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_04_180001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -64,6 +64,34 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_03_193000) do
     t.string "external_key"
     t.index ["event_date"], name: "index_calendar_events_on_event_date"
     t.index ["external_key"], name: "index_calendar_events_on_external_key", unique: true
+  end
+
+  create_table "crm_customer_product_cycles", force: :cascade do |t|
+    t.string "identity_key", limit: 255, null: false
+    t.string "email", limit: 255, null: false
+    t.string "product_key", limit: 50, null: false
+    t.date "cycle_started_at", null: false
+    t.string "source_order_number", limit: 100
+    t.integer "bottle_count", null: false
+    t.integer "estimated_usage_days", null: false
+    t.date "estimated_finish_date", null: false
+    t.date "suggested_contact_date", null: false
+    t.string "match_status", default: "not_yet_repurchased", null: false
+    t.string "matched_next_order_number", limit: 100
+    t.date "matched_next_order_date"
+    t.string "matched_next_product_key", limit: 50
+    t.datetime "matched_at"
+    t.integer "manual_override_remaining_days"
+    t.date "manual_override_finish_date"
+    t.string "manual_override_source", limit: 255
+    t.datetime "manual_override_at"
+    t.datetime "refreshed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["identity_key", "product_key", "cycle_started_at"], name: "idx_cycles_on_identity_product_cycle", unique: true
+    t.index ["match_status"], name: "idx_cycles_on_match_status"
+    t.index ["product_key", "suggested_contact_date"], name: "idx_cycles_on_product_contact_date"
+    t.index ["source_order_number"], name: "idx_cycles_on_source_order_number"
   end
 
   create_table "crm_customer_product_trackings", force: :cascade do |t|
@@ -156,6 +184,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_03_193000) do
     t.index ["availability_status"], name: "index_crm_products_on_availability_status"
     t.index ["key"], name: "index_crm_products_on_key", unique: true
     t.index ["status"], name: "index_crm_products_on_status"
+  end
+
+  create_table "crm_repurchase_cycle_configs", force: :cascade do |t|
+    t.string "product_key", limit: 50, null: false
+    t.integer "bottle_count", null: false
+    t.integer "median_days", null: false
+    t.integer "sample_size", default: 0, null: false
+    t.string "source", default: "manual", null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["product_key", "bottle_count"], name: "idx_cycle_configs_on_product_bottle", unique: true
   end
 
   create_table "customer_edit_logs", force: :cascade do |t|
