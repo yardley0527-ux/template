@@ -125,4 +125,41 @@ class CrmProduct < ApplicationRecord
   rescue RegexpError
     nil
   end
+
+  # ── Alias-aware matching（Phase 5 修正）───────────────────────────
+  #
+  # sql_pattern 只在建立當下手動維護，不會因為 CrmProductAlias 新增就自動
+  # 更新（ProductAliasRegexGeneratorService 只重生 regex_pattern，不動
+  # sql_pattern）——已知 typo（例如「榖胱甘肽」「益生箘」）就算已經在
+  # active_aliases 裡登記，用 sql_pattern 做訂單比對還是抓不到，導致這些
+  # 顧客完全不會被建立 cycle。這裡刻意不去改 sql_pattern 本身或共用的
+  # regex 產生流程（影響面太廣、不是這次修正範圍），只在比對當下把
+  # active_aliases 併進來，讓「這筆品名算不算這個產品」的判斷跟 alias
+  # registry 同步，不建立第二套獨立的解析規則。
+
+  # LIKE 子字串（sql_pattern 解析出來的 + active_aliases 的別名字串）。
+  def matching_substrings
+    from_pattern = sql_pattern.to_s.scan(/LIKE\s+'%([^%]+)%'/i).flatten
+    from_aliases = active_aliases.map(&:alias_name)
+    (from_pattern + from_aliases).uniq
+  end
+
+  # 給 SQL 層級 WHERE 用：原本的 sql_pattern OR 每個 alias 各自的 LIKE 條件。
+  def matching_sql_pattern
+    alias_names = active_aliases.map(&:alias_name)
+    return sql_pattern if alias_names.empty?
+
+    conn = self.class.connection
+    clauses = [sql_pattern] + alias_names.map { |a| "product_name LIKE #{conn.quote("%#{a}%")}" }
+    clauses.compact.join(" OR ")
+  end
+
+  # 批次版：{ key => [substrings...] }，避免對多個產品逐一查詢造成 N+1。
+  def self.substring_matchers(keys: nil)
+    scope = confirmed
+    scope = scope.where(key: keys) if keys
+    scope.includes(:active_aliases).each_with_object({}) do |product, acc|
+      acc[product.key] = product.matching_substrings
+    end
+  end
 end

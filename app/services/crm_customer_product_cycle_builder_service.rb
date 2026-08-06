@@ -15,8 +15,6 @@
 class CrmCustomerProductCycleBuilderService
   LOCK_NAMESPACE        = "crm_customer_product_cycle_builder"
   REMINDER_BUFFER_DAYS  = 7
-  ADDON_WINDOW_MIN_DAYS = 3
-  ADDON_WINDOW_RATIO    = 0.3
   LOOKBACK_DAYS         = 730
 
   IDENTITY_JOIN_SQL = <<~SQL.squish.freeze
@@ -77,18 +75,12 @@ class CrmCustomerProductCycleBuilderService
     end
   end
 
-  # ── 產品比對（沿用 crm_products.sql_pattern 語意，'%X%' LIKE 子字串）──
+  # ── 產品比對（sql_pattern 的 LIKE 子字串 + CrmProductAlias 已知別名，
+  #    見 CrmProduct#matching_substrings 註解——已知 typo 只登記在 alias
+  #    表，沒有一起併入這裡就會完全比對不到）──
 
   def load_product_matchers
-    CrmProduct.confirmed.pluck(:key, :sql_pattern).each_with_object({}) do |(key, pattern), h|
-      h[key] = extract_like_substrings(pattern)
-    end
-  end
-
-  def extract_like_substrings(sql_pattern)
-    return [] if sql_pattern.blank?
-
-    sql_pattern.scan(/LIKE\s+'%([^%]+)%'/i).flatten
+    CrmProduct.substring_matchers
   end
 
   def product_key_for(product_name)
@@ -103,7 +95,7 @@ class CrmCustomerProductCycleBuilderService
     since_date = Date.current - LOOKBACK_DAYS
 
     rows = ShoplineOrder.valid_paid
-      .where(@crm_product.sql_pattern)
+      .where(@crm_product.matching_sql_pattern)
       .where("order_date >= ?", since_date.beginning_of_day)
       .joins(IDENTITY_JOIN_SQL)
       .pluck(
@@ -181,50 +173,62 @@ class CrmCustomerProductCycleBuilderService
     now   = Time.current
 
     {
-      identity_key:               event[:identity_key],
-      email:                      event[:email],
-      product_key:                @product_key,
-      cycle_started_at:           event[:cycle_started_at],
-      source_order_number:        event[:source_order_number],
-      bottle_count:               event[:bottle_count],
-      estimated_usage_days:       expected_days,
-      estimated_finish_date:      estimated_finish_date,
-      suggested_contact_date:     suggested_contact_date,
-      match_status:               match[:status],
-      matched_next_order_number:  match[:order_number],
-      matched_next_order_date:    match[:order_date],
-      matched_next_product_key:   match[:product_key],
-      matched_at:                 match[:status] == "not_yet_repurchased" ? nil : now,
-      refreshed_at:                now
+      identity_key:                     event[:identity_key],
+      email:                            event[:email],
+      product_key:                      @product_key,
+      cycle_started_at:                 event[:cycle_started_at],
+      source_order_number:              event[:source_order_number],
+      bottle_count:                     event[:bottle_count],
+      estimated_usage_days:             expected_days,
+      estimated_finish_date:            estimated_finish_date,
+      suggested_contact_date:           suggested_contact_date,
+      match_status:                     match[:status],
+      matched_next_order_number:        match[:next_any_order_number],
+      matched_next_order_date:          match[:next_any_order_date],
+      matched_next_product_key:         match[:next_any_product_key],
+      next_same_product_order_number:   match[:next_same_product_order_number],
+      next_same_product_order_date:     match[:next_same_product_order_date],
+      matched_at:                       match[:status] == "not_yet_repurchased" ? nil : now,
+      refreshed_at:                     now
     }
   end
 
-  # 同品回購 same_product_repurchase / 同品加購 same_product_addon（下一筆同
-  # 產品訂單落在「加購觀察窗」內，視為補買而非真正吃完後回購）/ 跨品購買
-  # cross_product_purchase（下一筆是別的產品）/ 尚未回購 not_yet_repurchased。
+  # next_any（購買後第一筆任何產品的有效訂單）跟 next_same_product（購買後
+  # 第一筆包含原產品的有效訂單）是兩條獨立的搜尋，不是「找到第一筆就決定
+  # 一切」——例如 6/1 買A → 6/15 買B → 7/20 又買A，next_any 是 6/15 的 B
+  # （代表發生跨品購買），next_same_product 是 7/20 的 A（代表同品回購已
+  # 完成），兩者同時成立，用 CrmCustomerProductCycle#cross_product_purchase?
+  # 各自讀取，不會因為 B 比較早就漏掉 A 的回購。
+  #
+  # match_status 只由 next_same_product 這條線決定（加購/回購/尚未回購），
+  # 跟中間有沒有跨品購買無關。
+  #
+  # later 內的多筆訂單依 (date, order_number) 排序後取最小值，確保結果
+  # 不受 DB 查詢回傳順序影響（原始 SQL 沒有 ORDER BY），重跑才不會漂移。
   def classify_match(event, identity_orders, expected_days)
     later = identity_orders.select { |o| o[:order_date] > event[:cycle_started_at] }
-    return { status: "not_yet_repurchased", order_number: nil, order_date: nil, product_key: nil } if later.empty?
+                            .sort_by { |o| [o[:order_date], o[:order_number].to_s] }
 
-    earliest_date    = later.map { |o| o[:order_date] }.min
-    same_day_orders  = later.select { |o| o[:order_date] == earliest_date }
-    same_product_hit = same_day_orders.find { |o| product_key_for(o[:product_name]) == @product_key }
+    next_any = later.first
+    same_product_orders = later.select { |o| product_key_for(o[:product_name]) == @product_key }
+    next_same = same_product_orders.first
 
-    gap_days     = (earliest_date - event[:cycle_started_at]).to_i
-    addon_window = [(expected_days * ADDON_WINDOW_RATIO).round, ADDON_WINDOW_MIN_DAYS].max
-
-    if same_product_hit
+    if next_same
+      gap_days     = (next_same[:order_date] - event[:cycle_started_at]).to_i
+      addon_window = CrmRepurchaseCycleConfig.addon_window_days(expected_days)
       status = gap_days <= addon_window ? "same_product_addon" : "same_product_repurchase"
-      { status: status, order_number: same_product_hit[:order_number], order_date: earliest_date, product_key: @product_key }
     else
-      representative = same_day_orders.first
-      {
-        status:      "cross_product_purchase",
-        order_number: representative[:order_number],
-        order_date:   earliest_date,
-        product_key:  product_key_for(representative[:product_name])
-      }
+      status = "not_yet_repurchased"
     end
+
+    {
+      status:                          status,
+      next_any_order_number:           next_any&.[](:order_number),
+      next_any_order_date:             next_any&.[](:order_date),
+      next_any_product_key:            next_any && product_key_for(next_any[:product_name]),
+      next_same_product_order_number:  next_same&.[](:order_number),
+      next_same_product_order_date:    next_same&.[](:order_date)
+    }
   end
 
   # ── Persistence：manual_override_* 不覆寫，matched_at 只在狀態改變時更新 ──
@@ -240,21 +244,24 @@ class CrmCustomerProductCycleBuilderService
         identity_key, email, product_key, cycle_started_at, source_order_number,
         bottle_count, estimated_usage_days, estimated_finish_date, suggested_contact_date,
         match_status, matched_next_order_number, matched_next_order_date, matched_next_product_key,
+        next_same_product_order_number, next_same_product_order_date,
         matched_at, refreshed_at, created_at, updated_at
       )
       VALUES
         #{values_sql}
       ON CONFLICT (identity_key, product_key, cycle_started_at) DO UPDATE SET
-        email                      = EXCLUDED.email,
-        source_order_number        = EXCLUDED.source_order_number,
-        bottle_count               = EXCLUDED.bottle_count,
-        estimated_usage_days       = EXCLUDED.estimated_usage_days,
-        estimated_finish_date      = EXCLUDED.estimated_finish_date,
-        suggested_contact_date     = EXCLUDED.suggested_contact_date,
-        match_status               = EXCLUDED.match_status,
-        matched_next_order_number  = EXCLUDED.matched_next_order_number,
-        matched_next_order_date    = EXCLUDED.matched_next_order_date,
-        matched_next_product_key   = EXCLUDED.matched_next_product_key,
+        email                            = EXCLUDED.email,
+        source_order_number              = EXCLUDED.source_order_number,
+        bottle_count                     = EXCLUDED.bottle_count,
+        estimated_usage_days             = EXCLUDED.estimated_usage_days,
+        estimated_finish_date            = EXCLUDED.estimated_finish_date,
+        suggested_contact_date           = EXCLUDED.suggested_contact_date,
+        match_status                     = EXCLUDED.match_status,
+        matched_next_order_number        = EXCLUDED.matched_next_order_number,
+        matched_next_order_date          = EXCLUDED.matched_next_order_date,
+        matched_next_product_key         = EXCLUDED.matched_next_product_key,
+        next_same_product_order_number   = EXCLUDED.next_same_product_order_number,
+        next_same_product_order_date     = EXCLUDED.next_same_product_order_date,
         matched_at = CASE
           WHEN crm_customer_product_cycles.match_status = EXCLUDED.match_status
           THEN crm_customer_product_cycles.matched_at
@@ -283,6 +290,8 @@ class CrmCustomerProductCycleBuilderService
       conn.quote(row[:matched_next_order_number]),
       conn.quote(row[:matched_next_order_date]),
       conn.quote(row[:matched_next_product_key]),
+      conn.quote(row[:next_same_product_order_number]),
+      conn.quote(row[:next_same_product_order_date]),
       conn.quote(row[:matched_at]),
       conn.quote(row[:refreshed_at]),
       now,

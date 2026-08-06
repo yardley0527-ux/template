@@ -1,0 +1,185 @@
+<% content_for :heading do %>建立客服排程<% end %>
+<% content_for :pagedescription do %><%= @livestream.date.strftime("%Y/%m/%d") %> 直播候選名單排程<% end %>
+<% content_for :category_1 do %>CRM<% end %>
+<% content_for :title do %>建立排程<% end %>
+
+<div class="row">
+  <div class="col-12">
+
+    <div class="mb-3">
+      <%= link_to "← 回候選名單", livestream_repurchase_candidates_path(livestream_id: @livestream.id), class: "btn btn-outline-secondary btn-sm" %>
+    </div>
+
+    <% if @livestream_already_past %>
+      <div class="alert alert-danger">
+        這場直播（<%= @livestream.date.strftime("%Y/%m/%d") %>）已經結束，不能建立「直播前候選邀請排程」。
+        直播後的追蹤排程是另一個尚未開發的功能。
+      </div>
+    <% else %>
+
+      <p class="text-muted small">
+        這裡排的是「直播前候選邀請」——排程日期不能晚於直播日期（<%= @livestream.date.strftime("%Y/%m/%d") %>），
+        預設也不能排到直播當天，除非明確勾選「允許直播當日聯絡」。直播結束後的追蹤排程不是這個功能的用途。
+      </p>
+
+      <div class="panel">
+        <div class="panel-hdr"><h2>排程設定</h2></div>
+        <div class="panel-container show">
+          <div class="panel-content">
+            <%= form_with url: preview_crm_livestream_schedule_path(@livestream), method: :post, local: true,
+                          class: "row gx-3 gy-2 align-items-end" do %>
+              <div class="col-sm-6 col-md-2">
+                <label class="form-label">排程開始日</label>
+                <%= date_field_tag :start_date, params[:start_date] || @default_start_date,
+                      class: "form-control", required: true, max: @livestream.date %>
+              </div>
+              <div class="col-sm-6 col-md-2">
+                <label class="form-label">排程結束日</label>
+                <%= date_field_tag :end_date, params[:end_date] || @default_end_date,
+                      class: "form-control", required: true, max: @livestream.date %>
+              </div>
+              <div class="col-sm-6 col-md-3">
+                <label class="form-label">參與客服（可複選）</label>
+                <%= select_tag "user_ids[]", options_for_select(@assignee_options, Array(params[:user_ids])),
+                      multiple: true, class: "form-control", size: 4, required: true %>
+              </div>
+              <div class="col-sm-6 col-md-2">
+                <label class="form-label">每人每日上限</label>
+                <%= number_field_tag :daily_cap, params[:daily_cap] || 20, class: "form-control", min: 1, required: true %>
+              </div>
+              <div class="col-sm-6 col-md-3">
+                <div class="form-check">
+                  <%= check_box_tag :exclude_saturday, "1", params[:exclude_saturday].present? ? params[:exclude_saturday] == "1" : true, class: "form-check-input" %>
+                  <label class="form-check-label">排除週六</label>
+                </div>
+                <div class="form-check">
+                  <%= check_box_tag :exclude_sunday, "1", params[:exclude_sunday].present? ? params[:exclude_sunday] == "1" : true, class: "form-check-input" %>
+                  <label class="form-check-label">排除週日</label>
+                </div>
+                <div class="form-check">
+                  <%# 預設不勾選——直播當日聯絡必須是管理者明確的選擇 %>
+                  <%= check_box_tag :allow_same_day_contact, "1", params[:allow_same_day_contact] == "1", class: "form-check-input" %>
+                  <label class="form-check-label">允許直播當日聯絡</label>
+                </div>
+              </div>
+              <div class="col-auto">
+                <%= button_tag "① 預覽排程", type: "submit", class: "btn btn-primary" %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <% if @plan %>
+        <div class="panel">
+          <div class="panel-hdr"><h2>② 預覽結果（尚未寫入資料庫）</h2></div>
+          <div class="panel-container show">
+            <div class="panel-content">
+              <div class="row g-3 mb-3">
+                <div class="col-6 col-md-2">
+                  <div class="card border-0 shadow-sm text-center py-2">
+                    <div class="text-muted small">可安排候選人數</div>
+                    <div class="fw-bold" style="font-size:1.4rem;"><%= @plan.eligible_count %></div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-2">
+                  <div class="card border-0 shadow-sm text-center py-2">
+                    <div class="text-muted small">毛產能</div>
+                    <div class="fw-bold" style="font-size:1.4rem;"><%= @plan.gross_capacity %></div>
+                    <div class="text-muted" style="font-size:0.6rem;">人數×上限×工作天</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-2">
+                  <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #6b7280 !important;">
+                    <div class="text-muted small">既有任務占用</div>
+                    <div class="fw-bold" style="font-size:1.4rem; color:#6b7280;"><%= @plan.occupied_capacity %></div>
+                    <div class="text-muted" style="font-size:0.6rem;">跨直播未完成任務</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-2">
+                  <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #0369a1 !important;">
+                    <div class="text-muted small">淨可用產能</div>
+                    <div class="fw-bold" style="font-size:1.4rem; color:#0369a1;"><%= @plan.available_capacity %></div>
+                    <div class="text-muted" style="font-size:0.6rem;">毛產能－既有占用</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-2">
+                  <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #16a34a !important;">
+                    <div class="text-muted small">本次實際安排</div>
+                    <div class="fw-bold" style="font-size:1.4rem; color:#16a34a;"><%= @plan.scheduled_count %></div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-2">
+                  <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #dc3545 !important;">
+                    <div class="text-muted small">產能不足未安排</div>
+                    <div class="fw-bold" style="font-size:1.4rem; color:#dc3545;"><%= @plan.unscheduled_count %></div>
+                  </div>
+                </div>
+              </div>
+
+              <h6>各候選原因分布（已安排的部分）</h6>
+              <table class="table table-sm table-bordered w-auto mb-3">
+                <tbody>
+                  <% LivestreamRepurchaseCandidateQuery::REASON_LABELS.slice(*CrmLivestreamOutreachScheduler::REASON_ORDER).each do |key, label| %>
+                    <tr><th><%= label %></th><td><%= @plan.reason_breakdown[key] || 0 %></td></tr>
+                  <% end %>
+                </tbody>
+              </table>
+
+              <h6>每天、每位客服的產能明細</h6>
+              <p class="text-muted small">上限／既有任務／本次可新增／本次實際安排——可以看出某一天為什麼沒排滿。</p>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                  <thead>
+                    <tr>
+                      <th>日期</th>
+                      <% @assignee_options.each do |name, id| %>
+                        <th colspan="4" class="text-center"><%= name %></th>
+                      <% end %>
+                    </tr>
+                    <tr>
+                      <th></th>
+                      <% @assignee_options.each do %>
+                        <th class="small">上限</th><th class="small">既有</th><th class="small">可新增</th><th class="small">本次安排</th>
+                      <% end %>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% @plan.daily_breakdown.keys.sort.each do |date| %>
+                      <tr>
+                        <td><%= date.strftime("%Y/%m/%d (%a)") %></td>
+                        <% @assignee_options.each do |_name, id| %>
+                          <% cell = @plan.daily_breakdown.dig(date, id) || { cap: 0, existing: 0, available: 0, scheduled: 0 } %>
+                          <td class="small text-center"><%= cell[:cap] %></td>
+                          <td class="small text-center"><%= cell[:existing] %></td>
+                          <td class="small text-center"><%= cell[:available] %></td>
+                          <td class="small text-center fw-bold"><%= cell[:scheduled] %></td>
+                        <% end %>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+
+              <%= form_with url: crm_livestream_schedule_path(@livestream), method: :post, local: true do %>
+                <%= hidden_field_tag :start_date, params[:start_date] %>
+                <%= hidden_field_tag :end_date, params[:end_date] %>
+                <% Array(params[:user_ids]).each do |uid| %>
+                  <%= hidden_field_tag "user_ids[]", uid %>
+                <% end %>
+                <%= hidden_field_tag :daily_cap, params[:daily_cap] %>
+                <%= hidden_field_tag :exclude_saturday, params[:exclude_saturday] %>
+                <%= hidden_field_tag :exclude_sunday, params[:exclude_sunday] %>
+                <%= hidden_field_tag :allow_same_day_contact, params[:allow_same_day_contact] %>
+                <%= button_tag "③ 確認建立 #{@plan.scheduled_count} 筆任務", type: "submit", class: "btn btn-success",
+                      data: { confirm: "確定要建立這 #{@plan.scheduled_count} 筆客服任務嗎？" } %>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+    <% end %>
+
+  </div>
+</div>

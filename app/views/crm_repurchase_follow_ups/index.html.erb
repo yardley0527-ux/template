@@ -1,0 +1,280 @@
+<% content_for :heading do %>回購追蹤 Dashboard<% end %>
+<% content_for :pagedescription do %>一位顧客 × 一項產品 × 一筆目前有效任務<% end %>
+<% content_for :category_1 do %>CRM<% end %>
+<% content_for :title do %>回購追蹤<% end %>
+
+<% prev_page = [@page - 1, 1].max %>
+<% next_page = [@page + 1, @total_pages].min %>
+<% status_labels = CrmCustomerProductCycle::STATUS_LABELS %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 text-right">
+    <%= link_to "📺 直播名單", livestream_repurchase_candidates_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+
+    <%# ── KPI ──────────────────────────────────────────────────── %>
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <%= link_to crm_repurchase_dashboard_path(request.query_parameters.merge(status: "overdue")),
+              class: "text-decoration-none" do %>
+          <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #dc3545 !important;">
+            <div class="text-muted mb-1" style="font-size:0.72rem;">逾期未回購</div>
+            <div class="fw-bold" style="font-size:2rem; line-height:1; color:#dc3545;"><%= @kpis[:overdue] %></div>
+          </div>
+        <% end %>
+      </div>
+      <div class="col-6 col-md-3">
+        <%= link_to crm_repurchase_dashboard_path(request.query_parameters.merge(status: "due_today")),
+              class: "text-decoration-none" do %>
+          <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #ea580c !important;">
+            <div class="text-muted mb-1" style="font-size:0.72rem;">今日待聯絡</div>
+            <div class="fw-bold" style="font-size:2rem; line-height:1; color:#ea580c;"><%= @kpis[:due_today] %></div>
+          </div>
+        <% end %>
+      </div>
+      <div class="col-6 col-md-3">
+        <%= link_to crm_repurchase_dashboard_path(request.query_parameters.merge(status: "due_soon")),
+              class: "text-decoration-none" do %>
+          <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #ca8a04 !important;">
+            <div class="text-muted mb-1" style="font-size:0.72rem;">7 天內即將用完</div>
+            <div class="fw-bold" style="font-size:2rem; line-height:1; color:#ca8a04;"><%= @kpis[:due_soon] %></div>
+          </div>
+        <% end %>
+      </div>
+      <div class="col-6 col-md-3">
+        <%= link_to crm_repurchase_dashboard_path(request.query_parameters.merge(status: "waiting_reply")),
+              class: "text-decoration-none" do %>
+          <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #0369a1 !important;">
+            <div class="text-muted mb-1" style="font-size:0.72rem;">等待回覆</div>
+            <div class="fw-bold" style="font-size:2rem; line-height:1; color:#0369a1;"><%= @kpis[:waiting_reply] %></div>
+          </div>
+        <% end %>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #16a34a !important;">
+          <div class="text-muted mb-1" style="font-size:0.72rem;">本月同品回購</div>
+          <div class="fw-bold" style="font-size:2rem; line-height:1; color:#16a34a;"><%= @kpis[:repurchased_this_month] %></div>
+          <div class="text-muted" style="font-size:0.65rem;">系統偵測到的同品訂單</div>
+        </div>
+      </div>
+    </div>
+
+    <%# ── Filter ──────────────────────────────────────────────── %>
+    <div class="panel">
+      <div class="panel-hdr"><h2>篩選</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <%= form_with url: crm_repurchase_dashboard_path, method: :get, local: true,
+                        class: "row gx-3 gy-2 align-items-end" do %>
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label">產品</label>
+              <%= select_tag :product_key,
+                    options_for_select([["全部", ""]] + @product_options, params[:product_key]),
+                    class: "form-control" %>
+            </div>
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label">狀態</label>
+              <%= select_tag :status,
+                    options_for_select([["全部（預設隱藏暫停/已回購）", ""]] +
+                      @status_options.map { |s| [status_labels.fetch(s, s), s] }, params[:status]),
+                    class: "form-control" %>
+            </div>
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label">負責人</label>
+              <%= select_tag :assigned_to,
+                    options_for_select([["全部", ""]] + @assignee_options, params[:assigned_to]),
+                    class: "form-control" %>
+            </div>
+            <div class="col-sm-6 col-md-3">
+              <label class="form-label">顧客搜尋</label>
+              <%= text_field_tag :q, params[:q], class: "form-control", placeholder: "姓名 / email / 手機" %>
+            </div>
+            <div class="col-auto">
+              <%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>
+              <%= link_to "清除", crm_repurchase_dashboard_path, class: "btn btn-outline-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <%# ── List ────────────────────────────────────────────────── %>
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2>待辦清單 <span class="badge badge-secondary ml-2"><%= @total_count %></span></h2>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content">
+
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="text-muted small">
+              共 <%= @total_count %> 筆　每頁 <%= CrmRepurchaseDashboardQuery::PER_PAGE %>
+              頁數 <%= @page %> / <%= @total_pages %>
+            </div>
+            <div class="btn-group">
+              <%= link_to "← 上一頁", crm_repurchase_dashboard_path(request.query_parameters.merge(page: prev_page)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page <= 1}" %>
+              <%= link_to "下一頁 →", crm_repurchase_dashboard_path(request.query_parameters.merge(page: next_page)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm table-hover">
+              <thead class="thead-light">
+                <tr>
+                  <th>顧客</th>
+                  <th>會員等級</th>
+                  <th>產品</th>
+                  <th>購買日期</th>
+                  <th class="text-end">數量</th>
+                  <th>預估用完日</th>
+                  <th>剩餘／逾期</th>
+                  <th>最近聯絡日</th>
+                  <th>下次聯絡日</th>
+                  <th>狀態</th>
+                  <th>負責人</th>
+                  <th>下一筆任何訂單</th>
+                  <th>下一筆同品訂單</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @cycles.each do |cycle| %>
+                  <% customer = @customers_by_email[cycle.email] %>
+                  <% days = cycle.effective_remaining_days %>
+                  <tr>
+                    <td class="align-middle">
+                      <div class="fw-500"><%= customer&.full_name || "—" %></div>
+                      <div class="text-muted small"><%= cycle.email %></div>
+                    </td>
+                    <td class="align-middle"><%= customer&.membership_level || "—" %></td>
+                    <td class="align-middle"><%= @product_labels_by_key[cycle.product_key] || cycle.product_key %></td>
+                    <td class="align-middle"><%= cycle.cycle_started_at&.strftime("%Y/%m/%d") %></td>
+                    <td class="text-end align-middle"><%= cycle.bottle_count %></td>
+                    <td class="align-middle"><%= cycle.effective_finish_date&.strftime("%Y/%m/%d") %></td>
+                    <td class="align-middle">
+                      <% if days.negative? %>
+                        <span class="text-danger fw-500">逾期 <%= -days %> 天</span>
+                      <% elsif days.zero? %>
+                        <span class="text-warning fw-500">今天</span>
+                      <% else %>
+                        剩 <%= days %> 天
+                      <% end %>
+                    </td>
+                    <td class="align-middle small"><%= cycle.last_contacted_at&.strftime("%m/%d %H:%M") || "—" %></td>
+                    <td class="align-middle small"><%= cycle.next_contact_date&.strftime("%Y/%m/%d") || "—" %></td>
+                    <td class="align-middle">
+                      <span class="badge badge-secondary"><%= status_labels.fetch(cycle.derived_status, cycle.derived_status) %></span>
+                    </td>
+                    <td class="align-middle small"><%= cycle.assigned_to&.username || "—" %></td>
+                    <td class="align-middle small">
+                      <% if cycle.next_any_order_date %>
+                        <%= @product_labels_by_key[cycle.next_any_product_key] || cycle.next_any_product_key %>
+                        <br><%= cycle.next_any_order_date.strftime("%Y/%m/%d") %>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
+                    <td class="align-middle small">
+                      <% if cycle.next_same_product_order_date %>
+                        <%= cycle.next_same_product_order_number %>
+                        <br><%= cycle.next_same_product_order_date.strftime("%Y/%m/%d") %>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
+                    <td class="align-middle">
+                      <button type="button" class="btn btn-outline-primary btn-sm"
+                              data-toggle="modal" data-target="#modal-followup-<%= cycle.id %>">
+                        操作
+                      </button>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex justify-content-end mt-2">
+            <div class="btn-group">
+              <%= link_to "← 上一頁", crm_repurchase_dashboard_path(request.query_parameters.merge(page: prev_page)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page <= 1}" %>
+              <%= link_to "下一頁 →", crm_repurchase_dashboard_path(request.query_parameters.merge(page: next_page)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<%# ── 每列一個操作 modal（分頁後最多 PER_PAGE 筆，數量可控） ─────── %>
+<% @cycles.each do |cycle| %>
+  <div class="modal fade" id="modal-followup-<%= cycle.id %>" tabindex="-1" role="dialog"
+       aria-labelledby="modal-followup-label-<%= cycle.id %>">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-followup-label-<%= cycle.id %>">
+            更新追蹤 — <%= @customers_by_email[cycle.email]&.full_name || cycle.email %>
+            （<%= @product_labels_by_key[cycle.product_key] %>）
+          </h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <%= form_with url: crm_repurchase_follow_up_path(cycle), method: :patch, local: true do %>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>操作</label>
+              <%= select_tag "follow_up[follow_up_action]",
+                    options_for_select(CrmCustomerProductFollowUpEvent::ACTION_LABELS.map { |k, v| [v, k] }),
+                    class: "form-control", required: true %>
+            </div>
+            <div class="form-group">
+              <label>新的預估剩餘天數 <small class="text-muted">（「尚未吃完」擇一必填）</small></label>
+              <%= number_field_tag "follow_up[remaining_days]", nil, class: "form-control", min: 1 %>
+            </div>
+            <div class="form-group">
+              <label>下次聯絡日 <small class="text-muted">（「指定日期再聯絡」／「尚未吃完」擇一必填）</small></label>
+              <%= date_field_tag "follow_up[next_contact_date]", nil, class: "form-control" %>
+            </div>
+            <div class="form-group">
+              <label>負責人</label>
+              <%= select_tag "follow_up[assigned_to_user_id]",
+                    options_for_select([["不變更", ""]] + @assignee_options, cycle.assigned_to_user_id),
+                    class: "form-control" %>
+            </div>
+            <div class="form-group mb-0">
+              <label>備註</label>
+              <%= text_area_tag "follow_up[note]", nil, class: "form-control", rows: 2 %>
+            </div>
+            <% if cycle.next_same_product_order_date %>
+              <p class="text-success small mt-2 mb-0">
+                系統已偵測到同品訂單：<%= cycle.next_same_product_order_number %>
+                （<%= cycle.next_same_product_order_date.strftime("%Y/%m/%d") %>）——
+                選「已回購」會一併記錄這筆訂單。
+              </p>
+            <% else %>
+              <p class="text-muted small mt-2 mb-0">
+                系統尚未偵測到同品訂單——選「已回購」會標示為人工確認，不會產生訂單編號。
+              </p>
+            <% end %>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary">送出</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

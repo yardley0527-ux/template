@@ -1,0 +1,347 @@
+<% content_for :heading do %>直播回購候選名單<% end %>
+<% content_for :pagedescription do %>從回購追蹤 active task 產生的直播補貨候選<% end %>
+<% content_for :category_1 do %>CRM<% end %>
+<% content_for :title do %>直播名單<% end %>
+
+<% status_labels = CrmCustomerProductCycle::STATUS_LABELS %>
+<% reason_labels = LivestreamRepurchaseCandidateQuery::REASON_LABELS %>
+
+<div class="row">
+  <div class="col-12">
+
+    <%# ── 直播選擇 ──────────────────────────────────────────────── %>
+    <div class="panel">
+      <div class="panel-hdr"><h2>選擇直播場次</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <%= form_with url: livestream_repurchase_candidates_path, method: :get, local: true,
+                        class: "row gx-3 gy-2 align-items-end" do %>
+            <div class="col-sm-8 col-md-5">
+              <label class="form-label">直播場次（只列有設定本場銷售產品的場次）</label>
+              <%= select_tag :livestream_id,
+                    options_for_select(
+                      @livestreams.map { |l| ["#{l.date} #{l.title} (#{l.product_keys.join(', ')})", l.id] },
+                      @livestream&.id),
+                    class: "form-control", include_blank: "請選擇" %>
+            </div>
+            <div class="col-auto">
+              <%= button_tag "查看候選名單", type: "submit", class: "btn btn-primary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <% if @livestream.nil? %>
+      <div class="alert alert-info">請先選擇一場直播。</div>
+    <% else %>
+
+      <%# ── 直播摘要 ──────────────────────────────────────────────── %>
+      <div class="row g-3 mb-3">
+        <div class="col-12 d-flex flex-wrap gap-3 align-items-center">
+          <div><strong>直播日期</strong>：<%= @livestream.date.strftime("%Y/%m/%d") %></div>
+          <div><strong>本場銷售產品</strong>：
+            <%= @livestream.product_keys.map { |k| @product_labels_by_key[k] || k }.join("、") %>
+          </div>
+          <% if @historical %>
+            <span class="badge badge-warning" style="font-size:0.85rem;">⚠ 歷史推估名單</span>
+          <% else %>
+            <span class="badge badge-success" style="font-size:0.85rem;">即時名單</span>
+          <% end %>
+          <% if current_user&.admin? %>
+            <%= link_to "📅 建立客服排程", new_crm_livestream_schedule_path(@livestream), class: "btn btn-primary btn-sm ml-auto" %>
+          <% end %>
+        </div>
+        <% if @historical %>
+          <div class="col-12">
+            <div class="alert alert-warning small mb-0">
+              這場直播日期已過，名單以「直播當天已知資訊」重建（只採用直播日期以前開始的購買週期、直播日期以前發生的客服操作紀錄），
+              但客服狀態的重建只看「直播前最後一筆操作」，不是完整重播每一步操作，所以是<strong>推估</strong>，不是當時實際存檔的名單。
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <% if @products_missing_cycle_config.any? %>
+        <div class="alert alert-warning">
+          以下產品缺回購週期設定，該產品的顧客不會出現在候選名單裡（不是被篩掉，是完全沒有可用的 cycle 資料）：
+          <%= @products_missing_cycle_config.map { |p| p[:label] }.join("、") %>
+        </div>
+      <% end %>
+
+      <%# ── 分類人數摘要 ──────────────────────────────────────────── %>
+      <p class="text-muted small mb-1">
+        以下每個候選原因顯示的都是「人數」（同一顧客不會在同一原因內重複計數），
+        但同一顧客可能因命中不同產品而同時出現在多個原因裡，所以加總會大於「預設可執行名單總數」——
+        後者才是去重後、實際可安排的顧客數。
+      </p>
+      <div class="row g-3 mb-2">
+        <div class="col-6 col-md-2">
+          <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #0369a1 !important;">
+            <div class="text-muted mb-1" style="font-size:0.68rem;">補貨客</div>
+            <div class="fw-bold" style="font-size:1.4rem; color:#0369a1;"><%= @summary[:replenish] %></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #ca8a04 !important;">
+            <div class="text-muted mb-1" style="font-size:0.68rem;">近期流失 1–30天</div>
+            <div class="fw-bold" style="font-size:1.4rem; color:#ca8a04;"><%= @summary[:win_back_1_30] %></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #ea580c !important;">
+            <div class="text-muted mb-1" style="font-size:0.68rem;">中度流失 31–60天</div>
+            <div class="fw-bold" style="font-size:1.4rem; color:#ea580c;"><%= @summary[:win_back_31_60] %></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #dc3545 !important;">
+            <div class="text-muted mb-1" style="font-size:0.68rem;">高風險流失 61–90天</div>
+            <div class="fw-bold" style="font-size:1.4rem; color:#dc3545;"><%= @summary[:win_back_61_90] %></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #6b7280 !important;">
+            <div class="text-muted mb-1" style="font-size:0.68rem;">歷史沉睡客 90天以上</div>
+            <div class="fw-bold" style="font-size:1.4rem; color:#6b7280;"><%= @summary[:dormant_over_90] %></div>
+            <div class="text-muted" style="font-size:0.62rem;">預設不列入，篩選可查</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-2">
+          <div class="card border-0 shadow-sm text-center py-2" style="border-top:3px solid #16a34a !important;">
+            <div class="text-muted mb-1" style="font-size:0.68rem;">預設可執行名單總數</div>
+            <div class="fw-bold" style="font-size:1.4rem; color:#16a34a;"><%= @summary[:default_actionable] %></div>
+          </div>
+        </div>
+      </div>
+
+      <%# ── 本場直播 follow-up 執行結果 ─────────────────────────────── %>
+      <p class="text-muted small mb-1">以下為「本場直播」follow-up event 操作結果（依 livestream_id 關聯，非全站統計）：</p>
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #16a34a !important;">
+            <div class="text-muted mb-1" style="font-size:0.7rem;">已聯絡</div>
+            <div class="fw-bold" style="font-size:1.7rem; color:#16a34a;"><%= @kpis[:contacted] %></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #0891b2 !important;">
+            <div class="text-muted mb-1" style="font-size:0.7rem;">等待回覆</div>
+            <div class="fw-bold" style="font-size:1.7rem; color:#0891b2;"><%= @kpis[:waiting_reply] %></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #ca8a04 !important;">
+            <div class="text-muted mb-1" style="font-size:0.7rem;">已回購</div>
+            <div class="fw-bold" style="font-size:1.7rem; color:#ca8a04;"><%= @kpis[:repurchased] %></div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card border-0 shadow-sm text-center py-3" style="border-top:3px solid #dc3545 !important;">
+            <div class="text-muted mb-1" style="font-size:0.7rem;">尚未處理</div>
+            <div class="fw-bold" style="font-size:1.7rem; color:#dc3545;"><%= @kpis[:not_yet_handled] %></div>
+          </div>
+        </div>
+      </div>
+
+      <%# ── 篩選 ──────────────────────────────────────────────────── %>
+      <div class="panel">
+        <div class="panel-hdr"><h2>篩選</h2></div>
+        <div class="panel-container show">
+          <div class="panel-content">
+            <%= form_with url: livestream_repurchase_candidates_path, method: :get, local: true,
+                          class: "row gx-3 gy-2 align-items-end" do %>
+              <%= hidden_field_tag :livestream_id, @livestream.id %>
+              <div class="col-sm-6 col-md-2">
+                <label class="form-label">候選原因</label>
+                <%= select_tag :reason,
+                      options_for_select([["預設（不含歷史沉睡客）", ""]] + reason_labels.map { |k, v| [v, k] }, params[:reason]),
+                      class: "form-control" %>
+              </div>
+              <div class="col-sm-6 col-md-2">
+                <label class="form-label">產品</label>
+                <%= select_tag :product_key,
+                      options_for_select([["全部", ""]] + @livestream.product_keys.map { |k| [@product_labels_by_key[k] || k, k] }, params[:product_key]),
+                      class: "form-control" %>
+              </div>
+              <div class="col-sm-6 col-md-2">
+                <label class="form-label">狀態</label>
+                <%= select_tag :status,
+                      options_for_select([["全部", ""]] + @status_options.map { |s| [status_labels.fetch(s, s), s] }, params[:status]),
+                      class: "form-control" %>
+              </div>
+              <div class="col-sm-6 col-md-2">
+                <label class="form-label">負責人</label>
+                <%= select_tag :assigned_to,
+                      options_for_select([["全部", ""]] + @assignee_options, params[:assigned_to]),
+                      class: "form-control" %>
+              </div>
+              <div class="col-sm-6 col-md-2">
+                <label class="form-label">顧客搜尋</label>
+                <%= text_field_tag :q, params[:q], class: "form-control", placeholder: "姓名 / email / 手機" %>
+              </div>
+              <div class="col-sm-6 col-md-1">
+                <label class="form-label">沉睡門檻(天)</label>
+                <%= number_field_tag :win_back_max_days, params[:win_back_max_days],
+                      class: "form-control", placeholder: LivestreamRepurchaseCandidateQuery::DEFAULT_WIN_BACK_MAX_DAYS.to_s %>
+              </div>
+              <div class="col-auto">
+                <%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>
+                <%= link_to "清除", livestream_repurchase_candidates_path(livestream_id: @livestream.id), class: "btn btn-outline-secondary" %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <%# ── 候選名單 ──────────────────────────────────────────────── %>
+      <div class="panel">
+        <div class="panel-hdr">
+          <h2>候選名單 <span class="badge badge-secondary ml-2"><%= @total_count %></span></h2>
+        </div>
+        <div class="panel-container show">
+          <div class="panel-content">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div class="text-muted small">
+                共 <%= @total_count %> 筆　頁數 <%= @page %> / <%= @total_pages %>
+              </div>
+              <div class="btn-group">
+                <%= link_to "← 上一頁", livestream_repurchase_candidates_path(request.query_parameters.merge(page: [@page - 1, 1].max)),
+                      class: "btn btn-outline-secondary btn-sm #{'disabled' if @page <= 1}" %>
+                <%= link_to "下一頁 →", livestream_repurchase_candidates_path(request.query_parameters.merge(page: [@page + 1, @total_pages].min)),
+                      class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-sm table-hover">
+                <thead class="thead-light">
+                  <tr>
+                    <th>顧客</th>
+                    <th>會員等級</th>
+                    <th>命中產品</th>
+                    <th>候選原因</th>
+                    <th>預估用完日</th>
+                    <th>逾期天數</th>
+                    <th>最近聯絡日</th>
+                    <th>目前狀態</th>
+                    <th>負責人</th>
+                    <th>直播前已購買主推產品？</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @rows.each do |row| %>
+                    <% rep = row.representative_cycle %>
+                    <% customer = @customers_by_email[rep.email] %>
+                    <tr>
+                      <td class="align-middle">
+                        <div class="fw-500"><%= customer&.full_name || "—" %></div>
+                        <div class="text-muted small"><%= rep.email %></div>
+                      </td>
+                      <td class="align-middle"><%= customer&.membership_level || "—" %></td>
+                      <td class="align-middle small">
+                        <% row.hit_product_keys.each do |pk| %>
+                          <span class="badge badge-light"><%= @product_labels_by_key[pk] || pk %></span>
+                        <% end %>
+                      </td>
+                      <td class="align-middle small">
+                        <% row.reasons.each do |r| %>
+                          <span class="badge badge-info"><%= reason_labels.fetch(r, r) %></span>
+                        <% end %>
+                      </td>
+                      <td class="align-middle"><%= rep.effective_finish_date&.strftime("%Y/%m/%d") %></td>
+                      <td class="align-middle">
+                        <%= row.overdue_days.positive? ? "逾期 #{row.overdue_days} 天" : "尚未逾期" %>
+                      </td>
+                      <td class="align-middle small"><%= rep.last_contacted_at&.strftime("%m/%d %H:%M") || "—" %></td>
+                      <td class="align-middle">
+                        <span class="badge badge-secondary"><%= status_labels.fetch(row.derived_status, row.derived_status) %></span>
+                      </td>
+                      <td class="align-middle small"><%= rep.assigned_to&.username || "—" %></td>
+                      <td class="align-middle small">
+                        <%# active_as_of/active_follow_up 已經結構性排除「直播前已購買」的候選，
+                            所以能出現在名單裡的一定是「否」；如果之後（直播後）有買，只當作參考資訊顯示。 %>
+                        否
+                        <% if rep.next_same_product_order_date %>
+                          <br><span class="text-muted">（<%= rep.next_same_product_order_date.strftime("%Y/%m/%d") %> 之後買了）</span>
+                        <% end %>
+                      </td>
+                      <td class="align-middle">
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                data-toggle="modal" data-target="#modal-livestream-followup-<%= row.identity_key.parameterize %>">
+                          操作
+                        </button>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <%# ── 每列一個 modal，內含每個命中 cycle 各自的小表單（沿用 Phase 2 FollowUpService）── %>
+      <% @rows.each do |row| %>
+        <% rep = row.representative_cycle %>
+        <div class="modal fade" id="modal-livestream-followup-<%= row.identity_key.parameterize %>" tabindex="-1" role="dialog">
+          <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title"><%= @customers_by_email[rep.email]&.full_name || rep.email %> — 更新追蹤</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+              </div>
+              <div class="modal-body">
+                <% row.cycles.each do |cycle| %>
+                  <div class="border rounded p-2 mb-3">
+                    <div class="fw-500 mb-2">
+                      <%= @product_labels_by_key[cycle.product_key] || cycle.product_key %>
+                      <span class="text-muted small">（<%= row.hits.select { |h| h[:cycle].id == cycle.id }.map { |h| reason_labels.fetch(h[:reason], h[:reason]) }.join("、") %>）</span>
+                    </div>
+                    <%= form_with url: livestream_repurchase_candidate_path(livestream_id: @livestream.id, cycle_id: cycle.id),
+                                  method: :patch, local: true, class: "row gx-2 gy-2 align-items-end" do %>
+                      <div class="col-md-3">
+                        <label class="form-label small mb-0">操作</label>
+                        <%= select_tag "follow_up[follow_up_action]",
+                              options_for_select(CrmCustomerProductFollowUpEvent::ACTION_LABELS.map { |k, v| [v, k] }),
+                              class: "form-control form-control-sm", required: true %>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-0">新剩餘天數</label>
+                        <%= number_field_tag "follow_up[remaining_days]", nil, class: "form-control form-control-sm", min: 1 %>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-0">下次聯絡日</label>
+                        <%= date_field_tag "follow_up[next_contact_date]", nil, class: "form-control form-control-sm" %>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-0">負責人</label>
+                        <%= select_tag "follow_up[assigned_to_user_id]",
+                              options_for_select([["不變更", ""]] + @assignee_options, cycle.assigned_to_user_id),
+                              class: "form-control form-control-sm" %>
+                      </div>
+                      <div class="col-md-2">
+                        <label class="form-label small mb-0">備註</label>
+                        <%= text_field_tag "follow_up[note]", nil, class: "form-control form-control-sm" %>
+                      </div>
+                      <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary btn-sm">送出</button>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">關閉</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+
+    <% end %>
+  </div>
+</div>

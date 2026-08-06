@@ -55,7 +55,7 @@ class RepurchaseCycleMedianCalculator
     since_date = Date.current - WINDOW_DAYS
 
     rows = ShoplineOrder.valid_paid
-      .where(@crm_product.sql_pattern)
+      .where(@crm_product.matching_sql_pattern)
       .where("order_date >= ?", since_date.beginning_of_day)
       .joins(<<~SQL)
         LEFT JOIN shopline_customers sc

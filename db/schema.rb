@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_04_180001) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_07_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -88,10 +88,36 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_180001) do
     t.datetime "refreshed_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "next_same_product_order_number", limit: 100
+    t.date "next_same_product_order_date"
+    t.string "follow_up_status"
+    t.datetime "last_contacted_at"
+    t.date "next_contact_date"
+    t.bigint "assigned_to_user_id"
+    t.index ["assigned_to_user_id"], name: "index_crm_customer_product_cycles_on_assigned_to_user_id"
+    t.index ["follow_up_status"], name: "index_crm_customer_product_cycles_on_follow_up_status"
     t.index ["identity_key", "product_key", "cycle_started_at"], name: "idx_cycles_on_identity_product_cycle", unique: true
     t.index ["match_status"], name: "idx_cycles_on_match_status"
+    t.index ["next_contact_date"], name: "index_crm_customer_product_cycles_on_next_contact_date"
     t.index ["product_key", "suggested_contact_date"], name: "idx_cycles_on_product_contact_date"
     t.index ["source_order_number"], name: "idx_cycles_on_source_order_number"
+  end
+
+  create_table "crm_customer_product_follow_up_events", force: :cascade do |t|
+    t.bigint "cycle_id", null: false
+    t.bigint "performed_by_user_id", null: false
+    t.string "action", null: false
+    t.text "note"
+    t.date "next_contact_date"
+    t.string "detected_order_number"
+    t.datetime "performed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "livestream_id"
+    t.index ["cycle_id", "performed_at"], name: "idx_on_cycle_id_performed_at_168647359c"
+    t.index ["cycle_id"], name: "index_crm_customer_product_follow_up_events_on_cycle_id"
+    t.index ["livestream_id"], name: "index_crm_customer_product_follow_up_events_on_livestream_id"
+    t.index ["performed_by_user_id"], name: "idx_on_performed_by_user_id_7d594970a6"
   end
 
   create_table "crm_customer_product_trackings", force: :cascade do |t|
@@ -111,6 +137,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_180001) do
     t.index ["email", "product_key"], name: "idx_crm_tracking_on_email_product", unique: true
     t.index ["product_key", "expected_return_date"], name: "idx_crm_tracking_on_product_return_date"
     t.index ["product_key", "last_order_date"], name: "idx_crm_tracking_on_product_last_order"
+  end
+
+  create_table "crm_livestream_outreach_tasks", force: :cascade do |t|
+    t.bigint "livestream_id", null: false
+    t.bigint "crm_customer_product_cycle_id", null: false
+    t.string "identity_key", limit: 255, null: false
+    t.bigint "assigned_to_user_id", null: false
+    t.date "scheduled_date", null: false
+    t.string "status", default: "pending", null: false
+    t.string "candidate_reason", limit: 50, null: false
+    t.jsonb "hit_summary", default: [], null: false
+    t.bigint "created_by_user_id", null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assigned_to_user_id", "scheduled_date", "status"], name: "idx_outreach_tasks_on_assignee_date_status"
+    t.index ["livestream_id", "crm_customer_product_cycle_id"], name: "idx_outreach_tasks_on_livestream_cycle", unique: true
+    t.index ["livestream_id", "identity_key"], name: "idx_outreach_tasks_on_livestream_identity", unique: true
+    t.index ["status"], name: "index_crm_livestream_outreach_tasks_on_status"
   end
 
   create_table "crm_product_aliases", force: :cascade do |t|
@@ -1204,6 +1249,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_180001) do
   end
 
   add_foreign_key "albums", "shopline_customers"
+  add_foreign_key "crm_customer_product_cycles", "users", column: "assigned_to_user_id"
+  add_foreign_key "crm_customer_product_follow_up_events", "crm_customer_product_cycles", column: "cycle_id"
+  add_foreign_key "crm_customer_product_follow_up_events", "livestreams"
+  add_foreign_key "crm_customer_product_follow_up_events", "users", column: "performed_by_user_id"
+  add_foreign_key "crm_livestream_outreach_tasks", "crm_customer_product_cycles"
+  add_foreign_key "crm_livestream_outreach_tasks", "livestreams"
+  add_foreign_key "crm_livestream_outreach_tasks", "users", column: "assigned_to_user_id"
+  add_foreign_key "crm_livestream_outreach_tasks", "users", column: "created_by_user_id"
   add_foreign_key "crm_product_aliases", "crm_products"
   add_foreign_key "crm_products", "users", column: "inventory_status_updated_by_id"
   add_foreign_key "crm_products", "users", column: "reviewed_by_user_id"

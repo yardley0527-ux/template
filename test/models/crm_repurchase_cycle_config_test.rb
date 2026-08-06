@@ -49,4 +49,19 @@ class CrmRepurchaseCycleConfigTest < ActiveSupport::TestCase
     assert_equal 60,  CrmRepurchaseCycleConfig.expected_days(key, 1)
     assert_equal 100, CrmRepurchaseCycleConfig.expected_days(key, 10)
   end
+
+  test "addon_window_days is 30% of expected_days, rounded" do
+    assert_equal 18, CrmRepurchaseCycleConfig.addon_window_days(60)  # 60*0.3 = 18
+    assert_equal 15, CrmRepurchaseCycleConfig.addon_window_days(50)  # 50*0.3 = 15
+  end
+
+  test "addon_window_days floors at ADDON_WINDOW_MIN_DAYS for very short cycles" do
+    assert_equal 3, CrmRepurchaseCycleConfig.addon_window_days(5)   # 5*0.3 = 1.5 -> floored to 3
+    assert_equal 3, CrmRepurchaseCycleConfig.addon_window_days(1)
+  end
+
+  test "addon_window_days boundary: exactly at min days threshold" do
+    # 10*0.3 = 3.0，剛好等於下限，不應該再被 floor 邏輯改變
+    assert_equal 3, CrmRepurchaseCycleConfig.addon_window_days(10)
+  end
 end
