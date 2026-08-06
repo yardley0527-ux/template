@@ -45,4 +45,15 @@ class CrmRepurchaseCycleConfig < ApplicationRecord
     hi_v = medians[hi]
     (lo_v + (hi_v - lo_v).to_f * (bottle_count - lo) / (hi - lo)).round
   end
+
+  # 加購觀察窗（天）：下一筆同產品訂單落在這個窗口內視為「加購」而非「回購」。
+  # Phase 1.5：從 CrmCustomerProductCycleBuilderService 抽出來變成單一可調整
+  # 常數，不寫死在 matcher 裡——之後要依產品調整，再改成每個 product_key
+  # 各自一個值即可，呼叫端（matcher）不用動。
+  ADDON_WINDOW_MIN_DAYS = 3
+  ADDON_WINDOW_RATIO    = 0.3
+
+  def self.addon_window_days(expected_days)
+    [(expected_days * ADDON_WINDOW_RATIO).round, ADDON_WINDOW_MIN_DAYS].max
+  end
 end

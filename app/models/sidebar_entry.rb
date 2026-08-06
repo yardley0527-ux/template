@@ -67,6 +67,9 @@ class SidebarEntry
           children: [
             { href: crm_home_path(product: effective_key),      title: "CRM 首頁",    icon: "fa-chart-pie" },
             { href: crm_journey_path(product: effective_key),   title: "客戶旅程管理", icon: "fa-route" },
+            { href: crm_repurchase_dashboard_path,               title: "回購追蹤 Dashboard", icon: "fa-tasks" },
+            { href: livestream_repurchase_candidates_path,       title: "直播回購候選名單", icon: "fa-broadcast-tower" },
+            { href: crm_outreach_tasks_path,                     title: "我的今日任務", icon: "fa-calendar-check" },
             { href: crm_broadcast_path(product: effective_key), title: "直播邀請管理", icon: "fa-broadcast-tower" },
             { href: message_lists_path, title: "訊息名單追蹤", icon: "fa-envelope-open-text" },
             { href: "#", title: "CRM 效益分析", icon: "fa-chart-bar", children: [

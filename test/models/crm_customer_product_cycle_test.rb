@@ -85,4 +85,46 @@ class CrmCustomerProductCycleTest < ActiveSupport::TestCase
       assert_equal 9, overdue.effective_overdue_days
     end
   end
+
+  test "next_any_order_* aliases read/write the underlying matched_next_order_* columns" do
+    cycle = build_cycle(matched_next_order_number: "ORD1", matched_next_order_date: Date.new(2026, 2, 1), matched_next_product_key: "fish_oil")
+    assert_equal "ORD1", cycle.next_any_order_number
+    assert_equal Date.new(2026, 2, 1), cycle.next_any_order_date
+    assert_equal "fish_oil", cycle.next_any_product_key
+  end
+
+  test "cross_product_purchase? is true only when the next-any order exists and differs from this cycle's product" do
+    no_next = build_cycle
+    assert_not no_next.cross_product_purchase?
+
+    same_product_next = build_cycle(matched_next_order_date: Date.new(2026, 2, 1), matched_next_product_key: "omnipotent")
+    assert_not same_product_next.cross_product_purchase?
+
+    cross = build_cycle(matched_next_order_date: Date.new(2026, 2, 1), matched_next_product_key: "fish_oil")
+    assert cross.cross_product_purchase?
+  end
+
+  test "same_product_repurchase_completed? and same_product_repurchase_days reflect next_same_product_order fields independently of cross_product_purchase" do
+    # 跨品購買（魚油）跟同品回購（全能）同時成立時，兩條線都要能各自正確讀出來
+    cycle = build_cycle(
+      cycle_started_at: Date.new(2026, 6, 1),
+      matched_next_order_date: Date.new(2026, 6, 15), matched_next_product_key: "fish_oil",
+      next_same_product_order_date: Date.new(2026, 7, 20)
+    )
+
+    assert cycle.cross_product_purchase?
+    assert cycle.same_product_repurchase_completed?
+    assert_equal 49, cycle.same_product_repurchase_days
+  end
+
+  test "same_product_repurchase_days is nil when there is no next_same_product_order" do
+    cycle = build_cycle
+    assert_not cycle.same_product_repurchase_completed?
+    assert_nil cycle.same_product_repurchase_days
+  end
+
+  test "cross_product_purchase is no longer a valid match_status value" do
+    cycle = build_cycle(match_status: "cross_product_purchase")
+    assert_not cycle.valid?
+  end
 end

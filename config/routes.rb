@@ -127,6 +127,23 @@ Rails.application.routes.draw do
   get   '/crm/export_loyal',           to: 'omnipotent_restock#export_loyal',          as: :crm_export_loyal
   patch '/crm/update_status',          to: 'omnipotent_restock#update_status',         as: :crm_update_status
 
+  # ── 回購追蹤 Dashboard（Phase 2）────────────────────────────────────
+  get   '/crm/repurchase_dashboard',        to: 'crm_repurchase_follow_ups#index',  as: :crm_repurchase_dashboard
+  patch '/crm/repurchase_dashboard/:id',    to: 'crm_repurchase_follow_ups#update', as: :crm_repurchase_follow_up
+
+  # ── 直播回購候選名單（Phase 3）──────────────────────────────────────
+  get   '/crm/livestreams/candidates',                            to: 'livestream_repurchase_candidates#index',  as: :livestream_repurchase_candidates
+  patch '/crm/livestreams/:livestream_id/candidates/:cycle_id',   to: 'livestream_repurchase_candidates#update', as: :livestream_repurchase_candidate
+
+  # ── 客服排程（Phase 4）──────────────────────────────────────────────
+  get   '/crm/livestreams/:livestream_id/schedule/new',      to: 'crm_livestream_schedules#new',     as: :new_crm_livestream_schedule
+  post  '/crm/livestreams/:livestream_id/schedule/preview',  to: 'crm_livestream_schedules#preview', as: :preview_crm_livestream_schedule
+  post  '/crm/livestreams/:livestream_id/schedule',          to: 'crm_livestream_schedules#create',  as: :crm_livestream_schedule
+
+  get   '/crm/outreach_tasks',                to: 'crm_outreach_tasks#index',      as: :crm_outreach_tasks
+  patch '/crm/outreach_tasks/:id',            to: 'crm_outreach_tasks#update',     as: :crm_outreach_task
+  patch '/crm/outreach_tasks/:id/reschedule', to: 'crm_outreach_tasks#reschedule', as: :reschedule_crm_outreach_task
+
   # ── 舊路由保留（向後相容）────────────────────────────────────────────
   get   '/omnipotent_restock',                         to: 'omnipotent_restock#index',                as: :omnipotent_restock
   get   '/omnipotent_restock/export',                  to: 'omnipotent_restock#export',               as: :omnipotent_restock_export

@@ -1,0 +1,176 @@
+<% content_for :heading do %>我的今日任務<% end %>
+<% content_for :pagedescription do %>客服每日排程任務執行頁<% end %>
+<% content_for :category_1 do %>CRM<% end %>
+<% content_for :title do %>每日任務<% end %>
+
+<% status_labels = CrmCustomerProductCycle::STATUS_LABELS %>
+<% reason_labels = LivestreamRepurchaseCandidateQuery::REASON_LABELS %>
+<% bucket_labels = { "today" => "今日任務", "all_pending" => "未完成", "overdue" => "逾期未完成", "upcoming" => "未來任務", "completed" => "已完成" } %>
+
+<div class="row">
+  <div class="col-12">
+
+    <p class="text-muted small">
+      <% if current_user.admin? %>
+        目前顯示：全部客服的任務（管理者權限）。
+      <% else %>
+        目前顯示：只分派給你的任務。
+      <% end %>
+    </p>
+
+    <%# ── 分頁籤 ──────────────────────────────────────────────────── %>
+    <ul class="nav nav-tabs mb-3">
+      <% bucket_labels.each do |key, label| %>
+        <li class="nav-item">
+          <%= link_to label, crm_outreach_tasks_path(request.query_parameters.merge(bucket: key, page: nil)),
+                class: "nav-link #{'active' if @bucket == key}" %>
+        </li>
+      <% end %>
+    </ul>
+
+    <% if current_user.admin? %>
+      <%= form_with url: crm_outreach_tasks_path, method: :get, local: true, class: "row gx-3 gy-2 align-items-end mb-3" do %>
+        <%= hidden_field_tag :bucket, @bucket %>
+        <div class="col-sm-6 col-md-3">
+          <label class="form-label">負責客服</label>
+          <%= select_tag :assigned_to, options_for_select([["全部", ""]] + @assignee_options, params[:assigned_to]),
+                class: "form-control" %>
+        </div>
+        <div class="col-auto">
+          <%= button_tag "查詢", type: "submit", class: "btn btn-primary btn-sm" %>
+        </div>
+      <% end %>
+    <% end %>
+
+    <div class="panel">
+      <div class="panel-hdr"><h2>任務清單 <span class="badge badge-secondary ml-2"><%= @total %></span></h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="text-muted small">共 <%= @total %> 筆　頁數 <%= @page %> / <%= @total_pages %></div>
+            <div class="btn-group">
+              <%= link_to "← 上一頁", crm_outreach_tasks_path(request.query_parameters.merge(page: [@page - 1, 1].max)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page <= 1}" %>
+              <%= link_to "下一頁 →", crm_outreach_tasks_path(request.query_parameters.merge(page: [@page + 1, @total_pages].min)),
+                    class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered table-sm table-hover">
+              <thead class="thead-light">
+                <tr>
+                  <th>顧客</th>
+                  <th>會員等級</th>
+                  <th>命中產品</th>
+                  <th>候選原因</th>
+                  <th>直播日期</th>
+                  <th>排程日期</th>
+                  <th>預估用完日</th>
+                  <th>最近聯絡日</th>
+                  <th>任務狀態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @tasks.each do |task| %>
+                  <% cycle = task.cycle %>
+                  <% customer = @customers_by_email[cycle.email] %>
+                  <tr>
+                    <td class="align-middle">
+                      <div class="fw-500"><%= customer&.full_name || "—" %></div>
+                      <div class="text-muted small"><%= cycle.email %></div>
+                      <% if current_user.admin? %><div class="text-muted small">負責：<%= task.assigned_to&.username %></div><% end %>
+                    </td>
+                    <td class="align-middle"><%= customer&.membership_level || "—" %></td>
+                    <td class="align-middle small">
+                      <% Array(task.hit_summary).each do |h| %>
+                        <span class="badge badge-light"><%= @product_labels_by_key[h["product_key"]] || h["product_key"] %></span>
+                      <% end %>
+                    </td>
+                    <td class="align-middle small">
+                      <% Array(task.hit_summary).map { |h| h["reason"] }.uniq.each do |r| %>
+                        <span class="badge badge-info"><%= reason_labels.fetch(r, r) %></span>
+                      <% end %>
+                    </td>
+                    <td class="align-middle small"><%= task.livestream.date.strftime("%Y/%m/%d") %></td>
+                    <td class="align-middle">
+                      <%= task.scheduled_date.strftime("%Y/%m/%d") %>
+                      <% if task.status == "pending" && task.scheduled_date < Date.current %>
+                        <span class="badge badge-danger">逾期</span>
+                      <% end %>
+                    </td>
+                    <td class="align-middle small"><%= cycle.effective_finish_date&.strftime("%Y/%m/%d") %></td>
+                    <td class="align-middle small"><%= cycle.last_contacted_at&.strftime("%m/%d %H:%M") || "—" %></td>
+                    <td class="align-middle">
+                      <% if task.status == "completed" %>
+                        <span class="badge badge-success">已完成</span>
+                      <% else %>
+                        <span class="badge badge-secondary"><%= status_labels.fetch(cycle.derived_status, cycle.derived_status) %></span>
+                      <% end %>
+                    </td>
+                    <td class="align-middle">
+                      <% if task.status == "pending" %>
+                        <button type="button" class="btn btn-outline-primary btn-sm"
+                                data-toggle="modal" data-target="#modal-task-<%= task.id %>">操作</button>
+                      <% else %>
+                        <span class="text-muted small">已於 <%= task.completed_at&.strftime("%m/%d %H:%M") %> 完成</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<% @tasks.select { |t| t.status == "pending" }.each do |task| %>
+  <% cycle = task.cycle %>
+  <div class="modal fade" id="modal-task-<%= task.id %>" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><%= @customers_by_email[cycle.email]&.full_name || cycle.email %> — 更新任務</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        </div>
+        <%= form_with url: crm_outreach_task_path(task), method: :patch, local: true do %>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>操作</label>
+              <%= select_tag "follow_up[follow_up_action]",
+                    options_for_select(CrmCustomerProductFollowUpEvent::ACTION_LABELS.map { |k, v| [v, k] }),
+                    class: "form-control", required: true %>
+            </div>
+            <div class="form-group">
+              <label class="small mb-0">新的預估剩餘天數 <small class="text-muted">（「尚未吃完」擇一必填）</small></label>
+              <%= number_field_tag "follow_up[remaining_days]", nil, class: "form-control", min: 1 %>
+            </div>
+            <div class="form-group">
+              <label class="small mb-0">下次聯絡日 <small class="text-muted">（「指定日期再聯絡」／「尚未吃完」擇一必填）</small></label>
+              <%= date_field_tag "follow_up[next_contact_date]", nil, class: "form-control" %>
+            </div>
+            <div class="form-group mb-0">
+              <label>備註</label>
+              <%= text_area_tag "follow_up[note]", nil, class: "form-control", rows: 2 %>
+            </div>
+            <p class="text-muted small mt-2 mb-0">
+              「指定日期再聯絡」／「尚未吃完（只填日期）」會把這筆任務的排程日期改成新日期，不會產生第二筆任務；
+              其他操作（含備註除外）會把這筆任務標記為已完成。
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary">送出</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

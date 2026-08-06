@@ -67,7 +67,7 @@ class CrmCustomerProductCycleBuilderServiceTest < ActiveSupport::TestCase
     assert_equal 0, CrmCustomerProductCycle.where(product_key: key).count
   end
 
-  test "classifies same_product_repurchase when the next order is the same product, outside the addon window" do
+  test "classifies same_product_repurchase when next_same_product_order lands outside the addon window" do
     key = unique_key
     make_product(key, "測試丁", medians: { 1 => 60 })
     email = "a_#{SecureRandom.hex(4)}@example.com"
@@ -79,10 +79,11 @@ class CrmCustomerProductCycleBuilderServiceTest < ActiveSupport::TestCase
 
     cycle = CrmCustomerProductCycle.where(product_key: key, cycle_started_at: Date.new(2026, 1, 1)).first
     assert_equal "same_product_repurchase", cycle.match_status
-    assert_equal Date.new(2026, 3, 1), cycle.matched_next_order_date
+    assert_equal Date.new(2026, 3, 1), cycle.next_same_product_order_date
+    assert_not cycle.cross_product_purchase?
   end
 
-  test "classifies same_product_addon when the next same-product order lands inside the addon window" do
+  test "classifies same_product_addon when next_same_product_order lands inside the addon window" do
     key = unique_key
     make_product(key, "測試戊", medians: { 1 => 60 }) # addon window = max(60*0.3, 3) = 18 天
     email = "a_#{SecureRandom.hex(4)}@example.com"
@@ -96,36 +97,121 @@ class CrmCustomerProductCycleBuilderServiceTest < ActiveSupport::TestCase
     assert_equal "same_product_addon", cycle.match_status
   end
 
-  test "classifies cross_product_purchase when the next order is a different tracked product" do
+  test "先跨品、後同品回購：cross_product_purchase? 跟同品回購同時成立，不因為跨品訂單較早就漏掉回購" do
     key_a = unique_key
     key_b = unique_key
-    make_product(key_a, "測試己甲", medians: { 1 => 60 })
+    make_product(key_a, "測試己甲", medians: { 1 => 60 }) # addon window = 18 天
     make_product(key_b, "測試己乙", medians: { 1 => 60 })
     email = "a_#{SecureRandom.hex(4)}@example.com"
 
-    make_order(email: email, product_name: "測試己甲1", order_date: Date.new(2026, 1, 1))
-    make_order(email: email, product_name: "測試己乙1", order_date: Date.new(2026, 1, 20))
+    make_order(email: email, product_name: "測試己甲1", order_date: Date.new(2026, 6, 1))
+    make_order(email: email, product_name: "測試己乙1", order_date: Date.new(2026, 6, 15)) # 跨品購買
+    make_order(email: email, product_name: "測試己甲1", order_date: Date.new(2026, 7, 20)) # 之後同品回購
+
+    CrmCustomerProductCycleBuilderService.call(product_key: key_a)
+
+    cycle = CrmCustomerProductCycle.where(product_key: key_a, cycle_started_at: Date.new(2026, 6, 1)).first
+    assert cycle.cross_product_purchase?
+    assert_equal key_b, cycle.next_any_product_key
+    assert_equal Date.new(2026, 6, 15), cycle.next_any_order_date
+
+    assert cycle.same_product_repurchase_completed?
+    assert_equal Date.new(2026, 7, 20), cycle.next_same_product_order_date
+    assert_equal 49, cycle.same_product_repurchase_days
+    assert_equal "same_product_repurchase", cycle.match_status # 只由同品這條線決定，不受跨品影響
+  end
+
+  test "先同品加購、後來再次同品回購：兩個週期各自獨立判斷，不互相污染" do
+    key = unique_key
+    make_product(key, "測試庚", medians: { 1 => 60 }) # addon window = 18 天
+    email = "a_#{SecureRandom.hex(4)}@example.com"
+
+    make_order(email: email, product_name: "測試庚1", order_date: Date.new(2026, 1, 1))
+    make_order(email: email, product_name: "測試庚1", order_date: Date.new(2026, 1, 10)) # 加購（9 天後）
+    make_order(email: email, product_name: "測試庚1", order_date: Date.new(2026, 3, 5))  # 真正回購（第二個週期起算）
+
+    CrmCustomerProductCycleBuilderService.call(product_key: key)
+
+    first_cycle = CrmCustomerProductCycle.where(product_key: key, cycle_started_at: Date.new(2026, 1, 1)).first
+    assert_equal "same_product_addon", first_cycle.match_status
+    assert_equal Date.new(2026, 1, 10), first_cycle.next_same_product_order_date
+
+    addon_cycle = CrmCustomerProductCycle.where(product_key: key, cycle_started_at: Date.new(2026, 1, 10)).first
+    assert_equal "same_product_repurchase", addon_cycle.match_status
+    assert_equal Date.new(2026, 3, 5), addon_cycle.next_same_product_order_date
+  end
+
+  test "只有跨品購買：cross_product_purchase? 為真，但 match_status 仍是 not_yet_repurchased" do
+    key_a = unique_key
+    key_b = unique_key
+    make_product(key_a, "測試辛甲", medians: { 1 => 60 })
+    make_product(key_b, "測試辛乙", medians: { 1 => 60 })
+    email = "a_#{SecureRandom.hex(4)}@example.com"
+
+    make_order(email: email, product_name: "測試辛甲1", order_date: Date.new(2026, 1, 1))
+    make_order(email: email, product_name: "測試辛乙1", order_date: Date.new(2026, 1, 20))
 
     CrmCustomerProductCycleBuilderService.call(product_key: key_a)
 
     cycle = CrmCustomerProductCycle.where(product_key: key_a, cycle_started_at: Date.new(2026, 1, 1)).first
-    assert_equal "cross_product_purchase", cycle.match_status
-    assert_equal key_b, cycle.matched_next_product_key
+    assert cycle.cross_product_purchase?
+    assert_equal key_b, cycle.next_any_product_key
+    assert_equal "not_yet_repurchased", cycle.match_status
+    assert_not cycle.same_product_repurchase_completed?
   end
 
-  test "classifies not_yet_repurchased when there is no subsequent order at all" do
+  test "完全沒有下一筆訂單：not_yet_repurchased，cross_product_purchase? 為假，matched_at 為 nil" do
     key = unique_key
-    make_product(key, "測試庚", medians: { 1 => 60 })
-    make_order(email: "a_#{SecureRandom.hex(4)}@example.com", product_name: "測試庚1", order_date: Date.new(2026, 1, 1))
+    make_product(key, "測試壬", medians: { 1 => 60 })
+    make_order(email: "a_#{SecureRandom.hex(4)}@example.com", product_name: "測試壬1", order_date: Date.new(2026, 1, 1))
 
     CrmCustomerProductCycleBuilderService.call(product_key: key)
 
     cycle = CrmCustomerProductCycle.where(product_key: key).first
     assert_equal "not_yet_repurchased", cycle.match_status
+    assert_not cycle.cross_product_purchase?
     assert_nil cycle.matched_at
+    assert_nil cycle.next_any_order_date
+    assert_nil cycle.next_same_product_order_date
   end
 
-  test "idempotent: rerunning does not create duplicate rows or change matched_at for an unchanged match" do
+  test "同一天多張訂單：下一筆同品訂單日期不受同一天其他跨品訂單干擾" do
+    key_a = unique_key
+    key_b = unique_key
+    make_product(key_a, "測試癸甲", medians: { 1 => 60 })
+    make_product(key_b, "測試癸乙", medians: { 1 => 60 })
+    email = "a_#{SecureRandom.hex(4)}@example.com"
+
+    make_order(email: email, product_name: "測試癸甲1", order_date: Date.new(2026, 1, 1))
+    # 2/1 同一天兩張訂單：一張同品、一張跨品
+    make_order(email: email, product_name: "測試癸甲1", order_date: Date.new(2026, 2, 1), order_number: "SAMEDAY_A")
+    make_order(email: email, product_name: "測試癸乙1", order_date: Date.new(2026, 2, 1), order_number: "SAMEDAY_B")
+
+    CrmCustomerProductCycleBuilderService.call(product_key: key_a)
+
+    cycle = CrmCustomerProductCycle.where(product_key: key_a, cycle_started_at: Date.new(2026, 1, 1)).first
+    assert_equal Date.new(2026, 2, 1), cycle.next_any_order_date
+    assert_equal Date.new(2026, 2, 1), cycle.next_same_product_order_date
+  end
+
+  test "取消／退款訂單不參與下一筆訂單配對" do
+    key = unique_key
+    make_product(key, "測試子丑", medians: { 1 => 60 })
+    email = "a_#{SecureRandom.hex(4)}@example.com"
+
+    make_order(email: email, product_name: "測試子丑1", order_date: Date.new(2026, 1, 1))
+    make_order(email: email, product_name: "測試子丑1", order_date: Date.new(2026, 1, 10), payment_status: "已退款")
+    make_order(email: email, product_name: "測試子丑1", order_date: Date.new(2026, 1, 15), payment_status: "未付款")
+    make_order(email: email, product_name: "測試子丑1", order_date: Date.new(2026, 3, 1)) # 唯一有效的下一筆
+
+    CrmCustomerProductCycleBuilderService.call(product_key: key)
+
+    cycle = CrmCustomerProductCycle.where(product_key: key, cycle_started_at: Date.new(2026, 1, 1)).first
+    assert_equal Date.new(2026, 3, 1), cycle.next_same_product_order_date
+    assert_equal "same_product_repurchase", cycle.match_status
+  end
+
+  test "idempotent：重跑不新增重複列，match_status 不變時 matched_at 不漂移，next_any/next_same 欄位值也保持一致" do
     key = unique_key
     make_product(key, "測試辛", medians: { 1 => 60 })
     email = "a_#{SecureRandom.hex(4)}@example.com"
@@ -135,6 +221,7 @@ class CrmCustomerProductCycleBuilderServiceTest < ActiveSupport::TestCase
     CrmCustomerProductCycleBuilderService.call(product_key: key)
     cycle = CrmCustomerProductCycle.where(product_key: key, cycle_started_at: Date.new(2026, 1, 1)).first
     first_matched_at = cycle.matched_at
+    first_next_same  = cycle.next_same_product_order_date
     first_count = CrmCustomerProductCycle.where(product_key: key).count
 
     travel 1.hour do
@@ -144,6 +231,7 @@ class CrmCustomerProductCycleBuilderServiceTest < ActiveSupport::TestCase
     cycle.reload
     assert_equal first_count, CrmCustomerProductCycle.where(product_key: key).count
     assert_equal first_matched_at, cycle.matched_at
+    assert_equal first_next_same, cycle.next_same_product_order_date
   end
 
   test "manual override fields survive a rebuild" do
@@ -190,8 +278,23 @@ class CrmCustomerProductCycleBuilderServiceTest < ActiveSupport::TestCase
       CrmCustomerProductCycleBuilderService.call(product_key: key)
     end
 
-    # 20 位顧客應該只需要固定幾條 SQL（events 查詢、subsequent orders 查詢、一次 upsert INSERT），
-    # 不隨顧客數線性成長。抓一個寬鬆但足以攔截 N+1 的上限。
-    assert query_count < 10, "expected O(1) queries, got #{query_count}"
+    # 20 位顧客應該只需要固定幾條 SQL（events 查詢、subsequent orders 查詢、一次 upsert INSERT，
+    # Phase 5 alias-aware 比對多一條 active_aliases eager load），不隨顧客數線性成長。
+    # 門檻選 15：5 人跟 50 人實測都落在 11~13 條，這裡抓寬鬆但仍足以攔截真正 N+1 的上限。
+    assert query_count < 15, "expected O(1) queries, got #{query_count}"
+  end
+
+  # Phase 5：已知 typo（登記在 CrmProductAlias）的訂單，過去只用 sql_pattern
+  # 比對會完全抓不到，導致這些顧客永遠不會被建立 cycle。
+  test "只有 CrmProductAlias 拼法、sql_pattern 抓不到的訂單，仍然會建立 cycle" do
+    key = unique_key
+    product = make_product(key, "測試丑寅", medians: { 1 => 60 })
+    CrmProductAlias.create!(crm_product: product, alias_name: "丑寅測試錯字", status: "active", source: "manual")
+
+    make_order(email: "typo_#{SecureRandom.hex(4)}@example.com", product_name: "丑寅測試錯字1", order_date: Date.new(2026, 1, 1))
+
+    result = CrmCustomerProductCycleBuilderService.call(product_key: key)
+    assert_equal 1, result
+    assert_equal 1, CrmCustomerProductCycle.where(product_key: key).count
   end
 end
