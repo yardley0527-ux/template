@@ -15,8 +15,6 @@ class WelcomeController < ApplicationController
     @department_updates_by_date = DepartmentUpdate.in_range(range)
       .sort_by { |u| DepartmentUpdate::DEPARTMENTS.index(u.department) || 99 }
       .group_by(&:log_date)
-
-    SyncDepartmentSheetsJob.schedule_if_stale
   end
 
   def birthday_customers
