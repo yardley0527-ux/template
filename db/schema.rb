@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_07_090000) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_08_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -529,6 +529,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_07_090000) do
     t.boolean "hidden", default: false, null: false
     t.string "video_shoot_status", default: "未拍攝", null: false
     t.index ["ig_username"], name: "index_kocs_on_ig_username", unique: true
+  end
+
+  create_table "korean_brand_leads", force: :cascade do |t|
+    t.string "product_name", null: false
+    t.string "source_url"
+    t.string "contact_channel"
+    t.boolean "contacted", default: false, null: false
+    t.date "contacted_at"
+    t.text "email_content"
+    t.boolean "replied", default: false, null: false
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "line_broadcast_highlights", force: :cascade do |t|

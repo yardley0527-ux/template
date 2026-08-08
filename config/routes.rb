@@ -70,6 +70,7 @@ Rails.application.routes.draw do
   get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
   resources :kocs, only: [:index, :create, :update, :destroy]
   resources :relove_kocs, only: [:index, :create, :update, :destroy]
+  resources :korean_brand_leads, only: [:index, :create, :update, :destroy]
   get  '/line_broadcast',           to: 'line_broadcast#index',       as: :line_broadcast
   resources :line_broadcast_highlights, only: [:create, :destroy]
   get  '/ig_audience',              to: 'ig_audience#index',          as: :ig_audience
