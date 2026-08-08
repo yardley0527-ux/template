@@ -84,14 +84,33 @@ KoreanBrandLead.create!(
   notes: "已寄出提案信，詢問台灣代理狀況、報價、樣品；尚未收到回覆"
 )
 
+olle_shot_notes = <<~NOTES
+  【情報來源】Instagram 限時動態，發布帳號 @goodalicia，2026/8/8 截圖（限動顯示約13小時前發布）
+  【情報性質】競品開團情報／下一個潛在開發產品
+  【目前狀態】對方已赴韓國洽談合作，預計近期開團
+  【正式合作品牌】尚未公開
+  【照片中的品牌】疑似 LATIB Olive Lemon Shot，應為比較產品，並非已確認的合作品牌
+
+  限動原文整理：
+  @goodalicia 表示，這次前往韓國的主要目的之一，是洽談橄欖油檸檬飲合作。她已喝過韓國市面上多個品牌，認為目前洽談的產品口味非常好。
+
+  根據限動透露，預計合作的產品具有以下特點：
+  - 韓國大型超市的自有品牌
+  - 目前沒有查到添加防腐劑
+  - 原料與配方品質被認為優於照片中的熱門品牌
+  - 口味與照片中的比較品牌有明顯差距
+  - 合作已進入洽談階段
+  - 預計近期開團，但尚未公布確切日期、售價與組合
+NOTES
+
 KoreanBrandLead.create!(
-  product_name: "橄欖檸檬飲（品牌待確認）",
+  product_name: "韓國橄欖油檸檬飲／Olle Shot（競品情報，正式合作品牌尚未公開）",
   source_url: nil,
-  contact_channel: nil,
+  contact_channel: "Instagram @goodalicia（情報來源，非直接聯絡管道）",
   contacted: false,
   email_content: nil,
   replied: false,
-  notes: "從他人 IG 限動得知有團媽赴韓談橄欖油檸檬飲合作，屬市場情報／下一個開發目標，尚未確認品牌名稱與聯絡窗口"
+  notes: olle_shot_notes
 )
 
 KoreanBrandLead.create!(
