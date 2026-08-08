@@ -106,7 +106,7 @@ NOTES
 KoreanBrandLead.create!(
   product_name: "韓國橄欖油檸檬飲／Olle Shot（競品情報，正式合作品牌尚未公開）",
   source_url: nil,
-  contact_channel: "Instagram @goodalicia（情報來源，非直接聯絡管道）",
+  contact_channel: nil,
   contacted: false,
   email_content: nil,
   replied: false,
