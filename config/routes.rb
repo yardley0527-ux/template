@@ -115,7 +115,6 @@ Rails.application.routes.draw do
   # ── CRM 功能模組（通用 URL，不綁定產品名稱）────────────────────────
   get   '/crm',                        to: 'omnipotent_restock#boss_dashboard',        as: :crm_home
   get   '/crm/journey',                to: 'omnipotent_restock#index',                 as: :crm_journey
-  get   '/crm/broadcast',              to: 'omnipotent_restock#broadcast_room',        as: :crm_broadcast
   get   '/crm/analytics/roi',          to: 'omnipotent_restock#roi_dashboard',         as: :crm_roi
   get   '/crm/analytics/accuracy',     to: 'omnipotent_restock#journey_accuracy',      as: :crm_accuracy
   get   '/crm/analytics/operations',   to: 'omnipotent_restock#crm_analysis',          as: :crm_operations
@@ -153,7 +152,6 @@ Rails.application.routes.draw do
   get   '/omnipotent_restock/export_at_risk',          to: 'omnipotent_restock#export_at_risk',       as: :omnipotent_restock_export_at_risk
   get   '/omnipotent_restock/export_loyal',            to: 'omnipotent_restock#export_loyal',         as: :omnipotent_restock_export_loyal
   patch '/omnipotent_restock/update_status',           to: 'omnipotent_restock#update_status',        as: :omnipotent_restock_update_status
-  get   '/omnipotent_restock/broadcast_room',          to: 'omnipotent_restock#broadcast_room',       as: :omnipotent_restock_broadcast_room
   get   '/omnipotent_restock/boss_dashboard',          to: 'omnipotent_restock#boss_dashboard',       as: :omnipotent_restock_boss_dashboard
   get   '/omnipotent_restock/roi_dashboard',           to: 'omnipotent_restock#roi_dashboard',        as: :omnipotent_restock_roi_dashboard
   get   '/omnipotent_restock/journey_accuracy',        to: 'omnipotent_restock#journey_accuracy',     as: :omnipotent_restock_journey_accuracy

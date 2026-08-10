@@ -71,10 +71,9 @@ class LivestreamOverviewControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "links to livestreams index and to the existing crm broadcast page" do
+  test "links to livestreams index" do
     get livestream_overview_path
     assert_includes @response.body, livestreams_path
-    assert_includes @response.body, crm_broadcast_path
   end
 
   # ── 補強：最新完成場次不得把窗口未結束的場次當成已定版 ─────────────────

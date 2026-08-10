@@ -24,8 +24,8 @@ class OmnipotentRestockController < ApplicationController
   ATTRIBUTION_WINDOW = 45
 
   before_action :set_product
-  before_action :build_restock_data, only: [:index, :export, :export_at_risk, :broadcast_room], if: :single_product_view?
-  before_action :build_loyal_buyers,  only: [:index, :export_loyal, :broadcast_room], if: :single_product_view?
+  before_action :build_restock_data, only: [:index, :export, :export_at_risk], if: :single_product_view?
+  before_action :build_loyal_buyers,  only: [:index, :export_loyal], if: :single_product_view?
   before_action :build_daily_combined_list, only: [:index], unless: :single_product_view?
 
   # ── Main actions ──────────────────────────────────────────────────
@@ -38,34 +38,6 @@ class OmnipotentRestockController < ApplicationController
 
   def single_product_view?
     action_name != "index" || params[:product].present?
-  end
-
-  def broadcast_room
-    @rescue_worthy = @at_risk.select { |r| r[:omni_count] >= 2 }
-    @vip_buyers    = @loyal_buyers.select { |r| r[:customer_type][:key] == :vip }
-
-    # 老闆摘要：可觸及池 = 提醒中＋逾期＋值得喚醒（互斥），VIP 可能與前三者重疊故取 email 聯集
-    pool_rows        = @remind_now + @overdue + @rescue_worthy
-    @pool_size       = pool_rows.size
-    @reachable_count = (pool_rows.map { |r| r[:customer].email } +
-                        @vip_buyers.map { |r| r[:customer].email }).uniq.size
-    @pool_high_value = pool_rows.count { |r| [:vip, :big].include?(r[:customer_type][:key]) }
-    @invited_count   = pool_rows.count { |r| r[:notification] && r[:notification].status != "未通知" }
-
-    row = ActiveRecord::Base.connection.select_one(<<~SQL)
-      WITH order_totals AS (
-        SELECT order_number,
-               COALESCE(MAX(NULLIF(total_amount, 0)), SUM(COALESCE(checkout_amount, 0))) AS rev
-        FROM shopline_orders
-        WHERE order_number IN (
-          SELECT DISTINCT order_number FROM shopline_orders WHERE #{@product[:sql]}
-        )
-        GROUP BY order_number
-      ) SELECT ROUND(AVG(rev)) AS aov FROM order_totals WHERE rev > 0
-    SQL
-    @avg_order_value   = row&.fetch("aov", nil).to_i
-    # 潛在營收以「一成回購」保守估算
-    @potential_revenue = (@pool_size * @avg_order_value * 0.1).round
   end
 
   def boss_dashboard

@@ -26,12 +26,11 @@ class SidebarEntryLivestreamTest < ActiveSupport::TestCase
     end
   end
 
-  test "CRM group's broadcast entry is renamed to 直播邀請管理, URL unchanged" do
+  test "CRM group no longer has a broadcast/直播邀請管理 entry" do
     crm_group = SidebarEntry.all.find { |g| g[:group_title] == "CRM" }
-    entry = crm_group[:children].find { |c| c[:title] == "直播邀請管理" }
-    assert entry, "應該找到改名後的「直播邀請管理」項目"
-    assert_no_match(/直播戰情室/, crm_group[:children].map { |c| c[:title] }.join)
-    assert_match %r{\A/crm/broadcast}, entry[:href]
+    titles = crm_group[:children].map { |c| c[:title] }
+    assert_not_includes titles, "直播邀請管理"
+    assert_not_includes titles, "直播戰情室"
   end
 
   # ── visible_for：sidebar 過濾邏輯（權限資料本身怎麼來的，由遷移測試專門覆蓋）──
