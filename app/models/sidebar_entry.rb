@@ -51,6 +51,7 @@ class SidebarEntry
               { href: stickiness_results_path, title: "黏著度成效", icon: "fa-chart-line" },
             ]},
             { href: loyal_customers_path,             title: "產品忠實客",     icon: "fa-heart" },
+            { href: black_gold_customers_path,        title: "黑金卡消費備註", icon: "fa-sticky-note" },
           ]
         },
         {

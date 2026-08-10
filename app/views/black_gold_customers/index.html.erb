@@ -1,0 +1,162 @@
+<%# app/views/black_gold_customers/index.html.erb %>
+<% content_for :page_title, "黑金卡消費備註" %>
+
+<% def bg_ig_link_url(account)
+  return nil if account.blank?
+  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+end %>
+
+<%# Header %>
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
+    <div>
+      <h4 class="fw-bold mb-0">黑金卡消費備註</h4>
+      <p class="text-muted small mb-0">本日／本週／本月回來消費的黑卡、金卡客人，方便隨手記備註、掌握誰要特別關注</p>
+    </div>
+  </div>
+</div>
+
+<%# 本日／本週／本月 篩選 %>
+<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+  <li class="nav-item">
+    <%= link_to "本日（#{@counts['today']}）",
+          black_gold_customers_path(period: 'today'),
+          class: "nav-link #{@period == 'today' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "本週（#{@counts['week']}）",
+          black_gold_customers_path(period: 'week'),
+          class: "nav-link #{@period == 'week' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+  <li class="nav-item">
+    <%= link_to "本月（#{@counts['month']}）",
+          black_gold_customers_path(period: 'month'),
+          class: "nav-link #{@period == 'month' ? 'active fw-bold' : 'text-muted'}" %>
+  </li>
+</ul>
+
+<%# 依卡別分組，組內依最後購買日新到舊排序，全部往下疊在同一頁 %>
+<% @groups.each do |level, rows| %>
+  <% badge_bg, badge_fg = level == '黑卡' ? ['#333', '#fff'] : ['#b8860b', '#fff'] %>
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
+      <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.8rem;"><%= level %></span>
+      <span class="badge bg-secondary"><%= rows.size %> 人</span>
+    </div>
+    <div class="card-body p-0 table-responsive">
+      <table class="table align-middle mb-0" style="font-size:0.86rem;">
+        <thead style="background-color:#4a4a4a; color:white;">
+          <tr>
+            <th class="ps-3" style="width:110px;">姓名</th>
+            <th style="width:150px;">IG</th>
+            <th style="width:100px;">最後購買日</th>
+            <th style="width:100px;">期間消費</th>
+            <th style="width:24%;">購買商品</th>
+            <th>消費備註</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.each do |r| %>
+            <% url = bg_ig_link_url(r.ig_account) %>
+            <% profile = r.profile %>
+            <tr style="<%= profile&.black_gold_note.present? ? '' : 'background:#fffbe6;' %>">
+              <td class="ps-3 fw-semibold">
+                <%= link_to r.full_name, customer_path(r.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
+              </td>
+              <td>
+                <% if url %>
+                  <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                    <i class="fal fa-at text-danger"></i>
+                    <span style="font-size:0.8rem; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                      <%= r.ig_account&.sub(/^@/, '') %>
+                    </span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td class="text-nowrap text-muted"><%= r.latest_date&.strftime('%Y/%m/%d') %></td>
+              <td class="text-nowrap fw-semibold">NT$<%= number_with_delimiter(r.period_total.to_i) %></td>
+              <td>
+                <div style="font-size:0.78rem;">
+                  <% r.orders.each do |o| %>
+                    <div class="mb-1">
+                      <span class="text-muted"><%= o.ord_date.strftime('%-m/%-d') %></span>
+                      <%= o.products_list %>
+                      <span class="text-muted">・NT$<%= number_with_delimiter(o.order_total.to_i) %></span>
+                    </div>
+                  <% end %>
+                </div>
+              </td>
+              <td class="py-2">
+                <% if profile&.black_gold_note_edited_by.present? %>
+                  <div class="text-muted" style="font-size:0.72rem;">edit by <%= note_editor_name(profile.black_gold_note_edited_by) %></div>
+                <% end %>
+                <textarea
+                  class="form-control form-control-sm black-gold-note-input"
+                  data-customer-id="<%= r.shopline_customer_id %>"
+                  data-url="<%= upsert_black_gold_note_path %>"
+                  rows="2"
+                  placeholder="可輸入多行備註，點到其他地方自動存檔"
+                  style="font-size:0.82rem; min-height:52px; resize:vertical;"><%= profile&.black_gold_note %></textarea>
+              </td>
+            </tr>
+          <% end %>
+          <% if rows.empty? %>
+            <tr>
+              <td colspan="6" class="text-center py-5 text-muted">
+                <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+                這段期間沒有<%= level %>客人回購
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  function flashTip(td, text, color) {
+    var old = td.querySelector('.cb-saved-tip');
+    if (old) old.remove();
+    var tip = document.createElement('div');
+    tip.className = 'cb-saved-tip';
+    tip.textContent = text;
+    tip.style.cssText = 'font-size:0.72rem; color:' + color + '; margin-top:2px; font-weight:600;';
+    td.appendChild(tip);
+    setTimeout(function() { tip.remove(); }, 2000);
+  }
+
+  // 消費備註：離開欄位即自動存檔（Enter 為換行）
+  document.querySelectorAll('.black-gold-note-input').forEach(function(input) {
+    var saved = input.value;
+    function save() {
+      if (input.value === saved) return;
+      fetch(input.dataset.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({ customer_id: input.dataset.customerId, note: input.value })
+      }).then(function(r) {
+        var td = input.closest('td');
+        if (r.ok) {
+          saved = input.value;
+          input.style.borderColor = input.value ? '#28a745' : '#ccc';
+          input.closest('tr').style.background = input.value ? '' : '#fffbe6';
+          flashTip(td, input.value ? '✓ 已存檔' : '已清除', input.value ? '#28a745' : '#999');
+        } else {
+          flashTip(td, '存檔失敗，請再試一次', '#dc3545');
+        }
+      });
+    }
+    input.addEventListener('blur', save);
+    if (input.value) input.style.borderColor = '#28a745';
+  });
+})();
+</script>
+<% end %>

@@ -55,6 +55,8 @@ Rails.application.routes.draw do
   get  '/stickiness/results',     to: 'stickiness_results#index',          as: :stickiness_results
   post '/stickiness/upsert_note', to: 'stickiness_follow_ups#upsert_note', as: :upsert_stickiness_note
   post '/stickiness/toggle_maintained', to: 'stickiness_follow_ups#toggle_maintained', as: :toggle_stickiness_maintained
+  get  '/black_gold_customers',             to: 'black_gold_customers#index',       as: :black_gold_customers
+  post '/black_gold_customers/upsert_note', to: 'black_gold_customers#upsert_note', as: :upsert_black_gold_note
   get  '/daily_dashboard',           to: 'daily_dashboard#index',      as: :daily_dashboard
   get  '/daily_orders',             to: 'daily_orders#index',         as: :daily_orders
   get  '/daily_orders/export',      to: 'daily_orders#export',        as: :export_daily_orders

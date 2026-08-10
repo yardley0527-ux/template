@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_08_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_10_025852) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -291,6 +291,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_08_120000) do
     t.string "stickiness_note_edited_by"
     t.boolean "stickiness_maintained", default: false, null: false
     t.boolean "recipe_message_sent", default: false, null: false
+    t.text "black_gold_note"
+    t.string "black_gold_note_edited_by"
     t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin
     t.index ["product_tags"], name: "index_customer_profiles_on_product_tags", using: :gin
     t.index ["shopline_customer_id"], name: "index_customer_profiles_on_shopline_customer_id"
