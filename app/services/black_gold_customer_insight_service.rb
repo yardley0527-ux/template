@@ -34,7 +34,7 @@ class BlackGoldCustomerInsightService
     api_key = ENV["ANTHROPIC_API_KEY"].to_s.strip
     return failure("ANTHROPIC_API_KEY 未設定") if api_key.blank?
 
-    raw    = call_claude(build_prompt(history), api_key)
+    raw    = call_claude(build_prompt(history, repurchase_cycles), api_key)
     parsed = parse_response(raw)
     return failure("AI 回應解析失敗：#{raw.to_s.truncate(200)}") if parsed.nil?
 
@@ -76,9 +76,23 @@ class BlackGoldCustomerInsightService
     end
   end
 
-  def build_prompt(history)
+  # 這位客人目前追蹤中的回購週期（依購買罐數＋預估用量算出的用完日／建議聯絡日，
+  # 跟客戶旅程管理用同一套資料），比單純看訂單間隔精準——已回購/加購過的週期
+  # 排除掉（active_follow_up 只留「現在還有效」的那筆）
+  def repurchase_cycles
+    CrmCustomerProductCycle.active_follow_up.where(email: @customer.email).order(:suggested_contact_date)
+  end
+
+  def build_prompt(history, cycles)
     trajectory = history.map do |o|
       "#{o[:date].strftime('%Y/%m/%d')}｜NT$#{o[:amount].to_i}｜#{o[:products]}"
+    end.join("\n")
+
+    cycles_text = cycles.map do |c|
+      label = CrmProduct.find_by(key: c.product_key)&.label || c.product_key
+      days  = c.effective_remaining_days
+      days_text = days.negative? ? "已逾期 #{-days} 天" : "還有 #{days} 天"
+      "#{label}：#{c.cycle_started_at.strftime('%Y/%m/%d')} 購入 #{c.bottle_count} 罐，預估用完日 #{c.effective_finish_date.strftime('%Y/%m/%d')}（#{days_text}），建議聯絡日 #{c.suggested_contact_date.strftime('%Y/%m/%d')}，狀態：#{CrmCustomerProductCycle::STATUS_LABELS[c.derived_status]}"
     end.join("\n")
 
     note = @profile.black_gold_note.presence || "（無）"
@@ -88,20 +102,24 @@ class BlackGoldCustomerInsightService
 
       #{trajectory}
 
+      系統已經算好的回購週期（依購買罐數與預估用量試算，比用訂單間隔用眼睛判讀精準，只列目前追蹤中的品項）：
+      #{cycles_text.presence || "（沒有系統試算資料，可能是這幾筆訂單的品項不在追蹤清單內）"}
+
       CRM 人員寫的備註：
       #{note}
 
-      請你是熟悉會員經營的電商顧問，根據以上消費軌跡（品項、金額、間隔的變化）與備註，為老闆和 CRM 人員產出：
-      1. watch：這位客人有什麼要注意的地方（例如金額趨勢、品項變化、間隔異常、備註裡提到的狀況）
-      2. next_actions：接下來具體可以做的行銷或維繫動作（要具體到可執行，不要空泛的「多關心」）
+      請你是熟悉會員經營的電商顧問，根據以上消費軌跡、系統試算的回購週期、與備註，為老闆和 CRM 人員產出：
+      1. watch：這位客人有什麼要注意的地方（例如金額趨勢、品項變化、回購週期是否逾期或即將到期、備註裡提到的狀況）
+      2. next_actions：接下來具體可以做的行銷或維繫動作（要具體到可執行，不要空泛的「多關心」；有系統試算的建議聯絡日就直接引用，不要自己另外猜一個日期）
 
       只輸出 JSON（不要 markdown code fence、不要任何其他文字），格式：
       {"watch": ["...", "..."], "next_actions": ["...", "..."]}
 
       規則：
       - watch 和 next_actions 各 1-3 條，每條 40 字以內
-      - 只根據提供的消費軌跡與備註推論，不要幻想沒寫到的資訊
+      - 只根據提供的消費軌跡、回購週期試算與備註推論，不要幻想沒寫到的資訊
       - 備註是（無）時，next_actions 不用提「參考備註」
+      - 沒有系統試算資料時，回購週期相關的判斷才用消費軌跡自行估計，並且語氣要保守（例如用「大約」「推估」）
     PROMPT
   end
 
