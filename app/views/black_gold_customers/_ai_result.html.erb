@@ -1,0 +1,13 @@
+<% if profile&.black_gold_ai_watch.present? %>
+  <div style="font-size:0.76rem; margin-bottom:3px;">
+    <span class="fw-semibold text-danger">注意：</span><%= profile.black_gold_ai_watch.join("；") %>
+  </div>
+<% end %>
+<% if profile&.black_gold_ai_next_actions.present? %>
+  <div style="font-size:0.76rem;">
+    <span class="fw-semibold text-success">下一步：</span><%= profile.black_gold_ai_next_actions.join("；") %>
+  </div>
+<% end %>
+<div class="text-muted" style="font-size:0.68rem; margin-top:3px;">
+  AI 分析於 <%= profile.black_gold_ai_generated_at.strftime('%-m/%-d %H:%M') %>・<a href="#" class="ai-reanalyze-link" data-customer-id="<%= profile.shopline_customer_id %>">重新分析</a>
+</div>

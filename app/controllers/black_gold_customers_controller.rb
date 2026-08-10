@@ -52,6 +52,12 @@ class BlackGoldCustomersController < ApplicationController
     def needs_attention?
       dropped? || long_gap?
     end
+
+    # AI 分析是否還對得上「本次」訂單；客人之後又下單了，快取就算過期，要重新分析
+    def ai_fresh?
+      profile.present? && profile.black_gold_ai_generated_at.present? &&
+        profile.black_gold_ai_for_order_date == current_date.to_date
+    end
   end
 
   PERIODS = %w[today week month].freeze
@@ -75,6 +81,25 @@ class BlackGoldCustomersController < ApplicationController
     )
 
     head :ok
+  end
+
+  # 針對單一客人呼叫 AI 分析（消費軌跡＋CRM備註 → 要注意什麼／下一步行銷），
+  # 特別注意名單頁面載入時前端會自動打這支，其餘客人由手動按鈕觸發
+  def analyze
+    customer = ShoplineCustomer.find(params[:customer_id])
+    result   = BlackGoldCustomerInsightService.call(customer)
+
+    if result[:ok]
+      profile = result[:profile]
+      render json: {
+        ok: true,
+        watch: profile.black_gold_ai_watch,
+        next_actions: profile.black_gold_ai_next_actions,
+        generated_at: profile.black_gold_ai_generated_at.strftime("%-m/%-d %H:%M")
+      }
+    else
+      render json: { ok: false, error: result[:error] }, status: :unprocessable_entity
+    end
   end
 
   private
