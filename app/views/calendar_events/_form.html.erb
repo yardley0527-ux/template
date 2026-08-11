@@ -59,5 +59,10 @@
   <div class="mb-5">
     <%= f.submit event.persisted? ? "更新事件" : "建立事件", class: "btn btn-primary" %>
     <%= link_to "取消", root_path(month: (event.event_date || Date.current).strftime("%Y-%m")) + "#calendar", class: "btn btn-outline-secondary ml-2" %>
+    <% if event.persisted? && !event.synced? %>
+      <%= link_to event, method: :delete, data: { confirm: "確定刪除「#{event.title}」？" }, class: "btn btn-outline-danger ml-2" do %>
+        <i class="fal fa-trash mr-1"></i> 刪除
+      <% end %>
+    <% end %>
   </div>
 <% end %>
