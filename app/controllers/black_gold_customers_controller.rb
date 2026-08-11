@@ -71,6 +71,17 @@ class BlackGoldCustomersController < ApplicationController
     @groups = LEVELS.map { |level| [level, rows.select { |r| r.membership_level == level }] }
   end
 
+  # 已追蹤：只有 Admin（老闆）可以勾選
+  def toggle_followed_up
+    return head :forbidden unless current_user.admin?
+
+    customer = ShoplineCustomer.find(params[:customer_id])
+    profile  = customer.customer_profile || customer.build_customer_profile
+    profile.update!(black_gold_followed_up: ActiveModel::Type::Boolean.new.cast(params[:value]))
+
+    head :ok
+  end
+
   def upsert_note
     customer = ShoplineCustomer.find(params[:customer_id])
     profile  = customer.customer_profile || customer.build_customer_profile

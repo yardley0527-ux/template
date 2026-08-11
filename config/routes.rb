@@ -58,6 +58,7 @@ Rails.application.routes.draw do
   get  '/black_gold_customers',             to: 'black_gold_customers#index',       as: :black_gold_customers
   post '/black_gold_customers/upsert_note', to: 'black_gold_customers#upsert_note', as: :upsert_black_gold_note
   post '/black_gold_customers/analyze',     to: 'black_gold_customers#analyze',     as: :analyze_black_gold_customer
+  post '/black_gold_customers/toggle_followed_up', to: 'black_gold_customers#toggle_followed_up', as: :toggle_black_gold_followed_up
   get  '/daily_dashboard',           to: 'daily_dashboard#index',      as: :daily_dashboard
   get  '/daily_orders',             to: 'daily_orders#index',         as: :daily_orders
   get  '/daily_orders/export',      to: 'daily_orders#export',        as: :export_daily_orders
