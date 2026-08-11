@@ -38,7 +38,7 @@ class LivestreamReportsController < ApplicationController
         date: Date.new(2026, 8, 12),
         type: :pre,
         url: "https://claude.ai/code/artifact/b4d26203-baca-4ed4-b9ef-1da26c216ec2",
-        desc: "定價階梯拆解：現行1~4盒折扣已達-27%但止步4盒，附8/21建議定價",
+        desc: "6場歷史走勢比較＋定價階梯拆解：現行1~4盒折扣已達-27%但止步4盒，附8/21建議定價",
       },
     ],
   }.freeze
