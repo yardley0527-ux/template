@@ -7,6 +7,45 @@
   handle.present? ? "https://www.instagram.com/#{handle}/" : nil
 end %>
 
+<% content_for :head_block do %>
+<style>
+  /* 手機版把表格改成一人一張卡，避免要左右滑一堆欄位才看得到內容 */
+  @media (max-width: 767.98px) {
+    .bg-table thead { display: none; }
+    .bg-table, .bg-table tbody, .bg-table tr, .bg-table td { display: block; width: 100%; }
+    .bg-table tr {
+      border: 1px solid #e9e2d8;
+      border-radius: 10px;
+      margin: 10px;
+      padding: 10px 12px;
+      width: auto;
+    }
+    .bg-table td {
+      padding: 8px 0;
+      border: none;
+      border-bottom: 1px solid #f1ede6;
+    }
+    .bg-table td:last-child { border-bottom: none; }
+    .bg-table td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #9a9186;
+      letter-spacing: .02em;
+      margin-bottom: 4px;
+    }
+    .bg-table .bg-truncate {
+      max-width: none !important;
+      white-space: normal !important;
+      overflow: visible !important;
+      text-overflow: unset !important;
+    }
+    .bg-table .black-gold-note-input { width: 100%; }
+  }
+</style>
+<% end %>
+
 <%# Header %>
 <div class="row g-3 mb-3">
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
@@ -72,7 +111,7 @@ end %>
       <span class="badge bg-secondary"><%= rows.size %> 人</span>
     </div>
     <div class="card-body p-0 table-responsive">
-      <table class="table align-middle mb-0" style="font-size:0.86rem;">
+      <table class="table align-middle mb-0 bg-table" style="font-size:0.86rem;">
         <thead style="background-color:#4a4a4a; color:white;">
           <tr>
             <th class="ps-3" style="width:110px;">姓名</th>
@@ -91,14 +130,14 @@ end %>
             <% url = bg_ig_link_url(r.ig_account) %>
             <% profile = r.profile %>
             <tr style="<%= r.needs_attention? ? 'background:#fdf1ef;' : (profile&.black_gold_note.present? ? '' : 'background:#fffbe6;') %>">
-              <td class="ps-3 fw-semibold">
+              <td class="ps-3 fw-semibold" data-label="姓名">
                 <%= link_to r.full_name, customer_path(r.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
               </td>
-              <td>
+              <td data-label="IG">
                 <% if url %>
                   <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
                     <i class="fal fa-at text-danger"></i>
-                    <span style="font-size:0.8rem; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                    <span class="bg-truncate" style="font-size:0.8rem; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
                       <%= r.ig_account&.sub(/^@/, '') %>
                     </span>
                   <% end %>
@@ -106,13 +145,13 @@ end %>
                   <span class="text-muted small">—</span>
                 <% end %>
               </td>
-              <td>
+              <td data-label="本次購買">
                 <div style="font-size:0.8rem;">
                   <div class="fw-semibold"><%= r.current_date.strftime('%Y/%m/%d') %>・NT$<%= number_with_delimiter(r.current_amount.to_i) %></div>
-                  <div class="text-muted" style="font-size:0.75rem; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><%= r.current_products %></div>
+                  <div class="text-muted bg-truncate" style="font-size:0.75rem; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><%= r.current_products %></div>
                 </div>
               </td>
-              <td class="text-nowrap">
+              <td class="text-nowrap" data-label="上次購買">
                 <% if r.previous_date %>
                   <div style="font-size:0.8rem;"><%= r.previous_date.strftime('%Y/%m/%d') %></div>
                   <div class="text-muted" style="font-size:0.75rem;">NT$<%= number_with_delimiter(r.previous_amount.to_i) %></div>
@@ -120,14 +159,14 @@ end %>
                   <span class="badge bg-light text-dark border" style="font-size:0.72rem;">首次消費</span>
                 <% end %>
               </td>
-              <td class="text-nowrap">
+              <td class="text-nowrap" data-label="回購間隔">
                 <% if r.interval_days %>
                   <span class="<%= r.long_gap? ? 'text-danger fw-bold' : '' %>"><%= r.interval_days %> 天</span>
                 <% else %>
                   <span class="text-muted small">—</span>
                 <% end %>
               </td>
-              <td class="text-nowrap">
+              <td class="text-nowrap" data-label="金額變化">
                 <% if r.amount_diff %>
                   <% up = r.amount_diff > 0 %>
                   <span class="<%= r.dropped? ? 'text-danger fw-bold' : (up ? 'text-success fw-bold' : '') %>">
@@ -141,7 +180,7 @@ end %>
                   <span class="text-muted small">—</span>
                 <% end %>
               </td>
-              <td>
+              <td data-label="特別注意">
                 <% if r.dropped? %>
                   <span class="badge" style="background:#d03b3b; color:#fff; font-size:0.72rem;">消費下滑</span>
                 <% end %>
@@ -152,7 +191,7 @@ end %>
                   <span class="text-muted small">—</span>
                 <% end %>
               </td>
-              <td class="ai-cell py-2" data-customer-id="<%= r.shopline_customer_id %>">
+              <td class="ai-cell py-2" data-customer-id="<%= r.shopline_customer_id %>" data-label="AI 觀察與建議">
                 <% if r.ai_fresh? %>
                   <%= render "black_gold_customers/ai_result", profile: profile %>
                 <% elsif r.needs_attention? %>
@@ -165,7 +204,7 @@ end %>
                   </button>
                 <% end %>
               </td>
-              <td class="py-2">
+              <td class="py-2" data-label="消費備註">
                 <% if profile&.black_gold_note_edited_by.present? %>
                   <div class="text-muted" style="font-size:0.72rem;">edit by <%= note_editor_name(profile.black_gold_note_edited_by) %></div>
                 <% end %>
