@@ -33,6 +33,13 @@ class LivestreamReportsController < ApplicationController
         url: "https://claude.ai/code/artifact/2e6258b0-466d-450c-a4ba-cf8e14eada06",
         desc: "直播前診斷：套用薑黃報告框架反查膠原買氣走勢與斷貨缺口",
       },
+      {
+        title: "膠原定價策略檢討：折扣階梯止步在哪",
+        date: Date.new(2026, 8, 12),
+        type: :pre,
+        url: "https://claude.ai/code/artifact/b4d26203-baca-4ed4-b9ef-1da26c216ec2",
+        desc: "定價階梯拆解：現行1~4盒折扣已達-27%但止步4盒，附8/21建議定價",
+      },
     ],
   }.freeze
 
