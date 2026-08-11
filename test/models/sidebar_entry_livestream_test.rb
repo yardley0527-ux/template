@@ -7,8 +7,8 @@ class SidebarEntryLivestreamTest < ActiveSupport::TestCase
     SidebarEntry.all.find { |g| g[:group_title] == "直播管理" }
   end
 
-  test "livestream management group has exactly 4 entries" do
-    assert_equal 4, livestream_group[:children].size
+  test "livestream management group has exactly 5 entries" do
+    assert_equal 5, livestream_group[:children].size
   end
 
   test "new titles and hrefs are present" do
@@ -17,6 +17,7 @@ class SidebarEntryLivestreamTest < ActiveSupport::TestCase
     assert_includes titles_and_hrefs, ["直播場次", Rails.application.routes.url_helpers.livestreams_path]
     assert_includes titles_and_hrefs, ["產品直播分析", Rails.application.routes.url_helpers.livestream_product_analysis_path]
     assert_includes titles_and_hrefs, ["直播策略", Rails.application.routes.url_helpers.livestream_strategy_path]
+    assert_includes titles_and_hrefs, ["分產品檢討報告", Rails.application.routes.url_helpers.livestream_reports_path]
   end
 
   test "old per-product analysis entries are removed from sidebar" do
@@ -35,12 +36,12 @@ class SidebarEntryLivestreamTest < ActiveSupport::TestCase
 
   # ── visible_for：sidebar 過濾邏輯（權限資料本身怎麼來的，由遷移測試專門覆蓋）──
 
-  test "admin sees all 4 livestream entries regardless of page_permissions" do
+  test "admin sees all 5 livestream entries regardless of page_permissions" do
     admin_role = Role.find_or_create_by!(key: "admin") { |r| r.name = "Admin" }
     admin = User.create!(email: "sidebar-admin@test.com", username: "sidebar_admin", password: "password123", role: admin_role)
 
     group = SidebarEntry.visible_for(admin).find { |g| g[:group_title] == "直播管理" }
-    assert_equal 4, group[:children].size
+    assert_equal 5, group[:children].size
   end
 
   test "role with only livestream_product_analysis permission sees only that one entry" do

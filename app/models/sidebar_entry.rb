@@ -61,6 +61,7 @@ class SidebarEntry
             { href: livestreams_path,                  title: "直播場次",     icon: "fa-film" },
             { href: livestream_product_analysis_path,  title: "產品直播分析", icon: "fa-video" },
             { href: livestream_strategy_path,          title: "直播策略",     icon: "fa-chart-line" },
+            { href: livestream_reports_path,           title: "分產品檢討報告", icon: "fa-file-alt" },
           ]
         },
         {

@@ -41,6 +41,7 @@ Rails.application.routes.draw do
     resources :livestream_gifts, only: [:create, :update, :destroy]
   end
   get '/livestream_overview', to: 'livestream_overview#index', as: :livestream_overview
+  get '/livestream_reports', to: 'livestream_reports#index', as: :livestream_reports
   get '/livestream_product_analysis',               to: 'livestream_product_analysis#index',         as: :livestream_product_analysis
   get '/livestream_product_analysis/export_missing', to: 'livestream_product_analysis#export_missing', as: :export_missing_livestream_product_analysis
   get '/livestream_product_analysis/export_event',   to: 'livestream_product_analysis#export_event',   as: :export_event_livestream_product_analysis

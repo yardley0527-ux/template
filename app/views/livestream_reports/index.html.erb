@@ -1,0 +1,75 @@
+<% content_for :page_title, "分產品檢討報告" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-file-alt mr-2 text-danger"></i> 分產品檢討報告
+  </h1>
+  <div class="ml-auto">
+    <%= link_to livestream_overview_path, class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="fal fa-broadcast-tower mr-1"></i>直播成效總覽
+    <% end %>
+  </div>
+</div>
+
+<p class="text-muted small mb-4">
+  每個產品直播前後的檢討報告（Claude Artifact）連結，依產品分區、依日期新到舊排列。
+  這份清單目前是手動維護，新增場次時要請 Claude 加進 <code>LivestreamReportsController::REPORTS</code>。
+</p>
+
+<% if @reports_by_product.blank? %>
+  <div class="panel">
+    <div class="panel-content text-center py-5 text-muted">
+      <i class="fal fa-file-alt fa-3x mb-3 d-block opacity-25"></i>
+      尚無任何報告連結
+    </div>
+  </div>
+<% else %>
+  <% @reports_by_product.each do |product, reports| %>
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2><%= product %></h2>
+        <span class="text-muted small ml-2"><%= reports.size %> 份報告</span>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="thead-light">
+                <tr>
+                  <th style="width:90px;">場次</th>
+                  <th style="width:90px;">類型</th>
+                  <th>報告標題</th>
+                  <th>說明</th>
+                  <th style="width:60px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% reports.sort_by { |r| r[:date] }.reverse_each do |report| %>
+                  <tr>
+                    <td class="text-nowrap"><%= report[:date].strftime("%Y/%m/%d") %></td>
+                    <td>
+                      <% if report[:type] == :pre %>
+                        <span class="badge badge-info">直播前</span>
+                      <% else %>
+                        <span class="badge badge-secondary">直播後</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <%= link_to report[:title], report[:url], target: "_blank", rel: "noopener" %>
+                    </td>
+                    <td class="text-muted small"><%= report[:desc] %></td>
+                    <td class="text-center">
+                      <%= link_to report[:url], target: "_blank", rel: "noopener", class: "text-muted" do %>
+                        <i class="fal fa-external-link"></i>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
