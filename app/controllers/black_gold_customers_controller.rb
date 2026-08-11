@@ -161,12 +161,16 @@ class BlackGoldCustomersController < ApplicationController
     @profiles_by_customer_id ||= CustomerProfile.where(shopline_customer_id: customers_by_email.values.map(&:id)).index_by(&:shopline_customer_id)
   end
 
+  # build_rows 只需要每位客人「最新一筆」跟「上一筆」訂單，不需要整份歷史，
+  # 用 window function 在 DB 端先篩到只剩每人最近 2 筆，避免把黑卡+金卡全部人的
+  # 全部歷史訂單一次撈進 Rails process（這曾經在 Hobby plan 512MB 記憶體上限下
+  # 把 instance 撐爆、被 Render 強制重啟，期間打進來的請求收到 502）
   def all_orders_by_email
     @all_orders_by_email ||= begin
       emails = customers_by_email.keys
       return {} if emails.empty?
 
-      raw = ShoplineOrder.from("shopline_orders o")
+      order_agg = ShoplineOrder.from("shopline_orders o")
         .where("o.email IN (?)", emails)
         .where("o.payment_status = '已付款'")
         .select(
@@ -177,9 +181,19 @@ class BlackGoldCustomersController < ApplicationController
           "STRING_AGG(DISTINCT o.product_name, '、' ORDER BY o.product_name) AS products_list"
         )
         .group("o.order_number")
-        .to_a
 
-      raw.group_by(&:email_val).transform_values { |list| list.sort_by(&:ord_date) }
+      # order_date 只有日期沒有時間，同一天多筆訂單會打平；order_number 是固定寬度的
+      # 時間戳格式（"#" + 17 碼），拿來當第二排序鍵可以還原同一天內的實際先後順序
+      ranked_sql = <<~SQL
+        SELECT * FROM (
+          SELECT agg.*, ROW_NUMBER() OVER (PARTITION BY email_val ORDER BY ord_date DESC, order_num DESC) AS rn
+          FROM (#{order_agg.to_sql}) agg
+        ) ranked
+        WHERE rn <= 2
+      SQL
+
+      raw = ShoplineOrder.find_by_sql(ranked_sql)
+      raw.group_by(&:email_val).transform_values { |list| list.sort_by { |o| [o.ord_date, o.order_num] } }
     end
   end
 end
