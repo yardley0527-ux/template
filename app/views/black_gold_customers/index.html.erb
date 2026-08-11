@@ -41,7 +41,6 @@ end %>
       overflow: visible !important;
       text-overflow: unset !important;
     }
-    .bg-table .black-gold-note-input { width: 100%; }
   }
 </style>
 <% end %>
@@ -123,14 +122,13 @@ end %>
             <th style="width:130px;">金額變化</th>
             <th style="width:110px;">特別注意</th>
             <th style="width:26%;">AI 觀察與建議</th>
-            <th style="width:18%;">消費備註</th>
           </tr>
         </thead>
         <tbody>
           <% rows.each do |r| %>
             <% url = bg_ig_link_url(r.ig_account) %>
             <% profile = r.profile %>
-            <tr style="<%= r.needs_attention? ? 'background:#fdf1ef;' : (profile&.black_gold_note.present? ? '' : 'background:#fffbe6;') %>">
+            <tr style="<%= r.needs_attention? ? 'background:#fdf1ef;' : (profile&.black_gold_followed_up? ? '' : 'background:#fffbe6;') %>">
               <td class="ps-3 fw-semibold" data-label="姓名">
                 <%= link_to r.full_name, customer_path(r.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
               </td>
@@ -219,23 +217,11 @@ end %>
                   </button>
                 <% end %>
               </td>
-              <td class="py-2" data-label="消費備註">
-                <% if profile&.black_gold_note_edited_by.present? %>
-                  <div class="text-muted" style="font-size:0.72rem;">edit by <%= note_editor_name(profile.black_gold_note_edited_by) %></div>
-                <% end %>
-                <textarea
-                  class="form-control form-control-sm black-gold-note-input"
-                  data-customer-id="<%= r.shopline_customer_id %>"
-                  data-url="<%= upsert_black_gold_note_path %>"
-                  rows="2"
-                  placeholder="可輸入多行備註，點到其他地方自動存檔"
-                  style="font-size:0.82rem; min-height:52px; resize:vertical;"><%= profile&.black_gold_note %></textarea>
-              </td>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="10" class="text-center py-5 text-muted">
+              <td colspan="9" class="text-center py-5 text-muted">
                 <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
                 這段期間沒有<%= level %>客人回購
               </td>
@@ -280,30 +266,6 @@ end %>
         }
       });
     });
-  });
-
-  // 消費備註：離開欄位即自動存檔（Enter 為換行）
-  document.querySelectorAll('.black-gold-note-input').forEach(function(input) {
-    var saved = input.value;
-    function save() {
-      if (input.value === saved) return;
-      fetch(input.dataset.url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
-        body: JSON.stringify({ customer_id: input.dataset.customerId, note: input.value })
-      }).then(function(r) {
-        var td = input.closest('td');
-        if (r.ok) {
-          saved = input.value;
-          input.style.borderColor = input.value ? '#28a745' : '#ccc';
-          flashTip(td, input.value ? '✓ 已存檔' : '已清除', input.value ? '#28a745' : '#999');
-        } else {
-          flashTip(td, '存檔失敗，請再試一次', '#dc3545');
-        }
-      });
-    }
-    input.addEventListener('blur', save);
-    if (input.value) input.style.borderColor = '#28a745';
   });
 
   // AI 分析：特別注意的客人自動排隊分析（同時最多 2 個，避免一次打爆 API），
