@@ -27,7 +27,7 @@ class LivestreamReportsController < ApplicationController
     ],
     "膠原蛋白" => [
       {
-        title: "膠原直播檢討：8/21 場前的診斷與建議",
+        title: "膠原直播前報告：8/21 場前的診斷與建議",
         date: Date.new(2026, 8, 21),
         type: :pre,
         url: "https://claude.ai/code/artifact/2e6258b0-466d-450c-a4ba-cf8e14eada06",
