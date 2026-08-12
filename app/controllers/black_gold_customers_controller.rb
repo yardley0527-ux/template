@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# 黑金卡消費備註：讓老闆一眼看到本日／本週／本月回來消費的黑卡、金卡客人，
+# 黑金卡消費備註：讓老闆一眼看到昨日／本週／本月回來消費的黑卡、金卡客人，
 # 這次回購距上次多久、金額比上次多還是少，異常的自動標「特別注意」，
 # 並可直接在頁面上記備註（誰要特別關注、聯繫過什麼）
 class BlackGoldCustomersController < ApplicationController
@@ -115,9 +115,10 @@ class BlackGoldCustomersController < ApplicationController
 
   private
 
+  # 資料是每天匯入「前一天」的訂單，所以「本日」分頁實際上要看昨天的訂單
   def period_range(period)
     case period
-    when "today" then Time.zone.today.beginning_of_day..Time.zone.today.end_of_day
+    when "today" then Time.zone.yesterday.beginning_of_day..Time.zone.yesterday.end_of_day
     when "week"  then Time.zone.today.beginning_of_week.beginning_of_day..Time.zone.today.end_of_day
     else              Time.zone.today.beginning_of_month.beginning_of_day..Time.zone.today.end_of_day
     end

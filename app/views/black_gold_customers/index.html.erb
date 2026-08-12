@@ -50,7 +50,7 @@ end %>
   <div class="col-12 d-flex align-items-center justify-content-between flex-wrap" style="gap:12px;">
     <div>
       <h4 class="fw-bold mb-0">黑金卡消費備註</h4>
-      <p class="text-muted small mb-0">本日／本週／本月回來消費的黑卡、金卡客人，這次跟上次比金額多還少、間隔多久，異常的自動標「特別注意」</p>
+      <p class="text-muted small mb-0">昨日／本週／本月回來消費的黑卡、金卡客人，這次跟上次比金額多還少、間隔多久，異常的自動標「特別注意」</p>
     </div>
   </div>
 </div>
@@ -83,7 +83,7 @@ end %>
 <%# 本日／本週／本月 篩選 %>
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
-    <%= link_to "本日（#{@counts['today']}）",
+    <%= link_to "昨日（#{@counts['today']}）",
           black_gold_customers_path(period: 'today'),
           class: "nav-link #{@period == 'today' ? 'active fw-bold' : 'text-muted'}" %>
   </li>
