@@ -178,6 +178,45 @@ module Importing
         "no ImportRun should be created when the import aborts before starting"
     end
 
+    # ── 取消訂單候選偵測（Shopline 匯出檔沒有取消狀態欄位，取消訂單是直接消失）─
+
+    test "an order present in one import but absent from a later import of the same period is flagged as a candidate" do
+      order_number = "#20260115120000020"
+      import_csv([row(order_number: order_number, product_name: "薑黃1", checkout_amount: 1780)],
+                 source_year: 2026, source_month: 1)
+
+      # 同一年月重新匯入，這次來源檔案裡已經沒有這張訂單了（模擬已取消）
+      run = import_csv([row(order_number: "#20260115120000021", product_name: "薑黃1", checkout_amount: 1780)],
+                       source_year: 2026, source_month: 1)
+
+      candidates = run.reload.meta["canceled_candidates"]
+      assert_equal 1, candidates.size
+      assert_equal order_number, candidates.first["order_number"]
+    end
+
+    test "an order re-confirmed in a later import of the same period is not flagged as a candidate" do
+      order_number = "#20260115120000022"
+      import_csv([row(order_number: order_number, product_name: "薑黃1", checkout_amount: 1780)],
+                 source_year: 2026, source_month: 1)
+      run = import_csv([row(order_number: order_number, product_name: "薑黃1", checkout_amount: 1780)],
+                       source_year: 2026, source_month: 1)
+
+      assert_empty run.reload.meta["canceled_candidates"]
+    end
+
+    test "candidate detection is scoped to the imported period and does not flag other months" do
+      other_month_order = "#20260215120000023"
+      import_csv([row(order_number: other_month_order, product_name: "薑黃1", checkout_amount: 1780, date: "2026-02-15")],
+                 source_year: 2026, source_month: 2)
+
+      # 匯入一月份的資料，不該把二月份「這次沒出現」的訂單也當成候選
+      run = import_csv([row(order_number: "#20260115120000024", product_name: "薑黃1", checkout_amount: 1780)],
+                       source_year: 2026, source_month: 1)
+
+      assert_empty run.reload.meta["canceled_candidates"]
+      assert ShoplineOrder.exists?(order_number: other_month_order), "other month's order must be untouched"
+    end
+
     test "a normal import (lock free) proceeds and releases the lock afterward" do
       import_csv([row(order_number: "#20260115120000013", product_name: "薑黃6", checkout_amount: 10050)])
 

@@ -1,6 +1,7 @@
 require "roo"
 require "digest"
 require "json"
+require "set"
 require Rails.root.join("lib/shopline_orders_maintenance_lock") if defined?(Rails)
 
 module Importing
@@ -78,6 +79,7 @@ module Importing
       # (not per-sheet) since re-imports of the same file must reproduce the
       # same counts to stay idempotent.
       occurrence_counts = Hash.new(0)
+      touched_months = Set.new
 
       book.sheets.each do |sheet_name|
         month = sheet_name.to_i
@@ -86,6 +88,7 @@ module Importing
           next unless month
         end
 
+        touched_months << month
         log "[import] sheet=#{sheet_name} month=#{month} begin"
 
         book.default_sheet = sheet_name
@@ -150,12 +153,38 @@ module Importing
         log "[import] sheet=#{sheet_name} month=#{month} end"
       end
 
+      canceled_candidates = touched_months.sort.flat_map do |month|
+        Importing::CanceledOrderCandidates.call(year: @source_year, month: month).to_a
+      end
+
+      if canceled_candidates.any?
+        log "[import] ⚠ #{canceled_candidates.size} order(s) still 已付款 in the DB for " \
+          "#{touched_months.sort.join(',')}/#{@source_year} but absent from this file " \
+          "(likely paid then canceled — review before purging):"
+        canceled_candidates.each do |o|
+          log "  - #{o.order_number} #{o.customer_name} #{o.product_name} #{o.checkout_amount} (#{o.order_date&.to_date})"
+        end
+        log "[import] review the list above, then run e.g. " \
+          "`bin/rails \"import:purge_canceled_orders[#{@source_year},#{touched_months.sort.first}]\"` per month to remove them."
+      end
+
       run.update!(
         processed_rows: processed,
         upserted_rows: upserted,
         skipped_rows: skipped,
         error_rows: error_rows,
         error_messages: run.error_messages,
+        meta: run.meta.merge(
+          "canceled_candidates" => canceled_candidates.map { |o|
+            {
+              order_number: o.order_number,
+              customer_name: o.customer_name,
+              product_name: o.product_name,
+              checkout_amount: o.checkout_amount&.to_s,
+              order_date: o.order_date&.to_date&.to_s
+            }
+          }
+        ),
         finished_at: Time.zone.now
       )
 

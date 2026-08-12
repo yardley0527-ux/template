@@ -71,4 +71,50 @@ namespace :import do
       puts "[task] livestream stats refresh FAILED (import itself still succeeded): #{e.class} - #{e.message}"
     end
   end
+
+  desc <<~DESC
+    Delete orders that are still 已付款 in the DB for a given year/month but
+    were absent from the most recently imported source file for that period
+    (see Importing::CanceledOrderCandidates — printed automatically at the
+    end of `import:paid_orders`).
+
+    Always run `import:paid_orders` with the LATEST source file for that
+    month first, review the candidate list it prints, and only then run this.
+    This task re-derives the same candidate list itself (it does not trust
+    output from a prior run), but it has no way to tell "genuinely canceled"
+    apart from "the file you just imported was incomplete" — that judgment
+    call is still on the human running it.
+
+    Usage:
+      DISABLE_SPRING=1 bundle exec rails "import:purge_canceled_orders[2026,8]"
+  DESC
+  task :purge_canceled_orders, [:year, :month] => :environment do |_t, args|
+    year = args[:year].to_i
+    month = args[:month].to_i
+
+    raise ArgumentError, "year required (e.g. 2026)" if year <= 0
+    raise ArgumentError, "month required, 1–12" if month < 1 || month > 12
+
+    candidates = Importing::CanceledOrderCandidates.call(year: year, month: month).to_a
+
+    if candidates.empty?
+      puts "[purge] no canceled-order candidates found for #{year}/#{month}."
+      next
+    end
+
+    puts "[purge] #{candidates.size} candidate(s) for #{year}/#{month}:"
+    candidates.each do |o|
+      puts "  - #{o.order_number} #{o.customer_name} #{o.product_name} #{o.checkout_amount} (#{o.order_date&.to_date})"
+    end
+
+    ids = candidates.map(&:id)
+    deleted = ShoplineOrder.where(id: ids).delete_all
+    puts "[purge] deleted #{deleted} row(s)."
+
+    puts "[purge] refreshing purchase summary cache..."
+    CustomerPurchaseSummaryRefreshService.call
+    puts "[purge] refreshing series loyalty cache..."
+    CustomerSeriesLoyaltyRefreshService.call
+    puts "[purge] done."
+  end
 end
