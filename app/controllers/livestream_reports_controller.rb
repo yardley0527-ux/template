@@ -22,7 +22,7 @@ class LivestreamReportsController < ApplicationController
         date: Date.new(2026, 8, 7),
         type: :post,
         url: "https://claude.ai/code/artifact/f4082dda-75c0-4787-9ada-0835b1e37eb5",
-        desc: "長期定價版：全歷史場次定價階梯拆解＋跨產品預購比較",
+        desc: "長期定價版：全歷史場次定價階梯拆解＋跨產品預購比較，8/12更新至預購開賣後2天累計（薑黃買氣約番茄同期2.7倍差距，仍在觀察）",
       },
     ],
     "膠原蛋白" => [
