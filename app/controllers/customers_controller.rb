@@ -21,6 +21,7 @@ class CustomersController < ApplicationController
     @big_first_filter = params[:big_first].to_s.strip
     @product_tag      = params[:product_tag].to_s.strip
     @health_tag      = params[:health_tag].to_s.strip
+    @recent_purchase  = params[:recent_purchase].to_s.strip
 
     @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員 非會員]
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level)
@@ -111,27 +112,20 @@ class CustomersController < ApplicationController
       ).where("fo.first_amount >= 10000")
     end
 
-    if @sort.start_with?("inactive")
-      scope = scope
-        .joins("LEFT JOIN (
-          SELECT email, MAX(order_date) AS last_order_date
-          FROM shopline_orders
-          WHERE product_name IS NOT NULL AND product_name != ''
-          GROUP BY email
-        ) lo ON lo.email = shopline_customers.email")
-        .select("shopline_customers.*")
-        .select("lo.last_order_date")
-    else
-      scope = scope.select("shopline_customers.*")
-    end
+    scope = scope
+      .joins("LEFT JOIN (
+        SELECT email, MAX(order_date) AS last_order_date
+        FROM shopline_orders
+        WHERE product_name IS NOT NULL AND product_name != ''
+        GROUP BY email
+      ) lo ON lo.email = shopline_customers.email")
+      .select("shopline_customers.*, lo.last_order_date")
+
+    scope = scope.where("lo.last_order_date >= ?", 3.months.ago) if @recent_purchase == "1"
 
     scope = scope.reorder(Arel.sql(order_sql(@sort)))
 
-    @total = if @sort.start_with?("inactive")
-      ShoplineCustomer.from(scope.except(:select, :order), :shopline_customers).count
-    else
-      scope.count
-    end
+    @total = ShoplineCustomer.from(scope.except(:select, :order), :shopline_customers).count
 
     @total_pages = (@total.to_f / PER_PAGE).ceil
     @total_pages = 1 if @total_pages <= 0
@@ -598,6 +592,8 @@ class CustomersController < ApplicationController
     when "credits_asc"   then "current_shopping_credits ASC NULLS LAST, id DESC"
     when "inactive_desc" then "lo.last_order_date ASC NULLS LAST, id DESC"
     when "inactive_asc"  then "lo.last_order_date DESC NULLS LAST, id DESC"
+    when "last_purchase_desc" then "lo.last_order_date DESC NULLS LAST, id DESC"
+    when "last_purchase_asc"  then "lo.last_order_date ASC NULLS LAST, id DESC"
     when "newest"        then "created_at DESC, id DESC"
     else "total_amount DESC NULLS LAST, id DESC"
     end
