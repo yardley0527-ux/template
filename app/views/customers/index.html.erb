@@ -91,6 +91,12 @@
               總筆數：<%= number_with_delimiter(@total.to_i) %>　
               每頁：<%= CustomersController::PER_PAGE %>　
               頁數：<%= @page %> / <%= @total_pages %>
+              <% if @recent_purchase == "1" && @recent_purchase_denominator.to_i > 0 %>
+                <br>
+                <%= @membership_level.presence || "全部會員" %>共 <%= number_with_delimiter(@recent_purchase_denominator) %> 人，
+                3個月內有消費 <%= number_with_delimiter(@total.to_i) %> 人
+                （<%= (@total.to_f / @recent_purchase_denominator * 100).round(1) %>%）
+              <% end %>
             </div>
 
             <div class="btn-group">

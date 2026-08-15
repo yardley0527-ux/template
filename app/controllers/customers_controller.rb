@@ -127,6 +127,18 @@ class CustomersController < ApplicationController
 
     @total = ShoplineCustomer.from(scope.except(:select, :order), :shopline_customers).count
 
+    if @recent_purchase == "1"
+      level_scope = ShoplineCustomer.all
+      if @membership_level.present?
+        level_scope = if @membership_level == "非會員"
+          level_scope.where(membership_level: [nil, ""])
+        else
+          level_scope.where(membership_level: @membership_level)
+        end
+      end
+      @recent_purchase_denominator = level_scope.count
+    end
+
     @total_pages = (@total.to_f / PER_PAGE).ceil
     @total_pages = 1 if @total_pages <= 0
     offset = (@page - 1) * PER_PAGE
