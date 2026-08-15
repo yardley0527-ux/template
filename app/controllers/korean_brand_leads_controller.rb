@@ -33,8 +33,8 @@ class KoreanBrandLeadsController < ApplicationController
 
   def korean_brand_lead_params
     params.require(:korean_brand_lead).permit(
-      :product_name, :source_url, :contact_channel, :contacted, :contacted_at,
-      :email_content, :replied, :notes, :follow_up
+      :product_name, :source_url, :contact_channel, :status, :contacted_at,
+      :email_content, :notes, :follow_up
     )
   end
 end

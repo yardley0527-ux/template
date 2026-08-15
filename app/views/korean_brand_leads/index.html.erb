@@ -1,18 +1,6 @@
 <%# app/views/korean_brand_leads/index.html.erb %>
 <% content_for :page_title, "韓國品牌開團洽談" %>
 
-<%
-  def lead_status_label(lead)
-    return "待聯絡" unless lead.contacted
-    lead.replied ? "已回覆" : "已聯絡・待回覆"
-  end
-
-  def lead_status_badge_class(lead)
-    return "badge-secondary" unless lead.contacted
-    lead.replied ? "badge-success" : "badge-warning"
-  end
-%>
-
 <div class="row g-3 mb-3">
   <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
@@ -38,7 +26,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <div class="text-muted small mb-1">已聯絡</div>
-        <div class="fw-bold text-warning" style="font-size:1.8rem;line-height:1"><%= @korean_brand_leads.count(&:contacted) %></div>
+        <div class="fw-bold text-warning" style="font-size:1.8rem;line-height:1"><%= @korean_brand_leads.count { |l| l.status != "待聯絡" } %></div>
       </div>
     </div>
   </div>
@@ -46,7 +34,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <div class="text-muted small mb-1">已回覆</div>
-        <div class="fw-bold text-success" style="font-size:1.8rem;line-height:1"><%= @korean_brand_leads.count(&:replied) %></div>
+        <div class="fw-bold text-success" style="font-size:1.8rem;line-height:1"><%= @korean_brand_leads.count { |l| l.status == "已回覆" } %></div>
       </div>
     </div>
   </div>
@@ -61,9 +49,8 @@
             <th style="min-width:140px">產品</th>
             <th style="min-width:180px">產品來源網站</th>
             <th style="min-width:160px">韓國公司聯絡管道</th>
-            <th style="min-width:130px">是否聯絡</th>
+            <th style="min-width:160px">狀態</th>
             <th style="min-width:220px">信件內容</th>
-            <th style="min-width:110px">是否有回覆</th>
             <th style="min-width:240px">備註</th>
             <th style="min-width:240px">Follow Up</th>
             <th></th>
@@ -82,12 +69,11 @@
               </td>
               <td><span class="small"><%= lead.contact_channel.presence || "—" %></span></td>
               <td>
-                <%= form_with model: lead, url: korean_brand_lead_path(lead), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= hidden_field_tag "korean_brand_lead[contacted]", !lead.contacted %>
-                  <button type="submit" class="btn btn-sm <%= lead.contacted ? 'btn-outline-warning' : 'btn-outline-secondary' %>">
-                    <span class="badge <%= lead_status_badge_class(lead) %>"><%= lead_status_label(lead) %></span>
-                  </button>
+                <%= form_with model: lead, url: korean_brand_lead_path(lead), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                  <%= f.select :status, KoreanBrandLead::STATUSES.map { |s| [s, s] }, {}, class: "form-control form-control-sm" %>
+                  <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
                 <% end %>
+                <span class="badge <%= KoreanBrandLead::STATUS_BADGE_CLASSES[lead.status] %> mt-1"><%= lead.status %></span>
                 <% if lead.contacted_at.present? %>
                   <div class="text-muted small mt-1"><%= lead.contacted_at.strftime("%Y-%m-%d") %></div>
                 <% end %>
@@ -110,18 +96,6 @@
                       </div>
                     </div>
                   </div>
-                <% else %>
-                  <span class="text-muted small">—</span>
-                <% end %>
-              </td>
-              <td>
-                <% if lead.contacted %>
-                  <%= form_with model: lead, url: korean_brand_lead_path(lead), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= hidden_field_tag "korean_brand_lead[replied]", !lead.replied %>
-                    <button type="submit" class="btn btn-sm <%= lead.replied ? 'btn-outline-success' : 'btn-outline-secondary' %>">
-                      <%= lead.replied ? "已回覆" : "尚未回覆" %>
-                    </button>
-                  <% end %>
                 <% else %>
                   <span class="text-muted small">—</span>
                 <% end %>
@@ -172,9 +146,9 @@
             <label>韓國公司聯絡管道</label>
             <%= f.text_field :contact_channel, class: "form-control", placeholder: "Email / IG / 官網等" %>
           </div>
-          <div class="form-group form-check">
-            <%= f.check_box :contacted, class: "form-check-input" %>
-            <label class="form-check-label">已聯絡</label>
+          <div class="form-group">
+            <label>狀態</label>
+            <%= f.select :status, KoreanBrandLead::STATUSES.map { |s| [s, s] }, {}, class: "form-control" %>
           </div>
           <div class="form-group">
             <label>聯絡日期</label>
@@ -183,10 +157,6 @@
           <div class="form-group">
             <label>信件內容</label>
             <%= f.text_area :email_content, class: "form-control", rows: 6 %>
-          </div>
-          <div class="form-group form-check">
-            <%= f.check_box :replied, class: "form-check-input" %>
-            <label class="form-check-label">已回覆</label>
           </div>
           <div class="form-group">
             <label>備註</label>

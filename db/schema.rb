@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_15_093124) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_15_103413) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -542,14 +542,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_15_093124) do
     t.string "product_name", null: false
     t.string "source_url"
     t.string "contact_channel"
-    t.boolean "contacted", default: false, null: false
     t.date "contacted_at"
     t.text "email_content"
-    t.boolean "replied", default: false, null: false
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "follow_up"
+    t.string "status", default: "待聯絡", null: false
   end
 
   create_table "line_broadcast_highlights", force: :cascade do |t|
