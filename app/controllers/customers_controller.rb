@@ -143,6 +143,7 @@ class CustomersController < ApplicationController
 
     @top_products = {}
     @inactive_info = {}
+    @last_purchase_products = {}
     all_orders_by_email.each do |email, orders|
       series_counts = Hash.new { |h, k| h[k] = { qty: 0, count: 0 } }
       orders.each do |o|
@@ -154,11 +155,14 @@ class CustomersController < ApplicationController
 
       last_order = orders.max_by(&:order_date)
       if last_order&.order_date
-        days_ago = (Date.today - last_order.order_date.to_date).to_i
-        if days_ago >= 60
-          series, _ = parse_product(last_order.product_name)
-          @inactive_info[email] = { days: days_ago, last_product: series }
-        end
+        last_date = last_order.order_date
+        last_series = orders.select { |o| o.order_date == last_date }
+                             .map { |o| parse_product(o.product_name).first }
+                             .uniq
+        @last_purchase_products[email] = last_series
+
+        days_ago = (Date.today - last_date.to_date).to_i
+        @inactive_info[email] = { days: days_ago, last_product: last_series.first } if days_ago >= 60
       end
     end
 

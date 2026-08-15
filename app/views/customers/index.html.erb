@@ -211,7 +211,16 @@
                         —
                       <% end %>
                     </td>
-                    <td data-label="最近消費" class="small"><%= c.last_order_date&.strftime("%Y/%m/%d") || "—" %></td>
+                    <td data-label="最近消費" class="small">
+                      <% if c.last_order_date %>
+                        <%= link_to c.last_order_date.strftime("%Y/%m/%d"), customer_path(c) %>
+                        <% if @last_purchase_products[c.email].present? %>
+                          <div class="text-muted" style="font-size:10px;"><%= @last_purchase_products[c.email].join("、") %></div>
+                        <% end %>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
                     <td data-label="編輯" class="text-center">
                       <%= link_to "✏️", edit_customer_path(c), class: "btn btn-sm btn-outline-secondary" %>
                     </td>
