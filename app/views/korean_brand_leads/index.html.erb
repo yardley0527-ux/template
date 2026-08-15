@@ -65,6 +65,7 @@
             <th style="min-width:220px">信件內容</th>
             <th style="min-width:110px">是否有回覆</th>
             <th style="min-width:180px">備註</th>
+            <th style="min-width:180px">Follow Up</th>
             <th></th>
           </tr>
         </thead>
@@ -132,6 +133,12 @@
                 <% end %>
               </td>
               <td>
+                <%= form_with model: lead, url: korean_brand_lead_path(lead), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                  <%= f.text_field :follow_up, value: lead.follow_up, class: "form-control form-control-sm", placeholder: "Follow up" %>
+                  <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                <% end %>
+              </td>
+              <td>
                 <%= link_to korean_brand_lead_path(lead), method: :delete, data: { confirm: "確定刪除 #{lead.product_name}？" }, class: "btn btn-sm btn-outline-danger" do %>
                   <i class="fal fa-trash-alt"></i>
                 <% end %>
@@ -184,6 +191,10 @@
           <div class="form-group">
             <label>備註</label>
             <%= f.text_area :notes, class: "form-control", rows: 2 %>
+          </div>
+          <div class="form-group">
+            <label>Follow Up</label>
+            <%= f.text_area :follow_up, class: "form-control", rows: 2 %>
           </div>
         </div>
         <div class="modal-footer">
