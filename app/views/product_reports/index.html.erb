@@ -31,6 +31,8 @@
               <th>狀態</th>
               <th class="text-right">新客增加<br><small class="font-weight-normal text-muted">去年沒買過，今年才第一次買</small></th>
               <th class="text-right">舊客回購<br><small class="font-weight-normal text-muted">去年買過，今年也回來買</small></th>
+              <th class="text-right">真的流失<br><small class="font-weight-normal text-muted">沒回購的人裡，今年任何產品都沒買</small></th>
+              <th class="text-right">只是換產品<br><small class="font-weight-normal text-muted">沒回購的人裡，今年買了別的產品</small></th>
               <th>重點</th>
             </tr>
           </thead>
@@ -64,6 +66,26 @@
                     <span class="text-muted">—</span>
                   <% end %>
                 </td>
+                <td class="text-right">
+                  <% if row[:fully_gone] %>
+                    <span class="text-danger">
+                      <%= number_with_delimiter(row[:fully_gone]) %> 人
+                      <span class="small">（<%= row[:fully_gone_pct] %>%）</span>
+                    </span>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td class="text-right">
+                  <% if row[:switched_product] %>
+                    <span class="text-info">
+                      <%= number_with_delimiter(row[:switched_product]) %> 人
+                      <span class="small">（<%= row[:switched_pct] %>%）</span>
+                    </span>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
                 <td class="text-muted small"><%= row[:note] %></td>
               </tr>
             <% end %>
@@ -77,8 +99,10 @@
         <span class="badge badge-danger">流失中</span> 買家、營收同步下滑；
         <span class="badge badge-info">新品/待觀察</span> 2026年才上市，還沒有「去年」可以比較。<br>
         「新客增加」＝去年沒買過、今年才第一次買的人數；「舊客回購」＝去年買過、今年也回來買的人數（括號裡的回購率＝這個人數 ÷ 去年該產品總買家數，方便橫向比較）。
-        2026 年才上市的產品沒有完整「去年」可比，「舊客回購」改用「上市首月/首週買家後續有沒有回購」替代，口徑不同已在「重點」欄位註明。
-        膠原蛋白因為 92 天缺貨，兩個欄位都改用「今年1~5月 vs 去年同期」的公平口徑計算，跟其他產品的全年口徑不同，詳見該產品報告。
+        沒回購的人（＝去年買家數－舊客回購）再拆成兩種：<b class="text-danger">真的流失</b>＝2026年任何產品都沒買，是真正離開品牌的人；
+        <b class="text-info">只是換產品</b>＝2026年還有買別的產品，只是不買這個產品了，不算真的流失——這兩欄的百分比是「沒回購的人裡」的占比，加起來是100%。<br>
+        2026 年才上市的產品沒有完整「去年」可比，「舊客回購」改用「上市首月/首週買家後續有沒有回購」替代，「真的流失／只是換產品」也改用同一批首購未回購者計算，口徑不同已在「重點」欄位註明。
+        膠原蛋白因為 92 天缺貨，各欄位都改用「今年1~5月 vs 去年同期」的公平口徑計算，跟其他產品的全年口徑不同，詳見該產品報告。
       </div>
     </div>
   </div>
