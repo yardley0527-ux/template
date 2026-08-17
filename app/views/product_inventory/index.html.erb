@@ -17,6 +17,35 @@
     </div>
   </div>
 
+  <% if @purchasing_plan.present? %>
+    <div class="pi-section pi-plan">
+      <div class="pi-section-head">
+        <h5>🗓️ 叫貨行動時程</h5>
+        <span class="pi-sheet-tag">2026-08-17 人工分析</span>
+      </div>
+      <div class="alert alert-warning small mb-3">
+        這份時程是對照「2025 vs 2026 進貨／營收同期比較表」與系統實際銷售、庫存狀態整理出的行動建議，
+        不是任何表格的即時查詢結果——日期異動（例如到貨延期）請直接改
+        <code>ProductInventoryController::PURCHASING_ACTION_PLAN</code>。
+      </div>
+      <div class="pi-plan-list">
+        <% @purchasing_plan.each do |item| %>
+          <div class="pi-plan-item pi-plan-<%= item[:status] %>">
+            <div class="pi-plan-when"><%= item[:when] %></div>
+            <div class="pi-plan-body">
+              <div class="pi-plan-head">
+                <span class="pi-plan-icon"><%= item[:icon] %></span>
+                <span class="pi-plan-product"><%= item[:product] %></span>
+                <span class="pi-plan-action"><%= item[:action] %></span>
+              </div>
+              <div class="pi-plan-reason"><%= item[:reason] %></div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
   <% if @last_run&.status == "failed" %>
     <div class="alert alert-danger">
       上次同步失敗：<%= @last_run.error_messages.join("；") %>
@@ -142,4 +171,18 @@
   .pi-grid .pi-th-product { min-width: 5.5rem; white-space: normal; font-size: 0.78rem; }
   .pi-realtime-row th { background: #fff7ed; color: #b45309; }
   .pi-sticky { position: sticky; left: 0; z-index: 1; }
+
+  .pi-plan-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .pi-plan-item { display: flex; gap: 1rem; align-items: flex-start; border-left: 4px solid #d1d5db; background: #fafafa; border-radius: 6px; padding: 0.6rem 0.9rem; }
+  .pi-plan-when { flex: 0 0 9.5rem; font-weight: 700; font-size: 0.85rem; color: #374151; }
+  .pi-plan-body { flex: 1; min-width: 0; }
+  .pi-plan-head { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: baseline; font-weight: 700; margin-bottom: 0.15rem; }
+  .pi-plan-product { color: #111827; }
+  .pi-plan-action { font-weight: 400; color: #1f2937; }
+  .pi-plan-reason { color: #6b7280; font-size: 0.82rem; }
+
+  .pi-plan-urgent     { border-left-color: #dc2626; background: #fef2f2; }
+  .pi-plan-scheduled  { border-left-color: #ea580c; background: #fff7ed; }
+  .pi-plan-plan_ahead { border-left-color: #ca8a04; background: #fefce8; }
+  .pi-plan-reference  { border-left-color: #16a34a; background: #f0fdf4; }
 </style>
