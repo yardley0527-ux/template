@@ -100,7 +100,7 @@ class CustomersController < ApplicationController
     if @q.present?
       like = "%#{@q}%"
       scope = scope.where(
-        "full_name ILIKE :like OR email ILIKE :like OR mobile_phone ILIKE :like OR phone ILIKE :like OR instagram_account ILIKE :like",
+        "shopline_customers.full_name ILIKE :like OR shopline_customers.email ILIKE :like OR shopline_customers.mobile_phone ILIKE :like OR shopline_customers.phone ILIKE :like OR shopline_customers.instagram_account ILIKE :like",
         like: like
       )
     end
