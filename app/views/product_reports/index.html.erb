@@ -29,6 +29,8 @@
             <tr>
               <th>產品</th>
               <th>狀態</th>
+              <th class="text-right">去年買家<br><small class="font-weight-normal text-muted">對比基準</small></th>
+              <th class="text-right">今年買家<br><small class="font-weight-normal text-muted">對比基準</small></th>
               <th class="text-right">新客增加<br><small class="font-weight-normal text-muted">去年沒買過，今年才第一次買</small></th>
               <th class="text-right">舊客回購<br><small class="font-weight-normal text-muted">去年買過，今年也回來買</small></th>
               <th class="text-right">真的流失<br><small class="font-weight-normal text-muted">沒回購的人裡，今年任何產品都沒買</small></th>
@@ -45,9 +47,18 @@
                } %>
             <% @summary.each do |row| %>
               <tr>
-                <td class="font-weight-bold"><%= row[:product] %></td>
+                <td class="font-weight-bold">
+                  <%= row[:product] %>
+                  <div class="small font-weight-normal text-muted" style="white-space:normal; max-width:160px;"><%= row[:period] %></div>
+                </td>
                 <td>
                   <span class="badge <%= status_badge[row[:status]] %>"><%= @status_label[row[:status]] %></span>
+                </td>
+                <td class="text-right">
+                  <%= row[:buyers_last_year] ? number_with_delimiter(row[:buyers_last_year]) + " 人" : content_tag(:span, "—", class: "text-muted") %>
+                </td>
+                <td class="text-right">
+                  <%= row[:buyers_this_year] ? number_with_delimiter(row[:buyers_this_year]) + " 人" : content_tag(:span, "—", class: "text-muted") %>
                 </td>
                 <td class="text-right">
                   <% if row[:new_customers] %>
