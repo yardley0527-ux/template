@@ -4,6 +4,56 @@ class CustomersController < ApplicationController
   PER_PAGE = 20
   MAX_PAGE = 200
 
+  # 卡別成長人工對照表：卡別每日快照 2026/08/17 才上線（見 MembershipLevelSnapshot），
+  # 目前只有 1 天資料，無法自動算出「今年 vs 去年」。這份數字整理自使用者提供的
+  # Shopline 後台儀表板截圖（非本站資料庫查詢），累積滿一年後這個區塊可以拿掉，
+  # 改成完全吃 MembershipLevelSnapshot 的即時計算。
+  MEMBERSHIP_MANUAL_REFERENCE = {
+    updated_at: "2026/08/17",
+    snapshot_at: "2026/08/16",
+    new_customers: {
+      rows: [
+        { label: "2025/01 起始",     customers: 6_161,  paying_customers: 4_317, paying_members: 4_300, non_paying_members: 1_850 },
+        { label: "2025/12 年底",     customers: 9_197,  paying_customers: 6_568, paying_members: 6_558, non_paying_members: 2_621 },
+        { label: "2025 全年淨增",    customers: 3_036,  paying_customers: 2_251, paying_members: 2_258, non_paying_members: 771, is_delta: true },
+        { label: "2026/01 起始",     customers: 9_297,  paying_customers: 6_656, paying_members: 6_645, non_paying_members: 2_633 },
+        { label: "2026/08/16 至今",  customers: 10_475, paying_customers: 7_586, paying_members: 7_556, non_paying_members: 2_880 },
+        { label: "2026 年初至今淨增", customers: 1_178, paying_customers: 930,   paying_members: 911,   non_paying_members: 247, is_delta: true },
+      ]
+    },
+    tiers_2025_full_year: [
+      { level: "黑卡", from: 14,  to: 72,  delta: 58,  pct: 414.3 },
+      { level: "金卡", from: 98,  to: 239, delta: 141, pct: 143.9 },
+      { level: "銀卡", from: 320, to: 467, delta: 147, pct: 45.9 },
+      { level: "白卡", from: 833, to: 996, delta: 163, pct: 19.6 },
+      { level: "一般會員", from: 4_885, to: 7_405, delta: 2_520, pct: 51.6 },
+    ],
+    tiers_2026_ytd_vs_2025_full_year: [
+      { level: "一般會員", y2025_start: 4_885, y2025_end: 7_405, y2025_delta: 2_520, y2025_pct: 51.6,
+        y2026_start: 7_570, y2026_end: 9_084, y2026_delta: 1_514, y2026_pct: 20.0 },
+      { level: "白卡", y2025_start: 833, y2025_end: 996, y2025_delta: 163, y2025_pct: 19.6,
+        y2026_start: 961, y2026_end: 771, y2026_delta: -190, y2026_pct: -19.8 },
+      { level: "銀卡", y2025_start: 320, y2025_end: 467, y2025_delta: 147, y2025_pct: 45.9,
+        y2026_start: 445, y2026_end: 335, y2026_delta: -110, y2026_pct: -24.7 },
+      { level: "金卡", y2025_start: 98, y2025_end: 239, y2025_delta: 141, y2025_pct: 143.9,
+        y2026_start: 224, y2026_end: 169, y2026_delta: -55, y2026_pct: -24.6 },
+      { level: "黑卡", y2025_start: 14, y2025_end: 72, y2025_delta: 58, y2025_pct: 414.3,
+        y2026_start: 78, y2026_end: 77, y2026_delta: -1, y2026_pct: -1.3 },
+    ],
+    tiers_jan_to_jul_yoy: [
+      { level: "一般會員", y2025_start: 4_885, y2025_end: 6_797, y2025_delta: 1_912, y2025_pct: 39.1,
+        y2026_start: 7_570, y2026_end: 8_960, y2026_delta: 1_390, y2026_pct: 18.4 },
+      { level: "白卡", y2025_start: 833, y2025_end: 1_004, y2025_delta: 171, y2025_pct: 20.5,
+        y2026_start: 961, y2026_end: 794, y2026_delta: -167, y2026_pct: -17.4 },
+      { level: "銀卡", y2025_start: 320, y2025_end: 465, y2025_delta: 145, y2025_pct: 45.3,
+        y2026_start: 445, y2026_end: 338, y2026_delta: -107, y2026_pct: -24.0 },
+      { level: "金卡", y2025_start: 98, y2025_end: 187, y2025_delta: 89, y2025_pct: 90.8,
+        y2026_start: 224, y2026_end: 180, y2026_delta: -44, y2026_pct: -19.6 },
+      { level: "黑卡", y2025_start: 14, y2025_end: 40, y2025_delta: 26, y2025_pct: 185.7,
+        y2026_start: 78, y2026_end: 81, y2026_delta: 3, y2026_pct: 3.8 },
+    ]
+  }.freeze
+
   AGE_GROUP_ORDER = ["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
   ZODIAC_ORDER    = %w[牡羊 金牛 雙子 巨蟹 獅子 處女 天秤 天蠍 射手 摩羯 水瓶 雙魚].freeze
 
@@ -274,6 +324,7 @@ class CustomersController < ApplicationController
 
     load_new_member_stats
     load_membership_level_trend
+    @membership_manual_reference = MEMBERSHIP_MANUAL_REFERENCE
   end
 
   def edit

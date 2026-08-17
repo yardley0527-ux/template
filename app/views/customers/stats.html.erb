@@ -138,6 +138,130 @@
   </div>
 </div>
 
+<%# ── 卡別成長人工對照（今年 vs 去年，暫時性，累積滿一年快照後可拿掉） ── %>
+<% ref = @membership_manual_reference %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2>📋 卡別成長對照：2025 全年 vs 2026 至今</h2>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="alert alert-warning small mb-4">
+            <i class="fal fa-exclamation-triangle mr-1"></i>
+            這個區塊是<b>人工整理的參考數字</b>，來源是使用者提供的 Shopline 後台儀表板截圖（截圖資料截至 <%= ref[:snapshot_at] %>，整理於 <%= ref[:updated_at] %>），
+            不是本站資料庫即時查詢——上面的「每日快照」表格已經上線，累積滿一年後就能自動算出這裡的數字，屆時這個區塊會拿掉。
+          </div>
+
+          <h3 class="h6 fw-bold">新增會員數（SL 口徑：顧客累計數區間淨增）</h3>
+          <div class="table-responsive mb-3">
+            <table class="table table-sm table-bordered text-right">
+              <thead class="thead-light">
+                <tr>
+                  <th class="text-left">區間</th><th>顧客（累計）</th><th>消費顧客</th><th>消費會員</th><th>未消費會員</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% ref[:new_customers][:rows].each do |row| %>
+                  <tr class="<%= 'font-weight-bold' if row[:is_delta] %>">
+                    <td class="text-left"><%= row[:label] %></td>
+                    <% [:customers, :paying_customers, :paying_members, :non_paying_members].each do |key| %>
+                      <td class="<%= row[:is_delta] ? 'text-success' : '' %>">
+                        <%= row[:is_delta] ? "+#{number_with_delimiter(row[key])}" : number_with_delimiter(row[key]) %>
+                      </td>
+                    <% end %>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <div class="small text-muted mb-4">依 Shopline 會員註冊時間計算；2025/12（9,197）與 2026/01（9,297）累計顧客數截圖相差 100 人，推測是兩次截圖擷取時間不同、期間有回補註冊資料所致。</div>
+
+          <h3 class="h6 fw-bold">黑卡・金卡：2025 全年成長</h3>
+          <div class="row text-center mb-2">
+            <% ref[:tiers_2025_full_year].select { |r| %w[黑卡 金卡].include?(r[:level]) }.each do |r| %>
+              <div class="col-6 col-md-3 mb-3">
+                <div class="text-muted small"><%= r[:level] %></div>
+                <div class="h4 mb-0 text-success">+<%= r[:delta] %> <small class="text-muted">人</small></div>
+                <div class="small text-muted">▲ <%= r[:pct] %>%（<%= r[:from] %> → <%= r[:to] %> 人）</div>
+              </div>
+            <% end %>
+          </div>
+          <div class="small text-muted mb-4">黑卡基期只有 14 人，+58 人就等於 +414%——百分比會被小基期放大，對外溝通建議附上人數而非只講倍數。</div>
+
+          <h3 class="h6 fw-bold">銀卡・白卡・一般卡：2026 年初至今 vs 2025 全年</h3>
+          <div class="table-responsive mb-2">
+            <table class="table table-sm table-bordered text-right">
+              <thead class="thead-light">
+                <tr>
+                  <th class="text-left">卡別</th>
+                  <th>2025/01</th><th>2025/12</th><th>2025 全年 Δ</th>
+                  <th>2026/01</th><th>2026/08/16</th><th>2026 至今 Δ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% ref[:tiers_2026_ytd_vs_2025_full_year].each do |r| %>
+                  <tr>
+                    <td class="text-left"><%= r[:level] %></td>
+                    <td><%= number_with_delimiter(r[:y2025_start]) %></td>
+                    <td><%= number_with_delimiter(r[:y2025_end]) %></td>
+                    <td class="text-success">+<%= number_with_delimiter(r[:y2025_delta]) %>（+<%= r[:y2025_pct] %>%）</td>
+                    <td><%= number_with_delimiter(r[:y2026_start]) %></td>
+                    <td><%= number_with_delimiter(r[:y2026_end]) %></td>
+                    <td class="<%= r[:y2026_delta].negative? ? 'text-danger' : 'text-success' %>">
+                      <%= r[:y2026_delta].positive? ? "+" : "" %><%= number_with_delimiter(r[:y2026_delta]) %>（<%= r[:y2026_pct].positive? ? "+" : "" %><%= r[:y2026_pct] %>%）
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <div class="alert alert-info small mb-4">
+            <i class="fal fa-flag mr-1"></i>
+            2025 年五個卡別全部成長，但 2026 年至今唯獨「一般會員」在漲，白卡／銀卡／金卡幾乎都少了四分之一，黑卡也持平轉降。
+            最可能的原因是卡別門檻每年重新核算（例如以近 12 個月消費金額滾動計算），年初做了一次降級重整；也可能是資料擷取時間點差異。
+            建議跟營運確認卡別升降級規則的觸發時間，確認是「正常年度重算」還是資料異常。
+          </div>
+
+          <h3 class="h6 fw-bold">卡別人數：今年 1–7 月 vs 去年 1–7 月（同一口徑對照）</h3>
+          <div class="table-responsive mb-2">
+            <table class="table table-sm table-bordered text-right">
+              <thead class="thead-light">
+                <tr>
+                  <th class="text-left">卡別</th>
+                  <th>2025/01</th><th>2025/07</th><th>2025 年1–7月 Δ</th>
+                  <th>2026/01</th><th>2026/07</th><th>2026 年1–7月 Δ</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% ref[:tiers_jan_to_jul_yoy].each do |r| %>
+                  <tr>
+                    <td class="text-left"><%= r[:level] %></td>
+                    <td><%= number_with_delimiter(r[:y2025_start]) %></td>
+                    <td><%= number_with_delimiter(r[:y2025_end]) %></td>
+                    <td class="text-success">+<%= number_with_delimiter(r[:y2025_delta]) %>（+<%= r[:y2025_pct] %>%）</td>
+                    <td><%= number_with_delimiter(r[:y2026_start]) %></td>
+                    <td><%= number_with_delimiter(r[:y2026_end]) %></td>
+                    <td class="<%= r[:y2026_delta].negative? ? 'text-danger' : 'text-success' %>">
+                      <%= r[:y2026_delta].positive? ? "+" : "" %><%= number_with_delimiter(r[:y2026_delta]) %>（<%= r[:y2026_pct].positive? ? "+" : "" %><%= r[:y2026_pct] %>%）
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <div class="small text-muted">
+            區間：每年 1/1 起始 → 7 月底累計總數，兩年口徑一致。黑卡在 1–7 月其實還是正成長（78→81 人），是 7 月底到 8/16 這段才轉降到 77 人——
+            代表整個降級走勢是漸進的，從年初就開始、一路到 8 月都還在持續，不是單一月份的資料抖動；白卡／銀卡／金卡則整個上半年都在減少，
+            趨勢比一般會員的成長更早出現、也更明顯。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <%# ── 城市 ── %>
 <div class="row mb-4">
   <div class="col-12">
