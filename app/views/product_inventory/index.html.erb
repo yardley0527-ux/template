@@ -28,6 +28,97 @@
         不是任何表格的即時查詢結果——日期異動（例如到貨延期）請直接改
         <code>ProductInventoryController::PURCHASING_ACTION_PLAN</code>。
       </div>
+      <div class="pi-chart-wrap">
+        <svg viewBox="0 0 1040 400" class="pi-chart" role="img" aria-label="時間軸：薑黃 7 月 15 日已到貨；今天是 8 月 17 日；全能 B 群目前現貨為零且尚無到貨日；膠原蛋白 8 月 20 日到貨、隔天喚回流失客戶、8 月 23 日檢查是否已上架；代謝錠在本月底前要提前排下一輪叫貨。">
+          <rect x="250" y="24" width="274.9" height="18" fill="#f3f4f6" />
+          <rect x="524.9" y="24" width="485.1" height="18" fill="#f3f4f6" opacity="0.55" />
+          <text class="pi-month-label" x="387.5" y="37.5" text-anchor="middle">七月</text>
+          <text class="pi-month-label" x="767.5" y="37.5" text-anchor="middle">八月</text>
+
+          <line x1="250" y1="68" x2="1010" y2="68" stroke="#e5e7eb" stroke-width="1.5" />
+
+          <g stroke="#9ca3af" stroke-width="1">
+            <line x1="250"   y1="60" x2="250"   y2="68" />
+            <line x1="832.1" y1="60" x2="832.1" y2="68" />
+            <line x1="880.6" y1="60" x2="880.6" y2="68" />
+            <line x1="1010"  y1="60" x2="1010"  y2="68" />
+          </g>
+          <text class="pi-axis-label" x="250"   y="54" text-anchor="middle">7/15</text>
+          <text class="pi-axis-label" x="832.1" y="54" text-anchor="middle">8/20</text>
+          <text class="pi-axis-label" x="880.6" y="54" text-anchor="middle">8/23</text>
+          <text class="pi-axis-label" x="1010"  y="54" text-anchor="middle">8/31</text>
+
+          <line x1="783.6" y1="20" x2="783.6" y2="380" stroke="#0f766e" stroke-width="1.5" stroke-dasharray="3 4" />
+          <text class="pi-today-label" x="783.6" y="14" text-anchor="middle">今天・8/17</text>
+
+          <g stroke="#e5e7eb" stroke-width="1">
+            <line x1="16" y1="74"  x2="1010" y2="74" />
+            <line x1="16" y1="125" x2="1010" y2="125" />
+            <line x1="16" y1="176" x2="1010" y2="176" />
+            <line x1="16" y1="227" x2="1010" y2="227" />
+            <line x1="16" y1="278" x2="1010" y2="278" />
+            <line x1="16" y1="329" x2="1010" y2="329" />
+            <line x1="16" y1="380" x2="1010" y2="380" />
+          </g>
+
+          <text class="pi-row-name"   x="16" y="94.5">🔴 全能 B群</text>
+          <text class="pi-row-action" x="16" y="111">立即下單叫貨（現貨 0）</text>
+
+          <text class="pi-row-name"   x="16" y="145.5">🟠 膠原蛋白</text>
+          <text class="pi-row-action" x="16" y="162">到貨</text>
+
+          <text class="pi-row-name"   x="16" y="196.5">🟠 膠原蛋白</text>
+          <text class="pi-row-action" x="16" y="213">喚回流失客戶</text>
+
+          <text class="pi-row-name"   x="16" y="247.5">🟠 膠原蛋白</text>
+          <text class="pi-row-action" x="16" y="264">檢查零銷售</text>
+
+          <text class="pi-row-name"   x="16" y="298.5">🟡 代謝錠</text>
+          <text class="pi-row-action" x="16" y="315">提前排下一輪叫貨</text>
+
+          <text class="pi-row-name"   x="16" y="349.5">🟢 薑黃</text>
+          <text class="pi-row-action" x="16" y="366">已到貨（案例佐證）</text>
+
+          <g>
+            <line x1="783.6" y1="99.5" x2="1005" y2="99.5" stroke="#dc2626" stroke-width="2" stroke-dasharray="1 6" stroke-linecap="round" marker-end="url(#pi-arrow-urgent)" />
+            <polygon points="783.6,90 792,104 775.2,104" fill="#dc2626" />
+            <text x="783.6" y="102.3" text-anchor="middle" font-size="9.5" font-weight="700" fill="#fff">!</text>
+            <text class="pi-flag-label" x="960" y="94" text-anchor="middle" fill="#dc2626">尚無到貨日</text>
+          </g>
+
+          <g transform="translate(832.1,150.5)">
+            <polygon points="0,-9 9,0 0,9 -9,0" fill="#ea580c" />
+            <text class="pi-milestone-label" x="16" y="4.5" fill="#ea580c">到貨</text>
+          </g>
+
+          <rect x="826" y="194" width="30" height="15" rx="7.5" fill="#ea580c" />
+          <text class="pi-milestone-label" x="864" y="205.5" fill="#ea580c">8/20–8/21</text>
+
+          <g transform="translate(880.6,252.5)">
+            <polygon points="0,-9 9,0 0,9 -9,0" fill="#fff" stroke="#ea580c" stroke-width="2.5" />
+            <text class="pi-milestone-label" x="16" y="4.5" fill="#ea580c">到貨＋3天檢查</text>
+          </g>
+
+          <rect x="783.6" y="296" width="226.4" height="15" rx="7.5" fill="#ca8a04" />
+          <text class="pi-milestone-label" x="783.6" y="290" fill="#ca8a04">本月內</text>
+
+          <g transform="translate(250,354.5)">
+            <polygon points="0,-9 9,0 0,9 -9,0" fill="#16a34a" opacity="0.85" />
+            <text x="0" y="3.5" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">✓</text>
+            <text class="pi-milestone-label" x="16" y="4.5" fill="#16a34a">已到貨</text>
+          </g>
+
+          <defs>
+            <marker id="pi-arrow-urgent" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+              <path d="M0,0 L8,4 L0,8 Z" fill="#dc2626" />
+            </marker>
+          </defs>
+        </svg>
+        <div class="pi-chart-caption">
+          實心菱形＝到貨或行動、空心菱形＝檢查點、長條＝跨日期任務、紅色虛線箭頭＝日期未定的急件。
+        </div>
+      </div>
+
       <div class="pi-plan-list">
         <% @purchasing_plan.each do |item| %>
           <div class="pi-plan-item pi-plan-<%= item[:status] %>">
@@ -185,4 +276,15 @@
   .pi-plan-scheduled  { border-left-color: #ea580c; background: #fff7ed; }
   .pi-plan-plan_ahead { border-left-color: #ca8a04; background: #fefce8; }
   .pi-plan-reference  { border-left-color: #16a34a; background: #f0fdf4; }
+
+  .pi-chart-wrap { margin-bottom: 1.1rem; }
+  .pi-chart { display: block; width: 100%; height: auto; }
+  .pi-chart-caption { margin-top: 0.5rem; font-size: 0.76rem; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 0.5rem; }
+  .pi-row-name { font-weight: 700; font-size: 13.5px; fill: #111827; }
+  .pi-row-action { font-size: 12px; fill: #6b7280; }
+  .pi-axis-label { font-size: 11px; fill: #6b7280; }
+  .pi-month-label { font-size: 12px; font-weight: 600; fill: #6b7280; letter-spacing: 0.04em; }
+  .pi-today-label { font-size: 11.5px; font-weight: 700; fill: #0f766e; }
+  .pi-flag-label { font-size: 12px; font-weight: 600; }
+  .pi-milestone-label { font-size: 11.5px; font-weight: 600; }
 </style>
