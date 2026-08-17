@@ -271,6 +271,9 @@ class CustomersController < ApplicationController
       py = personal_year_number(c.birthdate)
       @personal_year_stats[lvl][py] += 1 if py
     end
+
+    load_new_member_stats
+    load_membership_level_trend
   end
 
   def edit
@@ -389,6 +392,43 @@ class CustomersController < ApplicationController
   end
 
   private
+
+  # 新增會員數（依 Shopline member_registered_at，資料回溯到 2023 年底，
+  # 不需要快照就能算今年 vs 去年）
+  def load_new_member_stats
+    today = Date.current
+    this_year = today.year
+    last_year = this_year - 1
+
+    registered_at = ShoplineCustomer.where.not(member_registered_at: nil).pluck(:member_registered_at)
+
+    @new_members_ytd_this_year = registered_at.count { |t| t.year == this_year && t <= today.end_of_day }
+    @new_members_ytd_last_year = registered_at.count do |t|
+      t.year == last_year && t <= Date.new(last_year, today.month, today.day).end_of_day
+    end
+    @new_members_last_full_year = registered_at.count { |t| t.year == last_year }
+
+    @new_members_by_month = (1..12).map do |m|
+      { month: m,
+        this_year: registered_at.count { |t| t.year == this_year && t.month == m },
+        last_year: registered_at.count { |t| t.year == last_year && t.month == m } }
+    end
+  end
+
+  # 卡別人數趨勢：跟最新快照比較 7天前／30天前／去年同期（快照剛開始蒐集時，
+  # 較舊的比較基準會是 nil，畫面上顯示「資料累積中」）
+  def load_membership_level_trend
+    @snapshot_levels = %w[黑卡 金卡 銀卡 白卡 一般會員 非會員]
+    @latest_snapshot = MembershipLevelSnapshot.order(snapshot_date: :desc).first
+    return unless @latest_snapshot
+
+    today = @latest_snapshot.snapshot_date
+    @snapshot_baselines = {
+      d7:  MembershipLevelSnapshot.closest_to(today - 7),
+      d30: MembershipLevelSnapshot.closest_to(today - 30),
+      y1:  MembershipLevelSnapshot.closest_to(today - 365)
+    }.transform_values { |snap| snap == @latest_snapshot ? nil : snap }
+  end
 
   def log_customer_edit(customer, profile, section)
     changes = profile.previous_changes.except("updated_at", "created_at", "id", "shopline_customer_id")

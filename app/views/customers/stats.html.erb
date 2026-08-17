@@ -16,6 +16,128 @@
 
 <% levels = @membership_order.select { |l| @total_by_level[l].to_i > 0 } %>
 
+<%# ── 新增會員數（今年 vs 去年） ── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>🆕 新增會員數（<%= Date.current.year - 1 %> vs <%= Date.current.year %>）</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div class="row text-center mb-4">
+            <div class="col-6 col-md-3 mb-3">
+              <div class="text-muted small">去年（<%= Date.current.year - 1 %>）全年</div>
+              <div class="h3 mb-0"><%= number_with_delimiter(@new_members_last_full_year) %> <small class="text-muted">人</small></div>
+            </div>
+            <div class="col-6 col-md-3 mb-3">
+              <div class="text-muted small">去年 1/1–<%= Date.current.strftime("%-m/%-d") %>（同期）</div>
+              <div class="h3 mb-0"><%= number_with_delimiter(@new_members_ytd_last_year) %> <small class="text-muted">人</small></div>
+            </div>
+            <div class="col-6 col-md-3 mb-3">
+              <div class="text-muted small">今年 1/1–<%= Date.current.strftime("%-m/%-d") %>（至今）</div>
+              <div class="h3 mb-0"><%= number_with_delimiter(@new_members_ytd_this_year) %> <small class="text-muted">人</small></div>
+            </div>
+            <div class="col-6 col-md-3 mb-3">
+              <% pct = @new_members_ytd_last_year.positive? ? ((@new_members_ytd_this_year - @new_members_ytd_last_year) / @new_members_ytd_last_year.to_f * 100).round(1) : nil %>
+              <div class="text-muted small">同期年增率</div>
+              <div class="h3 mb-0 <%= pct && pct.negative? ? 'text-danger' : 'text-success' %>">
+                <%= pct ? "#{pct.positive? ? '+' : ''}#{pct}%" : "—" %>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-borderless mb-0">
+              <thead>
+                <tr class="text-muted small">
+                  <th>月份</th>
+                  <% @new_members_by_month.each { |row| %><th class="text-center"><%= row[:month] %> 月</th><% } %>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-muted small"><%= Date.current.year - 1 %></td>
+                  <% @new_members_by_month.each { |row| %><td class="text-center"><%= row[:last_year] %></td><% } %>
+                </tr>
+                <tr>
+                  <td class="text-muted small"><%= Date.current.year %></td>
+                  <% @new_members_by_month.each do |row| %>
+                    <td class="text-center <%= 'text-muted' if row[:month] > Date.current.month %>">
+                      <%= row[:month] <= Date.current.month ? row[:this_year] : "—" %>
+                    </td>
+                  <% end %>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="small text-muted mt-2">依 Shopline 會員註冊時間（member_registered_at）計算，非下單日期。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 卡別人數趨勢（每日快照） ── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>🪪 卡別人數趨勢（每日快照）</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <% if @latest_snapshot.nil? %>
+            <div class="text-muted">
+              快照功能剛啟用（今天 <%= Date.current.strftime("%Y/%m/%d") %> 起每天自動記錄一次卡別人數），
+              需要累積一段時間才能看出成長率 —— 明天起這裡就會開始出現「較昨天」的變化，
+              滿一年後就能回答「今年 vs 去年」。
+            </div>
+          <% else %>
+            <div class="small text-muted mb-3">最新快照日期：<%= @latest_snapshot.snapshot_date.strftime("%Y/%m/%d") %></div>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>卡別</th>
+                    <th class="text-right">目前人數</th>
+                    <th class="text-right">較 7 天前</th>
+                    <th class="text-right">較 30 天前</th>
+                    <th class="text-right">較去年同期</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @snapshot_levels.each do |level| %>
+                    <% current = @latest_snapshot.count_for(level) %>
+                    <tr>
+                      <td><%= link_to level, customers_path(membership_level: level) %></td>
+                      <td class="text-right fw-500"><%= number_with_delimiter(current) %></td>
+                      <% [:d7, :d30, :y1].each do |key| %>
+                        <% baseline = @snapshot_baselines[key] %>
+                        <td class="text-right">
+                          <% if baseline.nil? %>
+                            <span class="text-muted">資料累積中</span>
+                          <% else %>
+                            <% diff = current - baseline.count_for(level) %>
+                            <span class="<%= diff.positive? ? 'text-success' : (diff.negative? ? 'text-danger' : 'text-muted') %>">
+                              <%= diff.positive? ? "+#{diff}" : diff %>
+                            </span>
+                          <% end %>
+                        </td>
+                      <% end %>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <div class="small text-muted">
+              比較基準日：7天前 <%= @snapshot_baselines[:d7]&.snapshot_date&.strftime("%Y/%m/%d") || "尚無資料" %>、
+              30天前 <%= @snapshot_baselines[:d30]&.snapshot_date&.strftime("%Y/%m/%d") || "尚無資料" %>、
+              去年同期 <%= @snapshot_baselines[:y1]&.snapshot_date&.strftime("%Y/%m/%d") || "尚無資料" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <%# ── 城市 ── %>
 <div class="row mb-4">
   <div class="col-12">

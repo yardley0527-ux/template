@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_15_103413) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_17_120749) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -650,6 +650,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_15_103413) do
     t.index ["direction"], name: "index_membership_level_changes_on_direction"
     t.index ["import_run_id"], name: "index_membership_level_changes_on_import_run_id"
     t.index ["shopline_id"], name: "index_membership_level_changes_on_shopline_id"
+  end
+
+  create_table "membership_level_snapshots", force: :cascade do |t|
+    t.date "snapshot_date", null: false
+    t.jsonb "counts", default: {}, null: false
+    t.integer "total", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["snapshot_date"], name: "index_membership_level_snapshots_on_snapshot_date", unique: true
   end
 
   create_table "message_list_recipients", force: :cascade do |t|
