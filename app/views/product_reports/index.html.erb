@@ -29,8 +29,8 @@
             <tr>
               <th>產品</th>
               <th>狀態</th>
-              <th class="text-right">2026 新客</th>
-              <th class="text-right">舊客回頭率</th>
+              <th class="text-right">新客增加<br><small class="font-weight-normal text-muted">去年沒買過，今年才第一次買</small></th>
+              <th class="text-right">舊客回購<br><small class="font-weight-normal text-muted">去年買過，今年也回來買</small></th>
               <th>重點</th>
             </tr>
           </thead>
@@ -47,14 +47,21 @@
                 <td>
                   <span class="badge <%= status_badge[row[:status]] %>"><%= @status_label[row[:status]] %></span>
                 </td>
-                <td class="text-right"><%= row[:new_customers] ? number_with_delimiter(row[:new_customers]) + " 人" : "—" %></td>
                 <td class="text-right">
-                  <% if row[:retention_pct] %>
+                  <% if row[:new_customers] %>
+                    <span class="text-success">▲ <%= number_with_delimiter(row[:new_customers]) %> 人</span>
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td class="text-right">
+                  <% if row[:retained_customers] %>
                     <span class="<%= row[:retention_pct] < 15 ? 'text-danger' : (row[:retention_pct] >= 25 ? 'text-success' : '') %>">
-                      <%= row[:retention_pct] %>%
+                      ▲ <%= number_with_delimiter(row[:retained_customers]) %> 人
+                      <span class="small">（回購率 <%= row[:retention_pct] %>%）</span>
                     </span>
                   <% else %>
-                    —
+                    <span class="text-muted">—</span>
                   <% end %>
                 </td>
                 <td class="text-muted small"><%= row[:note] %></td>
@@ -69,8 +76,9 @@
         <span class="badge badge-warning">營收撐住但買家流失</span> 買家在流失，但靠客單價拉高讓營收沒掉，要留意基本盤持續萎縮；
         <span class="badge badge-danger">流失中</span> 買家、營收同步下滑；
         <span class="badge badge-info">新品/待觀察</span> 2026年才上市，還沒有「去年」可以比較。<br>
-        「舊客回頭率」定義是去年買過、今年也買的比例；新品用首購回購率替代時已在「重點」欄位註明。
-        膠原蛋白因為 92 天缺貨，新客數與回頭率改用「今年1~5月 vs 去年同期」的公平口徑計算，跟其他產品的全年口徑不同，詳見該產品報告。
+        「新客增加」＝去年沒買過、今年才第一次買的人數；「舊客回購」＝去年買過、今年也回來買的人數（括號裡的回購率＝這個人數 ÷ 去年該產品總買家數，方便橫向比較）。
+        2026 年才上市的產品沒有完整「去年」可比，「舊客回購」改用「上市首月/首週買家後續有沒有回購」替代，口徑不同已在「重點」欄位註明。
+        膠原蛋白因為 92 天缺貨，兩個欄位都改用「今年1~5月 vs 去年同期」的公平口徑計算，跟其他產品的全年口徑不同，詳見該產品報告。
       </div>
     </div>
   </div>
