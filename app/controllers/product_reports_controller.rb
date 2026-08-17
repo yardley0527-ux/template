@@ -117,7 +117,34 @@ class ProductReportsController < ApplicationController
     ],
   }.freeze
 
+  # 每個產品報告的重點數字摘要，手動整理自對應報告的分析結果。
+  # new_customers：2026 年新客數（該產品去年沒買過、今年才買）；新上市產品沒有「去年」基準，留 nil。
+  # retention_pct：舊客回頭率（去年買過、今年也買的比例）；新上市產品用首購回購率替代時會在 note 註明。
+  # status：:growing 買家/營收雙成長｜:watch 買家流失但營收靠客單價撐住｜:declining 買家營收都在流失｜:new 2026年新上市
+  SUMMARY = [
+    { product: "代謝錠",   status: :declining, new_customers: 705, retention_pct: 25.4, note: "失去專屬直播場次，2026年0場主打" },
+    { product: "膠原蛋白", status: :declining, new_customers: 190, retention_pct: 10.5, note: "缺貨92天＋失去專場，跌幅四產品最深" },
+    { product: "薑黃",     status: :watch,     new_customers: 597, retention_pct: 26.4, note: "買家流失73.6%，但大宗送贈拉高客單價使營收+17.3%" },
+    { product: "全能",     status: :declining, new_customers: 509, retention_pct: 26.0, note: "久久才主打一次，黑卡回頭率四產品最高" },
+    { product: "美白",     status: :declining, new_customers: 44,  retention_pct: 4.4,  note: "2026年零曝光，回頭率全產品最低" },
+    { product: "魚油",     status: :declining, new_customers: 151, retention_pct: 25.8, note: "流失中最溫和，62.9%只是換產品沒有真的流失" },
+    { product: "清纖粉",   status: :growing,   new_customers: 425, retention_pct: 31.9, note: "唯一買家數、營收雙成長，回頭率也最高" },
+    { product: "私密粉",   status: :new,       new_customers: nil, retention_pct: 40.7, note: "2025/09上市；首購回購率尚可，缺穩定專場" },
+    { product: "蝦紅素",   status: :declining, new_customers: 203, retention_pct: 23.9, note: "2025年3場專場，2026年掛零" },
+    { product: "維DK鈣",   status: :new,       new_customers: nil, retention_pct: nil,  note: "2025/12上市；連續3個月(6~8月)零訂單，待確認原因" },
+    { product: "面膜",     status: :growing,   new_customers: 254, retention_pct: 25.2, note: "營收+219%，主要靠客單價拉高" },
+    { product: "穀胱甘肽", status: :new,       new_customers: nil, retention_pct: nil,  note: "2026/01上市；上市→回落→再衝量的雙峰型" },
+    { product: "益生菌",   status: :new,       new_customers: nil, retention_pct: nil,  note: "2026/02上市；三個新品裡曝光最頻繁、買氣最穩" },
+    { product: "冰晶番茄", status: :new,       new_customers: nil, retention_pct: nil,  note: "2026/07才上市，資料太新無法判斷趨勢" },
+  ].freeze
+
+  STATUS_LABEL = {
+    growing: "成長中", watch: "營收撐住但買家流失", declining: "流失中", new: "新品/待觀察"
+  }.freeze
+
   def index
     @reports_by_product = REPORTS
+    @summary = SUMMARY
+    @status_label = STATUS_LABEL
   end
 end
