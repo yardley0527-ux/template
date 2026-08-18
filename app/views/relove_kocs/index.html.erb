@@ -51,7 +51,7 @@
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
-        <div class="text-muted small mb-2">接洽狀態分布</div>
+        <div class="text-muted small mb-2">聯絡狀態分布</div>
         <div class="d-flex flex-wrap gap-2">
           <% ReloveKoc::STATUSES.each do |s| %>
             <a href="<%= relove_kocs_path(status: s) %>" class="badge <%= koc_status_badge_class(s) %>" style="font-size:0.85rem">
@@ -99,7 +99,8 @@
             <th>Email</th>
             <th class="text-center">Chloe IG</th>
             <th class="text-center">官方 IG</th>
-            <th style="min-width:140px">狀態</th>
+            <th style="min-width:140px">聯絡狀態</th>
+            <th style="min-width:120px">拍影片狀態</th>
             <th>備註</th>
             <th></th>
           </tr>
@@ -148,6 +149,11 @@
               <td>
                 <%= form_with model: koc, url: relove_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
                   <%= f.select :status, ReloveKoc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                <% end %>
+              </td>
+              <td>
+                <%= form_with model: koc, url: relove_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= f.select :video_shoot_status, ReloveKoc::VIDEO_SHOOT_STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                 <% end %>
               </td>
               <td style="min-width:220px">
@@ -207,7 +213,7 @@
             <%= f.text_field :email, class: "form-control" %>
           </div>
           <div class="form-group">
-            <label>狀態</label>
+            <label>聯絡狀態</label>
             <%= f.select :status, ReloveKoc::STATUSES, {}, class: "form-control" %>
           </div>
           <div class="form-group">
