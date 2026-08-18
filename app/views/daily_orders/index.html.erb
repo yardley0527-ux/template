@@ -127,9 +127,9 @@ end %>
               <th class="text-center" style="width:9%;">已加 IG tag</th>
               <th style="width:18%;">是否購買過同產品</th>
               <th class="text-center" style="width:11%;">傳首購產品訊息</th>
+              <th class="text-center" style="width:6%;">關心訊息</th>
               <th class="text-center" style="width:9%;">社群部維護訊息</th>
               <th class="text-center" style="width:6%;">健康資訊卡</th>
-              <th class="text-center" style="width:6%;">關心訊息</th>
             <% end %>
           </tr>
         </thead>
@@ -273,6 +273,20 @@ end %>
                   <% if has_first_purchase %>
                     <input type="checkbox"
                       class="order-flag-checkbox"
+                      data-flag="care_message_sent"
+                      data-scope="old"
+                      data-order="<%= row.order_number %>"
+                      data-url="<%= upsert_order_gift_record_path %>"
+                      <%= gift&.care_message_sent? ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
+                <td class="text-center">
+                  <% if has_first_purchase %>
+                    <input type="checkbox"
+                      class="order-flag-checkbox"
                       data-flag="community_maintenance_message_sent"
                       data-scope="old"
                       data-order="<%= row.order_number %>"
@@ -293,20 +307,6 @@ end %>
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.health_card_sent? ? 'checked' : '' %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#e83e8c;">
-                  <% else %>
-                    <span class="text-muted">—</span>
-                  <% end %>
-                </td>
-                <td class="text-center">
-                  <% if has_first_purchase %>
-                    <input type="checkbox"
-                      class="order-flag-checkbox"
-                      data-flag="care_message_sent"
-                      data-scope="old"
-                      data-order="<%= row.order_number %>"
-                      data-url="<%= upsert_order_gift_record_path %>"
-                      <%= gift&.care_message_sent? ? 'checked' : '' %>
-                      style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
                   <% else %>
                     <span class="text-muted">—</span>
                   <% end %>
