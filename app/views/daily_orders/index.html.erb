@@ -70,9 +70,9 @@ end %>
       </div>
     </div>
     <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
-    <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @first_purchase_total, unit: "筆") %>
-    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "健康資訊卡", flag: "health_card_sent", done: @health_card_done, total: @first_purchase_total, unit: "筆") %>
-    <%= daily_orders_gift_tile(icon: "fa-hand-holding-heart", color: "#d63384", label: "關心訊息", flag: "care_message_sent", done: @care_message_done, total: @first_purchase_total, unit: "筆") %>
+    <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @care_applicable_total, unit: "筆") %>
+    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "健康資訊卡", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆") %>
+    <%= daily_orders_gift_tile(icon: "fa-hand-holding-heart", color: "#d63384", label: "關心訊息", flag: "care_message_sent", done: @care_message_done, total: @care_applicable_total, unit: "筆") %>
   </div>
 </div>
 
@@ -295,7 +295,7 @@ end %>
                   <% end %>
                 </td>
                 <td class="text-center">
-                  <% if has_first_purchase %>
+                  <% if has_first_purchase && !row.has_repurchased %>
                     <input type="checkbox"
                       class="order-flag-checkbox"
                       data-flag="care_message_sent"
@@ -309,7 +309,7 @@ end %>
                   <% end %>
                 </td>
                 <td class="text-center">
-                  <% if has_first_purchase %>
+                  <% if has_first_purchase && !row.has_repurchased %>
                     <input type="checkbox"
                       class="order-flag-checkbox"
                       data-flag="community_maintenance_message_sent"
@@ -323,7 +323,7 @@ end %>
                   <% end %>
                 </td>
                 <td class="text-center">
-                  <% if has_first_purchase %>
+                  <% if has_first_purchase && !row.has_repurchased %>
                     <input type="checkbox"
                       class="order-flag-checkbox"
                       data-flag="health_card_sent"
