@@ -37,6 +37,7 @@ class DailyOrdersController < ApplicationController
     @series_options = CrmProduct.series_labels_for_filter
     @series_filter  = params[:series_filter].presence
     @first_purchase_only = params[:first_purchase_only] == "1"
+    @ig_search = params[:ig_search].presence
     @groups = build_groups(@start_date, @end_date)
     @new_count = @groups.first.last.size
     @old_count = @groups.drop(1).sum { |_, rows| rows.size }
@@ -96,6 +97,7 @@ class DailyOrdersController < ApplicationController
     clamp_end_date!
     @series_filter = params[:series_filter].presence
     @first_purchase_only = params[:first_purchase_only] == "1"
+    @ig_search = params[:ig_search].presence
     groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
@@ -224,6 +226,11 @@ class DailyOrdersController < ApplicationController
         recipe_message_sent: profile&.recipe_message_sent || false,
         has_repurchased: latest_order_date.present? && latest_order_date > o.ord_date
       )
+    end
+
+    if @ig_search.present?
+      needle = @ig_search.strip.downcase.delete_prefix("@")
+      rows = rows.select { |r| r.ig_account.present? && r.ig_account.downcase.delete_prefix("@").include?(needle) }
     end
 
     rows = rows.sort_by { |r| -r.order_total.to_f }
