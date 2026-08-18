@@ -46,6 +46,13 @@ class DailyOrdersController < ApplicationController
     @new_count = @groups.first.last.size
     @old_count = @groups.drop(1).sum { |_, rows| rows.size }
 
+    # IG 搜尋時結果可能全部落在另一個 tab（例如搜到的人今天不是新客），
+    # 自動切去有資料的 tab，不然會看起來像搜不到東西
+    if @ig_search.present?
+      @tab = "old" if @tab == "new" && @new_count.zero? && @old_count.positive?
+      @tab = "new" if @tab == "old" && @old_count.zero? && @new_count.positive?
+    end
+
     new_rows = @groups.first.last
     @line_bound_count = new_rows.count(&:line_bound)
 
