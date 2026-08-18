@@ -120,9 +120,9 @@ end %>
               <th style="width:24%;">購買商品</th>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
               <th class="text-center" style="width:7%;">已傳送吃法訊息</th>
-              <th class="text-center" style="width:6%;">關心訊息</th>
               <th class="text-center" style="width:9%;">社群部維護訊息</th>
               <th class="text-center" style="width:6%;">健康資訊卡</th>
+              <th class="text-center" style="width:6%;">關心訊息</th>
             <% else %>
               <th class="text-center" style="width:9%;">已加 IG tag</th>
               <th style="width:18%;">是否購買過同產品</th>
@@ -200,16 +200,6 @@ end %>
                 <td class="text-center">
                   <input type="checkbox"
                     class="order-flag-checkbox"
-                    data-flag="care_message_sent"
-                    data-scope="new"
-                    data-order="<%= row.order_number %>"
-                    data-url="<%= upsert_order_gift_record_path %>"
-                    <%= gift&.care_message_sent? ? 'checked' : '' %>
-                    style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
-                </td>
-                <td class="text-center">
-                  <input type="checkbox"
-                    class="order-flag-checkbox"
                     data-flag="community_maintenance_message_sent"
                     data-scope="new"
                     data-order="<%= row.order_number %>"
@@ -226,6 +216,16 @@ end %>
                     data-url="<%= upsert_order_gift_record_path %>"
                     <%= gift&.health_card_sent? ? 'checked' : '' %>
                     style="width:18px; height:18px; cursor:pointer; accent-color:#e83e8c;">
+                </td>
+                <td class="text-center">
+                  <input type="checkbox"
+                    class="order-flag-checkbox"
+                    data-flag="care_message_sent"
+                    data-scope="new"
+                    data-order="<%= row.order_number %>"
+                    data-url="<%= upsert_order_gift_record_path %>"
+                    <%= gift&.care_message_sent? ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
                 </td>
               <% else %>
                 <% gift = @gift_records[row.order_number] %>
