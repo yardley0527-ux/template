@@ -51,12 +51,12 @@ class KocsController < ApplicationController
 
   private
 
-  # 社群部帳號只能更新拍影片狀態，其他欄位（含 hidden、接洽狀態、備註）維持 admin 專用。
+  # 社群部帳號能更新拍影片狀態、Chloe IG／官方 IG 追蹤，其他欄位（含 hidden、接洽狀態、備註）維持 admin 專用。
   def koc_params
     if current_user.admin?
-      params.require(:koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes, :hidden, :video_shoot_status)
+      params.require(:koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes, :hidden, :video_shoot_status, :follows_chloe_ig, :follows_official_ig)
     else
-      params.require(:koc).permit(:video_shoot_status)
+      params.require(:koc).permit(:video_shoot_status, :follows_chloe_ig, :follows_official_ig)
     end
   end
 end
