@@ -52,6 +52,7 @@ class DailyOrdersController < ApplicationController
     @first_purchase_done  = first_purchase_applicable.count { |r| @gift_records[r.order_number]&.first_purchase_message_sent? }
     @community_message_done = old_rows.count { |r| @gift_records[r.order_number]&.community_maintenance_message_sent? }
     @health_card_done       = old_rows.count { |r| @gift_records[r.order_number]&.health_card_sent? }
+    @care_message_done      = old_rows.count { |r| @gift_records[r.order_number]&.care_message_sent? }
   end
 
   def toggle_customer_flag

@@ -59,6 +59,7 @@ end %>
     <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @old_count, unit: "人") %>
     <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "健康資訊卡", flag: "health_card_sent", done: @health_card_done, total: @old_count, unit: "人") %>
+    <%= daily_orders_gift_tile(icon: "fa-hand-holding-heart", color: "#d63384", label: "關心訊息", flag: "care_message_sent", done: @care_message_done, total: @old_count, unit: "人") %>
   </div>
 </div>
 
@@ -116,17 +117,19 @@ end %>
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
             <% if is_new %>
-              <th style="width:30%;">購買商品</th>
+              <th style="width:24%;">購買商品</th>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
               <th class="text-center" style="width:7%;">已傳送吃法訊息</th>
               <th class="text-center" style="width:9%;">社群部維護訊息</th>
               <th class="text-center" style="width:6%;">健康資訊卡</th>
+              <th class="text-center" style="width:6%;">關心訊息</th>
             <% else %>
               <th class="text-center" style="width:9%;">已加 IG tag</th>
-              <th style="width:24%;">是否購買過同產品</th>
+              <th style="width:18%;">是否購買過同產品</th>
               <th class="text-center" style="width:11%;">傳首購產品訊息</th>
               <th class="text-center" style="width:9%;">社群部維護訊息</th>
               <th class="text-center" style="width:6%;">健康資訊卡</th>
+              <th class="text-center" style="width:6%;">關心訊息</th>
             <% end %>
           </tr>
         </thead>
@@ -214,6 +217,16 @@ end %>
                     <%= gift&.health_card_sent? ? 'checked' : '' %>
                     style="width:18px; height:18px; cursor:pointer; accent-color:#e83e8c;">
                 </td>
+                <td class="text-center">
+                  <input type="checkbox"
+                    class="order-flag-checkbox"
+                    data-flag="care_message_sent"
+                    data-scope="new"
+                    data-order="<%= row.order_number %>"
+                    data-url="<%= upsert_order_gift_record_path %>"
+                    <%= gift&.care_message_sent? ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
+                </td>
               <% else %>
                 <% gift = @gift_records[row.order_number] %>
                 <% high_value = row.order_total.to_f >= HighValueOrderScoping::THRESHOLD %>
@@ -276,12 +289,22 @@ end %>
                     <%= gift&.health_card_sent? ? 'checked' : '' %>
                     style="width:18px; height:18px; cursor:pointer; accent-color:#e83e8c;">
                 </td>
+                <td class="text-center">
+                  <input type="checkbox"
+                    class="order-flag-checkbox"
+                    data-flag="care_message_sent"
+                    data-scope="old"
+                    data-order="<%= row.order_number %>"
+                    data-url="<%= upsert_order_gift_record_path %>"
+                    <%= gift&.care_message_sent? ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
+                </td>
               <% end %>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="9" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="10" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
