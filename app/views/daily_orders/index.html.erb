@@ -108,8 +108,9 @@ end %>
               <th class="text-center" style="width:7%;">已傳送吃法訊息</th>
             <% else %>
               <th class="text-center" style="width:9%;">已加 IG tag</th>
-              <th style="width:38%;">是否購買過同產品</th>
-              <th class="text-center" style="width:12%;">傳首購產品訊息</th>
+              <th style="width:30%;">是否購買過同產品</th>
+              <th class="text-center" style="width:11%;">傳首購產品訊息</th>
+              <th class="text-center" style="width:9%;">社群部維護訊息</th>
             <% end %>
           </tr>
         </thead>
@@ -217,12 +218,21 @@ end %>
                     <span class="text-muted">—</span>
                   <% end %>
                 </td>
+                <td class="text-center">
+                  <input type="checkbox"
+                    class="order-flag-checkbox"
+                    data-flag="community_maintenance_message_sent"
+                    data-order="<%= row.order_number %>"
+                    data-url="<%= upsert_order_gift_record_path %>"
+                    <%= gift&.community_maintenance_message_sent? ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#20c997;">
+                </td>
               <% end %>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="7" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="<%= is_new ? 7 : 8 %>" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
