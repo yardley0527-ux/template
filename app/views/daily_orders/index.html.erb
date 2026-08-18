@@ -37,6 +37,22 @@ end %>
   </span>
 </p>
 
+<div class="mb-3">
+  <div class="text-muted small fw-bold mb-2">舊客總攬</div>
+  <div class="d-flex flex-wrap" style="gap:10px;">
+    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
+      <i class="fal fa-users" style="color:#6c757d; font-size:1.1rem;"></i>
+      <div>
+        <div class="text-muted" style="font-size:0.75rem;">今日舊客</div>
+        <div class="fw-bold" style="font-size:1rem;"><%= @old_count %> 人</div>
+      </div>
+    </div>
+    <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
+    <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @old_count, unit: "人") %>
+    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "健康資訊卡", flag: "health_card_sent", done: @health_card_done, total: @old_count, unit: "人") %>
+  </div>
+</div>
+
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
     <%= link_to "新客（#{@new_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "new"), class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
@@ -68,36 +84,6 @@ end %>
         </div>
       </div>
     </div>
-  </div>
-<% end %>
-
-<% if @tab == "old" %>
-  <% def daily_orders_gift_tile(icon, color, label, flag, done, total, unit) %>
-    <% remaining = total - done %>
-    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-      <i class="fal <%= icon %>" style="color:<%= color %>; font-size:1.1rem;"></i>
-      <div>
-        <div class="text-muted" style="font-size:0.75rem;"><%= label %></div>
-        <div class="fw-bold" style="font-size:1rem;">
-          <span id="<%= flag %>-done-count"><%= done %></span> / <span id="<%= flag %>-total-count"><%= total %></span> <%= unit %>
-          <span id="<%= flag %>-badge" class="<%= remaining > 0 ? 'text-danger' : 'text-success' %>" style="font-size:0.78rem;">
-            <%= remaining > 0 ? "（還有 #{remaining} #{unit}未完成）" : "✓ 全部完成" %>
-          </span>
-        </div>
-      </div>
-    </div>
-  <% end %>
-  <div class="d-flex flex-wrap mb-3" style="gap:10px;">
-    <div class="d-flex align-items-center px-3 py-2 rounded" style="background:#f8f9fa; border:1px solid #dee2e6; gap:10px;">
-      <i class="fal fa-users" style="color:#6c757d; font-size:1.1rem;"></i>
-      <div>
-        <div class="text-muted" style="font-size:0.75rem;">今日舊客</div>
-        <div class="fw-bold" style="font-size:1rem;"><%= @old_count %> 人</div>
-      </div>
-    </div>
-    <%= daily_orders_gift_tile("fa-gift", "#0d6efd", "傳首購產品訊息", "first_purchase_message_sent", @first_purchase_done, @first_purchase_total, "筆") %>
-    <%= daily_orders_gift_tile("fa-comment-dots", "#20c997", "社群部維護訊息", "community_maintenance_message_sent", @community_message_done, @old_count, "人") %>
-    <%= daily_orders_gift_tile("fa-heart", "#e83e8c", "健康資訊卡", "health_card_sent", @health_card_done, @old_count, "人") %>
   </div>
 <% end %>
 
