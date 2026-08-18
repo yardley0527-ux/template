@@ -107,9 +107,11 @@ end %>
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
             <% if is_new %>
-              <th style="width:45%;">購買商品</th>
+              <th style="width:30%;">購買商品</th>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
               <th class="text-center" style="width:7%;">已傳送吃法訊息</th>
+              <th class="text-center" style="width:9%;">社群部維護訊息</th>
+              <th class="text-center" style="width:6%;">健康資訊卡</th>
             <% else %>
               <th class="text-center" style="width:9%;">已加 IG tag</th>
               <th style="width:24%;">是否購買過同產品</th>
@@ -182,6 +184,27 @@ end %>
                     <span class="text-muted">—</span>
                   <% end %>
                 </td>
+                <% gift = @gift_records[row.order_number] %>
+                <td class="text-center">
+                  <input type="checkbox"
+                    class="order-flag-checkbox"
+                    data-flag="community_maintenance_message_sent"
+                    data-scope="new"
+                    data-order="<%= row.order_number %>"
+                    data-url="<%= upsert_order_gift_record_path %>"
+                    <%= gift&.community_maintenance_message_sent? ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#20c997;">
+                </td>
+                <td class="text-center">
+                  <input type="checkbox"
+                    class="order-flag-checkbox"
+                    data-flag="health_card_sent"
+                    data-scope="new"
+                    data-order="<%= row.order_number %>"
+                    data-url="<%= upsert_order_gift_record_path %>"
+                    <%= gift&.health_card_sent? ? 'checked' : '' %>
+                    style="width:18px; height:18px; cursor:pointer; accent-color:#e83e8c;">
+                </td>
               <% else %>
                 <% gift = @gift_records[row.order_number] %>
                 <% high_value = row.order_total.to_f >= HighValueOrderScoping::THRESHOLD %>
@@ -215,6 +238,7 @@ end %>
                     <input type="checkbox"
                       class="order-flag-checkbox"
                       data-flag="first_purchase_message_sent"
+                      data-scope="old"
                       data-order="<%= row.order_number %>"
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.first_purchase_message_sent? ? 'checked' : '' %>
@@ -227,6 +251,7 @@ end %>
                   <input type="checkbox"
                     class="order-flag-checkbox"
                     data-flag="community_maintenance_message_sent"
+                    data-scope="old"
                     data-order="<%= row.order_number %>"
                     data-url="<%= upsert_order_gift_record_path %>"
                     <%= gift&.community_maintenance_message_sent? ? 'checked' : '' %>
@@ -236,6 +261,7 @@ end %>
                   <input type="checkbox"
                     class="order-flag-checkbox"
                     data-flag="health_card_sent"
+                    data-scope="old"
                     data-order="<%= row.order_number %>"
                     data-url="<%= upsert_order_gift_record_path %>"
                     <%= gift&.health_card_sent? ? 'checked' : '' %>
@@ -246,7 +272,7 @@ end %>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="<%= is_new ? 7 : 9 %>" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="9" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
@@ -325,8 +351,8 @@ end %>
   function updateGiftSummary(flag) {
     var doneEl = document.getElementById(flag + '-done-count');
     if (!doneEl) return;
-    var total = document.querySelectorAll('.order-flag-checkbox[data-flag="' + flag + '"]').length;
-    var done = document.querySelectorAll('.order-flag-checkbox[data-flag="' + flag + '"]:checked').length;
+    var total = document.querySelectorAll('.order-flag-checkbox[data-flag="' + flag + '"][data-scope="old"]').length;
+    var done = document.querySelectorAll('.order-flag-checkbox[data-flag="' + flag + '"][data-scope="old"]:checked').length;
     var remaining = total - done;
     doneEl.textContent = done;
     var badgeEl = document.getElementById(flag + '-badge');
@@ -352,7 +378,7 @@ end %>
         body: JSON.stringify({ order_number: cb.dataset.order, order_gift_record: record })
       }).then(function(r) {
         if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
-        updateGiftSummary(cb.dataset.flag);
+        if (cb.dataset.scope === 'old') updateGiftSummary(cb.dataset.flag);
       });
     });
   });

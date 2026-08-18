@@ -41,8 +41,8 @@ class DailyOrdersController < ApplicationController
     @line_bound_count = new_rows.count(&:line_bound)
 
     old_rows = @groups.drop(1).flat_map { |_, rows| rows }
-    old_order_nums = old_rows.map(&:order_number)
-    @gift_records = OrderGiftRecord.where(order_number: old_order_nums).index_by(&:order_number)
+    all_order_nums = @groups.flat_map { |_, rows| rows.map(&:order_number) }
+    @gift_records = OrderGiftRecord.where(order_number: all_order_nums).index_by(&:order_number)
 
     # 舊客總攬：三個追蹤事項各自完成 / 應完成筆數
     first_purchase_applicable = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
