@@ -33,6 +33,8 @@ class DailyOrdersController < ApplicationController
       flash.now[:alert] = "查詢區間最多 #{MAX_RANGE_DAYS} 天，已自動縮短為 #{@start_date.strftime('%Y/%m/%d')}～#{@end_date.strftime('%Y/%m/%d')}"
     end
     @tab = %w[new old].include?(params[:tab]) ? params[:tab] : "new"
+    @series_options = CrmProduct.series_labels_for_filter
+    @series_filter  = params[:series_filter].presence
     @groups = build_groups(@start_date, @end_date)
     @new_count = @groups.first.last.size
     @old_count = @groups.drop(1).sum { |_, rows| rows.size }
@@ -87,6 +89,7 @@ class DailyOrdersController < ApplicationController
     @end_date   = parse_date(params[:end_date]) || @start_date
     @end_date   = @start_date if @end_date < @start_date
     clamp_end_date!
+    @series_filter = params[:series_filter].presence
     groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
@@ -154,6 +157,15 @@ class DailyOrdersController < ApplicationController
       )
       .where("o.payment_status = '已付款'")
       .where("o.order_date >= ? AND o.order_date <= ?", range_start, range_end)
+
+    if @series_filter.present?
+      raw_orders = raw_orders.where(
+        "o.order_number IN (SELECT DISTINCT order_number FROM shopline_orders WHERE product_name LIKE ?)",
+        "%#{@series_filter}%"
+      )
+    end
+
+    raw_orders = raw_orders
       .group("o.order_number")
       .order(Arel.sql("MAX(o.order_date) ASC"))
       .to_a
