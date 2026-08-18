@@ -59,7 +59,7 @@ end %>
     <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @first_purchase_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "健康資訊卡", flag: "health_card_sent", done: @health_card_done, total: @first_purchase_total, unit: "筆") %>
-    <%= daily_orders_gift_tile(icon: "fa-hand-holding-heart", color: "#d63384", label: "關心訊息", flag: "care_message_sent", done: @care_message_done, total: @old_count, unit: "人") %>
+    <%= daily_orders_gift_tile(icon: "fa-hand-holding-heart", color: "#d63384", label: "關心訊息", flag: "care_message_sent", done: @care_message_done, total: @first_purchase_total, unit: "筆") %>
   </div>
 </div>
 
@@ -298,14 +298,18 @@ end %>
                   <% end %>
                 </td>
                 <td class="text-center">
-                  <input type="checkbox"
-                    class="order-flag-checkbox"
-                    data-flag="care_message_sent"
-                    data-scope="old"
-                    data-order="<%= row.order_number %>"
-                    data-url="<%= upsert_order_gift_record_path %>"
-                    <%= gift&.care_message_sent? ? 'checked' : '' %>
-                    style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
+                  <% if has_first_purchase %>
+                    <input type="checkbox"
+                      class="order-flag-checkbox"
+                      data-flag="care_message_sent"
+                      data-scope="old"
+                      data-order="<%= row.order_number %>"
+                      data-url="<%= upsert_order_gift_record_path %>"
+                      <%= gift&.care_message_sent? ? 'checked' : '' %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
                 </td>
               <% end %>
             </tr>

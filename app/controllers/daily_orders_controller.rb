@@ -47,14 +47,14 @@ class DailyOrdersController < ApplicationController
     @gift_records = OrderGiftRecord.where(order_number: all_order_nums).index_by(&:order_number)
 
     # 舊客總攬：各追蹤事項各自完成 / 應完成筆數
-    # 社群部維護訊息、健康資訊卡跟傳首購產品訊息一樣，只有訂單裡有首購商品才需要處理，
+    # 社群部維護訊息、健康資訊卡、關心訊息跟傳首購產品訊息一樣，只有訂單裡有首購商品才需要處理，
     # 分母改用 first_purchase_total 而不是全部舊客數
     first_purchase_applicable = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
     @first_purchase_total = first_purchase_applicable.size
     @first_purchase_done  = first_purchase_applicable.count { |r| @gift_records[r.order_number]&.first_purchase_message_sent? }
     @community_message_done = first_purchase_applicable.count { |r| @gift_records[r.order_number]&.community_maintenance_message_sent? }
     @health_card_done       = first_purchase_applicable.count { |r| @gift_records[r.order_number]&.health_card_sent? }
-    @care_message_done      = old_rows.count { |r| @gift_records[r.order_number]&.care_message_sent? }
+    @care_message_done      = first_purchase_applicable.count { |r| @gift_records[r.order_number]&.care_message_sent? }
   end
 
   def toggle_customer_flag
