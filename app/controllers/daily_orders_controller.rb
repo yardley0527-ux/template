@@ -10,6 +10,10 @@ class DailyOrdersController < ApplicationController
   # 會產生上千個 bind 參數的 IN 查詢，曾經因此把 Render 記憶體吃爆、整個服務 502。
   MAX_RANGE_DAYS = 31
 
+  # IG 搜尋不受日期區間限制（讓使用者不用先猜對日期），但要限制筆數，
+  # 不然熱門字串（例如單一個字）會撈出全站訂單，重蹈 502 覆轍。
+  IG_SEARCH_LIMIT = 200
+
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
     CASE
       WHEN MAX(NULLIF(o.total_amount, 0)) IS NOT NULL THEN MAX(NULLIF(o.total_amount, 0))
@@ -30,14 +34,14 @@ class DailyOrdersController < ApplicationController
     @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
     @end_date   = parse_date(params[:end_date]) || @start_date
     @end_date   = @start_date if @end_date < @start_date
-    if clamp_end_date!
+    @ig_search  = params[:ig_search].presence
+    if !@ig_search && clamp_end_date!
       flash.now[:alert] = "查詢區間最多 #{MAX_RANGE_DAYS} 天，已自動縮短為 #{@start_date.strftime('%Y/%m/%d')}～#{@end_date.strftime('%Y/%m/%d')}"
     end
     @tab = %w[new old].include?(params[:tab]) ? params[:tab] : "new"
     @series_options = CrmProduct.series_labels_for_filter
     @series_filter  = params[:series_filter].presence
     @first_purchase_only = params[:first_purchase_only] == "1"
-    @ig_search = params[:ig_search].presence
     @groups = build_groups(@start_date, @end_date)
     @new_count = @groups.first.last.size
     @old_count = @groups.drop(1).sum { |_, rows| rows.size }
@@ -94,10 +98,10 @@ class DailyOrdersController < ApplicationController
     @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
     @end_date   = parse_date(params[:end_date]) || @start_date
     @end_date   = @start_date if @end_date < @start_date
-    clamp_end_date!
+    @ig_search  = params[:ig_search].presence
+    clamp_end_date! unless @ig_search
     @series_filter = params[:series_filter].presence
     @first_purchase_only = params[:first_purchase_only] == "1"
-    @ig_search = params[:ig_search].presence
     groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
@@ -164,7 +168,21 @@ class DailyOrdersController < ApplicationController
         "SUM(o.quantity) AS total_quantity"
       )
       .where("o.payment_status = '已付款'")
-      .where("o.order_date >= ? AND o.order_date <= ?", range_start, range_end)
+
+    if @ig_search.present?
+      needle = "%#{@ig_search.strip.delete_prefix('@')}%"
+      matching_order_numbers = ShoplineOrder.from("shopline_orders o")
+        .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
+        .where("o.payment_status = '已付款'")
+        .where("COALESCE(sc.instagram_account, o.instagram_account) ILIKE ?", needle)
+        .group("o.order_number")
+        .order(Arel.sql("MAX(o.order_date) DESC"))
+        .limit(IG_SEARCH_LIMIT)
+        .pluck(Arel.sql("o.order_number"))
+      raw_orders = raw_orders.where("o.order_number IN (?)", matching_order_numbers.presence || [nil])
+    else
+      raw_orders = raw_orders.where("o.order_date >= ? AND o.order_date <= ?", range_start, range_end)
+    end
 
     if @series_filter.present?
       raw_orders = raw_orders.where(

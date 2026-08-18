@@ -37,7 +37,9 @@ end %>
 
 <% total_count = @groups.sum { |_, rows| rows.size } %>
 <p class="text-muted small mb-3">
-  <% if @start_date == @end_date %>
+  <% if @ig_search.present? %>
+    IG 搜尋結果（不限日期，最多 <%= DailyOrdersController::IG_SEARCH_LIMIT %> 筆）
+  <% elsif @start_date == @end_date %>
     <%= @start_date.strftime('%Y/%m/%d') %>
   <% else %>
     <%= @start_date.strftime('%Y/%m/%d') %> ～ <%= @end_date.strftime('%Y/%m/%d') %>
