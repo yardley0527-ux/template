@@ -32,8 +32,16 @@ class DailyOrdersController < ApplicationController
     new_rows = @groups.first.last
     @line_bound_count = new_rows.count(&:line_bound)
 
-    old_order_nums = @groups.drop(1).flat_map { |_, rows| rows.map(&:order_number) }
+    old_rows = @groups.drop(1).flat_map { |_, rows| rows }
+    old_order_nums = old_rows.map(&:order_number)
     @gift_records = OrderGiftRecord.where(order_number: old_order_nums).index_by(&:order_number)
+
+    # 舊客總攬：三個追蹤事項各自完成 / 應完成筆數
+    first_purchase_applicable = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
+    @first_purchase_total = first_purchase_applicable.size
+    @first_purchase_done  = first_purchase_applicable.count { |r| @gift_records[r.order_number]&.first_purchase_message_sent? }
+    @community_message_done = old_rows.count { |r| @gift_records[r.order_number]&.community_maintenance_message_sent? }
+    @health_card_done       = old_rows.count { |r| @gift_records[r.order_number]&.health_card_sent? }
   end
 
   def toggle_customer_flag
