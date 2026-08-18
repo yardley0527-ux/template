@@ -158,12 +158,8 @@
                 <% end %>
               </td>
               <td>
-                <% if current_user.admin? %>
-                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.select :status, Koc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
-                  <% end %>
-                <% else %>
-                  <span class="badge <%= koc_status_badge_class(koc.status) %>"><%= koc.status %></span>
+                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= f.select :status, Koc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                 <% end %>
               </td>
               <td>
