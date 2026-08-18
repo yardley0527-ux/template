@@ -163,8 +163,10 @@
                 <% end %>
               </td>
               <td>
-                <%= link_to relove_koc_path(koc), method: :delete, data: { confirm: "確定刪除 #{koc.ig_username}？" }, class: "btn btn-sm btn-outline-danger" do %>
-                  <i class="fal fa-trash-alt"></i>
+                <% if current_user.admin? %>
+                  <%= link_to relove_koc_path(koc), method: :delete, data: { confirm: "確定刪除 #{koc.ig_username}？" }, class: "btn btn-sm btn-outline-danger" do %>
+                    <i class="fal fa-trash-alt"></i>
+                  <% end %>
                 <% end %>
               </td>
             </tr>

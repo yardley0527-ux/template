@@ -35,6 +35,8 @@ class ReloveKocsController < ApplicationController
   end
 
   def destroy
+    return head :forbidden unless current_user.admin?
+
     @koc = ReloveKoc.find(params[:id])
     @koc.destroy
     redirect_to relove_kocs_path, notice: "已刪除 #{@koc.ig_username}"
