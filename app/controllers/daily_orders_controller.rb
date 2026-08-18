@@ -22,6 +22,7 @@ class DailyOrdersController < ApplicationController
     :is_new_customer, :membership_level, :products_list, :health_profile, :health_tags,
     :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
     :line_bound, :total_quantity, :health_inquiry_declined, :recipe_message_sent,
+    :has_repurchased,
     keyword_init: true
   )
 
@@ -186,10 +187,19 @@ class DailyOrdersController < ApplicationController
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
     summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
 
+    # 新客的社群部維護訊息／健康資訊卡／關心訊息只給「還沒回購過」的人看，
+    # 用全站（不限查詢區間）最後一筆已付款訂單日期跟這筆訂單日期比較
+    latest_order_date_by_email = ShoplineOrder
+      .where(email: emails)
+      .where("payment_status = '已付款'")
+      .group(:email)
+      .maximum(:order_date)
+
     rows = raw_orders.map do |o|
       customer = customers_by_email[o.email_val]
       profile  = customer&.customer_profile
       summary  = summaries_by_email[o.email_val]
+      latest_order_date = latest_order_date_by_email[o.email_val]
 
       OrderRow.new(
         order_number: o.order_num,
@@ -209,7 +219,8 @@ class DailyOrdersController < ApplicationController
         line_bound: summary&.line_bound || false,
         total_quantity: o.total_quantity.to_i,
         health_inquiry_declined: profile&.health_inquiry_declined || false,
-        recipe_message_sent: profile&.recipe_message_sent || false
+        recipe_message_sent: profile&.recipe_message_sent || false,
+        has_repurchased: latest_order_date.present? && latest_order_date > o.ord_date
       )
     end
 
