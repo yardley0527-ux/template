@@ -5,6 +5,11 @@ class DailyOrdersController < ApplicationController
   TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig health_inquiry_declined recipe_message_sent].freeze
   PURCHASE_SUMMARY_FIELDS = %w[line_bound].freeze
 
+  # 這頁是給每日出貨備貨用的，一次撈整個區間所有訂單、逐筆拉客戶資料，不分頁。
+  # 區間拉太長（例如整年）撈出的客戶數一多，Rails 對 customer_profile 的 includes
+  # 會產生上千個 bind 參數的 IN 查詢，曾經因此把 Render 記憶體吃爆、整個服務 502。
+  MAX_RANGE_DAYS = 31
+
   ORDER_TOTAL_SQL = <<~SQL.squish.freeze
     CASE
       WHEN MAX(NULLIF(o.total_amount, 0)) IS NOT NULL THEN MAX(NULLIF(o.total_amount, 0))
@@ -24,6 +29,9 @@ class DailyOrdersController < ApplicationController
     @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
     @end_date   = parse_date(params[:end_date]) || @start_date
     @end_date   = @start_date if @end_date < @start_date
+    if clamp_end_date!
+      flash.now[:alert] = "查詢區間最多 #{MAX_RANGE_DAYS} 天，已自動縮短為 #{@start_date.strftime('%Y/%m/%d')}～#{@end_date.strftime('%Y/%m/%d')}"
+    end
     @tab = %w[new old].include?(params[:tab]) ? params[:tab] : "new"
     @groups = build_groups(@start_date, @end_date)
     @new_count = @groups.first.last.size
@@ -78,6 +86,7 @@ class DailyOrdersController < ApplicationController
     @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
     @end_date   = parse_date(params[:end_date]) || @start_date
     @end_date   = @start_date if @end_date < @start_date
+    clamp_end_date!
     groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
@@ -114,6 +123,15 @@ class DailyOrdersController < ApplicationController
     Date.parse(value) if value.present?
   rescue ArgumentError
     nil
+  end
+
+  # 回傳是否有被縮短；@end_date 會被就地改成上限內的日期
+  def clamp_end_date!
+    max_end = @start_date + (MAX_RANGE_DAYS - 1).days
+    return false if @end_date <= max_end
+
+    @end_date = max_end
+    true
   end
 
   def build_groups(start_date, end_date)
