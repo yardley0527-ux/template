@@ -21,12 +21,16 @@ end %>
       <%= select_tag :series_filter,
             options_for_select([["全部產品", ""]] + @series_options.map { |s| [s, s] }, @series_filter),
             class: "form-control form-control-sm" %>
+      <label class="d-flex align-items-center small text-muted" style="gap:4px; white-space:nowrap;">
+        <%= check_box_tag :first_purchase_only, "1", @first_purchase_only %>
+        只看首購客
+      </label>
       <button type="submit" class="btn btn-sm btn-primary">查詢</button>
-      <% if @series_filter.present? %>
-        <%= link_to "清除產品篩選", daily_orders_path(tab: @tab, start_date: @start_date, end_date: @end_date), class: "btn btn-sm btn-outline-secondary" %>
+      <% if @series_filter.present? || @first_purchase_only %>
+        <%= link_to "清除篩選", daily_orders_path(tab: @tab, start_date: @start_date, end_date: @end_date), class: "btn btn-sm btn-outline-secondary" %>
       <% end %>
     <% end %>
-    <%= link_to "匯出 CSV", export_daily_orders_path(start_date: @start_date, end_date: @end_date, series_filter: @series_filter), class: "btn btn-sm btn-outline-secondary" %>
+    <%= link_to "匯出 CSV", export_daily_orders_path(start_date: @start_date, end_date: @end_date, series_filter: @series_filter, first_purchase_only: @first_purchase_only ? "1" : nil), class: "btn btn-sm btn-outline-secondary" %>
   </div>
 </div>
 
@@ -40,6 +44,9 @@ end %>
   共 <%= total_count %> 筆訂單
   <% if @series_filter.present? %>
     <span class="ms-2 badge bg-info text-dark">產品：<%= @series_filter %></span>
+  <% end %>
+  <% if @first_purchase_only %>
+    <span class="ms-2 badge bg-info text-dark">只看首購客</span>
   <% end %>
   <span class="ms-3">
     <%= link_to "→ 查看營收儀表板", daily_dashboard_path(start_date: @start_date, end_date: @end_date), class: "text-muted small" %>
@@ -65,10 +72,10 @@ end %>
 
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
-    <%= link_to "新客（#{@new_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "new", series_filter: @series_filter), class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
+    <%= link_to "新客（#{@new_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "new", series_filter: @series_filter, first_purchase_only: @first_purchase_only ? "1" : nil), class: "nav-link #{@tab == 'new' ? 'active fw-bold' : 'text-muted'}" %>
   </li>
   <li class="nav-item">
-    <%= link_to "舊客（#{@old_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "old", series_filter: @series_filter), class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
+    <%= link_to "舊客（#{@old_count}）", daily_orders_path(start_date: @start_date, end_date: @end_date, tab: "old", series_filter: @series_filter, first_purchase_only: @first_purchase_only ? "1" : nil), class: "nav-link #{@tab == 'old' ? 'active fw-bold' : 'text-muted'}" %>
   </li>
 </ul>
 

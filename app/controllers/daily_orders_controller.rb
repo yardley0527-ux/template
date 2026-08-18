@@ -36,6 +36,7 @@ class DailyOrdersController < ApplicationController
     @tab = %w[new old].include?(params[:tab]) ? params[:tab] : "new"
     @series_options = CrmProduct.series_labels_for_filter
     @series_filter  = params[:series_filter].presence
+    @first_purchase_only = params[:first_purchase_only] == "1"
     @groups = build_groups(@start_date, @end_date)
     @new_count = @groups.first.last.size
     @old_count = @groups.drop(1).sum { |_, rows| rows.size }
@@ -94,6 +95,7 @@ class DailyOrdersController < ApplicationController
     @end_date   = @start_date if @end_date < @start_date
     clamp_end_date!
     @series_filter = params[:series_filter].presence
+    @first_purchase_only = params[:first_purchase_only] == "1"
     groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
@@ -228,6 +230,10 @@ class DailyOrdersController < ApplicationController
 
     new_rows = rows.select(&:is_new_customer)
     old_rows = rows.reject(&:is_new_customer)
+
+    if @first_purchase_only
+      old_rows = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
+    end
 
     groups = [["新客", new_rows]]
     TIERS.each do |tier|
