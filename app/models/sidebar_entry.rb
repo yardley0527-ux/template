@@ -87,6 +87,7 @@ class SidebarEntry
             { href: products_path,              title: "年度 Top 產品排行", icon: "fa-trophy" },
             { href: product_inventory_path,     title: "產品庫存",       icon: "fa-boxes" },
             { href: product_reports_path,       title: "產品報告",       icon: "fa-file-alt" },
+            { href: new_customer_reports_path,  title: "新客月報",       icon: "fa-user-plus" },
           ]
         },
         {

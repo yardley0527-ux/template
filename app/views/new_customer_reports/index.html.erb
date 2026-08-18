@@ -1,0 +1,83 @@
+<% content_for :page_title, "新客月報" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-user-plus mr-2 text-success"></i> 新客月報
+  </h1>
+  <div class="ml-auto">
+    <%= link_to product_inventory_path, class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="fal fa-boxes mr-1"></i>產品庫存
+    <% end %>
+  </div>
+</div>
+
+<p class="text-muted small mb-4">
+  各產品「新客」定義：該信箱在統計區間起始日（2026-01-01）前完全沒有任何已付款訂單，與每日訂單頁新舊客口徑一致。
+  數字為正式站資料庫直連查詢結果，寫死在這個頁面的快照（Claude Artifact 連結）——要更新數字或加新產品時請 Claude 重新產出並更新
+  <code>NewCustomerReportsController::REPORTS</code>。
+</p>
+
+<% if @reports.blank? %>
+  <div class="panel">
+    <div class="panel-content text-center py-5 text-muted">
+      <i class="fal fa-file-alt fa-3x mb-3 d-block opacity-25"></i>
+      尚無任何報告連結
+    </div>
+  </div>
+<% else %>
+  <div class="panel">
+    <div class="panel-hdr">
+      <h2>各產品新客月報</h2>
+      <span class="text-muted small ml-2"><%= @reports.size %> 份報告</span>
+    </div>
+    <div class="panel-container show">
+      <div class="panel-content p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="thead-light">
+              <tr>
+                <th>商品</th>
+                <th>統計區間</th>
+                <th class="text-right">新客合計</th>
+                <th>單月最高</th>
+                <th>現況</th>
+                <th>報告</th>
+                <th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @reports.each do |report| %>
+                <tr>
+                  <td class="font-weight-bold"><%= report[:product] %></td>
+                  <td class="text-muted small"><%= report[:period] %></td>
+                  <td class="text-right font-weight-bold"><%= number_with_delimiter(report[:total]) %> 人</td>
+                  <td class="text-nowrap"><%= report[:peak_month] %>・<%= number_with_delimiter(report[:peak_value]) %>人</td>
+                  <td>
+                    <% case report[:status]
+                       when :in_stock %>
+                      <span class="badge badge-success">有貨・無缺貨</span>
+                    <% when :out_of_stock %>
+                      <span class="badge badge-danger">缺貨中</span>
+                    <% else %>
+                      <span class="badge badge-warning">留意</span>
+                    <% end %>
+                    <div class="text-muted small mt-1"><%= report[:status_note] %></div>
+                  </td>
+                  <td>
+                    <%= link_to "#{report[:product]}新客月報", report[:url], target: "_blank", rel: "noopener" %>
+                    <div class="text-muted small"><%= report[:generated_on].strftime("%Y/%m/%d") %> 產出</div>
+                  </td>
+                  <td class="text-center">
+                    <%= link_to report[:url], target: "_blank", rel: "noopener", class: "text-muted" do %>
+                      <i class="fal fa-external-link"></i>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
