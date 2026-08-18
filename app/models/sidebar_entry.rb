@@ -61,7 +61,6 @@ class SidebarEntry
             { href: livestreams_path,                  title: "直播場次",     icon: "fa-film" },
             { href: livestream_product_analysis_path,  title: "產品直播分析", icon: "fa-video" },
             { href: livestream_strategy_path,          title: "直播策略",     icon: "fa-chart-line" },
-            { href: livestream_reports_path,           title: "分產品檢討報告", icon: "fa-file-alt" },
           ]
         },
         {
@@ -86,12 +85,13 @@ class SidebarEntry
             { href: product_strategy_path,      title: "產品策略報表",   icon: "fa-chart-line" },
             { href: products_path,              title: "年度 Top 產品排行", icon: "fa-trophy" },
             { href: product_inventory_path,     title: "產品庫存",       icon: "fa-boxes" },
-            { href: product_reports_path,       title: "產品報告",       icon: "fa-file-alt" },
           ]
         },
         {
-          group_title: "新客月報",
+          group_title: "報告",
           children: [
+            { href: livestream_reports_path,    title: "分產品檢討報告", icon: "fa-file-alt" },
+            { href: product_reports_path,       title: "產品報告",       icon: "fa-file-alt" },
             { href: new_customer_reports_path,  title: "新客月報",       icon: "fa-user-plus" },
           ]
         },
