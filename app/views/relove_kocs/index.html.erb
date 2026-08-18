@@ -97,6 +97,8 @@
             </th>
             <th>最近標記貼文</th>
             <th>Email</th>
+            <th class="text-center">Chloe IG</th>
+            <th class="text-center">官方 IG</th>
             <th style="min-width:140px">狀態</th>
             <th>備註</th>
             <th></th>
@@ -133,6 +135,16 @@
                 <% end %>
               </td>
               <td><span class="small"><%= koc.email %></span></td>
+              <td class="text-center">
+                <%= form_with model: koc, url: relove_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= f.check_box :follows_chloe_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <%= form_with model: koc, url: relove_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= f.check_box :follows_official_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                <% end %>
+              </td>
               <td>
                 <%= form_with model: koc, url: relove_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
                   <%= f.select :status, ReloveKoc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
