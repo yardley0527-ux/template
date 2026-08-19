@@ -54,9 +54,9 @@ class KocsController < ApplicationController
   # 社群部帳號能更新接洽狀態、拍影片狀態、Chloe IG／官方 IG 追蹤、備註，hidden 跟新增/刪除維持 admin 專用。
   def koc_params
     if current_user.admin?
-      params.require(:koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes, :hidden, :video_shoot_status, :follows_chloe_ig, :follows_official_ig)
+      params.require(:koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes, :hidden, :video_shoot_status, :follows_chloe_ig, :follows_official_ig, :email_sent)
     else
-      params.require(:koc).permit(:status, :notes, :video_shoot_status, :follows_chloe_ig, :follows_official_ig)
+      params.require(:koc).permit(:status, :notes, :video_shoot_status, :follows_chloe_ig, :follows_official_ig, :email_sent)
     end
   end
 end

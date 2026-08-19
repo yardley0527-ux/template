@@ -100,6 +100,7 @@
             <th>Email</th>
             <th class="text-center">Chloe IG</th>
             <th class="text-center">官方 IG</th>
+            <th class="text-center">Email</th>
             <th style="min-width:140px">聯絡狀態</th>
             <th style="min-width:120px">拍影片狀態</th>
             <th>備註</th>
@@ -145,6 +146,11 @@
               <td class="text-center">
                 <%= form_with model: koc, url: relove_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
                   <%= f.check_box :follows_official_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <%= form_with model: koc, url: relove_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= f.check_box :email_sent, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                 <% end %>
               </td>
               <td>

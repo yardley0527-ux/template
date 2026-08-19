@@ -45,6 +45,6 @@ class ReloveKocsController < ApplicationController
   private
 
   def koc_params
-    params.require(:relove_koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes, :follows_chloe_ig, :follows_official_ig, :video_shoot_status)
+    params.require(:relove_koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes, :follows_chloe_ig, :follows_official_ig, :video_shoot_status, :email_sent)
   end
 end
