@@ -209,28 +209,24 @@ class DailyOrdersController < ApplicationController
 
     prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
 
-    # 舊客全部列出購買商品與同系列歷史；「傳首購產品訊息」勾選框只要訂單內有任一產品是該系列首購就顯示，不限金額
-    old_raw_orders = raw_orders.select do |o|
-      o.email_val.present? && prior_emails.include?(o.email_val)
-    end
-    @products_by_order = build_products_by_order(old_raw_orders)
+    # 「傳首購產品訊息」勾選框只要訂單內有任一產品是該系列首購就顯示，不限金額；
+    # 全部訂單（新客+舊客）都要算，因為新客/舊客的社群部維護訊息／健康資訊卡／關心訊息
+    # 現在都要看「首購的那個產品」後來有沒有回購，不只是舊客才需要這份資料
+    @products_by_order = build_products_by_order(raw_orders)
 
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
     summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
-
-    # 新客的社群部維護訊息／健康資訊卡／關心訊息只給「還沒回購過」的人看，
-    # 用全站（不限查詢區間）最後一筆已付款訂單日期跟這筆訂單日期比較
-    latest_order_date_by_email = ShoplineOrder
-      .where(email: emails)
-      .where("payment_status = '已付款'")
-      .group(:email)
-      .maximum(:order_date)
 
     rows = raw_orders.map do |o|
       customer = customers_by_email[o.email_val]
       profile  = customer&.customer_profile
       summary  = summaries_by_email[o.email_val]
-      latest_order_date = latest_order_date_by_email[o.email_val]
+      # 社群部維護訊息／健康資訊卡／關心訊息看「這張訂單裡的首購產品」後來有沒有回購，
+      # 不是看這個人有沒有買過其他任何東西——同一張訂單裡如果薑黃首購但蝦紅素也首購，
+      # 只有薑黃回購了、蝦紅素還沒，還是要繼續關懷蝦紅素，所以要「全部首購商品都回購了」才算
+      order_products = @products_by_order[o.order_num] || []
+      first_purchase_products = order_products.select { |p| p[:prior_date].nil? }
+      all_first_purchases_repurchased = first_purchase_products.present? && first_purchase_products.all? { |p| p[:repurchased_later] }
 
       OrderRow.new(
         order_number: o.order_num,
@@ -251,7 +247,7 @@ class DailyOrdersController < ApplicationController
         total_quantity: o.total_quantity.to_i,
         health_inquiry_declined: profile&.health_inquiry_declined || false,
         recipe_message_sent: profile&.recipe_message_sent || false,
-        has_repurchased: latest_order_date.present? && latest_order_date > o.ord_date
+        has_repurchased: all_first_purchases_repurchased
       )
     end
 

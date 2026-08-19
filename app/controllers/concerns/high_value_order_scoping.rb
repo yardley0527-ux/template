@@ -70,7 +70,8 @@ module HighValueOrderScoping
     name.to_s.match(/\A([^\d]+)/)&.captures&.first&.strip.presence || name.to_s
   end
 
-  # 針對每張訂單的每個商品，找出該客人「這個系列」在這張訂單之前最早的購買日期
+  # 針對每張訂單的每個商品，找出該客人「這個系列」在這張訂單之前最早的購買日期，
+  # 以及這張訂單之後有沒有再買過同系列（repurchased_later，給「這個首購產品後來有沒有回購」判斷用）
   def build_products_by_order(orders)
     emails = orders.map(&:email_val).compact.uniq
     raw_history = ShoplineOrder.where(email: emails).where("payment_status = '已付款'").pluck(:email, :product_name, :order_date)
@@ -82,7 +83,8 @@ module HighValueOrderScoping
       result[o.order_num] = Array(o.product_names_arr).compact.map do |name|
         dates = series_dates[[o.email_val, product_series(name)]] || []
         prior_date = dates.find { |d| d < o.ord_date }
-        { name: name, prior_date: prior_date }
+        repurchased_later = dates.any? { |d| d > o.ord_date }
+        { name: name, prior_date: prior_date, repurchased_later: repurchased_later }
       end
     end
   end
