@@ -78,6 +78,8 @@ Rails.application.routes.draw do
     patch :message_template, on: :collection, action: :update_message_template
   end
   resources :relove_kocs, only: [:index, :create, :update, :destroy]
+  resources :podcast_contacts, only: [:index, :create, :update, :destroy]
+  resources :kol_contacts, only: [:index, :create, :update, :destroy]
   resources :korean_brand_leads, only: [:index, :create, :update, :destroy]
   get  '/line_broadcast',           to: 'line_broadcast#index',       as: :line_broadcast
   resources :line_broadcast_highlights, only: [:create, :destroy]

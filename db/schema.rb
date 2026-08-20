@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_20_044500) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_20_050000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -549,6 +549,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_20_044500) do
     t.index ["ig_username"], name: "index_kocs_on_ig_username", unique: true
   end
 
+  create_table "kol_contacts", force: :cascade do |t|
+    t.string "ig_username"
+    t.string "ig_full_name"
+    t.string "email"
+    t.string "alias"
+    t.string "profile_url"
+    t.string "status"
+    t.text "notes"
+    t.string "source"
+    t.boolean "follows_chloe_ig", default: false, null: false
+    t.boolean "follows_official_ig", default: false, null: false
+    t.boolean "email_sent", default: false, null: false
+    t.text "logistics_notes"
+    t.date "pr_gift_shipped_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_username"], name: "index_kol_contacts_on_ig_username", unique: true
+  end
+
   create_table "korean_brand_leads", force: :cascade do |t|
     t.string "product_name", null: false
     t.string "source_url"
@@ -816,6 +835,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_20_044500) do
     t.datetime "updated_at", null: false
     t.index ["album_id", "position"], name: "index_photos_on_album_id_and_position"
     t.index ["album_id"], name: "index_photos_on_album_id"
+  end
+
+  create_table "podcast_contacts", force: :cascade do |t|
+    t.string "ig_username"
+    t.string "ig_full_name"
+    t.string "email"
+    t.string "alias"
+    t.string "profile_url"
+    t.string "status"
+    t.text "notes"
+    t.string "source"
+    t.boolean "follows_chloe_ig", default: false, null: false
+    t.boolean "follows_official_ig", default: false, null: false
+    t.boolean "email_sent", default: false, null: false
+    t.text "logistics_notes"
+    t.date "pr_gift_shipped_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_username"], name: "index_podcast_contacts_on_ig_username", unique: true
   end
 
   create_table "product_mapping_components", force: :cascade do |t|

@@ -104,8 +104,10 @@ class SidebarEntry
             { href: ig_audience_path,         title: "IG 受眾重疊分析", icon: "fa-users" },
             { href: ig_followers_path,        title: "IG 粉絲成長追蹤", icon: "fa-chart-line" },
             { href: "#", title: "業配名單", icon: "fa-star", children: [
-                { href: kocs_path,        title: "Hiff 業配名單",   icon: "fa-star" },
-                { href: relove_kocs_path, title: "Relove 業配名單", icon: "fa-star" },
+                { href: kocs_path,             title: "Hiff 業配名單",     icon: "fa-star" },
+                { href: relove_kocs_path,      title: "Relove 業配名單",   icon: "fa-star" },
+                { href: podcast_contacts_path, title: "Podcast 聯絡名單",  icon: "fa-star" },
+                { href: kol_contacts_path,     title: "KOL、藝人聯絡名單", icon: "fa-star" },
               ]
             },
           ]
