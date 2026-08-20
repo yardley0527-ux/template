@@ -2,7 +2,7 @@ class KocsController < ApplicationController
   PER_PAGE = 10
   LOGISTICS_USERNAME = "crmdata".freeze
 
-  helper_method :can_edit_logistics_fields?
+  helper_method :can_edit_logistics_fields?, :can_edit_social_fields?
 
   def index
     @message_template = KocMessageTemplate.current
@@ -66,12 +66,20 @@ class KocsController < ApplicationController
     current_user.admin? || current_user.username == LOGISTICS_USERNAME
   end
 
+  # crmdata（物流部）只能編輯物流部備註／公關品寄出日期，其他欄位（含社群聯絡備註、
+  # 接洽狀態、拍影片狀態、Chloe IG／官方 IG／Email 追蹤）一律不能碰。
+  def can_edit_social_fields?
+    current_user.username != LOGISTICS_USERNAME
+  end
+
   # 社群部帳號能更新接洽狀態、拍影片狀態、Chloe IG／官方 IG 追蹤、聯絡備註，hidden 跟新增/刪除維持 admin 專用。
   def koc_params
     permitted = if current_user.admin?
       %i[ig_username ig_full_name alias email profile_url status notes hidden video_shoot_status follows_chloe_ig follows_official_ig email_sent]
-    else
+    elsif can_edit_social_fields?
       %i[status notes video_shoot_status follows_chloe_ig follows_official_ig email_sent]
+    else
+      []
     end
     permitted += %i[logistics_notes pr_gift_shipped_at] if can_edit_logistics_fields?
 

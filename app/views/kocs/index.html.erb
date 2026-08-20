@@ -168,34 +168,58 @@
               </td>
               <td><span class="small"><%= koc.email %></span></td>
               <td class="text-center">
-                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= f.check_box :follows_chloe_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.check_box :follows_chloe_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.follows_chloe_ig? ? "✓" : "—" %></span>
                 <% end %>
               </td>
               <td class="text-center">
-                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= f.check_box :follows_official_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.check_box :follows_official_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.follows_official_ig? ? "✓" : "—" %></span>
                 <% end %>
               </td>
               <td class="text-center">
-                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= f.check_box :email_sent, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.check_box :email_sent, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.email_sent? ? "✓" : "—" %></span>
                 <% end %>
               </td>
               <td>
-                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= f.select :status, Koc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.select :status, Koc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <% end %>
+                <% else %>
+                  <span class="badge <%= koc_status_badge_class(koc.status) %>"><%= koc.status %></span>
                 <% end %>
               </td>
               <td>
-                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= f.select :video_shoot_status, Koc::VIDEO_SHOOT_STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.select :video_shoot_status, Koc::VIDEO_SHOOT_STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.video_shoot_status %></span>
                 <% end %>
               </td>
               <td style="min-width:220px">
-                <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
-                  <%= f.text_field :notes, value: koc.notes, class: "form-control form-control-sm", placeholder: "社群聯絡備註" %>
-                  <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                    <%= f.text_field :notes, value: koc.notes, class: "form-control form-control-sm", placeholder: "社群聯絡備註" %>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.notes.presence || "—" %></span>
                 <% end %>
               </td>
               <td style="min-width:220px">
