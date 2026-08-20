@@ -5,6 +5,8 @@ class KolContactsController < ApplicationController
   helper_method :can_edit_logistics_fields?, :can_edit_social_fields?
 
   def index
+    @message_template = KolMessageTemplate.current
+
     @contacts = KolContact.ordered
     @contacts = @contacts.where(status: params[:status]) if params[:status].present?
 
@@ -15,6 +17,11 @@ class KolContactsController < ApplicationController
     @total_pages = [(@contacts.count.to_f / PER_PAGE).ceil, 1].max
     @page = @total_pages if @page > @total_pages
     @contacts = @contacts.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
+  end
+
+  def update_message_template
+    KolMessageTemplate.current.update(content: params[:content])
+    redirect_to kol_contacts_path, notice: "已更新發送訊息內容"
   end
 
   def create

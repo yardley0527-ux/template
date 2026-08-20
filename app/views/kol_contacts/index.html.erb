@@ -30,6 +30,22 @@
   </div>
 </div>
 
+<%# ── 發送訊息內容 ── %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-bold">發送訊息內容</div>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="kol-contact-message-copy-btn">
+        <i class="fal fa-copy mr-1"></i>複製
+      </button>
+    </div>
+    <%= form_with url: message_template_kol_contacts_path, method: :patch, local: true, class: "mb-0" do |f| %>
+      <%= f.text_area :content, value: @message_template.content, id: "kol-contact-message-content", class: "form-control mb-2", rows: 4, placeholder: "填入要傳給聯絡人的訊息內容…" %>
+      <button type="submit" class="btn btn-sm btn-primary">儲存</button>
+    <% end %>
+  </div>
+</div>
+
 <%# ── 摘要卡 ── %>
 <div class="row g-3 mb-4">
   <div class="col-md-3 col-6">
@@ -231,3 +247,10 @@
     </div>
   </div>
 </div>
+
+<script>
+  document.getElementById("kol-contact-message-copy-btn")?.addEventListener("click", function () {
+    var text = document.getElementById("kol-contact-message-content").value;
+    navigator.clipboard.writeText(text);
+  });
+</script>

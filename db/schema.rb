@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_20_051500) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_20_053000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -568,6 +568,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_20_051500) do
     t.index ["ig_username"], name: "index_kol_contacts_on_ig_username", unique: true
   end
 
+  create_table "kol_message_templates", force: :cascade do |t|
+    t.text "content", default: "", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "korean_brand_leads", force: :cascade do |t|
     t.string "product_name", null: false
     t.string "source_url"
@@ -854,6 +860,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_20_051500) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["ig_username"], name: "index_podcast_contacts_on_ig_username", unique: true
+  end
+
+  create_table "podcast_message_templates", force: :cascade do |t|
+    t.text "content", default: "", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "product_mapping_components", force: :cascade do |t|
