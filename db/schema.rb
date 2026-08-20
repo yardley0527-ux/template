@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_20_041500) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_20_043000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -914,6 +914,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_20_041500) do
     t.boolean "follows_official_ig", default: false, null: false
     t.string "video_shoot_status", default: "未拍攝", null: false
     t.boolean "email_sent", default: false, null: false
+    t.text "logistics_notes"
+    t.date "pr_gift_shipped_at"
     t.index ["ig_username"], name: "index_relove_kocs_on_ig_username", unique: true
   end
 

@@ -1,5 +1,8 @@
 class ReloveKocsController < ApplicationController
   PER_PAGE = 10
+  LOGISTICS_USERNAME = "crmdata".freeze
+
+  helper_method :can_edit_logistics_fields?
 
   def index
     @sort = params[:sort]
@@ -44,7 +47,15 @@ class ReloveKocsController < ApplicationController
 
   private
 
+  # 物流部備註／公關品寄出日期只有 crmdata 帳號（物流部）能編輯，admin 維持全權限。
+  def can_edit_logistics_fields?
+    current_user.admin? || current_user.username == LOGISTICS_USERNAME
+  end
+
   def koc_params
-    params.require(:relove_koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes, :follows_chloe_ig, :follows_official_ig, :video_shoot_status, :email_sent)
+    permitted = %i[ig_username ig_full_name alias email profile_url status notes follows_chloe_ig follows_official_ig video_shoot_status email_sent]
+    permitted += %i[logistics_notes pr_gift_shipped_at] if can_edit_logistics_fields?
+
+    params.require(:relove_koc).permit(*permitted)
   end
 end
