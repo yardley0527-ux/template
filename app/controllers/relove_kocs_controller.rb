@@ -34,7 +34,7 @@ class ReloveKocsController < ApplicationController
   def update
     @koc = ReloveKoc.find(params[:id])
     @koc.update(koc_params)
-    redirect_to relove_kocs_path(status: params[:status]), notice: "已更新 #{@koc.ig_username}"
+    redirect_back fallback_location: relove_kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
   end
 
   def destroy

@@ -48,7 +48,7 @@ class KocsController < ApplicationController
   def update
     @koc = Koc.find(params[:id])
     @koc.update(koc_params)
-    redirect_to kocs_path(status: params[:status]), notice: "已更新 #{@koc.ig_username}"
+    redirect_back fallback_location: kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
   end
 
   def destroy
