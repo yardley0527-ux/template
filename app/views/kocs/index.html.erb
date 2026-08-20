@@ -32,6 +32,22 @@
   </div>
 </div>
 
+<%# ── 發送訊息內容 ── %>
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-bold">發送訊息內容</div>
+      <button type="button" class="btn btn-sm btn-outline-secondary" id="koc-message-copy-btn">
+        <i class="fal fa-copy mr-1"></i>複製
+      </button>
+    </div>
+    <%= form_with url: message_template_kocs_path, method: :patch, local: true, class: "mb-0" do |f| %>
+      <%= f.text_area :content, value: @message_template.content, id: "koc-message-content", class: "form-control mb-2", rows: 4, placeholder: "填入要傳給 KOC 的訊息內容…" %>
+      <button type="submit" class="btn btn-sm btn-primary">儲存</button>
+    <% end %>
+  </div>
+</div>
+
 <%# ── 摘要卡 ── %>
 <div class="row g-3 mb-4">
   <div class="col-md-3 col-6">
@@ -108,7 +124,9 @@
             <th class="text-center">Email</th>
             <th style="min-width:140px">聯絡狀態</th>
             <th style="min-width:120px">拍影片狀態</th>
-            <th>備註</th>
+            <th style="min-width:150px">公關品寄出日期</th>
+            <th>聯絡備註</th>
+            <th>物流部備註</th>
             <th></th>
           </tr>
         </thead>
@@ -174,10 +192,29 @@
                   <%= f.select :video_shoot_status, Koc::VIDEO_SHOOT_STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                 <% end %>
               </td>
+              <td>
+                <% if can_edit_logistics_fields? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.date_field :pr_gift_shipped_at, value: koc.pr_gift_shipped_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.pr_gift_shipped_at&.strftime("%Y-%m-%d") || "—" %></span>
+                <% end %>
+              </td>
               <td style="min-width:220px">
                 <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
-                  <%= f.text_field :notes, value: koc.notes, class: "form-control form-control-sm", placeholder: "備註" %>
+                  <%= f.text_field :notes, value: koc.notes, class: "form-control form-control-sm", placeholder: "聯絡備註" %>
                   <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                <% end %>
+              </td>
+              <td style="min-width:220px">
+                <% if can_edit_logistics_fields? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                    <%= f.text_field :logistics_notes, value: koc.logistics_notes, class: "form-control form-control-sm", placeholder: "物流部備註" %>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.logistics_notes.presence || "—" %></span>
                 <% end %>
               </td>
               <td>
@@ -244,7 +281,7 @@
               <%= f.select :status, Koc::STATUSES, {}, class: "form-control" %>
             </div>
             <div class="form-group">
-              <label>備註</label>
+              <label>聯絡備註</label>
               <%= f.text_area :notes, class: "form-control", rows: 2 %>
             </div>
           </div>
@@ -257,3 +294,10 @@
     </div>
   </div>
 <% end %>
+
+<script>
+  document.getElementById("koc-message-copy-btn")?.addEventListener("click", function () {
+    var text = document.getElementById("koc-message-content").value;
+    navigator.clipboard.writeText(text);
+  });
+</script>

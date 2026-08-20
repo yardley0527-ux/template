@@ -1,7 +1,12 @@
 class KocsController < ApplicationController
   PER_PAGE = 10
+  LOGISTICS_USERNAME = "crmdata".freeze
+
+  helper_method :can_edit_logistics_fields?
 
   def index
+    @message_template = KocMessageTemplate.current
+
     @sort = params[:sort]
     @kocs = @sort == "likes" ? Koc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : Koc.ordered_by_engagement
 
@@ -20,6 +25,11 @@ class KocsController < ApplicationController
     @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max
     @page = @total_pages if @page > @total_pages
     @kocs = @kocs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
+  end
+
+  def update_message_template
+    KocMessageTemplate.current.update(content: params[:content])
+    redirect_to kocs_path, notice: "已更新發送訊息內容"
   end
 
   def create
@@ -51,12 +61,20 @@ class KocsController < ApplicationController
 
   private
 
-  # 社群部帳號能更新接洽狀態、拍影片狀態、Chloe IG／官方 IG 追蹤、備註，hidden 跟新增/刪除維持 admin 專用。
+  # 物流部備註／公關品寄出日期只有 crmdata 帳號（物流部）能編輯，admin 維持全權限。
+  def can_edit_logistics_fields?
+    current_user.admin? || current_user.username == LOGISTICS_USERNAME
+  end
+
+  # 社群部帳號能更新接洽狀態、拍影片狀態、Chloe IG／官方 IG 追蹤、聯絡備註，hidden 跟新增/刪除維持 admin 專用。
   def koc_params
-    if current_user.admin?
-      params.require(:koc).permit(:ig_username, :ig_full_name, :alias, :email, :profile_url, :status, :notes, :hidden, :video_shoot_status, :follows_chloe_ig, :follows_official_ig, :email_sent)
+    permitted = if current_user.admin?
+      %i[ig_username ig_full_name alias email profile_url status notes hidden video_shoot_status follows_chloe_ig follows_official_ig email_sent]
     else
-      params.require(:koc).permit(:status, :notes, :video_shoot_status, :follows_chloe_ig, :follows_official_ig, :email_sent)
+      %i[status notes video_shoot_status follows_chloe_ig follows_official_ig email_sent]
     end
+    permitted += %i[logistics_notes pr_gift_shipped_at] if can_edit_logistics_fields?
+
+    params.require(:koc).permit(*permitted)
   end
 end
