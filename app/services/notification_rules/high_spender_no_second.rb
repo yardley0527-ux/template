@@ -16,6 +16,9 @@ module NotificationRules
   # NOTE: refund/cancelled-order exclusion depends on how customer_purchase_summaries
   # is built upstream — this rule only reads that cache table and cannot itself
   # tell a refunded order apart from a real one (data limitation, not fixed here).
+  # Series matched to a currently out_of_stock/discontinued product are excluded —
+  # same principle as customer_runout/customer_overdue/promotion_opportunity: don't
+  # recommend a second purchase of something nobody can currently buy.
   class HighSpenderNoSecond
     THRESHOLD_AMOUNT = 10_000
     DEFAULT_WINDOW_DAYS = NotificationRules::Thresholds::HIGH_SPENDER_WINDOW_DAYS
@@ -55,8 +58,26 @@ module NotificationRules
             AND s.second_date::date >= (s.first_date::date + 7)
           )
       SQL
-      rows = ActiveRecord::Base.connection.select_all(sql).to_a.select { |r| within_series_window?(r) }
+      rows = ActiveRecord::Base.connection.select_all(sql).to_a
+                               .select { |r| within_series_window?(r) }
+                               .reject { |r| series_out_of_stock?(r["series"]) }
       rows.group_by { |r| [r["month"], r["series"]] }
+    end
+
+    # 跟 customer_runout/customer_overdue/promotion_opportunity 用同一套排除邏輯：
+    # first_series 對得到追蹤產品、且該產品現在缺貨/停售，就不建議推二購——沒東西
+    # 可以賣，硬推只會浪費客服時間。對不到已知產品（例如「未分類」）則不擋，
+    # 因為沒有單一產品可以查庫存。
+    def series_out_of_stock?(series)
+      product = matched_product(series)
+      return false unless product
+
+      crm_product = NotificationRules::ProductKeyMapping.crm_product_for(product[:key])
+      crm_product.present? && %w[out_of_stock discontinued].include?(crm_product.availability_status)
+    end
+
+    def matched_product(series)
+      JourneyProducts::PRODUCTS.values.find { |p| series.to_s.include?(p[:label]) || series.to_s.include?(p[:short]) }
     end
 
     # first_series 匹配得到 JourneyProducts 產品就用「1瓶回購中位數 × 0.5~2.5」
@@ -71,8 +92,7 @@ module NotificationRules
     def series_window(series)
       @series_window_cache ||= {}
       @series_window_cache[series] ||= begin
-        product = JourneyProducts::PRODUCTS.values.find { |p| series.to_s.include?(p[:label]) || series.to_s.include?(p[:short]) }
-        median = product&.dig(:medians, 1)
+        median = matched_product(series)&.dig(:medians, 1)
         if median
           (median * CYCLE_WINDOW_MULTIPLIER.begin).round..(median * CYCLE_WINDOW_MULTIPLIER.end).round
         else

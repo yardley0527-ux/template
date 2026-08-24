@@ -71,5 +71,36 @@ module NotificationRules
     test "no qualifying rows produces no card" do
       assert_empty HighSpenderNoSecond.call
     end
+
+    test "a series matched to a currently out-of-stock product is excluded" do
+      CrmProduct.create!(key: "omnipotent", label: "全能", status: "confirmed", availability_status: "out_of_stock")
+      customer(email: "a@example.com")
+      summary(email: "a@example.com", first_amount: 12_000, first_date: 45.days.ago, series: "全能")
+
+      assert_empty HighSpenderNoSecond.call, "must not recommend a second purchase of something currently unbuyable"
+    end
+
+    test "a series matched to a discontinued product is excluded" do
+      CrmProduct.create!(key: "omnipotent", label: "全能", status: "confirmed", availability_status: "discontinued")
+      customer(email: "a@example.com")
+      summary(email: "a@example.com", first_amount: 12_000, first_date: 45.days.ago, series: "全能")
+
+      assert_empty HighSpenderNoSecond.call
+    end
+
+    test "a series matched to an in_stock product is not excluded" do
+      CrmProduct.create!(key: "omnipotent", label: "全能", status: "confirmed", availability_status: "in_stock")
+      customer(email: "a@example.com")
+      summary(email: "a@example.com", first_amount: 12_000, first_date: 45.days.ago, series: "全能")
+
+      assert_equal 1, HighSpenderNoSecond.call.size
+    end
+
+    test "an unclassified series with no matching product is never blocked by the stock check" do
+      customer(email: "a@example.com")
+      summary(email: "a@example.com", first_amount: 12_000, first_date: 45.days.ago, series: "未分類")
+
+      assert_equal 1, HighSpenderNoSecond.call.size
+    end
   end
 end
