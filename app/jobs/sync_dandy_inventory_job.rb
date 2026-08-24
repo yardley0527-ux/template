@@ -10,6 +10,7 @@ class SyncDandyInventoryJob < ApplicationJob
   end
 
   def perform
-    DandyInventorySync.call
+    result = DandyInventorySync.call
+    CrmProductInventorySync.call if result[:error].nil?
   end
 end

@@ -18,7 +18,17 @@ namespace :ops do
     inventory = DandyInventorySync.call
     puts "[ops:sync] 產品庫存表: #{inventory[:error] || 'ok'}"
 
-    failures = dept.count { |_, r| r[:error] } + (annual[:error] ? 1 : 0) + (inventory[:error] ? 1 : 0)
+    # 只在 DANDY 表同步成功時才套用到 crm_products，避免拿舊快照的過期資料覆蓋。
+    product_sync = inventory[:error].nil? ? CrmProductInventorySync.call : { error: "skipped (dandy sync failed)" }
+    if product_sync[:error]
+      puts "[ops:sync] crm_products 庫存狀態同步: #{product_sync[:error]}"
+    else
+      puts "[ops:sync] crm_products 庫存狀態同步: 更新 #{product_sync[:updated].size} 項" \
+           "#{product_sync[:unmapped_names].any? ? "，未對應品名：#{product_sync[:unmapped_names].join('、')}" : ''}"
+    end
+
+    failures = dept.count { |_, r| r[:error] } + (annual[:error] ? 1 : 0) + (inventory[:error] ? 1 : 0) +
+               (product_sync[:error] && inventory[:error].nil? ? 1 : 0)
     abort("[ops:sync] #{failures} source(s) failed") if failures.positive?
   end
 

@@ -8,6 +8,7 @@ class SyncRun < ApplicationRecord
     "department_sheets"       => "部門日誌",
     "annual_calendar"         => "年度行事曆",
     "dandy_inventory"         => "產品庫存表",
+    "crm_product_inventory"   => "產品庫存狀態同步",
     "livestream_backfill"     => "直播場次回填",
     "livestream_stats"        => "直播統計刷新",
     "crm_rollup"              => "CRM 旅程快取",
