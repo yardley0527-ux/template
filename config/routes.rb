@@ -39,6 +39,10 @@ Rails.application.routes.draw do
     resources :livestream_images, only: [:create, :destroy]
     resources :livestream_products, only: [:create, :update, :destroy]
     resources :livestream_gifts, only: [:create, :update, :destroy]
+    member do
+      post :complete_review
+      post :assign_owner
+    end
   end
   get '/livestream_overview', to: 'livestream_overview#index', as: :livestream_overview
   get '/livestream_reports', to: 'livestream_reports#index', as: :livestream_reports
@@ -213,8 +217,12 @@ Rails.application.routes.draw do
   get  '/notification_board',              to: 'notification_board#index',      as: :notification_board
   get  '/notification_board/:id/customers', to: 'notification_board#customers', as: :notification_board_customers
   post '/notification_board/:id/mark_read', to: 'notification_board#mark_read', as: :notification_board_mark_read
-  post '/notification_board/:id/resolve',   to: 'notification_board#resolve',   as: :notification_board_resolve
+  post '/notification_board/:id/assign',              to: 'notification_board#assign',              as: :notification_board_assign
+  post '/notification_board/:id/start',                to: 'notification_board#start',                as: :notification_board_start
+  post '/notification_board/:id/request_verification', to: 'notification_board#request_verification', as: :notification_board_request_verification
+  post '/notification_board/:id/snooze',   to: 'notification_board#snooze',   as: :notification_board_snooze
   post '/notification_board/:id/dismiss',   to: 'notification_board#dismiss',   as: :notification_board_dismiss
+  post '/notification_board/:id/create_customer_task', to: 'notification_board#create_customer_task', as: :notification_board_create_customer_task
 
   # ── Product Registry Review UI (Epic B2-0C) ─────────────────────────
   get   '/product_registry',                    to: 'product_registry#index',          as: :product_registry

@@ -36,7 +36,7 @@ class NotificationEngineTest < ActiveSupport::TestCase
 
       assert_equal "success", out[:status]
       assert_equal 1, out[:per_rule]["system_health"][:created]
-      assert_equal 1, Notification.where(deduplication_key: "r1:x:1", status: "open").count
+      assert_equal 1, Notification.where(deduplication_key: "r1:x:1", status: "detected").count
       assert_equal "success", SyncRun.find(out[:sync_run_id]).status
       assert_equal "notifications", SyncRun.find(out[:sync_run_id]).source
     end
@@ -93,7 +93,7 @@ class NotificationEngineTest < ActiveSupport::TestCase
       end
 
       assert_equal "resolved", old.reload.status, "old cycle stays resolved, untouched"
-      new_open = Notification.find_by(deduplication_key: "r1:x:1", status: "open")
+      new_open = Notification.find_by(deduplication_key: "r1:x:1", status: "detected")
       assert new_open.present?
       assert_not_equal old.id, new_open.id
       assert new_open.first_detected_at > old.first_detected_at
@@ -109,7 +109,7 @@ class NotificationEngineTest < ActiveSupport::TestCase
       StubRule.results = []
       NotificationEngine.new.run(["system_health"])
 
-      assert_equal "open", untouched.reload.status
+      assert_equal "detected", untouched.reload.status
     end
   end
 
@@ -199,7 +199,7 @@ class NotificationEngineTest < ActiveSupport::TestCase
       stats = out[:per_rule]["system_health"]
       assert_equal 0, stats[:matched_subjects]
       assert_equal 1, stats[:cards_to_resolve]
-      assert_equal "open", Notification.find_by(deduplication_key: "dr:3").status, "dry_run must not auto-resolve"
+      assert_equal "detected", Notification.find_by(deduplication_key: "dr:3").status, "dry_run must not auto-resolve"
     end
   end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_24_160000) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_24_171000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -62,6 +62,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_24_160000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "external_key"
+    t.date "end_date"
     t.index ["event_date"], name: "index_calendar_events_on_event_date"
     t.index ["external_key"], name: "index_calendar_events_on_external_key", unique: true
   end
@@ -669,7 +670,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_24_160000) do
     t.integer "total_buyers", default: 0, null: false
     t.integer "new_buyers", default: 0, null: false
     t.datetime "stats_refreshed_at"
+    t.bigint "owner_user_id"
+    t.datetime "review_completed_at"
+    t.bigint "review_completed_by_user_id"
     t.index ["date"], name: "index_livestreams_on_date", unique: true
+    t.index ["owner_user_id"], name: "index_livestreams_on_owner_user_id"
     t.index ["product_keys"], name: "index_livestreams_on_product_keys", using: :gin
   end
 
@@ -771,8 +776,23 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_24_160000) do
     t.datetime "dismissed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["deduplication_key"], name: "idx_notifications_dedup_key_unique_open", unique: true, where: "((status)::text = 'open'::text)"
+    t.string "priority", null: false
+    t.bigint "owner_user_id"
+    t.datetime "due_at"
+    t.datetime "snoozed_until"
+    t.text "snooze_reason"
+    t.string "dismissal_reason"
+    t.integer "occurrence_count", default: 1, null: false
+    t.text "impact_summary"
+    t.text "recommended_action"
+    t.text "resolution_reason"
+    t.integer "reopened_count", default: 0, null: false
+    t.index ["deduplication_key"], name: "idx_notifications_dedup_key_unique_active", unique: true, where: "((status)::text <> ALL ((ARRAY['resolved'::character varying, 'dismissed'::character varying])::text[]))"
+    t.index ["due_at"], name: "index_notifications_on_due_at"
     t.index ["notification_key"], name: "index_notifications_on_notification_key"
+    t.index ["owner_user_id"], name: "index_notifications_on_owner_user_id"
+    t.index ["priority"], name: "index_notifications_on_priority"
+    t.index ["snoozed_until"], name: "index_notifications_on_snoozed_until"
     t.index ["status", "category"], name: "index_notifications_on_status_and_category"
     t.index ["status", "severity"], name: "index_notifications_on_status_and_severity"
     t.index ["subject_type", "subject_id"], name: "index_notifications_on_subject_type_and_subject_id"
@@ -1368,10 +1388,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_24_160000) do
   add_foreign_key "livestream_gifts", "livestreams"
   add_foreign_key "livestream_images", "livestreams"
   add_foreign_key "livestream_products", "livestreams"
+  add_foreign_key "livestreams", "users", column: "owner_user_id"
+  add_foreign_key "livestreams", "users", column: "review_completed_by_user_id"
   add_foreign_key "membership_level_changes", "import_runs"
   add_foreign_key "message_list_recipients", "message_lists"
   add_foreign_key "message_template_blocks", "message_templates"
   add_foreign_key "message_template_images", "message_template_blocks"
+  add_foreign_key "notifications", "users", column: "owner_user_id"
   add_foreign_key "page_permissions", "roles"
   add_foreign_key "photos", "albums"
   add_foreign_key "product_mapping_components", "crm_products"

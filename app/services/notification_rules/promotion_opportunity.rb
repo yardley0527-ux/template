@@ -44,9 +44,11 @@ module NotificationRules
       label = JourneyProducts::PRODUCTS.fetch(product_key)[:label]
 
       {
-        notification_key: "promotion_opportunity", kind: "opportunity", severity: "opportunity",
+        notification_key: "promotion_opportunity", kind: "opportunity", severity: "opportunity", priority: "P2",
         title: "#{label}官網現正優惠中（省#{latest.discount_pct}%）：#{count} 位客人在回購窗口內",
         message: "#{latest.product_name} NT$#{latest.sale_price}（原價 NT$#{latest.regular_price}），逾期 1–60 天客群，建議發送名單",
+        impact_summary: "官網折扣剛開始，是主動觸及逾期客群轉換率最高的時間點。",
+        recommended_action: "把符合的#{count}位客人拉成訊息名單，附上優惠連結發送。",
         subject_type: "journey_product", subject_id: product_key,
         metadata: {
           product_key: product_key, discount_pct: latest.discount_pct.to_f,

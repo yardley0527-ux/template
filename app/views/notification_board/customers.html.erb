@@ -1,11 +1,14 @@
 <%# app/views/notification_board/customers.html.erb — rendered layout:false, fetched via JS %>
+<% task_creatable = %w[customer_runout_p1 customer_runout_p2 customer_overdue promotion_opportunity].include?(@notification.category) %>
 <% if @rows.blank? %>
   <div class="text-muted small py-2">目前沒有符合條件的客人（可能都已回購或資料已更新）</div>
 <% else %>
+  <%= form_tag notification_board_create_customer_task_path(@notification), method: :post, class: "js-customer-task-form", data: { turbo: false } if task_creatable %>
   <div class="table-responsive">
     <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.8rem;">
       <thead class="table-light">
         <tr>
+          <% if task_creatable %><th style="width:24px;"><input type="checkbox" class="js-check-all"></th><% end %>
           <th>姓名</th><th>卡別</th><th>電話</th><th>IG</th>
           <% if @rows.first.key?(:expected_return_date) %><th>預計用完</th><% end %>
           <% if @rows.first.key?(:first_amount) %><th>首購金額</th><% end %>
@@ -14,6 +17,13 @@
       <tbody>
         <% @rows.each do |r| %>
           <tr>
+            <% if task_creatable %>
+              <td>
+                <% if r[:email].present? %>
+                  <input type="checkbox" name="emails[]" value="<%= r[:email] %>" class="js-row-check">
+                <% end %>
+              </td>
+            <% end %>
             <td>
               <% if r[:customer_id] %>
                 <%= link_to (r[:full_name].presence || "（無名）"), customer_path(r[:customer_id]), target: "_blank", class: "fw-semibold text-decoration-none" %>
@@ -43,4 +53,22 @@
       </tbody>
     </table>
   </div>
+  <% if task_creatable %>
+    <div class="d-flex align-items-center flex-wrap mt-2" style="gap:6px;">
+      <span class="text-muted small">已勾選 <span class="js-checked-count">0</span> 人</span>
+      <input type="date" name="contact_date" class="form-control form-control-sm" style="width:150px;" value="<%= Date.current %>">
+      <select name="assignee_id" class="form-control form-control-sm" style="width:160px;">
+        <option value="">（不指定負責人）</option>
+        <% User.order(:username).each do |u| %>
+          <option value="<%= u.id %>"><%= u.username %></option>
+        <% end %>
+      </select>
+      <button type="submit" class="btn btn-sm btn-primary js-submit-customer-task" disabled>建立客服任務</button>
+    </div>
+    </form>
+  <% end %>
 <% end %>
+<%# 注意：這份 partial 是透過 innerHTML 動態插入（見 index.html.erb 的 js-expand-customers），
+    瀏覽器不會執行用 innerHTML 插入的 <script> 標籤——checkbox 全選/計數/送出按鈕的 JS
+    邏輯集中寫在 index.html.erb 的 document 層級事件代理（event delegation）裡，
+    不要在這裡另外寫 <script>，寫了也不會執行。 %>

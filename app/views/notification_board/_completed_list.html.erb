@@ -8,7 +8,7 @@
   <div class="table-responsive">
     <table class="table table-hover align-middle mb-0" style="font-size:0.85rem;">
       <thead class="table-light">
-        <tr><th>狀態</th><th>嚴重度</th><th>分類</th><th>標題</th><th>結案時間</th></tr>
+        <tr><th>狀態</th><th>優先級</th><th>分類</th><th>標題</th><th>結案原因</th><th>結案時間</th></tr>
       </thead>
       <tbody>
         <% notifications.each do |n| %>
@@ -20,9 +20,19 @@
                 <span class="badge badge-secondary">已忽略</span>
               <% end %>
             </td>
-            <td><span class="badge <%= notification_severity_badge_class(n.severity) %>"><%= notification_severity_label(n.severity) %></span></td>
+            <td><span class="badge <%= notification_priority_badge_class(n.priority) %>"><%= n.priority %></span></td>
             <td><%= notification_category_label(n.category) %></td>
-            <td><%= n.title %></td>
+            <td>
+              <%= n.title %>
+              <% if n.metadata["recurred_after_resolution"] %><span class="badge badge-warning ms-1">再次發生</span><% end %>
+            </td>
+            <td>
+              <% if n.status == "dismissed" %>
+                <%= notification_dismissal_reason_label(n.dismissal_reason) %>
+              <% elsif n.resolution_reason.present? %>
+                <span class="text-muted small"><%= truncate(n.resolution_reason, length: 30) %></span>
+              <% end %>
+            </td>
             <td><%= (n.resolved_at || n.dismissed_at)&.strftime("%Y/%m/%d %H:%M") %></td>
           </tr>
         <% end %>

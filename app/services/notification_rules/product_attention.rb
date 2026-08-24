@@ -14,6 +14,7 @@ module NotificationRules
     GROWTH_THRESHOLD_PCT = 50
     DROP_THRESHOLD_PCT = -50
     MIN_BASELINE_AMOUNT = 10_000 # 前週基期太小時百分比會失真，先過濾掉
+    DROP_MIN_ABSOLUTE_GAP = 15_000 # 百分比達標但絕對金額差太小時降級（P3），避免小基期產品被過度示警
 
     def self.call
       new.call
@@ -39,15 +40,27 @@ module NotificationRules
       return nil if pct.negative? && livestream_window_overlap?
 
       surge = pct.positive?
+      absolute_gap = (this_week - last_week).abs
+      # 下降但絕對金額差太小（基期小、百分比容易失真）就降到 P3 觀察，不是 P1/P2 警訊。
+      priority = if surge
+                   "P2"
+                 elsif absolute_gap < DROP_MIN_ABSOLUTE_GAP
+                   "P3"
+                 else
+                   "P1"
+                 end
       {
         notification_key: "product_attention", kind: surge ? "opportunity" : "alert",
-        severity: surge ? "opportunity" : "warning",
+        severity: surge ? "opportunity" : "warning", priority: priority,
         title: "#{product[:label]}週營收#{surge ? '成長' : '下降'} #{pct.abs}%",
         message: "本週 NT$#{this_week.to_i}，前週 NT$#{last_week.to_i}（庫存狀態：#{status_label(crm_product)}）",
+        impact_summary: surge ? "週營收成長#{pct.abs}%（NT$#{absolute_gap.to_i}），可觀察是否延續。" \
+                                : "週營收下降#{pct.abs}%（NT$#{absolute_gap.to_i}），且非直播D0-D3窗口內的自然回落。",
+        recommended_action: surge ? "確認是否有可延續的行銷動作，考慮加碼。" : "確認是否缺貨、匯入延遲或活動結束造成，非單純銷售力下降才需要進一步處理。",
         subject_type: "journey_product", subject_id: product_key,
         metadata: {
           product_key: product_key, this_week_revenue: this_week.to_i, last_week_revenue: last_week.to_i,
-          pct: pct.to_f, availability_status: crm_product.availability_status,
+          pct: pct.to_f, absolute_gap: absolute_gap.to_i, availability_status: crm_product.availability_status,
           livestream_context: livestream_window_overlap?
         },
         deduplication_key: "product_attention:journey_product:#{product_key}"

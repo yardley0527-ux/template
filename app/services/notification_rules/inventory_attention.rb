@@ -27,9 +27,11 @@ module NotificationRules
         recent_revenue = recent_checkout_amount(p, since: RECENT_SALES_WINDOW.ago)
         next if recent_revenue.zero?
 
-        build(key: "inventory_stock_conflict", severity: "critical", product: p,
+        build(key: "inventory_stock_conflict", severity: "critical", priority: "P0", product: p,
              title: "#{p.label}標記為#{status_label(p.availability_status)}，但近 7 天仍有銷售",
              message: "近 7 天 checkout_amount 合計 NT$#{recent_revenue.to_i}，請確認庫存狀態",
+             impact_summary: "庫存狀態資料與實際銷售矛盾，回購/逾期判定可能全部失真。",
+             recommended_action: "確認實際庫存並更新 crm_products.availability_status。",
              metadata: { availability_status: p.availability_status, recent_checkout_amount: recent_revenue.to_i })
       end
     end
@@ -41,9 +43,11 @@ module NotificationRules
               .where("expected_restock_date < ?", Date.current)
               .filter_map do |p|
         days = (Date.current - p.expected_restock_date).to_i
-        build(key: "inventory_restock_overdue", severity: "warning", product: p,
+        build(key: "inventory_restock_overdue", severity: "warning", priority: "P1", product: p,
              title: "#{p.label}預計到貨日已過 #{days} 天，庫存狀態尚未確認",
              message: "預計到貨日：#{p.expected_restock_date}，請確認是否已到貨",
+             impact_summary: "庫存狀態卡在缺貨，這段期間的回購提醒都會被排除，可能漏掉真的可以下單的客人。",
+             recommended_action: "確認到貨日期是否已更新，並回填實際到貨日。",
              metadata: { expected_restock_date: p.expected_restock_date.to_s, days_overdue: days })
       end
     end
@@ -57,10 +61,13 @@ module NotificationRules
         since_restock = recent_checkout_amount(p, since: p.actual_restock_date.beginning_of_day)
         next if since_restock.positive?
 
-        build(key: "inventory_zero_sales_after_restock", severity: "warning", product: p,
+        build(key: "inventory_zero_sales_after_restock", severity: "warning", priority: "P2", product: p,
              title: "#{p.label}到貨後已 #{ZERO_SALES_CHECK_DAYS}+ 天，尚無銷售",
              message: "實際到貨日：#{p.actual_restock_date}，請確認是否已上架",
-             metadata: { actual_restock_date: p.actual_restock_date.to_s })
+             impact_summary: "可能是還沒上架、還沒開賣，也可能是真的賣不動——系統只能看訂單資料，" \
+                             "沒有商品頁流量／加入購物車資料可以進一步判斷原因（資料不足）。",
+             recommended_action: "確認商品是否已上架可購買，排除上架延遲後再觀察銷量。",
+             metadata: { actual_restock_date: p.actual_restock_date.to_s, availability_status: p.availability_status })
       end
     end
 
@@ -72,9 +79,11 @@ module NotificationRules
 
       week_start = Date.current.beginning_of_week
       [{
-        notification_key: "inventory_unknown_weekly", kind: "alert", severity: "info",
+        notification_key: "inventory_unknown_weekly", kind: "alert", severity: "info", priority: "P3",
         title: "#{unknown.count} 個產品庫存狀態尚未確認",
         message: "庫存未確認期間，這些產品不會產生缺貨/成長/下降類的提醒判定",
+        impact_summary: "這些產品完全沒有庫存判定，可能漏掉真正的缺貨或銷售異常。",
+        recommended_action: "逐一確認這些產品目前的實際庫存狀態。",
         subject_type: "crm_product_batch", subject_id: nil,
         metadata: { count: unknown.count, product_keys: unknown.pluck(:key), week_start: week_start.to_s },
         deduplication_key: "inventory_unknown_weekly:batch:#{week_start}"
@@ -91,9 +100,11 @@ module NotificationRules
       CrmProduct::AVAILABILITY_STATUS_LABELS.fetch(status, status)
     end
 
-    def build(key:, severity:, product:, title:, message:, metadata:)
+    def build(key:, severity:, priority:, product:, title:, message:, metadata:,
+              impact_summary: nil, recommended_action: nil)
       {
-        notification_key: key, kind: "alert", severity: severity, title: title, message: message,
+        notification_key: key, kind: "alert", severity: severity, priority: priority, title: title, message: message,
+        impact_summary: impact_summary, recommended_action: recommended_action,
         subject_type: "crm_product", subject_id: product.id.to_s,
         metadata: metadata.merge(product_key: product.key),
         deduplication_key: "#{key}:crm_product:#{product.id}"

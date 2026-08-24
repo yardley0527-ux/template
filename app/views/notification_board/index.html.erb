@@ -5,8 +5,28 @@
   <h1 class="subheader-title">
     <i class="subheader-icon fal fa-bell"></i>
     營運提醒中心
-    <small>今日注意／客戶商機／產品變化／系統健康／已完成 — 未讀 <strong><%= @unread_count %></strong> 則</small>
+    <small>可分派、處理、追蹤及確認結果的工作台 — 未讀 <strong><%= @unread_count %></strong> 則</small>
   </h1>
+</div>
+
+<div class="row mb-3">
+  <% [
+       ["今日需處理", @summary[:today_todo], "primary"],
+       ["已逾期", @summary[:overdue], "danger"],
+       ["待分派", @summary[:pending_assignment], "warning"],
+       ["處理中", @summary[:in_progress], "info"],
+       ["待系統確認", @summary[:pending_verification], "secondary"],
+       ["今日已完成", @summary[:resolved_today], "success"],
+       ["涉及客戶數(估)", @summary[:affected_customers], "dark"],
+       ["預估機會營收(估)", number_to_currency(@summary[:estimated_opportunity_revenue], unit: "NT$", precision: 0), "dark"]
+     ].each do |label, value, color| %>
+    <div class="col-6 col-md-3 col-lg mb-2">
+      <div class="p-2 rounded text-center h-100" style="background:#f8f9fa; border:1px solid #dee2e6;">
+        <div class="text-muted" style="font-size:0.72rem;"><%= label %></div>
+        <div class="fw-bold text-<%= color %>" style="font-size:1.15rem;"><%= value %></div>
+      </div>
+    </div>
+  <% end %>
 </div>
 
 <div class="row">
@@ -17,8 +37,8 @@
 
           <ul class="nav nav-tabs mb-3">
             <% [
-                 ["today", "今日注意"], ["opportunities", "客戶商機"], ["products", "產品變化"],
-                 ["system", "系統健康"], ["completed", "已完成"]
+                 ["today", "今日待處理"], ["customer_opportunity", "客戶商機"], ["product_revenue", "商品營收"],
+                 ["inventory", "庫存到貨"], ["livestream_event", "直播營運"], ["system_health", "系統健康"], ["completed", "已完成"]
                ].each do |key, label| %>
               <li class="nav-item">
                 <%= link_to notification_board_path(section: key),
@@ -32,7 +52,7 @@
             <% end %>
           </ul>
 
-          <% if @section == "system" %>
+          <% if @section == "system_health" %>
             <%= render "system_status", status: @system_status %>
           <% end %>
 
@@ -56,28 +76,116 @@
 </div>
 
 <script>
+window.__NOTIFICATION_USERS__ = <%= raw User.order(:username).pluck(:username, :id).to_h.to_json %>;
+window.__DISMISSAL_REASONS__ = <%= raw Notification::DISMISSAL_REASONS.index_with { |r| notification_dismissal_reason_label(r) }.to_json %>;
+</script>
+
+<script>
 (function() {
+  var CSRF = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  function postForm(url, fields) {
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    form.style.display = 'none';
+    var csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden'; csrfInput.name = 'authenticity_token'; csrfInput.value = CSRF;
+    form.appendChild(csrfInput);
+    Object.keys(fields).forEach(function(key) {
+      var input = document.createElement('input');
+      input.type = 'hidden'; input.name = key; input.value = fields[key];
+      form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function updateCustomerTaskCount(form) {
+    var checked = form.querySelectorAll(".js-row-check:checked").length;
+    var countEl = form.querySelector(".js-checked-count");
+    var submitBtn = form.querySelector(".js-submit-customer-task");
+    if (countEl) countEl.textContent = checked;
+    if (submitBtn) submitBtn.disabled = checked === 0;
+  }
+
+  function lookupUserId(usernameRaw) {
+    if (!usernameRaw) return null;
+    var users = window.__NOTIFICATION_USERS__ || {};
+    var match = Object.keys(users).find(function(u) { return u.toLowerCase() === usernameRaw.trim().toLowerCase(); });
+    return match ? users[match] : null;
+  }
+
   // 每次展開都即時打 server 重查一次（live recheck），不快取上一次展開的結果，
   // 避免顯示「已經回購但卡片還沒被下一輪 Rollup+Engine 更新」的過時名單。
   document.addEventListener("click", function(e) {
-    var btn = e.target.closest(".js-expand-customers");
-    if (!btn) return;
+    var btn;
 
-    var target = document.querySelector(btn.dataset.target);
-    if (!target) return;
-
-    if (target.style.display !== "none") {
-      target.style.display = "none";
+    if ((btn = e.target.closest(".js-expand-customers"))) {
+      var target = document.querySelector(btn.dataset.target);
+      if (!target) return;
+      if (target.style.display !== "none") { target.style.display = "none"; return; }
+      target.style.display = "block";
+      target.innerHTML = '<div class="text-muted small py-2">載入中...</div>';
+      fetch(btn.dataset.url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+        .then(function(res) { return res.text(); })
+        .then(function(html) { target.innerHTML = html; })
+        .catch(function() { target.innerHTML = '<div class="text-danger small py-2">載入失敗，請重試</div>'; });
       return;
     }
 
-    target.style.display = "block";
-    target.innerHTML = '<div class="text-muted small py-2">載入中...</div>';
-    fetch(btn.dataset.url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
-      .then(function(res) { return res.text(); })
-      .then(function(html) { target.innerHTML = html; })
-      .catch(function() { target.innerHTML = '<div class="text-danger small py-2">載入失敗，請重試</div>'; });
+    if ((btn = e.target.closest(".js-assign"))) {
+      var username = prompt("指派給誰？請輸入帳號（username）");
+      if (username === null) return;
+      var userId = lookupUserId(username);
+      if (!userId) { alert("找不到這個帳號：" + username); return; }
+      var dueAt = prompt("期限（選填，格式 YYYY-MM-DD HH:MM，留空表示不設期限）", "");
+      postForm(btn.dataset.url, { owner_user_id: userId, due_at: dueAt || "" });
+      return;
+    }
+
+    if ((btn = e.target.closest(".js-request-verification"))) {
+      var reason = prompt("處理說明（下一輪系統確認條件解除後才會真正結案）");
+      if (!reason) { if (reason !== null) alert("請填寫處理說明"); return; }
+      postForm(btn.dataset.url, { resolution_reason: reason });
+      return;
+    }
+
+    if ((btn = e.target.closest(".js-snooze"))) {
+      var until = prompt("延後到哪一天？格式 YYYY-MM-DD");
+      if (!until) return;
+      var snoozeReason = prompt("延後原因？");
+      if (!snoozeReason) { alert("延後必須填寫原因"); return; }
+      postForm(btn.dataset.url, { snoozed_until: until, snooze_reason: snoozeReason });
+      return;
+    }
+
+    if ((btn = e.target.closest(".js-check-all"))) {
+      var form = btn.closest(".js-customer-task-form");
+      if (!form) return;
+      form.querySelectorAll(".js-row-check").forEach(function(cb) { cb.checked = btn.checked; });
+      updateCustomerTaskCount(form);
+      return;
+    }
+
+    if ((btn = e.target.closest(".js-row-check"))) {
+      var rowForm = btn.closest(".js-customer-task-form");
+      if (rowForm) updateCustomerTaskCount(rowForm);
+      return;
+    }
+
+    if ((btn = e.target.closest(".js-dismiss"))) {
+      var reasons = window.__DISMISSAL_REASONS__ || {};
+      var isHigh = btn.dataset.highPriority === "true";
+      var allowedKeys = isHigh ? ["known_risk", "permanently_excluded"] : Object.keys(reasons);
+      var optionsText = allowedKeys.map(function(k) { return k + " = " + reasons[k]; }).join("\n");
+      var reasonKey = prompt("忽略原因" + (isHigh ? "（P0/P1只能選以下兩種）" : "") + "：\n" + optionsText + "\n\n請輸入代碼：");
+      if (!reasonKey) return;
+      if (allowedKeys.indexOf(reasonKey.trim()) === -1) { alert("原因代碼不正確：" + reasonKey); return; }
+      if (!confirm("確定要忽略這則提醒嗎？")) return;
+      postForm(btn.dataset.url, { dismissal_reason: reasonKey.trim() });
+      return;
+    }
   });
 })();
 </script>
-

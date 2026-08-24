@@ -11,45 +11,58 @@ module NotificationRules
     RUNOUT_WINDOW = (0..7).freeze
     PREVIEW_WINDOW = (8..14).freeze
     METADATA_SAMPLE_SIZE = 50
+    # 剩餘 0–3 天＝P1（快沒了，這幾天最該提醒）、4–7 天＝P2（還有一點緩衝）。
+    BANDS = [
+      { key: "p1", range: NotificationRules::Thresholds::RUNOUT_P1_DAYS, priority: "P1", label: "0–3 天" },
+      { key: "p2", range: NotificationRules::Thresholds::RUNOUT_P2_DAYS, priority: "P2", label: "4–7 天" }
+    ].freeze
 
     def self.call
       new.call
     end
 
     def call
-      JourneyProducts::PRODUCTS.keys.filter_map { |key| build_for_product(key) }
+      JourneyProducts::PRODUCTS.keys.flat_map { |key| build_for_product(key) }
     end
 
     private
 
     def build_for_product(product_key)
       crm_product = NotificationRules::ProductKeyMapping.crm_product_for(product_key)
-      return nil if crm_product && %w[out_of_stock discontinued].include?(crm_product.availability_status)
+      return [] if crm_product && %w[out_of_stock discontinued].include?(crm_product.availability_status)
 
       today = Date.current
       base = CrmCustomerProductTracking.where(product_key: product_key)
-      runout_rows = base.where(expected_return_date: (today + RUNOUT_WINDOW.begin)..(today + RUNOUT_WINDOW.end))
-      return nil if runout_rows.empty?
-
       preview_count = base.where(expected_return_date: (today + PREVIEW_WINDOW.begin)..(today + PREVIEW_WINDOW.end)).count
-      sample_customer_ids = shopline_customer_ids(runout_rows.limit(METADATA_SAMPLE_SIZE).pluck(:email))
+
+      BANDS.filter_map { |band| build_band(product_key, crm_product, base, today, band, preview_count) }
+    end
+
+    def build_band(product_key, crm_product, base, today, band, preview_count)
+      rows = base.where(expected_return_date: (today + band[:range].begin)..(today + band[:range].end))
+      return nil if rows.empty?
+
+      sample_customer_ids = shopline_customer_ids(rows.limit(METADATA_SAMPLE_SIZE).pluck(:email))
       label = JourneyProducts::PRODUCTS.fetch(product_key)[:label]
       preorder_tag = crm_product&.preorder? ? "（預購中）" : ""
 
       {
-        notification_key: "customer_runout", kind: "opportunity", severity: "opportunity",
-        title: "#{label}#{preorder_tag}：#{runout_rows.count} 位客人 7 天內即將用完",
+        notification_key: "customer_runout_#{band[:key]}", kind: "opportunity", severity: "opportunity",
+        priority: band[:priority],
+        title: "#{label}#{preorder_tag}：#{rows.count} 位客人剩餘 #{band[:label]} 即將用完",
         message: "8–14 天內還有 #{preview_count} 位將進入提醒窗",
+        impact_summary: "#{rows.count} 位客人即將沒有#{label}可用，是回購訊息時效性最高的一批。",
+        recommended_action: "發送回購提醒訊息或建立客服任務主動聯繫。",
         subject_type: "journey_product", subject_id: product_key,
         metadata: {
-          product_key: product_key, count: runout_rows.count, runout_8_14_preview_count: preview_count,
+          product_key: product_key, count: rows.count, band: band[:key], runout_8_14_preview_count: preview_count,
           availability_status: crm_product&.availability_status || "unknown",
           sample_shopline_customer_ids: sample_customer_ids,
           query: { table: "crm_customer_product_trackings", product_key: product_key,
-                   expected_return_date_from: (today + RUNOUT_WINDOW.begin).to_s,
-                   expected_return_date_to: (today + RUNOUT_WINDOW.end).to_s }
+                   expected_return_date_from: (today + band[:range].begin).to_s,
+                   expected_return_date_to: (today + band[:range].end).to_s }
         },
-        deduplication_key: "customer_runout:journey_product:#{product_key}"
+        deduplication_key: "customer_runout_#{band[:key]}:journey_product:#{product_key}"
       }
     end
 

@@ -1,5 +1,5 @@
 class LivestreamsController < ApplicationController
-  before_action :set_livestream, only: [:edit, :update, :destroy]
+  before_action :set_livestream, only: [:edit, :update, :destroy, :complete_review, :assign_owner]
 
   def index
     @years  = Livestream.pluck(:date).map(&:year).uniq.sort.reverse
@@ -60,6 +60,19 @@ class LivestreamsController < ApplicationController
     redirect_to livestreams_path, notice: "直播已刪除"
   end
 
+  # 標記賽後檢討已完成——livestream_review_due 規則下一輪就會停止回報這個
+  # dedup_key，引擎的 stale-sweep 會自動把對應的通知卡 auto_resolve!。
+  # 檢討報告本身仍是外部 Claude Artifact 連結，這裡只落地「完成了沒」的旗標。
+  def complete_review
+    @livestream.update!(review_completed_at: Time.current, review_completed_by_user_id: current_user.id)
+    redirect_back fallback_location: livestreams_path, notice: "已標記完成檢討"
+  end
+
+  def assign_owner
+    @livestream.update!(owner_user_id: params[:owner_user_id].presence)
+    redirect_back fallback_location: livestreams_path, notice: "已指派負責人"
+  end
+
   private
 
   def set_livestream
@@ -90,6 +103,6 @@ class LivestreamsController < ApplicationController
   end
 
   def livestream_params
-    params.require(:livestream).permit(:date, :title, :notes, product_keys: [])
+    params.require(:livestream).permit(:date, :title, :notes, :owner_user_id, product_keys: [])
   end
 end

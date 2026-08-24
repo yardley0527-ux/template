@@ -5,8 +5,8 @@ require "test_helper"
 class NotificationCustomerListServiceTest < ActiveSupport::TestCase
   def build_notification(category:, metadata:)
     Notification.create!(
-      notification_key: "test", kind: "opportunity", category: category, severity: "opportunity",
-      title: "t", deduplication_key: "test:#{SecureRandom.hex(4)}", status: "open",
+      notification_key: "test", kind: "opportunity", category: category, severity: "opportunity", priority: "P2",
+      title: "t", deduplication_key: "test:#{SecureRandom.hex(4)}", status: "detected",
       first_detected_at: Time.current, last_detected_at: Time.current, metadata: metadata
     )
   end

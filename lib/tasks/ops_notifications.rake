@@ -5,7 +5,7 @@
 # Never invoked via perform_later — production queue is :async (Phase 0A
 # finding), so this is rake-only by design, same pattern as crm_rollup.
 #
-#   bundle exec rake ops:notifications                      # all 8 rules
+#   bundle exec rake ops:notifications                      # all rules (see NotificationEngine::RULES)
 #   RULE=vip_silent bundle exec rake ops:notifications       # one rule only
 #   DRY_RUN=1 bundle exec rake ops:notifications             # read-only preview, no writes at all
 #
