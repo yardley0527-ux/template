@@ -11,8 +11,8 @@ module NotificationRules
   class CustomerOverdue
     OVERDUE_WINDOW = (1..60).freeze # 沿用給 NotificationCustomerListService 以外的呼叫端參考
     BANDS = NotificationRules::Thresholds::OVERDUE_BANDS
-    HIGH_VALUE_MEMBERSHIP = %w[黑卡 金卡].freeze
-    HIGH_VALUE_AMOUNT = 30_000
+    HIGH_VALUE_MEMBERSHIP = NotificationRules::Thresholds::HIGH_VALUE_MEMBERSHIP
+    HIGH_VALUE_AMOUNT = NotificationRules::Thresholds::HIGH_VALUE_AMOUNT
     EXCLUDED_PRODUCTS = %w[glutathione].freeze
     ESTIMATED_CYCLE_PRODUCTS = %w[qingxian simi].freeze
     METADATA_SAMPLE_SIZE = 50
@@ -37,28 +37,26 @@ module NotificationRules
 
     def build_band(product_key, crm_product, today, band)
       rows = high_value_split(product_key, today, band[:range])
-      total = rows[:high_value_count] + rows[:general_count]
+      total = rows[:high_value_count]
       return nil if total.zero?
 
       label = JourneyProducts::PRODUCTS.fetch(product_key)[:label]
       estimate_tag = ESTIMATED_CYCLE_PRODUCTS.include?(product_key) ? "（週期為估計值）" : ""
       band_label = band[:range].end.infinite? ? "#{band[:range].begin} 天以上" : "#{band[:range].begin}–#{band[:range].end} 天"
-      # 逾期天數越久優先權越低（越冷的名單），但這個區間裡只要有高價值客就整段升一級——
-      # 高價值客不能因為區間本身偏冷就被埋掉。
+      # 逾期天數越久優先權越低（越冷的名單）；名單本身已經只剩高價值客，一律升一級。
       base_priority = case band[:key]
                        when "1_14", "15_30", "31_60" then "P2"
                        else "P3"
                        end
-      priority = rows[:high_value_count].positive? ? bump_priority(base_priority) : base_priority
-      severity = rows[:high_value_count].positive? ? "warning" : "opportunity"
+      priority = bump_priority(base_priority)
 
       {
-        notification_key: "customer_overdue_#{band[:key]}", kind: "opportunity", severity: severity,
+        notification_key: "customer_overdue_#{band[:key]}", kind: "opportunity", severity: "warning",
         priority: priority,
-        title: "#{label}#{estimate_tag}逾期#{band_label}：#{total} 位客人未回購（含高價值 #{rows[:high_value_count]} 位）",
-        message: "逾期#{band_label}，高價值客（黑/金卡或末單≥NT$#{HIGH_VALUE_AMOUNT}）優先",
-        impact_summary: "#{total} 位客人逾期未回購（高價值 #{rows[:high_value_count]} 位），逾期越久轉換率通常越低。",
-        recommended_action: "依會員等級與歷史消費排序，優先聯繫高價值客。",
+        title: "#{label}#{estimate_tag}逾期#{band_label}：#{total} 位高價值客人未回購",
+        message: "逾期#{band_label}，僅列高價值客（黑/金卡或末單≥NT$#{HIGH_VALUE_AMOUNT}）待維護名單",
+        impact_summary: "#{total} 位高價值客人逾期未回購（另有 #{rows[:general_count]} 位一般客人未列入待處理名單），逾期越久轉換率通常越低。",
+        recommended_action: "依歷史消費排序，優先聯繫。",
         subject_type: "journey_product", subject_id: product_key,
         metadata: {
           product_key: product_key, total_count: total, high_value_count: rows[:high_value_count],
@@ -68,7 +66,8 @@ module NotificationRules
           sample_shopline_customer_ids: rows[:sample_customer_ids],
           query: { table: "crm_customer_product_trackings", product_key: product_key,
                    overdue_days_from: band[:range].begin,
-                   overdue_days_to: band[:range].end.infinite? ? 3650 : band[:range].end }
+                   overdue_days_to: band[:range].end.infinite? ? 3650 : band[:range].end,
+                   high_value_only: true }
         },
         deduplication_key: "customer_overdue_#{band[:key]}:journey_product:#{product_key}"
       }
@@ -78,7 +77,7 @@ module NotificationRules
       { "P3" => "P2", "P2" => "P1", "P1" => "P0" }.fetch(priority, priority)
     end
 
-    # 一次 SQL 算出高價值/一般兩桶計數與抽樣 shopline_customer_id，
+    # 一次 SQL 算出高價值/一般兩桶計數與抽樣 shopline_customer_id（抽樣只留高價值），
     # 避免對每位客人各自查一次。
     def high_value_split(product_key, today, range)
       from_date = today - (range.end.infinite? ? 3650 : range.end)
@@ -106,7 +105,7 @@ module NotificationRules
       {
         high_value_count: high_value.size,
         general_count: general.size,
-        sample_customer_ids: (high_value + general).first(METADATA_SAMPLE_SIZE).filter_map { |r| r["customer_id"] }
+        sample_customer_ids: high_value.first(METADATA_SAMPLE_SIZE).filter_map { |r| r["customer_id"] }
       }
     end
   end

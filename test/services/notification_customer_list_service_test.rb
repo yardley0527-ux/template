@@ -96,6 +96,45 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
     assert_equal 1, NotificationCustomerListService.call(n).size
   end
 
+  test "customer_overdue: high_value_only excludes a general customer, keeps a gold-card one" do
+    CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
+    customer(email: "gold@example.com", membership_level: "金卡")
+    customer(email: "regular@example.com", membership_level: "一般")
+    [ "gold@example.com", "regular@example.com" ].each do |email|
+      CrmCustomerProductTracking.create!(
+        email: email, product_key: "metabolism", last_order_date: 40.days.ago.to_date,
+        last_order_bottles: 1, expected_return_date: Date.current - 10, suggested_reminder_date: Date.current - 17,
+        order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      )
+    end
+    n = build_notification(category: "customer_overdue", metadata: {
+      "query" => { "product_key" => "metabolism", "overdue_days_from" => 1, "overdue_days_to" => 60,
+                   "high_value_only" => true }
+    })
+
+    rows = NotificationCustomerListService.call(n)
+    assert_equal [ "gold@example.com" ], rows.map { |r| r[:email] }
+  end
+
+  test "customer_overdue: high_value_only includes a general-tier customer whose last order cleared the amount threshold" do
+    CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
+    customer(email: "bigspender@example.com", membership_level: "一般")
+    last_order_date = 40.days.ago.to_date
+    ShoplineOrder.create!(product_name: "代謝錠", email: "bigspender@example.com",
+                           order_date: last_order_date.in_time_zone, checkout_amount: 35_000)
+    CrmCustomerProductTracking.create!(
+      email: "bigspender@example.com", product_key: "metabolism", last_order_date: last_order_date,
+      last_order_bottles: 1, expected_return_date: Date.current - 10, suggested_reminder_date: Date.current - 17,
+      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+    )
+    n = build_notification(category: "customer_overdue", metadata: {
+      "query" => { "product_key" => "metabolism", "overdue_days_from" => 1, "overdue_days_to" => 60,
+                   "high_value_only" => true }
+    })
+
+    assert_equal 1, NotificationCustomerListService.call(n).size
+  end
+
   # ── high_spender_no_second ──────────────────────────────────────────
 
   test "high_spender_no_second: a live-recheck excludes a customer whose genuine second purchase just landed" do

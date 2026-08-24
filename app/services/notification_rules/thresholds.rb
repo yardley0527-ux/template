@@ -17,6 +17,12 @@ module NotificationRules
       { key: "90_plus", range: (91..Float::INFINITY) }
     ].freeze
 
+    # ── 高價值客判定（黑/金卡 或 末單金額門檻）──
+    # 8/24 使用者要求：customer_overdue 的「待維護名單」只留高價值客，
+    # 一般客不再排進待處理名單（但仍算在 general_count 供觀察）。
+    HIGH_VALUE_MEMBERSHIP = %w[黑卡 金卡].freeze
+    HIGH_VALUE_AMOUNT = 30_000
+
     # ── livestream_schedule_gap（直播週期缺口） ──
     LIVESTREAM_CYCLE_DAYS = 14
     LIVESTREAM_GAP_P2_AFTER_DAYS = 14

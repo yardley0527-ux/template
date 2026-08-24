@@ -4,7 +4,7 @@ require "test_helper"
 
 module NotificationRules
   class CustomerOverdueTest < ActiveSupport::TestCase
-    def customer(email:, membership_level: "一般")
+    def customer(email:, membership_level: "金卡")
       ShoplineCustomer.create!(email: email, membership_level: membership_level)
     end
 
@@ -17,7 +17,7 @@ module NotificationRules
       )
     end
 
-    test "aggregates overdue customers for a product into one card, split high-value vs general" do
+    test "aggregates only high-value overdue customers into the card; general customers are excluded" do
       customer(email: "gold@example.com", membership_level: "金卡")
       customer(email: "regular@example.com", membership_level: "一般")
       track(product_key: "metabolism", email: "gold@example.com", overdue_days: 10)
@@ -26,18 +26,19 @@ module NotificationRules
       result = CustomerOverdue.call.find { |r| r[:subject_id] == "metabolism" }
 
       assert result.present?
-      assert_equal 2, result[:metadata][:total_count]
+      assert_equal 1, result[:metadata][:total_count], "only the high-value customer counts toward the maintained list"
       assert_equal 1, result[:metadata][:high_value_count]
-      assert_equal 1, result[:metadata][:general_count]
-      assert_equal "warning", result[:severity], "presence of a high-value customer bumps severity to warning"
+      assert_equal 1, result[:metadata][:general_count], "general customer still tracked in metadata, just not surfaced"
+      assert_equal "warning", result[:severity]
+      assert_includes result[:title], "高價值"
+      assert_not_includes result[:title], "regular@example.com"
     end
 
-    test "no high-value customer keeps severity at opportunity, not critical" do
+    test "no high-value customer produces no card at all" do
       customer(email: "regular@example.com", membership_level: "一般")
       track(product_key: "metabolism", email: "regular@example.com", overdue_days: 10)
 
-      result = CustomerOverdue.call.find { |r| r[:subject_id] == "metabolism" }
-      assert_equal "opportunity", result[:severity]
+      assert_empty CustomerOverdue.call.select { |r| r[:subject_id] == "metabolism" }
     end
 
     test "glutathione is excluded entirely regardless of overdue rows" do
