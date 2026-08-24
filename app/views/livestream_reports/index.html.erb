@@ -12,7 +12,7 @@
 </div>
 
 <p class="text-muted small mb-4">
-  每個產品直播前後的檢討報告（Claude Artifact）連結，依產品分區、依日期新到舊排列。
+  每個產品直播前後的檢討報告（Claude Artifact）連結，依產品分區、依直播前後與日期先後排列。
   這份清單目前是手動維護，新增場次時要請 Claude 加進 <code>LivestreamReportsController::REPORTS</code>。
 </p>
 
@@ -44,7 +44,7 @@
                 </tr>
               </thead>
               <tbody>
-                <% reports.sort_by { |r| r[:date] }.reverse_each do |report| %>
+                <% reports.sort_by { |r| [r[:date], r[:type] == :pre ? 0 : 1] }.each do |report| %>
                   <tr>
                     <td class="text-nowrap"><%= report[:date].strftime("%Y/%m/%d") %></td>
                     <td>
