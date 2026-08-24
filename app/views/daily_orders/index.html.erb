@@ -12,6 +12,8 @@ end %>
     <h4 class="fw-bold mb-0">每日訂單明細</h4>
     <p class="text-muted small mb-0">依新客／舊客卡別分類，協助出貨備貨</p>
   </div>
+  <% # social 角色只能勾「社群部維護訊息」，其他勾選框在畫面上就先鎖起來，後端也擋（見 daily_orders_controller / order_gift_records_controller）
+     community_only = current_user.role&.key == "social" %>
   <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
     <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
       <%= hidden_field_tag :tab, @tab %>
@@ -72,7 +74,6 @@ end %>
     <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @care_applicable_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "健康資訊卡", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆") %>
-    <%= daily_orders_gift_tile(icon: "fa-hand-holding-heart", color: "#d63384", label: "關心訊息", flag: "care_message_sent", done: @care_message_done, total: @care_applicable_total, unit: "筆") %>
   </div>
 </div>
 
@@ -133,14 +134,12 @@ end %>
               <th style="width:24%;">購買商品</th>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
               <th class="text-center" style="width:7%;">已傳送吃法訊息</th>
-              <th class="text-center" style="width:6%;">關心訊息</th>
               <th class="text-center" style="width:9%;">社群部維護訊息</th>
               <th class="text-center" style="width:6%;">健康資訊卡</th>
             <% else %>
               <th class="text-center" style="width:9%;">已加 IG tag</th>
               <th style="width:18%;">是否購買過同產品</th>
               <th class="text-center" style="width:11%;">傳首購產品訊息</th>
-              <th class="text-center" style="width:6%;">關心訊息</th>
               <th class="text-center" style="width:9%;">社群部維護訊息</th>
               <th class="text-center" style="width:6%;">健康資訊卡</th>
             <% end %>
@@ -192,6 +191,7 @@ end %>
                       data-customer-id="<%= row.shopline_customer_id %>"
                       data-field="line_bound"
                       <%= row.line_bound ? 'checked' : '' %>
+                      <%= 'disabled' if community_only %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#28a745;">
                   <% else %>
                     <span class="text-muted">—</span>
@@ -204,26 +204,13 @@ end %>
                       data-customer-id="<%= row.shopline_customer_id %>"
                       data-field="recipe_message_sent"
                       <%= row.recipe_message_sent ? 'checked' : '' %>
+                      <%= 'disabled' if community_only %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#fd7e14;">
                   <% else %>
                     <span class="text-muted">—</span>
                   <% end %>
                 </td>
                 <% gift = @gift_records[row.order_number] %>
-                <td class="text-center">
-                  <% if row.has_repurchased %>
-                    <span class="text-muted">—</span>
-                  <% else %>
-                    <input type="checkbox"
-                      class="order-flag-checkbox"
-                      data-flag="care_message_sent"
-                      data-scope="new"
-                      data-order="<%= row.order_number %>"
-                      data-url="<%= upsert_order_gift_record_path %>"
-                      <%= gift&.care_message_sent? ? 'checked' : '' %>
-                      style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
-                  <% end %>
-                </td>
                 <td class="text-center">
                   <% if row.has_repurchased %>
                     <span class="text-muted">—</span>
@@ -249,6 +236,7 @@ end %>
                       data-order="<%= row.order_number %>"
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.health_card_sent? ? 'checked' : '' %>
+                      <%= 'disabled' if community_only %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#e83e8c;">
                   <% end %>
                 </td>
@@ -263,6 +251,7 @@ end %>
                       data-order="<%= row.order_number %>"
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.ig_tagged? ? 'checked' : '' %>
+                      <%= 'disabled' if community_only %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#6f42c1;">
                   <% else %>
                     <span class="text-muted">—</span>
@@ -289,21 +278,8 @@ end %>
                       data-order="<%= row.order_number %>"
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.first_purchase_message_sent? ? 'checked' : '' %>
+                      <%= 'disabled' if community_only %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#0d6efd;">
-                  <% else %>
-                    <span class="text-muted">—</span>
-                  <% end %>
-                </td>
-                <td class="text-center">
-                  <% if has_first_purchase && !row.has_repurchased %>
-                    <input type="checkbox"
-                      class="order-flag-checkbox"
-                      data-flag="care_message_sent"
-                      data-scope="old"
-                      data-order="<%= row.order_number %>"
-                      data-url="<%= upsert_order_gift_record_path %>"
-                      <%= gift&.care_message_sent? ? 'checked' : '' %>
-                      style="width:18px; height:18px; cursor:pointer; accent-color:#d63384;">
                   <% else %>
                     <span class="text-muted">—</span>
                   <% end %>
@@ -331,6 +307,7 @@ end %>
                       data-order="<%= row.order_number %>"
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.health_card_sent? ? 'checked' : '' %>
+                      <%= 'disabled' if community_only %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#e83e8c;">
                   <% else %>
                     <span class="text-muted">—</span>
@@ -341,7 +318,7 @@ end %>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="10" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="9" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>

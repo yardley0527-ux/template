@@ -11,6 +11,10 @@ class OrderGiftRecordsController < ApplicationController
   private
 
   def gift_params
-    params.require(:order_gift_record).permit(:gift_sent, :gift_note, :custom_message_sent, :follow_up_note, :first_purchase_message_sent, :ig_tagged, :community_maintenance_message_sent, :health_card_sent, :care_message_sent)
+    permitted = params.require(:order_gift_record).permit(:gift_sent, :gift_note, :custom_message_sent, :follow_up_note, :first_purchase_message_sent, :ig_tagged, :community_maintenance_message_sent, :health_card_sent, :care_message_sent)
+    # social 角色在每日訂單頁只能勾「社群部維護訊息」，其他欄位即使被送進來也要濾掉
+    return permitted.slice(:community_maintenance_message_sent) if current_user.role&.key == "social"
+
+    permitted
   end
 end

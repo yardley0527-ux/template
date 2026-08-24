@@ -70,10 +70,12 @@ class DailyOrdersController < ApplicationController
     @care_applicable_total  = care_applicable.size
     @community_message_done = care_applicable.count { |r| @gift_records[r.order_number]&.community_maintenance_message_sent? }
     @health_card_done       = care_applicable.count { |r| @gift_records[r.order_number]&.health_card_sent? }
-    @care_message_done      = care_applicable.count { |r| @gift_records[r.order_number]&.care_message_sent? }
   end
 
   def toggle_customer_flag
+    # social 角色在每日訂單頁只能勾「社群部維護訊息」，這裡的欄位都不是，直接擋掉
+    return head :forbidden if current_user.role&.key == "social"
+
     field = params[:field].to_s
     return head :bad_request unless (TOGGLEABLE_FIELDS + PURCHASE_SUMMARY_FIELDS).include?(field)
 
