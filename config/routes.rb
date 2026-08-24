@@ -181,6 +181,8 @@ Rails.application.routes.draw do
   get '/spending_rankings', to: 'spending_rankings#index', as: :spending_rankings
   get '/metabolism_qingxian_customers',        to: 'metabolism_qingxian_customers#index',  as: :metabolism_qingxian_customers
   get '/metabolism_qingxian_customers/export', to: 'metabolism_qingxian_customers#export', as: :export_metabolism_qingxian_customers
+  get '/canceled_order_candidates',        to: 'canceled_order_candidates#index', as: :canceled_order_candidates
+  post '/canceled_order_candidates/purge', to: 'canceled_order_candidates#purge',  as: :purge_canceled_order_candidates
   get '/tag_extractions',            to: 'tag_extractions#index',  as: :tag_extractions
   post '/tag_extractions',           to: 'tag_extractions#create'
   get '/tag_extractions/:id/export', to: 'tag_extractions#export', as: :export_tag_extraction

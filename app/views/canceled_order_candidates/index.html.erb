@@ -1,0 +1,82 @@
+<%# app/views/canceled_order_candidates/index.html.erb %>
+<% content_for :page_title, "已取消訂單候選名單" %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <h4 class="fw-bold mb-1">已取消訂單候選名單</h4>
+    <p class="text-muted mb-0" style="font-size:0.85rem;">
+      Shopline 匯出檔不會標記「已取消」——一張已付款的訂單被取消後，只是從下一次匯出裡消失。
+      這份名單是「該年/月在資料庫裡還是已付款、但沒被最新一次匯入碰到」的訂單，僅供判斷參考，
+      有可能是真的取消，也有可能是那次匯入的檔案本身不完整，請人工確認後再刪除。
+    </p>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <%= form_with url: canceled_order_candidates_path, method: :get, local: true, class: "form-inline" do %>
+      <label class="mr-2 mb-2">年份
+        <%= select_tag :year, options_for_select(@year_months.map(&:first).uniq.map { |y| ["#{y} 年", y] }, @year),
+              class: "form-control form-control-sm ml-1" %>
+      </label>
+      <label class="mr-2 mb-2">月份
+        <%= select_tag :month, options_for_select((1..12).map { |m| ["#{m} 月", m] }, @month),
+              class: "form-control form-control-sm ml-1" %>
+      </label>
+      <button type="submit" class="btn btn-sm btn-outline-primary mb-2 mr-1">查詢</button>
+    <% end %>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0" style="font-size:0.88rem;">
+      <thead style="background-color:#4a4a4a; color:white;">
+        <tr>
+          <th class="ps-3">訂單號碼</th>
+          <th>顧客</th>
+          <th>商品名稱</th>
+          <th class="text-end">結帳金額</th>
+          <th>訂單日期</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @candidates.each do |o| %>
+          <tr>
+            <td class="ps-3"><%= o.order_number %></td>
+            <td><%= o.customer_name %></td>
+            <td><%= o.product_name %></td>
+            <td class="text-end"><%= number_with_delimiter(o.checkout_amount) %></td>
+            <td class="text-nowrap"><%= o.order_date&.to_date&.strftime("%Y/%-m/%-d") %></td>
+          </tr>
+        <% end %>
+        <% if @candidates.empty? %>
+          <tr>
+            <td colspan="5" class="text-center py-5 text-muted">
+              <i class="fal fa-check-circle fa-2x mb-2 d-block opacity-25"></i>
+              <% if @year && @month %>
+                <%= @year %> 年 <%= @month %> 月沒有候選名單
+              <% else %>
+                目前沒有已付款訂單資料
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<% if @candidates.any? && current_user.admin? %>
+  <div class="mt-3">
+    <%= form_with url: purge_canceled_order_candidates_path, method: :post, local: true,
+          html: { onsubmit: "return confirm('確定要刪除這 #{@candidates.size} 筆訂單嗎？這個動作無法復原。');" } do %>
+      <%= hidden_field_tag :year, @year %>
+      <%= hidden_field_tag :month, @month %>
+      <button type="submit" class="btn btn-danger btn-sm">
+        <i class="fal fa-trash-alt me-1"></i>
+        刪除這 <%= @candidates.size %> 筆訂單
+      </button>
+    <% end %>
+  </div>
+<% end %>

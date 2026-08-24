@@ -133,8 +133,9 @@ class SidebarEntry
         {
           group_title: "工具 & 系統",
           children: [
-            { href: monitoring_path,        title: "功能使用監控", icon: "fa-chart-line" },
-            { href: users_path,             title: "使用者管理",   icon: "fa-users-cog" },
+            { href: monitoring_path,                     title: "功能使用監控",     icon: "fa-chart-line" },
+            { href: canceled_order_candidates_path,       title: "已取消訂單候選名單", icon: "fa-ban" },
+            { href: users_path,                           title: "使用者管理",       icon: "fa-users-cog" },
           ]
         },
       ]
