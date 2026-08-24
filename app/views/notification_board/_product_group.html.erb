@@ -1,0 +1,27 @@
+<%# locals: group %>
+<div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #0d6efd;">
+  <div class="card-body">
+    <span class="badge <%= notification_priority_badge_class(group[:min_priority]) %>"><%= notification_priority_label(group[:min_priority]) %></span>
+    <h5 class="fw-bold mt-2 mb-1">
+      <%= group[:icon] %> <%= group[:label] %>
+      <span class="badge badge-pill badge-dark ms-1"><%= group[:total_count] %> 位待聯繫</span>
+    </h5>
+    <ul class="small text-muted mb-2 ps-3">
+      <% group[:notifications].each do |n| %>
+        <li><%= n.title %></li>
+      <% end %>
+    </ul>
+
+    <button type="button" class="btn btn-sm btn-primary js-expand-customers"
+            data-url="<%= notification_board_product_customers_path(product_key: group[:product_key]) %>"
+            data-target="#product-customers-<%= group[:product_key] %>">
+      查看並建立聯絡名單
+    </button>
+    <div id="product-customers-<%= group[:product_key] %>" class="mt-2" style="display:none;"></div>
+
+    <div class="mt-3 pt-3 border-top">
+      <div class="text-muted small mb-2">以下卡片可個別處理（分派／已處理／延後／忽略）：</div>
+      <%= render partial: "card", collection: group[:notifications], as: :notification, locals: { section: "today" } %>
+    </div>
+  </div>
+</div>

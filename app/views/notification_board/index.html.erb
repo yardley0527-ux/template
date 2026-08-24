@@ -58,6 +58,22 @@
 
           <% if @section == "completed" %>
             <%= render "completed_list", notifications: @notifications, page: @page, total_pages: @total_pages, total: @total %>
+          <% elsif @section == "today" %>
+            <% if @product_groups.blank? && @other_notifications.blank? %>
+              <div class="text-center text-muted py-5">
+                <i class="fal fa-check-circle fa-2x mb-2 d-block"></i>
+                <%= notification_empty_state_message(@section) %>
+              </div>
+            <% else %>
+              <% if @product_groups.present? %>
+                <div class="text-muted small fw-bold mb-2">依產品分組 — 先看有哪些產品要處理，再直接聯絡客人</div>
+                <%= render partial: "product_group", collection: @product_groups, as: :group %>
+              <% end %>
+              <% if @other_notifications.present? %>
+                <div class="text-muted small fw-bold mb-2 mt-4">其他待處理（不屬於單一產品）</div>
+                <%= render partial: "card", collection: @other_notifications, as: :notification, locals: { section: @section } %>
+              <% end %>
+            <% end %>
           <% else %>
             <% if @notifications.blank? %>
               <div class="text-center text-muted py-5">

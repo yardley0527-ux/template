@@ -18,8 +18,12 @@ class NotificationBoardController < ApplicationController
     "system_health"        => %w[system_health]
   }.freeze
   COMPLETED_PER_PAGE = 20
+  # 這三類卡片的 metadata 有單一 product_key，可以合併成「依產品列出待聯絡客人」——
+  # vip_silent/high_spender_no_second 沒有單一產品可對應（跨產品沉睡／首購批次），
+  # 留在「其他待處理」用原本的卡片形式顯示。
+  PRODUCT_GROUPABLE_CATEGORIES = %w[customer_runout customer_overdue promotion_opportunity].freeze
 
-  before_action :wake_expired_snoozes!, only: [:index]
+  before_action :wake_expired_snoozes!, only: %i[index product_customers]
 
   def index
     @section = SECTIONS.include?(params[:section]) ? params[:section] : "today"
@@ -29,7 +33,7 @@ class NotificationBoardController < ApplicationController
 
     case @section
     when "today"
-      @notifications = todays_todo_list
+      @product_groups, @other_notifications = grouped_today_list
     when "completed"
       @page = [params[:page].to_i, 1].max
       scope = Notification.where(status: %w[resolved dismissed]).order(updated_at: :desc)
@@ -107,25 +111,53 @@ class NotificationBoardController < ApplicationController
     render layout: false
   end
 
+  # 「今日待處理」依產品分組後，某個產品底下（可能好幾張卡）合併起來的聯絡名單。
+  # 重新從 today scope 現查一次符合這個 product_key 的卡，不是憑前端傳來的
+  # notification id 清單湊，避免過期資料。
+  def product_customers
+    @product_key = params[:product_key].to_s
+    @label = JourneyProducts::PRODUCTS.dig(@product_key, :label) || @product_key
+    @notifications = todays_product_notifications(@product_key)
+    @rows = NotificationProductCustomersService.call(@notifications)
+    render layout: false
+  end
+
   # 客戶商機卡片的「建立客服任務」——把勾選的客戶寫進既有的
   # CrmCustomerProductCycle 回購追蹤系統（跟回購追蹤 Dashboard 是同一套資料），
   # 不是另開一個互不相通的任務表。同一客戶同一產品已有未完成任務就跳過，
   # 回報建立/跳過各幾筆。
   def create_customer_task
+    n = notification
     result = NotificationCustomerTaskService.call(
-      notification: notification, emails: Array(params[:emails]), actor: current_user,
+      product_key: n.metadata.dig("query", "product_key"), emails: Array(params[:emails]), actor: current_user,
+      note: "由營運提醒中心「#{n.title}」建立",
       assigned_to_user_id: params[:assignee_id].presence, contact_date: parse_date(params[:contact_date])
     )
-    redirect_to notification_board_path(section: params[:section]),
-      notice: "已建立 #{result[:created]} 筆客服任務" \
-              "#{result[:skipped].positive? ? "，#{result[:skipped]} 位已有未完成任務跳過" : ""}" \
-              "#{result[:no_cycle].positive? ? "，#{result[:no_cycle]} 位找不到對應追蹤資料" : ""}"
+    redirect_to notification_board_path(section: params[:section]), notice: customer_task_notice(result)
+  end
+
+  # 「今日待處理」依產品合併後的名單版本——不綁單一通知卡，用 product_key
+  # 直接建任務（同一產品底下可能好幾張卡一起勾選聯絡名單）。
+  def create_product_customer_task
+    product_key = params[:product_key]
+    result = NotificationCustomerTaskService.call(
+      product_key: product_key, emails: Array(params[:emails]), actor: current_user,
+      note: "由營運提醒中心「今日待處理・#{JourneyProducts::PRODUCTS.dig(product_key, :label) || product_key}」建立",
+      assigned_to_user_id: params[:assignee_id].presence, contact_date: parse_date(params[:contact_date])
+    )
+    redirect_to notification_board_path(section: "today"), notice: customer_task_notice(result)
   end
 
   private
 
   def notification
     @notification ||= Notification.find(params[:id])
+  end
+
+  def customer_task_notice(result)
+    "已建立 #{result[:created]} 筆客服任務" \
+      "#{result[:skipped].positive? ? "，#{result[:skipped]} 位已有未完成任務跳過" : ""}" \
+      "#{result[:no_cycle].positive? ? "，#{result[:no_cycle]} 位找不到對應追蹤資料" : ""}"
   end
 
   def wake_expired_snoozes!
@@ -155,6 +187,35 @@ class NotificationBoardController < ApplicationController
     todays_todo_scope.includes(:owner).to_a.sort_by do |n|
       [Notification::PRIORITY_RANK.fetch(n.priority, 9), n.overdue? ? 0 : 1, -n.last_detected_at.to_i]
     end.first(TODAY_LIMIT)
+  end
+
+  # 「先看現在有哪些產品，再依產品列出要聯絡的客人」——把今日待處理清單拆成
+  # 「可歸屬單一產品」跟「不能歸屬單一產品」兩堆，前者依 product_key 合併成
+  # 一個產品一組（可能好幾張卡疊在一起），後者維持原本一張卡一張卡顯示。
+  def grouped_today_list
+    list = todays_todo_list
+    groupable, other = list.partition { |n| PRODUCT_GROUPABLE_CATEGORIES.include?(n.category) && n.metadata["product_key"].present? }
+
+    groups = groupable.group_by { |n| n.metadata["product_key"] }.map do |key, notifs|
+      {
+        product_key: key,
+        label: JourneyProducts::PRODUCTS.dig(key, :label) || key,
+        icon: JourneyProducts::PRODUCTS.dig(key, :icon),
+        notifications: notifs,
+        total_count: notifs.sum { |n| (n.metadata["count"] || n.metadata["total_count"] || 0).to_i },
+        min_priority: notifs.min_by { |n| Notification::PRIORITY_RANK.fetch(n.priority, 9) }.priority
+      }
+    end.sort_by { |g| Notification::PRIORITY_RANK.fetch(g[:min_priority], 9) }
+
+    [groups, other]
+  end
+
+  # product_customers action 用：重新現查（不吃前端傳來的清單），確保跟畫面上
+  # 當下顯示的「今日待處理」內容一致。
+  def todays_product_notifications(product_key)
+    todays_todo_scope.where(category: PRODUCT_GROUPABLE_CATEGORIES).select do |n|
+      n.metadata["product_key"] == product_key
+    end
   end
 
   def board_summary

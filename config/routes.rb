@@ -216,6 +216,7 @@ Rails.application.routes.draw do
   # ── 營運提醒中心 (Notification Board MVP) ────────────────────────────
   get  '/notification_board',              to: 'notification_board#index',      as: :notification_board
   get  '/notification_board/:id/customers', to: 'notification_board#customers', as: :notification_board_customers
+  get  '/notification_board/product_customers', to: 'notification_board#product_customers', as: :notification_board_product_customers
   post '/notification_board/:id/mark_read', to: 'notification_board#mark_read', as: :notification_board_mark_read
   post '/notification_board/:id/assign',              to: 'notification_board#assign',              as: :notification_board_assign
   post '/notification_board/:id/start',                to: 'notification_board#start',                as: :notification_board_start
@@ -223,6 +224,7 @@ Rails.application.routes.draw do
   post '/notification_board/:id/snooze',   to: 'notification_board#snooze',   as: :notification_board_snooze
   post '/notification_board/:id/dismiss',   to: 'notification_board#dismiss',   as: :notification_board_dismiss
   post '/notification_board/:id/create_customer_task', to: 'notification_board#create_customer_task', as: :notification_board_create_customer_task
+  post '/notification_board/create_product_customer_task', to: 'notification_board#create_product_customer_task', as: :notification_board_create_product_customer_task
 
   # ── Product Registry Review UI (Epic B2-0C) ─────────────────────────
   get   '/product_registry',                    to: 'product_registry#index',          as: :product_registry

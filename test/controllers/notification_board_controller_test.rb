@@ -222,6 +222,66 @@ class NotificationBoardControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "目前沒有符合條件的客人"
   end
 
+  test "today groups product-tied categories (customer_overdue/customer_runout/promotion_opportunity) by product, and leaves vip_silent as a standalone card" do
+    build_notification(category: "customer_overdue", status: "pending_assignment", priority: "P1",
+                       title: "代謝錠逾期未回購", metadata: { "product_key" => "metabolism", "count" => 5 })
+    build_notification(category: "vip_silent", status: "pending_assignment", priority: "P1", title: "黑金卡沉睡")
+
+    get notification_board_path(section: "today")
+    assert_response :success
+    assert_includes response.body, "代謝錠"
+    assert_includes response.body, "查看並建立聯絡名單"
+    assert_includes response.body, "黑金卡沉睡"
+    assert_includes response.body, "其他待處理"
+  end
+
+  test "two notifications for the same product are merged into a single product group" do
+    build_notification(category: "customer_overdue", status: "pending_assignment", priority: "P1",
+                       title: "代謝錠逾期未回購(1-14天)", metadata: { "product_key" => "metabolism", "count" => 5 })
+    build_notification(category: "promotion_opportunity", status: "pending_assignment", priority: "P1",
+                       title: "代謝錠官網優惠機會", metadata: { "product_key" => "metabolism", "count" => 3 })
+
+    get notification_board_path(section: "today")
+    assert_response :success
+    # 8 位待聯繫 = 5 + 3（同一組的合計，不是兩張獨立卡片各自的數字）
+    assert_includes response.body, "8 位待聯繫"
+  end
+
+  test "product_customers renders the merged, live-rechecked list for a product" do
+    CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
+    ShoplineCustomer.create!(email: "a@example.com", full_name: "阿明")
+    CrmCustomerProductTracking.create!(
+      email: "a@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
+      last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
+      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+    )
+    build_notification(category: "customer_runout", status: "pending_assignment", priority: "P1",
+                       title: "代謝錠即將用完", metadata: {
+                         "product_key" => "metabolism",
+                         "query" => { "product_key" => "metabolism", "expected_return_date_from" => Date.current.to_s,
+                                      "expected_return_date_to" => (Date.current + 7).to_s }
+                       })
+
+    get notification_board_product_customers_path(product_key: "metabolism")
+    assert_response :success
+    assert_includes response.body, "阿明"
+  end
+
+  test "create_product_customer_task creates a follow-up without being tied to a single notification id" do
+    CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
+    cycle = CrmCustomerProductCycle.create!(
+      identity_key: "a@example.com", email: "a@example.com", product_key: "metabolism",
+      cycle_started_at: 40.days.ago.to_date, bottle_count: 1, estimated_usage_days: 30,
+      estimated_finish_date: 10.days.ago.to_date, suggested_contact_date: 5.days.ago.to_date,
+      match_status: "not_yet_repurchased", refreshed_at: Time.current
+    )
+
+    post notification_board_create_product_customer_task_path,
+      params: { product_key: "metabolism", emails: ["a@example.com"], contact_date: Date.current.to_s }
+
+    assert_equal "rescheduled", cycle.reload.follow_up_status
+  end
+
   test "create_customer_task creates a follow-up on the matching cycle and skips customers with an existing active task" do
     CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
     cycle_a = CrmCustomerProductCycle.create!(
