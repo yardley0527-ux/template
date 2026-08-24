@@ -10,7 +10,7 @@ module DailyOrdersHelper
     AMOUNT_TIER_COLORS.find { |threshold, _| amount.to_f >= threshold }&.last
   end
 
-  # 舊客總攬用的完成度小卡（傳首購產品訊息／社群部維護訊息／健康資訊卡）
+  # 舊客總攬用的完成度小卡（傳首購產品訊息／社群部維護訊息／CRM維護訊息）
   def daily_orders_gift_tile(icon:, color:, label:, flag:, done:, total:, unit:)
     remaining = total - done
     badge_class = remaining > 0 ? "text-danger" : "text-success"

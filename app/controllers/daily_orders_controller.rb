@@ -61,7 +61,7 @@ class DailyOrdersController < ApplicationController
     @gift_records = OrderGiftRecord.where(order_number: all_order_nums).index_by(&:order_number)
 
     # 舊客總攬：各追蹤事項各自完成 / 應完成筆數
-    # 傳首購產品訊息只要訂單裡有首購商品就要處理；社群部維護訊息、健康資訊卡、關心訊息
+    # 傳首購產品訊息只要訂單裡有首購商品就要處理；社群部維護訊息、CRM維護訊息、關心訊息
     # 再加一個條件：這個人之後沒有再回購過（回購過代表已經不是需要「新客關懷」的階段了）
     first_purchase_applicable = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
     care_applicable = first_purchase_applicable.reject(&:has_repurchased)
@@ -212,7 +212,7 @@ class DailyOrdersController < ApplicationController
     prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
 
     # 「傳首購產品訊息」勾選框只要訂單內有任一產品是該系列首購就顯示，不限金額；
-    # 全部訂單（新客+舊客）都要算，因為新客/舊客的社群部維護訊息／健康資訊卡／關心訊息
+    # 全部訂單（新客+舊客）都要算，因為新客/舊客的社群部維護訊息／CRM維護訊息／關心訊息
     # 現在都要看「首購的那個產品」後來有沒有回購，不只是舊客才需要這份資料
     @products_by_order = build_products_by_order(raw_orders)
 
@@ -223,7 +223,7 @@ class DailyOrdersController < ApplicationController
       customer = customers_by_email[o.email_val]
       profile  = customer&.customer_profile
       summary  = summaries_by_email[o.email_val]
-      # 社群部維護訊息／健康資訊卡／關心訊息看「這張訂單裡的首購產品」後來有沒有回購，
+      # 社群部維護訊息／CRM維護訊息／關心訊息看「這張訂單裡的首購產品」後來有沒有回購，
       # 不是看這個人有沒有買過其他任何東西——同一張訂單裡如果薑黃首購但蝦紅素也首購，
       # 只有薑黃回購了、蝦紅素還沒，還是要繼續關懷蝦紅素，所以要「全部首購商品都回購了」才算
       order_products = @products_by_order[o.order_num] || []

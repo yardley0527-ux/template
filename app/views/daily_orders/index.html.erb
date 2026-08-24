@@ -73,7 +73,7 @@ end %>
     </div>
     <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @care_applicable_total, unit: "筆") %>
-    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "健康資訊卡", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆") %>
+    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "CRM維護訊息", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆") %>
   </div>
 </div>
 
@@ -135,13 +135,13 @@ end %>
               <th class="text-center" style="width:7%;">綁定 LINE</th>
               <th class="text-center" style="width:7%;">已傳送吃法訊息</th>
               <th class="text-center" style="width:9%;">社群部維護訊息</th>
-              <th class="text-center" style="width:6%;">健康資訊卡</th>
+              <th class="text-center" style="width:6%;">CRM維護訊息</th>
             <% else %>
               <th class="text-center" style="width:9%;">已加 IG tag</th>
               <th style="width:18%;">是否購買過同產品</th>
               <th class="text-center" style="width:11%;">傳首購產品訊息</th>
               <th class="text-center" style="width:9%;">社群部維護訊息</th>
-              <th class="text-center" style="width:6%;">健康資訊卡</th>
+              <th class="text-center" style="width:6%;">CRM維護訊息</th>
             <% end %>
           </tr>
         </thead>
@@ -393,7 +393,7 @@ end %>
     });
   });
 
-  // 舊客總攬：傳首購產品訊息／社群部維護訊息／健康資訊卡 完成度即時更新
+  // 舊客總攬：傳首購產品訊息／社群部維護訊息／CRM維護訊息 完成度即時更新
   function updateGiftSummary(flag) {
     var doneEl = document.getElementById(flag + '-done-count');
     if (!doneEl) return;
@@ -413,7 +413,7 @@ end %>
     }
   }
 
-  // 傳首購產品訊息／已加 IG tag／社群部維護訊息／健康資訊卡：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
+  // 傳首購產品訊息／已加 IG tag／社群部維護訊息／CRM維護訊息：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
   document.querySelectorAll('.order-flag-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
       var record = {};
