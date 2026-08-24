@@ -27,11 +27,25 @@ class LivestreamReportsController < ApplicationController
     ],
     "膠原蛋白" => [
       {
+        title: "膠原蛋白回購活動報表・8/21場",
+        date: Date.new(2026, 8, 21),
+        type: :post,
+        url: "https://claude.ai/code/artifact/8055f366-2bee-49f5-954c-2436181d940d",
+        desc: "買家名單版：歷史場次比較／新客大單／鐵粉流失／快要吃完／買更多／買很少，卡別分佈＋交叉對照8/21傳訊名單(list_id=12)",
+      },
+      {
+        title: "膠原直播決策報告：這次快在哪、下一步怎麼做",
+        date: Date.new(2026, 8, 21),
+        type: :post,
+        url: "https://claude.ai/code/artifact/e1de626a-2740-4d47-bfec-1b3b7f4ed6b8",
+        desc: "老闆決策版：跟去年同日YoY比較／首3天排名／定價級距分析／下貨方案／執行建議",
+      },
+      {
         title: "膠原直播前報告：8/21 場前的診斷與建議",
         date: Date.new(2026, 8, 21),
         type: :pre,
         url: "https://claude.ai/code/artifact/2e6258b0-466d-450c-a4ba-cf8e14eada06",
-        desc: "直播前診斷：套用薑黃報告框架反查膠原買氣走勢與斷貨缺口",
+        desc: "直播前診斷：買氣走勢、92天缺貨、現行定價階梯與8/21建議定價（6盒送1／10盒送2）、行動建議",
       },
       {
         title: "膠原定價策略檢討：折扣階梯止步在哪",
