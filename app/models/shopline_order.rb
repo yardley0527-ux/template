@@ -87,4 +87,49 @@ class ShoplineOrder < ApplicationRecord
       .where.not(email: [nil, ""])
       .where.not(order_date: nil)
   }
+
+  # Collapses "same real order line, landed as two rows because Shopline's
+  # own 商品名稱 text for it drifted between two different import runs" (a
+  # later export can add a gift suffix like "送1", fix a typo, or swap in a
+  # short SKU code for a long product title — see content_hash's docstring).
+  # That text is part of content_hash, so a drift makes source_row_hash miss
+  # on find_or_initialize_by and land as a new row instead of updating the
+  # old one, leaving the old row an orphan with the same (order_number,
+  # quantity, checkout_amount) but different product_name.
+  #
+  # Any aggregation that sums quantity/checkout_amount per product without
+  # first collapsing by order_number (unlike the MAX(total_amount) GROUP BY
+  # order_number pattern used for order-level totals elsewhere in this app)
+  # double-counts these orphans. Use this scope before doing that kind of
+  # line-item-level SUM.
+  #
+  # Deliberately keyed on (order_number, quantity, checkout_amount) WITHOUT
+  # product_name, but only drops a row when its group also spans more than
+  # one import_run_id — measured on production: 379 groups fit that (true
+  # drift, one row per import_run_id, keep only the most recent); a much
+  # larger 507 groups share identical (order_number, quantity,
+  # checkout_amount) with *different* product_name but the *same*
+  # import_run_id — genuinely distinct line items in one order that happen
+  # to coincide on quantity/amount (e.g. two different $0 gift lines), not a
+  # drift artifact, and this scope leaves every row in those groups alone.
+  # A group with only one product_name (a single line, or a genuine
+  # occurrence-based repeat of the same line — see content_hash's docstring)
+  # is never touched either way.
+  scope :dedup_content_drift, -> {
+    joins(<<~SQL.squish)
+      INNER JOIN (
+        SELECT order_number, quantity, checkout_amount,
+               COUNT(DISTINCT product_name) AS distinct_names,
+               MAX(import_run_id) AS max_run
+        FROM shopline_orders
+        GROUP BY order_number, quantity, checkout_amount
+      ) content_drift_groups
+        ON content_drift_groups.order_number = shopline_orders.order_number
+       AND content_drift_groups.quantity = shopline_orders.quantity
+       AND content_drift_groups.checkout_amount = shopline_orders.checkout_amount
+    SQL
+      .where(
+        "content_drift_groups.distinct_names = 1 OR shopline_orders.import_run_id = content_drift_groups.max_run"
+      )
+  }
 end

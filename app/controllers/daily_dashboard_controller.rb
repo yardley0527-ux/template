@@ -297,6 +297,11 @@ class DailyDashboardController < ApplicationController
     range_start = start_date.beginning_of_day
     range_end   = end_date.end_of_day
 
+    deduped_ids = ShoplineOrder.where(payment_status: "已付款")
+      .where(order_date: range_start..range_end)
+      .dedup_content_drift
+      .select(:id)
+
     raw = ShoplineOrder.from("shopline_orders o")
       .joins("LEFT JOIN shopline_customers sc ON sc.email = o.email")
       .select(
@@ -309,6 +314,7 @@ class DailyDashboardController < ApplicationController
       )
       .where("o.payment_status = '已付款'")
       .where("o.order_date >= ? AND o.order_date <= ?", range_start, range_end)
+      .where("o.id IN (?)", deduped_ids)
       .to_a
 
     return [] if raw.empty?

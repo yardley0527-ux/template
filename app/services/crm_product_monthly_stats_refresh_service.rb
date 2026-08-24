@@ -66,11 +66,18 @@ class CrmProductMonthlyStatsRefreshService
   # product_key would multiply-count that order's revenue across products.
   # Line-item summation avoids that without needing an order_number dedup
   # step at all.
+  #
+  # It does still need ShoplineOrder.dedup_content_drift, though: @product's
+  # LIKE pattern matches on a substring of product_name (e.g. "薑黃"), so
+  # when the same real order's 商品名稱 text drifts between two import runs
+  # (a later export adding a gift suffix like "薑黃6" -> "薑黃6送1"), BOTH
+  # rows match the same product pattern and would otherwise be summed twice.
 
   def fetch_metrics
     conn = ActiveRecord::Base.connection
     month_start = conn.quote(@stat_month)
     month_end   = conn.quote(@stat_month.end_of_month)
+    deduped_ids_sql = ShoplineOrder.dedup_content_drift.select(:id).to_sql
 
     sql = <<~SQL
       SELECT
@@ -80,6 +87,7 @@ class CrmProductMonthlyStatsRefreshService
       WHERE (#{@product[:sql]})
         AND order_date >= #{month_start}
         AND order_date <= #{month_end}
+        AND id IN (#{deduped_ids_sql})
     SQL
 
     row = conn.select_one(sql)
