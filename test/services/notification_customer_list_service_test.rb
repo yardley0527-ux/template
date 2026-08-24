@@ -135,6 +135,22 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
     assert_equal 1, NotificationCustomerListService.call(n).size
   end
 
+  test "customer_overdue: high_value_only includes a general-tier customer whose last order was a big set" do
+    CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
+    customer(email: "bigset@example.com", membership_level: "一般")
+    CrmCustomerProductTracking.create!(
+      email: "bigset@example.com", product_key: "metabolism", last_order_date: 40.days.ago.to_date,
+      last_order_bottles: 6, expected_return_date: Date.current - 10, suggested_reminder_date: Date.current - 17,
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
+    )
+    n = build_notification(category: "customer_overdue", metadata: {
+      "query" => { "product_key" => "metabolism", "overdue_days_from" => 1, "overdue_days_to" => 60,
+                   "high_value_only" => true }
+    })
+
+    assert_equal 1, NotificationCustomerListService.call(n).size
+  end
+
   # ── high_spender_no_second ──────────────────────────────────────────
 
   test "high_spender_no_second: a live-recheck excludes a customer whose genuine second purchase just landed" do

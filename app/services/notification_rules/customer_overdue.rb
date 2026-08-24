@@ -2,7 +2,7 @@
 
 module NotificationRules
   # E. customer_overdue — overdue 1-60 days, aggregated per product,
-  # split into high-value (黑/金卡 OR 末單金額≥30000) vs general pool.
+  # split into high-value (黑/金卡 OR 末單金額≥30000 OR 末單為大組數≥6) vs general pool.
   # glutathione is EXCLUDED entirely — it's a wave-restock product (see
   # Phase 0 complex-review report) where a fixed day-count overdue window
   # doesn't hold; it needs a to-be-built restock-triggered rule instead.
@@ -13,6 +13,7 @@ module NotificationRules
     BANDS = NotificationRules::Thresholds::OVERDUE_BANDS
     HIGH_VALUE_MEMBERSHIP = NotificationRules::Thresholds::HIGH_VALUE_MEMBERSHIP
     HIGH_VALUE_AMOUNT = NotificationRules::Thresholds::HIGH_VALUE_AMOUNT
+    HIGH_VALUE_BOTTLES = NotificationRules::Thresholds::HIGH_VALUE_BOTTLES
     EXCLUDED_PRODUCTS = %w[glutathione].freeze
     ESTIMATED_CYCLE_PRODUCTS = %w[qingxian simi].freeze
     METADATA_SAMPLE_SIZE = 50
@@ -54,7 +55,7 @@ module NotificationRules
         notification_key: "customer_overdue_#{band[:key]}", kind: "opportunity", severity: "warning",
         priority: priority,
         title: "#{label}#{estimate_tag}逾期#{band_label}：#{total} 位高價值客人未回購",
-        message: "逾期#{band_label}，僅列高價值客（黑/金卡或末單≥NT$#{HIGH_VALUE_AMOUNT}）待維護名單",
+        message: "逾期#{band_label}，僅列高價值客（黑/金卡、末單≥NT$#{HIGH_VALUE_AMOUNT}，或末單為#{HIGH_VALUE_BOTTLES}+大組數）待維護名單",
         impact_summary: "#{total} 位高價值客人逾期未回購（另有 #{rows[:general_count]} 位一般客人未列入待處理名單），逾期越久轉換率通常越低。",
         recommended_action: "依歷史消費排序，優先聯繫。",
         subject_type: "journey_product", subject_id: product_key,
@@ -88,6 +89,7 @@ module NotificationRules
         SELECT
           sc.id AS customer_id,
           (sc.membership_level IN (#{levels}) OR
+           t.last_order_bottles >= #{HIGH_VALUE_BOTTLES} OR
            (SELECT MAX(so.checkout_amount) FROM shopline_orders so
             WHERE so.email = t.email AND so.order_date::date = t.last_order_date) >= #{HIGH_VALUE_AMOUNT}
           ) AS is_high_value

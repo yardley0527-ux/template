@@ -8,12 +8,12 @@ module NotificationRules
       ShoplineCustomer.create!(email: email, membership_level: membership_level)
     end
 
-    def track(product_key:, email:, overdue_days:)
+    def track(product_key:, email:, overdue_days:, bottles: 1)
       CrmCustomerProductTracking.create!(
         email: email, product_key: product_key, last_order_date: 60.days.ago.to_date,
-        last_order_bottles: 1, expected_return_date: Date.current - overdue_days,
+        last_order_bottles: bottles, expected_return_date: Date.current - overdue_days,
         suggested_reminder_date: Date.current - overdue_days - 7,
-        order_count: 1, total_bottles: 1, refreshed_at: Time.current
+        order_count: 1, total_bottles: bottles, refreshed_at: Time.current
       )
     end
 
@@ -32,6 +32,22 @@ module NotificationRules
       assert_equal "warning", result[:severity]
       assert_includes result[:title], "高價值"
       assert_not_includes result[:title], "regular@example.com"
+    end
+
+    test "a general-tier customer whose last order was a big set (bottles >= threshold) counts as high-value" do
+      customer(email: "bigset@example.com", membership_level: "一般")
+      track(product_key: "metabolism", email: "bigset@example.com", overdue_days: 10, bottles: 6)
+
+      result = CustomerOverdue.call.find { |r| r[:subject_id] == "metabolism" }
+      assert result.present?
+      assert_equal 1, result[:metadata][:high_value_count]
+    end
+
+    test "a general-tier customer whose last order was below the big-set threshold stays excluded" do
+      customer(email: "smallset@example.com", membership_level: "一般")
+      track(product_key: "metabolism", email: "smallset@example.com", overdue_days: 10, bottles: 5)
+
+      assert_empty CustomerOverdue.call.select { |r| r[:subject_id] == "metabolism" }
     end
 
     test "no high-value customer produces no card at all" do

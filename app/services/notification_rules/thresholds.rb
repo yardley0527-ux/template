@@ -17,11 +17,15 @@ module NotificationRules
       { key: "90_plus", range: (91..Float::INFINITY) }
     ].freeze
 
-    # ── 高價值客判定（黑/金卡 或 末單金額門檻）──
+    # ── 高價值客判定（黑/金卡 或 末單金額門檻 或 末單為大組數）──
     # 8/24 使用者要求：customer_overdue 的「待維護名單」只留高價值客，
     # 一般客不再排進待處理名單（但仍算在 general_count 供觀察）。
+    # 同日補充：曾買大組數（一次多瓶/多盒）的客人也算高價值，不限卡別——
+    # 卡別是「歷史累積消費」的落後指標，大組數是「這次就砸了一筆」的即時訊號，
+    # 卡別還沒升上去但單次投入已經很高的客人不該被漏掉。
     HIGH_VALUE_MEMBERSHIP = %w[黑卡 金卡].freeze
     HIGH_VALUE_AMOUNT = 30_000
+    HIGH_VALUE_BOTTLES = 6 # 沿用魚油/膠原等產品「6+1」組數開始送贈品的級距，視為大組數起點
 
     # ── livestream_schedule_gap（直播週期缺口） ──
     LIVESTREAM_CYCLE_DAYS = 14

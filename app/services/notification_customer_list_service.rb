@@ -53,7 +53,8 @@ class NotificationCustomerListService
     rows.filter_map do |row|
       next if repurchased_since?(email: row.email, sql_pattern: sql_pattern, since: row.last_order_date)
       next if query["high_value_only"] && !high_value_customer?(customer: customers[row.email], email: row.email,
-                                                                  last_order_date: row.last_order_date)
+                                                                  last_order_date: row.last_order_date,
+                                                                  last_order_bottles: row.last_order_bottles)
 
       row_hash(email: row.email, customer: customers[row.email], last_order_date: row.last_order_date,
                expected_return_date: row.expected_return_date)
@@ -119,10 +120,11 @@ class NotificationCustomerListService
     end
   end
 
-  # 與 NotificationRules::CustomerOverdue#high_value_split 同一套判定（黑/金卡
-  # 或末單金額≥門檻），這裡即時重查一次，跟主查詢一樣不依賴快取表。
-  def high_value_customer?(customer:, email:, last_order_date:)
+  # 與 NotificationRules::CustomerOverdue#high_value_split 同一套判定（黑/金卡、
+  # 末單金額≥門檻，或末單為大組數≥門檻），這裡即時重查一次，跟主查詢一樣不依賴快取表。
+  def high_value_customer?(customer:, email:, last_order_date:, last_order_bottles:)
     return true if NotificationRules::Thresholds::HIGH_VALUE_MEMBERSHIP.include?(customer&.membership_level)
+    return true if last_order_bottles.to_i >= NotificationRules::Thresholds::HIGH_VALUE_BOTTLES
     return false if email.blank? || last_order_date.blank?
 
     ShoplineOrder.where(email: email, order_date: last_order_date.all_day)
