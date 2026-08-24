@@ -73,8 +73,9 @@ class DailyOrdersController < ApplicationController
   end
 
   def toggle_customer_flag
-    # social 角色在每日訂單頁只能勾「社群部維護訊息」，這裡的欄位都不是，直接擋掉
+    # social/crm 角色在每日訂單頁分別只能勾「社群部維護訊息」／「CRM維護訊息」，這裡的欄位都不是，直接擋掉
     return head :forbidden if current_user.role&.key == "social"
+    return head :forbidden if current_user.role&.key == "crm" && params[:page] == "daily_orders"
 
     field = params[:field].to_s
     return head :bad_request unless (TOGGLEABLE_FIELDS + PURCHASE_SUMMARY_FIELDS).include?(field)
