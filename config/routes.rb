@@ -88,7 +88,6 @@ Rails.application.routes.draw do
   resources :kol_contacts, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
   end
-  resources :korean_brand_leads, only: [:index, :create, :update, :destroy]
   get  '/line_broadcast',           to: 'line_broadcast#index',       as: :line_broadcast
   resources :line_broadcast_highlights, only: [:create, :destroy]
   get  '/ig_audience',              to: 'ig_audience#index',          as: :ig_audience

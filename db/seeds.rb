@@ -9,4 +9,3 @@
 load Rails.root.join("db/seeds/livestreams.rb")
 load Rails.root.join("db/seeds/message_templates.rb")
 load Rails.root.join("db/seeds/faqs.rb")
-load Rails.root.join("db/seeds/korean_brand_leads.rb")

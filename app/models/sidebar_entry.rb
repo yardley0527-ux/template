@@ -119,12 +119,6 @@ class SidebarEntry
           ]
         },
         {
-          group_title: "海外合作",
-          children: [
-            { href: korean_brand_leads_path, title: "韓國品牌開團洽談", icon: "fa-handshake" },
-          ]
-        },
-        {
           group_title: "客服支援",
           children: [
             { href: faqs_path, title: "常見問題", icon: "fa-question-circle" },
