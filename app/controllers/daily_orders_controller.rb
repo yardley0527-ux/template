@@ -70,6 +70,7 @@ class DailyOrdersController < ApplicationController
     @care_applicable_total  = care_applicable.size
     @community_message_done = care_applicable.count { |r| @gift_records[r.order_number]&.community_maintenance_message_sent? }
     @health_card_done       = care_applicable.count { |r| @gift_records[r.order_number]&.health_card_sent? }
+    @care_applicable_rows   = care_applicable
   end
 
   def toggle_customer_flag

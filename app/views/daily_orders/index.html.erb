@@ -75,7 +75,56 @@ end %>
     </div>
     <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @care_applicable_total, unit: "筆") %>
-    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "CRM維護訊息", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆") %>
+    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "CRM維護訊息", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆", modal_target: "health-card-sent-modal") %>
+  </div>
+</div>
+
+<div class="modal fade" id="health-card-sent-modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">CRM維護訊息已完成名單</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      </div>
+      <div class="modal-body p-0">
+        <table class="table align-middle mb-0" style="font-size:0.86rem;">
+          <thead style="background-color:#4a4a4a; color:white;">
+            <tr>
+              <th class="ps-3">姓名</th>
+              <th>IG</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @care_applicable_rows.each do |row| %>
+              <% checked = @gift_records[row.order_number]&.health_card_sent? %>
+              <% url = daily_orders_ig_link(row.ig_account) %>
+              <tr class="health-card-modal-row" data-order="<%= row.order_number %>" style="<%= checked ? '' : 'display:none;' %>">
+                <td class="ps-3 fw-semibold">
+                  <% if row.shopline_customer_id %>
+                    <%= link_to row.customer_name, customer_path(row.shopline_customer_id), class: "text-decoration-none" %>
+                  <% else %>
+                    <%= row.customer_name %>
+                  <% end %>
+                </td>
+                <td>
+                  <% if url %>
+                    <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
+                      <i class="fal fa-at text-danger flex-shrink-0"></i>
+                      <span style="font-size:0.8rem;"><%= row.ig_account&.sub(/^@/, '') %></span>
+                    <% end %>
+                  <% else %>
+                    <span class="text-muted small">—</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+            <tr id="health-card-sent-modal-empty" style="<%= @health_card_done.positive? ? 'display:none;' : '' %>">
+              <td colspan="2" class="text-center text-muted py-4">目前尚無已完成名單</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -417,6 +466,19 @@ end %>
     }
   }
 
+  // CRM維護訊息已完成名單 modal：checkbox 勾選狀態改變時同步顯示/隱藏對應列
+  function updateHealthCardModal() {
+    var anyVisible = false;
+    document.querySelectorAll('.health-card-modal-row').forEach(function(tr) {
+      var cb = document.querySelector('.order-flag-checkbox[data-flag="health_card_sent"][data-scope="old"][data-order="' + tr.dataset.order + '"]');
+      var visible = !!(cb && cb.checked);
+      tr.style.display = visible ? '' : 'none';
+      if (visible) anyVisible = true;
+    });
+    var emptyRow = document.getElementById('health-card-sent-modal-empty');
+    if (emptyRow) emptyRow.style.display = anyVisible ? 'none' : '';
+  }
+
   // 傳首購產品訊息／已加 IG tag／社群部維護訊息／CRM維護訊息：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
   document.querySelectorAll('.order-flag-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
@@ -429,6 +491,7 @@ end %>
       }).then(function(r) {
         if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
         if (cb.dataset.scope === 'old') updateGiftSummary(cb.dataset.flag);
+        if (cb.dataset.flag === 'health_card_sent' && cb.dataset.scope === 'old') updateHealthCardModal();
       });
     });
   });

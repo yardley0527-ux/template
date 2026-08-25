@@ -11,12 +11,22 @@ module DailyOrdersHelper
   end
 
   # 舊客總攬用的完成度小卡（傳首購產品訊息／社群部維護訊息／CRM維護訊息）
-  def daily_orders_gift_tile(icon:, color:, label:, flag:, done:, total:, unit:)
+  # modal_target 有給值時，整張卡片可點擊，彈出對應 modal（例如已完成名單）
+  def daily_orders_gift_tile(icon:, color:, label:, flag:, done:, total:, unit:, modal_target: nil)
     remaining = total - done
     badge_class = remaining > 0 ? "text-danger" : "text-success"
     badge_text  = remaining > 0 ? "（還有 #{remaining} #{unit}未完成）" : "✓ 全部完成"
 
-    content_tag(:div, class: "d-flex align-items-center px-3 py-2 rounded", style: "background:#f8f9fa; border:1px solid #dee2e6; gap:10px;") do
+    wrapper_style = "background:#f8f9fa; border:1px solid #dee2e6; gap:10px;"
+    wrapper_options = { class: "d-flex align-items-center px-3 py-2 rounded" }
+    if modal_target
+      wrapper_style += " cursor:pointer;"
+      wrapper_options["data-toggle"] = "modal"
+      wrapper_options["data-target"] = "##{modal_target}"
+    end
+    wrapper_options[:style] = wrapper_style
+
+    content_tag(:div, wrapper_options) do
       safe_join([
         content_tag(:i, "", class: "fal #{icon}", style: "color:#{color}; font-size:1.1rem;"),
         content_tag(:div) do
