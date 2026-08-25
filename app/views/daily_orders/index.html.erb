@@ -478,8 +478,8 @@
   function renderUnreadCountTile(count) {
     var el = document.getElementById('crm_maintenance_unread-unread-count');
     if (!el) return;
-    el.textContent = count > 0 ? (count + ' 人未讀') : '✓ 沒有未讀';
-    el.className = count > 0 ? 'text-danger' : 'text-success';
+    el.textContent = count > 0 ? (count + ' 人未讀') : '尚無人標記未讀';
+    el.className = count > 0 ? 'text-danger' : 'text-muted';
   }
 
   function bumpUnreadTile(delta) {

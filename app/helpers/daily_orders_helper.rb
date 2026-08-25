@@ -66,7 +66,8 @@ module DailyOrdersHelper
           safe_join([
             content_tag(:div, label, class: "text-muted", style: "font-size:0.75rem;"),
             content_tag(:div, class: "fw-bold", style: "font-size:1rem;") do
-              content_tag(:span, count.positive? ? "#{count} 人未讀" : "✓ 沒有未讀", id: "#{flag}-unread-count", class: count.positive? ? "text-danger" : "text-success")
+              # 0 人不代表「都已讀、沒問題」，只是還沒人標記過，所以不用綠色打勾，維持中性文字
+              content_tag(:span, count.positive? ? "#{count} 人未讀" : "尚無人標記未讀", id: "#{flag}-unread-count", class: count.positive? ? "text-danger" : "text-muted")
             end
           ])
         end
