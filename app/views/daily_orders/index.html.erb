@@ -84,7 +84,12 @@ end %>
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">CRM維護訊息已完成名單</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <div class="d-flex align-items-center" style="gap:8px;">
+          <button type="button" id="health-card-copy-btn" class="btn btn-sm btn-outline-secondary">
+            <i class="fal fa-copy"></i> 複製名單
+          </button>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-left:0;"><span aria-hidden="true">&times;</span></button>
+        </div>
       </div>
       <div class="modal-body p-0">
         <table class="table align-middle mb-0" style="font-size:0.86rem;">
@@ -98,7 +103,7 @@ end %>
             <% @care_applicable_rows.each do |row| %>
               <% checked = @gift_records[row.order_number]&.health_card_sent? %>
               <% url = daily_orders_ig_link(row.ig_account) %>
-              <tr class="health-card-modal-row" data-order="<%= row.order_number %>" style="<%= checked ? '' : 'display:none;' %>">
+              <tr class="health-card-modal-row" data-order="<%= row.order_number %>" data-name="<%= row.customer_name %>" data-ig="<%= url %>" style="<%= checked ? '' : 'display:none;' %>">
                 <td class="ps-3 fw-semibold">
                   <% if row.shopline_customer_id %>
                     <%= link_to row.customer_name, customer_path(row.shopline_customer_id), class: "text-decoration-none" %>
@@ -477,6 +482,26 @@ end %>
     });
     var emptyRow = document.getElementById('health-card-sent-modal-empty');
     if (emptyRow) emptyRow.style.display = anyVisible ? 'none' : '';
+  }
+
+  // CRM維護訊息已完成名單 modal：一鍵複製姓名＋IG連結（只複製目前有顯示的列）
+  var copyBtn = document.getElementById('health-card-copy-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function() {
+      var lines = [];
+      document.querySelectorAll('.health-card-modal-row').forEach(function(tr) {
+        if (tr.style.display === 'none') return;
+        lines.push(tr.dataset.name + '\t' + (tr.dataset.ig || ''));
+      });
+      var text = lines.join('\n');
+      navigator.clipboard.writeText(text).then(function() {
+        var original = copyBtn.innerHTML;
+        copyBtn.innerHTML = '<i class="fal fa-check"></i> 已複製';
+        setTimeout(function() { copyBtn.innerHTML = original; }, 1500);
+      }).catch(function() {
+        alert('複製失敗，請手動選取複製');
+      });
+    });
   }
 
   // 傳首購產品訊息／已加 IG tag／社群部維護訊息／CRM維護訊息：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
