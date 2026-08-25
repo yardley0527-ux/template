@@ -68,17 +68,6 @@
 
       <div class="profile-status-row">
         <div class="profile-status-item">
-          <span class="profile-status-label">品牌大使黑名單</span>
-          <% if @profile.brand_ambassador_blacklisted? %>
-            <span class="blacklist-badge">
-              🚫 已列入黑名單
-            </span>
-          <% else %>
-            <span class="status-empty">—</span>
-          <% end %>
-        </div>
-
-        <div class="profile-status-item">
           <span class="profile-status-label">黑名單</span>
           <% if @profile.blacklisted? %>
             <span class="blacklist-badge">
