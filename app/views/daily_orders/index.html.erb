@@ -6,7 +6,7 @@
     <h4 class="fw-bold mb-0">每日訂單明細</h4>
     <p class="text-muted small mb-0">依新客／舊客卡別分類，協助出貨備貨</p>
   </div>
-  <% # social 角色只能勾「社群部維護訊息」、crm 角色只能勾「CRM維護訊息」，其他勾選框在畫面上就先鎖起來，
+  <% # social 角色只能勾「社群部維護訊息」、crm 角色只能勾「CRM維護已讀/CRM維護未讀」，其他勾選框在畫面上就先鎖起來，
      # 後端也擋（見 daily_orders_controller / order_gift_records_controller）
      community_only = current_user.role&.key == "social"
      crm_only = current_user.role&.key == "crm" %>
@@ -69,67 +69,18 @@
     </div>
     <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @care_applicable_total, unit: "筆") %>
-    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "CRM維護訊息", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆", modal_target: "health-card-sent-modal") %>
+    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "CRM維護已讀", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆", modal_target: "health-card-sent-modal") %>
+    <%= daily_orders_gift_tile(icon: "fa-envelope", color: "#dc3545", label: "CRM維護未讀", flag: "crm_maintenance_unread", done: @crm_unread_done, total: @care_applicable_total, unit: "筆", modal_target: "crm-unread-modal") %>
   </div>
 </div>
 
-<div class="modal fade" id="health-card-sent-modal" tabindex="-1" role="dialog" aria-hidden="true">
-  <div class="modal-dialog modal-lg" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">CRM維護訊息已完成名單</h5>
-        <div class="d-flex align-items-center" style="gap:8px;">
-          <button type="button" id="health-card-copy-btn" class="btn btn-sm btn-outline-secondary">
-            <i class="fal fa-copy"></i> 複製名單
-          </button>
-          <%= link_to export_health_card_list_daily_orders_path(start_date: @start_date, end_date: @end_date, series_filter: @series_filter, first_purchase_only: @first_purchase_only ? "1" : nil, ig_search: @ig_search),
-                class: "btn btn-sm btn-outline-secondary" do %>
-            <i class="fal fa-file-excel"></i> 匯出 Excel
-          <% end %>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-left:0;"><span aria-hidden="true">&times;</span></button>
-        </div>
-      </div>
-      <div class="modal-body p-0">
-        <table class="table align-middle mb-0" style="font-size:0.86rem;">
-          <thead style="background-color:#4a4a4a; color:white;">
-            <tr>
-              <th class="ps-3">姓名</th>
-              <th>IG</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @care_applicable_rows.each do |row| %>
-              <% checked = @gift_records[row.order_number]&.health_card_sent? %>
-              <% url = daily_orders_ig_link(row.ig_account) %>
-              <tr class="health-card-modal-row" data-order="<%= row.order_number %>" data-name="<%= row.customer_name %>" data-ig="<%= url %>" style="<%= checked ? '' : 'display:none;' %>">
-                <td class="ps-3 fw-semibold">
-                  <% if row.shopline_customer_id %>
-                    <%= link_to row.customer_name, customer_path(row.shopline_customer_id), class: "text-decoration-none" %>
-                  <% else %>
-                    <%= row.customer_name %>
-                  <% end %>
-                </td>
-                <td>
-                  <% if url %>
-                    <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
-                      <i class="fal fa-at text-danger flex-shrink-0"></i>
-                      <span style="font-size:0.8rem;"><%= row.ig_account&.sub(/^@/, '') %></span>
-                    <% end %>
-                  <% else %>
-                    <span class="text-muted small">—</span>
-                  <% end %>
-                </td>
-              </tr>
-            <% end %>
-            <tr id="health-card-sent-modal-empty" style="<%= @health_card_done.positive? ? 'display:none;' : '' %>">
-              <td colspan="2" class="text-center text-muted py-4">目前尚無已完成名單</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
+<%= render "care_modal", modal_id: "health-card-sent-modal", title: "CRM維護已讀名單", field: "health_card_sent",
+      done_count: @health_card_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records,
+      export_path: export_health_card_list_daily_orders_path(start_date: @start_date, end_date: @end_date, series_filter: @series_filter, first_purchase_only: @first_purchase_only ? "1" : nil, ig_search: @ig_search) %>
+
+<%= render "care_modal", modal_id: "crm-unread-modal", title: "CRM維護未讀名單", field: "crm_maintenance_unread",
+      done_count: @crm_unread_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records,
+      export_path: export_crm_unread_list_daily_orders_path(start_date: @start_date, end_date: @end_date, series_filter: @series_filter, first_purchase_only: @first_purchase_only ? "1" : nil, ig_search: @ig_search) %>
 
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
@@ -185,17 +136,19 @@
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
             <% if is_new %>
-              <th style="width:24%;">購買商品</th>
-              <th class="text-center" style="width:7%;">綁定 LINE</th>
-              <th class="text-center" style="width:7%;">已傳送吃法訊息</th>
-              <th class="text-center" style="width:9%;">社群部維護訊息</th>
-              <th class="text-center" style="width:6%;">CRM維護訊息</th>
+              <th style="width:20%;">購買商品</th>
+              <th class="text-center" style="width:6%;">綁定 LINE</th>
+              <th class="text-center" style="width:6%;">已傳送吃法訊息</th>
+              <th class="text-center" style="width:8%;">社群部維護訊息</th>
+              <th class="text-center" style="width:6%;">CRM維護已讀</th>
+              <th class="text-center" style="width:6%;">CRM維護未讀</th>
             <% else %>
-              <th class="text-center" style="width:9%;">已加 IG tag</th>
-              <th style="width:18%;">是否購買過同產品</th>
-              <th class="text-center" style="width:11%;">傳首購產品訊息</th>
-              <th class="text-center" style="width:9%;">社群部維護訊息</th>
-              <th class="text-center" style="width:6%;">CRM維護訊息</th>
+              <th class="text-center" style="width:8%;">已加 IG tag</th>
+              <th style="width:15%;">是否購買過同產品</th>
+              <th class="text-center" style="width:10%;">傳首購產品訊息</th>
+              <th class="text-center" style="width:8%;">社群部維護訊息</th>
+              <th class="text-center" style="width:6%;">CRM維護已讀</th>
+              <th class="text-center" style="width:6%;">CRM維護未讀</th>
             <% end %>
           </tr>
         </thead>
@@ -295,6 +248,21 @@
                       style="width:18px; height:18px; cursor:pointer; accent-color:#e83e8c;">
                   <% end %>
                 </td>
+                <td class="text-center">
+                  <% if row.has_repurchased %>
+                    <span class="text-muted">—</span>
+                  <% else %>
+                    <input type="checkbox"
+                      class="order-flag-checkbox"
+                      data-flag="crm_maintenance_unread"
+                      data-scope="new"
+                      data-order="<%= row.order_number %>"
+                      data-url="<%= upsert_order_gift_record_path %>"
+                      <%= gift&.crm_maintenance_unread? ? 'checked' : '' %>
+                      <%= 'disabled' if community_only %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#dc3545;">
+                  <% end %>
+                </td>
               <% else %>
                 <% gift = @gift_records[row.order_number] %>
                 <% high_value = row.order_total.to_f >= HighValueOrderScoping::THRESHOLD %>
@@ -369,12 +337,27 @@
                     <span class="text-muted">—</span>
                   <% end %>
                 </td>
+                <td class="text-center">
+                  <% if has_first_purchase && !row.has_repurchased %>
+                    <input type="checkbox"
+                      class="order-flag-checkbox"
+                      data-flag="crm_maintenance_unread"
+                      data-scope="old"
+                      data-order="<%= row.order_number %>"
+                      data-url="<%= upsert_order_gift_record_path %>"
+                      <%= gift&.crm_maintenance_unread? ? 'checked' : '' %>
+                      <%= 'disabled' if community_only %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#dc3545;">
+                  <% else %>
+                    <span class="text-muted">—</span>
+                  <% end %>
+                </td>
               <% end %>
             </tr>
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="9" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="10" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
@@ -449,7 +432,7 @@
     });
   });
 
-  // 舊客總攬：傳首購產品訊息／社群部維護訊息／CRM維護訊息 完成度即時更新
+  // 舊客總攬：傳首購產品訊息／社群部維護訊息／CRM維護已讀／CRM維護未讀 完成度即時更新
   function updateGiftSummary(flag) {
     var doneEl = document.getElementById(flag + '-done-count');
     if (!doneEl) return;
@@ -469,25 +452,25 @@
     }
   }
 
-  // CRM維護訊息已完成名單 modal：checkbox 勾選狀態改變時同步顯示/隱藏對應列
-  function updateHealthCardModal() {
+  // CRM維護已讀／CRM維護未讀 已完成名單 modal：checkbox 勾選狀態改變時同步顯示/隱藏對應列
+  function updateCareModal(flag) {
     var anyVisible = false;
-    document.querySelectorAll('.health-card-modal-row').forEach(function(tr) {
-      var cb = document.querySelector('.order-flag-checkbox[data-flag="health_card_sent"][data-scope="old"][data-order="' + tr.dataset.order + '"]');
+    document.querySelectorAll('.care-modal-row[data-flag="' + flag + '"]').forEach(function(tr) {
+      var cb = document.querySelector('.order-flag-checkbox[data-flag="' + flag + '"][data-scope="old"][data-order="' + tr.dataset.order + '"]');
       var visible = !!(cb && cb.checked);
       tr.style.display = visible ? '' : 'none';
       if (visible) anyVisible = true;
     });
-    var emptyRow = document.getElementById('health-card-sent-modal-empty');
+    var emptyRow = document.querySelector('.care-modal-empty[data-flag="' + flag + '"]');
     if (emptyRow) emptyRow.style.display = anyVisible ? 'none' : '';
   }
 
-  // CRM維護訊息已完成名單 modal：一鍵複製姓名＋IG連結（只複製目前有顯示的列）
-  var copyBtn = document.getElementById('health-card-copy-btn');
-  if (copyBtn) {
+  // CRM維護已讀／CRM維護未讀 已完成名單 modal：一鍵複製姓名＋IG連結（只複製目前有顯示的列）
+  document.querySelectorAll('.care-copy-btn').forEach(function(copyBtn) {
     copyBtn.addEventListener('click', function() {
+      var flag = copyBtn.dataset.flag;
       var lines = [];
-      document.querySelectorAll('.health-card-modal-row').forEach(function(tr) {
+      document.querySelectorAll('.care-modal-row[data-flag="' + flag + '"]').forEach(function(tr) {
         if (tr.style.display === 'none') return;
         lines.push(tr.dataset.name + '\t' + (tr.dataset.ig || ''));
       });
@@ -500,9 +483,9 @@
         alert('複製失敗，請手動選取複製');
       });
     });
-  }
+  });
 
-  // 傳首購產品訊息／已加 IG tag／社群部維護訊息／CRM維護訊息：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
+  // 傳首購產品訊息／已加 IG tag／社群部維護訊息／CRM維護已讀／CRM維護未讀：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
   document.querySelectorAll('.order-flag-checkbox').forEach(function(cb) {
     cb.addEventListener('change', function() {
       var record = {};
@@ -513,8 +496,10 @@
         body: JSON.stringify({ order_number: cb.dataset.order, order_gift_record: record, page: 'daily_orders' })
       }).then(function(r) {
         if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
-        if (cb.dataset.scope === 'old') updateGiftSummary(cb.dataset.flag);
-        if (cb.dataset.flag === 'health_card_sent' && cb.dataset.scope === 'old') updateHealthCardModal();
+        if (cb.dataset.scope === 'old') {
+          updateGiftSummary(cb.dataset.flag);
+          updateCareModal(cb.dataset.flag);
+        }
       });
     });
   });

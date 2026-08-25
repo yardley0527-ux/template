@@ -17,7 +17,7 @@ module DailyOrdersHelper
     AMOUNT_TIER_COLORS.find { |threshold, _| amount.to_f >= threshold }&.last
   end
 
-  # 舊客總攬用的完成度小卡（傳首購產品訊息／社群部維護訊息／CRM維護訊息）
+  # 舊客總攬用的完成度小卡（傳首購產品訊息／社群部維護訊息／CRM維護已讀/CRM維護未讀）
   # modal_target 有給值時，整張卡片可點擊，彈出對應 modal（例如已完成名單）
   def daily_orders_gift_tile(icon:, color:, label:, flag:, done:, total:, unit:, modal_target: nil)
     remaining = total - done

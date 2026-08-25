@@ -62,52 +62,31 @@ class DailyOrdersController < ApplicationController
     @gift_records = OrderGiftRecord.where(order_number: all_order_nums).index_by(&:order_number)
 
     # 舊客總攬：各追蹤事項各自完成 / 應完成筆數
-    # 傳首購產品訊息只要訂單裡有首購商品就要處理；社群部維護訊息、CRM維護訊息、關心訊息
+    # 傳首購產品訊息只要訂單裡有首購商品就要處理；社群部維護訊息、CRM維護已讀、CRM維護未讀、關心訊息
     # 再加一個條件：這個人之後沒有再回購過（回購過代表已經不是需要「新客關懷」的階段了）
     first_purchase_applicable = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
-    care_applicable = first_purchase_applicable.reject(&:has_repurchased)
+    care_applicable = care_applicable_rows(old_rows)
     @first_purchase_total = first_purchase_applicable.size
     @first_purchase_done  = first_purchase_applicable.count { |r| @gift_records[r.order_number]&.first_purchase_message_sent? }
     @care_applicable_total  = care_applicable.size
     @community_message_done = care_applicable.count { |r| @gift_records[r.order_number]&.community_maintenance_message_sent? }
     @health_card_done       = care_applicable.count { |r| @gift_records[r.order_number]&.health_card_sent? }
+    @crm_unread_done        = care_applicable.count { |r| @gift_records[r.order_number]&.crm_maintenance_unread? }
     @care_applicable_rows   = care_applicable
   end
 
-  # CRM維護訊息小卡 modal 的「匯出 Excel」：只匯出已打勾（health_card_sent）的名單
+  # CRM維護已讀小卡 modal 的「匯出 Excel」：只匯出已打勾（health_card_sent）的名單
   def export_health_card_list
-    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
-    @end_date   = parse_date(params[:end_date]) || @start_date
-    @end_date   = @start_date if @end_date < @start_date
-    @ig_search  = params[:ig_search].presence
-    clamp_end_date! unless @ig_search
-    @series_filter = params[:series_filter].presence
-    @first_purchase_only = params[:first_purchase_only] == "1"
-    groups = build_groups(@start_date, @end_date)
+    export_care_list(field: :health_card_sent, filename_label: "CRM維護已讀名單")
+  end
 
-    old_rows = groups.drop(1).flat_map { |_, rows| rows }
-    all_order_nums = groups.flat_map { |_, rows| rows.map(&:order_number) }
-    gift_records = OrderGiftRecord.where(order_number: all_order_nums).index_by(&:order_number)
-
-    first_purchase_applicable = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
-    care_applicable = first_purchase_applicable.reject(&:has_repurchased)
-    done_rows = care_applicable.select { |r| gift_records[r.order_number]&.health_card_sent? }
-
-    csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["姓名", "IG"]
-      done_rows.each do |row|
-        csv << [row.customer_name, daily_orders_ig_link(row.ig_account)]
-      end
-    end
-
-    filename = "CRM維護訊息已完成名單_#{@start_date.strftime('%Y%m%d')}_#{@end_date.strftime('%Y%m%d')}.csv"
-    send_data "\xEF\xBB\xBF" + csv_data,
-      filename: filename,
-      type: "text/csv; charset=utf-8"
+  # CRM維護未讀小卡 modal 的「匯出 Excel」：只匯出已打勾（crm_maintenance_unread）的名單
+  def export_crm_unread_list
+    export_care_list(field: :crm_maintenance_unread, filename_label: "CRM維護未讀名單")
   end
 
   def toggle_customer_flag
-    # social/crm 角色在每日訂單頁分別只能勾「社群部維護訊息」／「CRM維護訊息」，這裡的欄位都不是，直接擋掉
+    # social/crm 角色在每日訂單頁分別只能勾「社群部維護訊息」／「CRM維護已讀/CRM維護未讀」，這裡的欄位都不是，直接擋掉
     return head :forbidden if current_user.role&.key == "social"
     return head :forbidden if current_user.role&.key == "crm" && params[:page] == "daily_orders"
 
@@ -180,6 +159,43 @@ class DailyOrdersController < ApplicationController
 
   private
 
+  # 舊客總攬追蹤事項（社群部維護訊息／CRM維護已讀／CRM維護未讀）共用的適用名單：
+  # 訂單裡有首購商品、且首購商品後來沒有全部回購過
+  def care_applicable_rows(old_rows)
+    first_purchase_applicable = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
+    first_purchase_applicable.reject(&:has_repurchased)
+  end
+
+  # CRM維護已讀／CRM維護未讀 modal 共用的「匯出 Excel」：只匯出指定欄位已打勾的名單
+  def export_care_list(field:, filename_label:)
+    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
+    @end_date   = parse_date(params[:end_date]) || @start_date
+    @end_date   = @start_date if @end_date < @start_date
+    @ig_search  = params[:ig_search].presence
+    clamp_end_date! unless @ig_search
+    @series_filter = params[:series_filter].presence
+    @first_purchase_only = params[:first_purchase_only] == "1"
+    groups = build_groups(@start_date, @end_date)
+
+    old_rows = groups.drop(1).flat_map { |_, rows| rows }
+    all_order_nums = groups.flat_map { |_, rows| rows.map(&:order_number) }
+    gift_records = OrderGiftRecord.where(order_number: all_order_nums).index_by(&:order_number)
+
+    done_rows = care_applicable_rows(old_rows).select { |r| gift_records[r.order_number]&.public_send(:"#{field}?") }
+
+    csv_data = CSV.generate(encoding: "UTF-8") do |csv|
+      csv << ["姓名", "IG"]
+      done_rows.each do |row|
+        csv << [row.customer_name, daily_orders_ig_link(row.ig_account)]
+      end
+    end
+
+    filename = "#{filename_label}_#{@start_date.strftime('%Y%m%d')}_#{@end_date.strftime('%Y%m%d')}.csv"
+    send_data "\xEF\xBB\xBF" + csv_data,
+      filename: filename,
+      type: "text/csv; charset=utf-8"
+  end
+
   def parse_date(value)
     Date.parse(value) if value.present?
   rescue ArgumentError
@@ -247,7 +263,7 @@ class DailyOrdersController < ApplicationController
     prior_emails = ShoplineOrder.where(email: emails).where("order_date < ?", range_start).distinct.pluck(:email).to_set
 
     # 「傳首購產品訊息」勾選框只要訂單內有任一產品是該系列首購就顯示，不限金額；
-    # 全部訂單（新客+舊客）都要算，因為新客/舊客的社群部維護訊息／CRM維護訊息／關心訊息
+    # 全部訂單（新客+舊客）都要算，因為新客/舊客的社群部維護訊息／CRM維護已讀/CRM維護未讀／關心訊息
     # 現在都要看「首購的那個產品」後來有沒有回購，不只是舊客才需要這份資料
     @products_by_order = build_products_by_order(raw_orders)
 
@@ -258,7 +274,7 @@ class DailyOrdersController < ApplicationController
       customer = customers_by_email[o.email_val]
       profile  = customer&.customer_profile
       summary  = summaries_by_email[o.email_val]
-      # 社群部維護訊息／CRM維護訊息／關心訊息看「這張訂單裡的首購產品」後來有沒有回購，
+      # 社群部維護訊息／CRM維護已讀/CRM維護未讀／關心訊息看「這張訂單裡的首購產品」後來有沒有回購，
       # 不是看這個人有沒有買過其他任何東西——同一張訂單裡如果薑黃首購但蝦紅素也首購，
       # 只有薑黃回購了、蝦紅素還沒，還是要繼續關懷蝦紅素，所以要「全部首購商品都回購了」才算
       order_products = @products_by_order[o.order_num] || []

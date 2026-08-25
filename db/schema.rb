@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_24_171000) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_25_034424) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -829,6 +829,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_24_171000) do
     t.boolean "community_maintenance_message_sent", default: false, null: false
     t.boolean "health_card_sent", default: false, null: false
     t.boolean "care_message_sent", default: false, null: false
+    t.boolean "crm_maintenance_unread", default: false, null: false
     t.index ["order_number"], name: "index_order_gift_records_on_order_number", unique: true
   end
 
