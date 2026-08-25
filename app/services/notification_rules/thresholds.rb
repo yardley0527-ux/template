@@ -9,12 +9,11 @@ module NotificationRules
     RUNOUT_P2_DAYS = (4..7).freeze
 
     # ── customer_overdue（逾期未回購）分段 ──
+    # 8/25 使用者要求：待處理清單只留最新鮮的 0-14 天級距，逾期越久的名單轉換率
+    # 越低、優先度也低，不用一直佔待處理清單版面；15 天以上的追蹤資料本身還在
+    # （crm_customer_product_trackings），只是不再主動產生通知卡片。
     OVERDUE_BANDS = [
-      { key: "1_14",  range: (1..14) },
-      { key: "15_30", range: (15..30) },
-      { key: "31_60", range: (31..60) },
-      { key: "61_90", range: (61..90) },
-      { key: "90_plus", range: (91..Float::INFINITY) }
+      { key: "1_14", range: (1..14) }
     ].freeze
 
     # ── 高價值客判定（黑/金卡 或 末單金額門檻 或 末單為大組數）──
