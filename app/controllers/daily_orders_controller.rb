@@ -61,17 +61,23 @@ class DailyOrdersController < ApplicationController
     @gift_records = OrderGiftRecord.where(order_number: all_order_nums).index_by(&:order_number)
 
     # 舊客總攬：各追蹤事項各自完成 / 應完成筆數
-    # 傳首購產品訊息只要訂單裡有首購商品就要處理；社群部維護訊息、CRM維護已讀、CRM維護未讀、關心訊息
-    # 再加一個條件：這個人之後沒有再回購過（回購過代表已經不是需要「新客關懷」的階段了）
+    # 傳首購產品訊息只要訂單裡有首購商品就要處理；社群部維護訊息、關心訊息再加一個條件：
+    # 這個人之後沒有再回購過（回購過代表已經不是需要「新客關懷」的階段了）
     first_purchase_applicable = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
     care_applicable = care_applicable_rows(old_rows)
     @first_purchase_total = first_purchase_applicable.size
     @first_purchase_done  = first_purchase_applicable.count { |r| @gift_records[r.order_number]&.first_purchase_message_sent? }
     @care_applicable_total  = care_applicable.size
     @community_message_done = care_applicable.count { |r| @gift_records[r.order_number]&.community_maintenance_message_sent? }
-    @health_card_done       = care_applicable.count { |r| @gift_records[r.order_number]&.health_card_sent? }
-    @crm_unread_done        = care_applicable.count { |r| @gift_records[r.order_number]&.crm_maintenance_unread? }
-    @care_applicable_rows   = care_applicable
+
+    # CRM維護已讀／未讀不限舊客，新客一樣要追蹤（跟其他幾個追蹤事項不同，這兩個不分新舊客）；
+    # 新客的適用條件比照舊客的 care_applicable：還沒回購過（新客訂單本來就一定是首購，不用再篩一次）
+    new_rows_applicable = new_rows.reject(&:has_repurchased)
+    crm_status_rows = new_rows_applicable + care_applicable
+    @crm_status_total = crm_status_rows.size
+    @health_card_done = crm_status_rows.count { |r| @gift_records[r.order_number]&.health_card_sent? }
+    @crm_unread_done  = crm_status_rows.count { |r| @gift_records[r.order_number]&.crm_maintenance_unread? }
+    @crm_status_rows  = crm_status_rows
   end
 
   def toggle_customer_flag
