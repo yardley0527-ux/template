@@ -9,7 +9,7 @@
         <thead class="table-light">
           <tr>
             <th style="width:24px;"><input type="checkbox" class="js-check-all"></th>
-            <th>姓名</th><th>卡別</th><th>電話</th><th>IG</th><th>原因</th>
+            <th>姓名</th><th>卡別</th><th>Email</th><th>LINE ID</th>
           </tr>
         </thead>
         <tbody>
@@ -28,21 +28,8 @@
                 <% end %>
               </td>
               <td><span class="text-muted small"><%= r[:membership_level].presence || "一般" %></span></td>
-              <td>
-                <% if r[:mobile_phone].present? %>
-                  <%= link_to "📞 #{r[:mobile_phone]}", "tel:#{r[:mobile_phone]}", class: "text-decoration-none text-muted small" %>
-                <% end %>
-              </td>
-              <td>
-                <% if r[:instagram_account].present? %>
-                  <%= link_to "📷 #{r[:instagram_account]}", "https://instagram.com/#{r[:instagram_account].to_s.delete_prefix('@')}", target: "_blank", class: "text-decoration-none small" %>
-                <% end %>
-              </td>
-              <td>
-                <% r[:reasons].uniq.each do |reason| %>
-                  <span class="badge badge-light text-muted border d-block mb-1" style="white-space:normal; text-align:left;"><%= reason %></span>
-                <% end %>
-              </td>
+              <td><span class="text-muted small"><%= r[:email] %></span></td>
+              <td><span class="text-muted small"><%= r[:line_id].presence || "—" %></span></td>
             </tr>
           <% end %>
         </tbody>

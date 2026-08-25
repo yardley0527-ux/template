@@ -162,7 +162,7 @@ class NotificationCustomerListService
     {
       customer_id: customer&.id, full_name: customer&.full_name,
       membership_level: customer&.membership_level, mobile_phone: customer&.mobile_phone,
-      instagram_account: customer&.instagram_account, email: email
+      instagram_account: customer&.instagram_account, line_id: customer&.line_id, email: email
     }.merge(extra)
   end
 end
