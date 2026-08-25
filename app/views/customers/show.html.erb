@@ -68,15 +68,6 @@
 
       <div class="profile-status-row">
         <div class="profile-status-item">
-          <span class="profile-status-label">品牌大使培訓</span>
-          <% if @profile.brand_ambassador_training? %>
-            <span class="status-check">✅</span>
-          <% else %>
-            <span class="status-empty">—</span>
-          <% end %>
-        </div>
-
-        <div class="profile-status-item">
           <span class="profile-status-label">品牌大使黑名單</span>
           <% if @profile.brand_ambassador_blacklisted? %>
             <span class="blacklist-badge">
@@ -97,8 +88,19 @@
         </div>
 
         <div class="profile-status-item">
-          <span class="profile-status-label">已私訊邀請追蹤產品IG</span>
-          <% if @profile.invited_to_follow_product_ig? %>
+          <span class="profile-status-label">黑名單</span>
+          <% if @profile.blacklisted? %>
+            <span class="blacklist-badge">
+              🚫 已列入黑名單
+            </span>
+          <% else %>
+            <span class="status-empty">—</span>
+          <% end %>
+        </div>
+
+        <div class="profile-status-item">
+          <span class="profile-status-label">已流失</span>
+          <% if @profile.churned? %>
             <span class="status-check">✅</span>
           <% else %>
             <span class="status-empty">—</span>
@@ -109,6 +111,9 @@
       <div class="profile-block">
         <span class="profile-block-title">備註</span>
         <p class="profile-block-text"><%= @profile.notes.presence || "（尚無備註）" %></p>
+        <% if @profile.notes_updated_at.present? %>
+          <p class="text-muted small mb-0">追蹤更新日期：<%= @profile.notes_updated_at.strftime("%Y/%m/%d %H:%M") %></p>
+        <% end %>
       </div>
 
       <div>

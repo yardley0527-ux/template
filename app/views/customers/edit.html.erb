@@ -69,15 +69,6 @@
           </div>
         <% else %>
           <div class="edit-field">
-            <label class="edit-label">品牌大使培訓</label>
-            <label class="toggle-wrap">
-              <%= f.check_box :brand_ambassador_training, class: "toggle-input" %>
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-text">加入觀察名單</span>
-            </label>
-          </div>
-
-          <div class="edit-field">
             <label class="edit-label">品牌大使黑名單</label>
             <label class="toggle-wrap">
               <%= f.check_box :brand_ambassador_blacklisted, class: "toggle-input toggle-input blacklist-toggle" %>
@@ -96,17 +87,29 @@
           </div>
 
           <div class="edit-field">
-            <label class="edit-label">是否已私訊邀請追蹤產品IG</label>
+            <label class="edit-label">黑名單</label>
             <label class="toggle-wrap">
-              <%= f.check_box :invited_to_follow_product_ig, class: "toggle-input" %>
+              <%= f.check_box :blacklisted, class: "toggle-input toggle-input blacklist-toggle" %>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              <span class="toggle-text">客服已私訊邀請</span>
+              <span class="toggle-text" style="color:#ef4444;">列入黑名單</span>
+            </label>
+          </div>
+
+          <div class="edit-field">
+            <label class="edit-label">已流失</label>
+            <label class="toggle-wrap">
+              <%= f.check_box :churned, class: "toggle-input" %>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-text">標記為已流失客人</span>
             </label>
           </div>
 
           <div class="edit-field">
             <label class="edit-label">備註</label>
             <%= f.text_area :notes, rows: 6, class: "edit-textarea", placeholder: "輸入備註內容…" %>
+            <% if @profile.notes_updated_at.present? %>
+              <p class="text-muted small mb-0 mt-1">追蹤更新日期：<%= @profile.notes_updated_at.strftime("%Y/%m/%d %H:%M") %></p>
+            <% end %>
           </div>
 
           <div class="edit-field">

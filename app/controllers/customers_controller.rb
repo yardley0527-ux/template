@@ -482,7 +482,7 @@ class CustomersController < ApplicationController
   end
 
   def log_customer_edit(customer, profile, section)
-    changes = profile.previous_changes.except("updated_at", "created_at", "id", "shopline_customer_id")
+    changes = profile.previous_changes.except("updated_at", "created_at", "id", "shopline_customer_id", "notes_updated_at")
     return if changes.empty?
     CustomerEditLog.create!(
       customer_id:   customer.id,
@@ -498,6 +498,8 @@ class CustomersController < ApplicationController
     params.require(:customer_profile).permit(
       :brand_ambassador_training,
       :brand_ambassador_blacklisted,
+      :blacklisted,
+      :churned,
       :follows_chloe_ig,
       :invited_to_follow_product_ig,
       :notes,

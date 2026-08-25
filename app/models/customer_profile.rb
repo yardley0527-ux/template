@@ -71,6 +71,7 @@ class CustomerProfile < ApplicationRecord
 
   before_validation :normalize_tag_fields
   before_save :stamp_stickiness_followed_up_at
+  before_save :stamp_notes_updated_at
 
   validates :customer_type, inclusion: { in: CUSTOMER_TYPE_OPTIONS }, allow_blank: true
 
@@ -82,6 +83,11 @@ class CustomerProfile < ApplicationRecord
     return unless stickiness_note_changed?
 
     self.stickiness_followed_up_at = stickiness_note.present? ? (stickiness_followed_up_at || Time.current) : nil
+  end
+
+  # 備註每次被改動就記下更新日期，讓「備註與培訓」卡片可以顯示追蹤更新日期
+  def stamp_notes_updated_at
+    self.notes_updated_at = Time.current if notes_changed?
   end
 
   def normalize_tag_fields

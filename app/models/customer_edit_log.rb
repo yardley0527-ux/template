@@ -19,6 +19,8 @@ class CustomerEditLog < ApplicationRecord
     "shengting_product_tags"      => "購買過苼莛的產品",
     "health_tags"                 => "健康標籤",
     "brand_ambassador_training"   => "品牌大使培訓",
-    "brand_ambassador_blacklisted"=> "大使黑名單"
+    "brand_ambassador_blacklisted"=> "大使黑名單",
+    "blacklisted"                 => "黑名單",
+    "churned"                     => "已流失"
   }.freeze
 end
