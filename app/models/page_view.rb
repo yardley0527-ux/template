@@ -6,7 +6,7 @@ class PageView < ApplicationRecord
     member_contacts
     turmeric_analysis metabolism_analysis glutathione_analysis
     omnipotent_analysis probiotic_analysis omnipotent_restock albums photos
-    ads_dashboard duplicate_customers ig_dashboard threads_dashboard line_broadcast
+    ads_dashboard duplicate_customers ig_dashboard line_broadcast
     metabolism_qingxian_customers
   ].freeze
 
@@ -55,7 +55,6 @@ class PageView < ApplicationRecord
     "duplicate_customers#index"             => "重複客人合併",
     "ig_dashboard#index"                    => "IG 面板",
     "livestreams#index"                     => "直播列表",
-    "threads_dashboard#index"               => "Threads 面板",
     "line_broadcast#index"                  => "LINE 推播分析",
   }.freeze
 end

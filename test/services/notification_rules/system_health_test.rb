@@ -92,20 +92,6 @@ module NotificationRules
       assert_empty SystemHealth.call.select { |r| r[:subject_type] == "daily_briefing" }
     end
 
-    test "Threads never fetched does not alert" do
-      quiet_baseline
-      assert_empty SystemHealth.call.select { |r| r[:subject_type] == "threads_fetch_log" }
-    end
-
-    test "Threads not fetched in 7+ days alerts warning" do
-      quiet_baseline
-      ThreadsFetchLog.create!(category: "brand", fetched_at: 8.days.ago, status: "success")
-
-      result = SystemHealth.call.find { |r| r[:subject_type] == "threads_fetch_log" }
-      assert result.present?
-      assert_equal "warning", result[:severity]
-    end
-
     test "briefing_failure metadata only stores the date, not the free-text error message" do
       quiet_baseline
       DailyBriefing.create!(briefing_date: Date.current, status: "failed", error_message: "OpenAI timeout")

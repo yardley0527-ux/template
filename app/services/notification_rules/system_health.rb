@@ -7,7 +7,6 @@ module NotificationRules
   class SystemHealth
     IMPORT_STALE_AFTER = 36.hours
     ROLLUP_STALE_AFTER  = 26.hours
-    THREADS_STALE_AFTER = 7.days
     IMPORT_KINDS = { "paid_orders_workbook" => "訂單匯入", "customers_report" => "客戶匯入" }.freeze
 
     def self.call
@@ -15,7 +14,7 @@ module NotificationRules
     end
 
     def call
-      [] + import_staleness + rollup_staleness + sync_failures + briefing_failure + threads_staleness
+      [] + import_staleness + rollup_staleness + sync_failures + briefing_failure
     end
 
     private
@@ -78,20 +77,6 @@ module NotificationRules
             recommended_action: "查看錯誤訊息，需要的話手動重新產生晨報。",
             subject_type: "daily_briefing", subject_id: latest.id.to_s,
             metadata: { briefing_date: latest.briefing_date.to_s })]
-    end
-
-    def threads_staleness
-      last = ThreadsFetchLog.maximum(:fetched_at)
-      return [] if last.nil? || last >= THREADS_STALE_AFTER.ago
-
-      days = ((Time.current - last) / 1.day).round
-      [build(key: "system_health_threads_stale", severity: "warning", priority: "P3",
-            title: "Threads 監測已超過 7 天未更新",
-            message: "最後一次抓取於 #{days} 天前",
-            impact_summary: "社群監測資料可能不是最新的，影響範圍小。",
-            recommended_action: "檢查 Threads 抓取排程是否還在運作。",
-            subject_type: "threads_fetch_log", subject_id: nil,
-            metadata: { last_fetched_at: last.iso8601 })]
     end
 
     def build(key:, severity:, priority:, title:, message:, subject_type:, subject_id:, metadata:,
