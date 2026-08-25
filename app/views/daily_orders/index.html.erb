@@ -69,16 +69,12 @@
     </div>
     <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @care_applicable_total, unit: "筆") %>
-    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "CRM維護已讀", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆", modal_target: "health-card-sent-modal") %>
-    <%= daily_orders_gift_tile(icon: "fa-envelope", color: "#dc3545", label: "CRM維護未讀", flag: "crm_maintenance_unread", done: @crm_unread_done, total: @care_applicable_total, unit: "筆", modal_target: "crm-unread-modal") %>
+    <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "CRM維護已讀", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆", modal_target: "health-card-sent-modal", remaining_word: "未讀", done_word: "全部已讀") %>
   </div>
 </div>
 
 <%= render "care_modal", modal_id: "health-card-sent-modal", title: "CRM維護已讀名單", field: "health_card_sent",
       done_count: @health_card_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records %>
-
-<%= render "care_modal", modal_id: "crm-unread-modal", title: "CRM維護未讀名單", field: "crm_maintenance_unread",
-      done_count: @crm_unread_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records %>
 
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
@@ -440,11 +436,13 @@
     doneEl.textContent = done;
     var badgeEl = document.getElementById(flag + '-badge');
     if (badgeEl) {
+      var remainingWord = flag === 'health_card_sent' ? '未讀' : '未完成';
+      var doneWord = flag === 'health_card_sent' ? '全部已讀' : '全部完成';
       if (remaining > 0) {
-        badgeEl.textContent = '（還有 ' + remaining + ' 筆未完成）';
+        badgeEl.textContent = '（還有 ' + remaining + ' 筆' + remainingWord + '）';
         badgeEl.className = 'text-danger';
       } else {
-        badgeEl.textContent = '✓ 全部完成';
+        badgeEl.textContent = '✓ ' + doneWord;
         badgeEl.className = 'text-success';
       }
     }

@@ -19,10 +19,11 @@ module DailyOrdersHelper
 
   # 舊客總攬用的完成度小卡（傳首購產品訊息／社群部維護訊息／CRM維護已讀/CRM維護未讀）
   # modal_target 有給值時，整張卡片可點擊，彈出對應 modal（例如已完成名單）
-  def daily_orders_gift_tile(icon:, color:, label:, flag:, done:, total:, unit:, modal_target: nil)
+  # remaining_word/done_word 可覆寫預設的「未完成」「全部完成」字樣（例如 CRM維護已讀 用「未讀」）
+  def daily_orders_gift_tile(icon:, color:, label:, flag:, done:, total:, unit:, modal_target: nil, remaining_word: "未完成", done_word: "全部完成")
     remaining = total - done
     badge_class = remaining > 0 ? "text-danger" : "text-success"
-    badge_text  = remaining > 0 ? "（還有 #{remaining} #{unit}未完成）" : "✓ 全部完成"
+    badge_text  = remaining > 0 ? "（還有 #{remaining} #{unit}#{remaining_word}）" : "✓ #{done_word}"
 
     wrapper_style = "background:#f8f9fa; border:1px solid #dee2e6; gap:10px;"
     wrapper_options = { class: "d-flex align-items-center px-3 py-2 rounded" }
