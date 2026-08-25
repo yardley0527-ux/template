@@ -68,6 +68,7 @@ Rails.application.routes.draw do
   get  '/daily_dashboard',           to: 'daily_dashboard#index',      as: :daily_dashboard
   get  '/daily_orders',             to: 'daily_orders#index',         as: :daily_orders
   get  '/daily_orders/export',      to: 'daily_orders#export',        as: :export_daily_orders
+  get  '/daily_orders/export_health_card_list', to: 'daily_orders#export_health_card_list', as: :export_health_card_list_daily_orders
   post '/daily_orders/toggle_customer_flag', to: 'daily_orders#toggle_customer_flag', as: :toggle_daily_orders_customer_flag
   post '/daily_orders/update_customer_type', to: 'daily_orders#update_customer_type', as: :update_daily_orders_customer_type
   post '/order_gift_records/upsert', to: 'order_gift_records#upsert',  as: :upsert_order_gift_record

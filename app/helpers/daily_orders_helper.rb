@@ -1,4 +1,11 @@
 module DailyOrdersHelper
+  def daily_orders_ig_link(account)
+    return nil if account.blank?
+
+    handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
+    handle.present? ? "https://www.instagram.com/#{handle}/" : nil
+  end
+
   # 舊客消費金額級距顏色（8000 以下維持原本粉紅字，不回傳顏色）
   AMOUNT_TIER_COLORS = [
     [20_000, "#6f42c1"], # 2 萬含以上：紫

@@ -1,12 +1,6 @@
 <%# app/views/daily_orders/index.html.erb %>
 <% content_for :page_title, "每日訂單明細" %>
 
-<% def daily_orders_ig_link(account)
-  return nil if account.blank?
-  handle = account.strip.gsub(/^@/, '').gsub(%r{https?://(?:www\.)?instagram\.com/?}, '').gsub(%r{/$}, '').strip
-  handle.present? ? "https://www.instagram.com/#{handle}/" : nil
-end %>
-
 <div class="d-flex align-items-start justify-content-between flex-wrap mb-3" style="gap:12px;">
   <div>
     <h4 class="fw-bold mb-0">每日訂單明細</h4>
@@ -88,6 +82,10 @@ end %>
           <button type="button" id="health-card-copy-btn" class="btn btn-sm btn-outline-secondary">
             <i class="fal fa-copy"></i> 複製名單
           </button>
+          <%= link_to export_health_card_list_daily_orders_path(start_date: @start_date, end_date: @end_date, series_filter: @series_filter, first_purchase_only: @first_purchase_only ? "1" : nil, ig_search: @ig_search),
+                class: "btn btn-sm btn-outline-secondary" do %>
+            <i class="fal fa-file-excel"></i> 匯出 Excel
+          <% end %>
           <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-left:0;"><span aria-hidden="true">&times;</span></button>
         </div>
       </div>
