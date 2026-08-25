@@ -9,7 +9,8 @@
   <% # social 角色只能勾「社群部維護訊息」、crm 角色只能勾「CRM維護已讀/CRM維護未讀」，其他勾選框在畫面上就先鎖起來，
      # 後端也擋（見 daily_orders_controller / order_gift_records_controller）
      community_only = current_user.role&.key == "social"
-     crm_only = current_user.role&.key == "crm" %>
+     crm_only = current_user.role&.key == "crm"
+     is_owner = current_user.admin? %>
   <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
     <%= form_tag daily_orders_path, method: :get, class: "d-flex align-items-center flex-wrap", style: "gap:8px;" do %>
       <%= hidden_field_tag :tab, @tab %>
@@ -134,12 +135,13 @@
             <th style="width:11%;">IG</th>
             <th class="text-end" style="width:9%;">消費金額</th>
             <% if is_new %>
-              <th style="width:20%;">購買商品</th>
+              <th style="width:16%;">購買商品</th>
               <th class="text-center" style="width:6%;">綁定 LINE</th>
               <th class="text-center" style="width:6%;">已傳送吃法訊息</th>
-              <th class="text-center" style="width:8%;">社群部維護訊息</th>
+              <th class="text-center" style="width:7%;">社群部維護訊息</th>
               <th class="text-center" style="width:6%;">CRM維護已讀</th>
               <th class="text-center" style="width:6%;">CRM維護未讀</th>
+              <th class="text-center" style="width:6%;">略過訊息</th>
             <% else %>
               <th class="text-center" style="width:8%;">已加 IG tag</th>
               <th style="width:15%;">是否購買過同產品</th>
@@ -205,11 +207,11 @@
                 <td class="text-center">
                   <% if row.shopline_customer_id %>
                     <input type="checkbox"
-                      class="customer-flag-checkbox"
+                      class="customer-flag-checkbox skippable-follow-up"
                       data-customer-id="<%= row.shopline_customer_id %>"
                       data-field="recipe_message_sent"
                       <%= row.recipe_message_sent ? 'checked' : '' %>
-                      <%= 'disabled' if community_only || crm_only %>
+                      <%= 'disabled' if community_only || crm_only || row.skip_follow_up %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#fd7e14;">
                   <% else %>
                     <span class="text-muted">—</span>
@@ -221,13 +223,13 @@
                     <span class="text-muted">—</span>
                   <% else %>
                     <input type="checkbox"
-                      class="order-flag-checkbox"
+                      class="order-flag-checkbox skippable-follow-up"
                       data-flag="community_maintenance_message_sent"
                       data-scope="new"
                       data-order="<%= row.order_number %>"
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.community_maintenance_message_sent? ? 'checked' : '' %>
-                      <%= 'disabled' if crm_only %>
+                      <%= 'disabled' if crm_only || row.skip_follow_up %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#20c997;">
                   <% end %>
                 </td>
@@ -236,13 +238,13 @@
                     <span class="text-muted">—</span>
                   <% else %>
                     <input type="checkbox"
-                      class="order-flag-checkbox"
+                      class="order-flag-checkbox skippable-follow-up"
                       data-flag="health_card_sent"
                       data-scope="new"
                       data-order="<%= row.order_number %>"
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.health_card_sent? ? 'checked' : '' %>
-                      <%= 'disabled' if community_only %>
+                      <%= 'disabled' if community_only || row.skip_follow_up %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#e83e8c;">
                   <% end %>
                 </td>
@@ -251,14 +253,27 @@
                     <span class="text-muted">—</span>
                   <% else %>
                     <input type="checkbox"
-                      class="order-flag-checkbox"
+                      class="order-flag-checkbox skippable-follow-up"
                       data-flag="crm_maintenance_unread"
                       data-scope="new"
                       data-order="<%= row.order_number %>"
                       data-url="<%= upsert_order_gift_record_path %>"
                       <%= gift&.crm_maintenance_unread? ? 'checked' : '' %>
-                      <%= 'disabled' if community_only %>
+                      <%= 'disabled' if community_only || row.skip_follow_up %>
                       style="width:18px; height:18px; cursor:pointer; accent-color:#dc3545;">
+                  <% end %>
+                </td>
+                <td class="text-center">
+                  <% if row.shopline_customer_id %>
+                    <input type="checkbox"
+                      class="customer-flag-checkbox skip-follow-up-checkbox"
+                      data-customer-id="<%= row.shopline_customer_id %>"
+                      data-field="skip_follow_up"
+                      <%= row.skip_follow_up ? 'checked' : '' %>
+                      <%= 'disabled' unless is_owner %>
+                      style="width:18px; height:18px; cursor:pointer; accent-color:#6c757d;">
+                  <% else %>
+                    <span class="text-muted">—</span>
                   <% end %>
                 </td>
               <% else %>
@@ -355,7 +370,7 @@
           <% end %>
           <% if rows.empty? %>
             <tr>
-              <td colspan="10" class="text-center py-4 text-muted">（無訂單）</td>
+              <td colspan="<%= is_new ? 11 : 10 %>" class="text-center py-4 text-muted">（無訂單）</td>
             </tr>
           <% end %>
         </tbody>
@@ -425,6 +440,14 @@
         if (cb.dataset.field === 'line_bound') {
           if (filterActive && cb.checked) cb.closest('tr').style.display = 'none';
           updateLineSummary();
+        }
+        if (cb.dataset.field === 'skip_follow_up') {
+          var row = cb.closest('tr');
+          if (row) {
+            row.querySelectorAll('.skippable-follow-up').forEach(function(sibling) {
+              sibling.disabled = cb.checked;
+            });
+          }
         }
       });
     });

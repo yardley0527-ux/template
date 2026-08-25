@@ -2,8 +2,11 @@ class DailyOrdersController < ApplicationController
   include HighValueOrderScoping
 
   TIERS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
-  TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig health_inquiry_declined recipe_message_sent].freeze
+  TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig health_inquiry_declined recipe_message_sent skip_follow_up].freeze
   PURCHASE_SUMMARY_FIELDS = %w[line_bound].freeze
+  # 略過訊息：只有 admin（老闆帳號）能勾，勾了之後畫面上會把同一列的
+  # 已傳送吃法訊息／社群部維護訊息／CRM維護已讀／CRM維護未讀 都鎖住（見 index view）。
+  OWNER_ONLY_FIELDS = %w[skip_follow_up].freeze
 
   # 這頁是給每日出貨備貨用的，一次撈整個區間所有訂單、逐筆拉客戶資料，不分頁。
   # 區間拉太長（例如整年）撈出的客戶數一多，Rails 對 customer_profile 的 includes
@@ -26,7 +29,7 @@ class DailyOrdersController < ApplicationController
     :is_new_customer, :membership_level, :products_list, :health_profile, :health_tags,
     :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
     :line_bound, :total_quantity, :health_inquiry_declined, :recipe_message_sent,
-    :has_repurchased,
+    :has_repurchased, :skip_follow_up,
     keyword_init: true
   )
 
@@ -87,6 +90,7 @@ class DailyOrdersController < ApplicationController
 
     field = params[:field].to_s
     return head :bad_request unless (TOGGLEABLE_FIELDS + PURCHASE_SUMMARY_FIELDS).include?(field)
+    return head :forbidden if OWNER_ONLY_FIELDS.include?(field) && !current_user.admin?
 
     customer = ShoplineCustomer.find(params[:customer_id])
     value    = ActiveModel::Type::Boolean.new.cast(params[:value])
@@ -265,7 +269,8 @@ class DailyOrdersController < ApplicationController
         total_quantity: o.total_quantity.to_i,
         health_inquiry_declined: profile&.health_inquiry_declined || false,
         recipe_message_sent: profile&.recipe_message_sent || false,
-        has_repurchased: all_first_purchases_repurchased
+        has_repurchased: all_first_purchases_repurchased,
+        skip_follow_up: profile&.skip_follow_up || false
       )
     end
 

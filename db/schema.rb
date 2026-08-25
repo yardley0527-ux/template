@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_25_034424) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_25_142324) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -299,6 +299,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_25_034424) do
     t.datetime "black_gold_ai_generated_at"
     t.date "black_gold_ai_for_order_date"
     t.boolean "black_gold_followed_up", default: false, null: false
+    t.boolean "skip_follow_up", default: false, null: false
     t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin
     t.index ["product_tags"], name: "index_customer_profiles_on_product_tags", using: :gin
     t.index ["shopline_customer_id"], name: "index_customer_profiles_on_shopline_customer_id"
