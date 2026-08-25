@@ -1,5 +1,7 @@
 <%# 舊客總攬完成度小卡（CRM維護已讀／CRM維護未讀）共用的「已完成名單」modal
-    locals: modal_id, title, field, done_count, care_applicable_rows, gift_records %>
+    locals: modal_id, title, field, done_count, care_applicable_rows, gift_records
+    mark_read（選填）：true 時多一欄「標記已讀」按鈕，可直接把這筆從未讀改成已讀，不用回大表格找 %>
+<% mark_read = local_assigns.fetch(:mark_read, false) %>
 <div class="modal fade" id="<%= modal_id %>" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
@@ -13,6 +15,9 @@
             <tr>
               <th class="ps-3">姓名</th>
               <th>IG</th>
+              <% if mark_read %>
+                <th class="text-center" style="width:110px;">操作</th>
+              <% end %>
             </tr>
           </thead>
           <tbody>
@@ -37,10 +42,15 @@
                     <span class="text-muted small">—</span>
                   <% end %>
                 </td>
+                <% if mark_read %>
+                  <td class="text-center">
+                    <button type="button" class="mark-read-btn btn btn-sm btn-outline-success" data-order="<%= row.order_number %>">標記已讀</button>
+                  </td>
+                <% end %>
               </tr>
             <% end %>
             <tr class="care-modal-empty" data-flag="<%= field %>" style="<%= done_count.positive? ? 'display:none;' : '' %>">
-              <td colspan="2" class="text-center text-muted py-4">目前尚無已完成名單</td>
+              <td colspan="<%= mark_read ? 3 : 2 %>" class="text-center text-muted py-4">目前尚無已完成名單</td>
             </tr>
           </tbody>
         </table>

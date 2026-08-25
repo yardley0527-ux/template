@@ -54,4 +54,23 @@ module DailyOrdersHelper
       ])
     end
   end
+
+  # CRM維護未讀專用小卡：單純顯示「X 人未讀」，點擊彈出可直接標記已讀的名單 modal
+  # （不用 daily_orders_gift_tile 的完成度 done/total 框架，因為「未讀」不是要追求打勾到底的進度條，
+  # 而是一份待處理的行動清單，講「還有幾人未讀」比「未完成 X 筆」更直覺）
+  def daily_orders_unread_count_tile(icon:, color:, label:, flag:, count:, modal_target:)
+    content_tag(:div, class: "d-flex align-items-center px-3 py-2 rounded", style: "background:#f8f9fa; border:1px solid #dee2e6; gap:10px; cursor:pointer;", "data-toggle" => "modal", "data-target" => "##{modal_target}") do
+      safe_join([
+        content_tag(:i, "", class: "fal #{icon}", style: "color:#{color}; font-size:1.1rem;"),
+        content_tag(:div) do
+          safe_join([
+            content_tag(:div, label, class: "text-muted", style: "font-size:0.75rem;"),
+            content_tag(:div, class: "fw-bold", style: "font-size:1rem;") do
+              content_tag(:span, count.positive? ? "#{count} 人未讀" : "✓ 沒有未讀", id: "#{flag}-unread-count", class: count.positive? ? "text-danger" : "text-success")
+            end
+          ])
+        end
+      ])
+    end
+  end
 end

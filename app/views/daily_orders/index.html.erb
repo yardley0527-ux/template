@@ -70,11 +70,15 @@
     <%= daily_orders_gift_tile(icon: "fa-gift", color: "#0d6efd", label: "傳首購產品訊息", flag: "first_purchase_message_sent", done: @first_purchase_done, total: @first_purchase_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-comment-dots", color: "#20c997", label: "社群部維護訊息", flag: "community_maintenance_message_sent", done: @community_message_done, total: @care_applicable_total, unit: "筆") %>
     <%= daily_orders_gift_tile(icon: "fa-heart", color: "#e83e8c", label: "CRM維護已讀", flag: "health_card_sent", done: @health_card_done, total: @care_applicable_total, unit: "筆", modal_target: "health-card-sent-modal", remaining_word: "未讀", done_word: "全部已讀") %>
+    <%= daily_orders_unread_count_tile(icon: "fa-envelope", color: "#dc3545", label: "CRM維護未讀", flag: "crm_maintenance_unread", count: @crm_unread_done, modal_target: "crm-unread-modal") %>
   </div>
 </div>
 
 <%= render "care_modal", modal_id: "health-card-sent-modal", title: "CRM維護已讀名單", field: "health_card_sent",
       done_count: @health_card_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records %>
+
+<%= render "care_modal", modal_id: "crm-unread-modal", title: "CRM維護未讀名單", field: "crm_maintenance_unread",
+      done_count: @crm_unread_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records, mark_read: true %>
 
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
@@ -432,8 +436,16 @@
     if (!doneEl) return;
     var total = document.querySelectorAll('.order-flag-checkbox[data-flag="' + flag + '"][data-scope="old"]').length;
     var done = document.querySelectorAll('.order-flag-checkbox[data-flag="' + flag + '"][data-scope="old"]:checked').length;
-    var remaining = total - done;
+    renderGiftBadge(flag, done, total);
+  }
+
+  // 小卡完成度文字（N / 總數 (還有 X 筆未完成)）共用的渲染邏輯，done/total 用算好的數字直接畫，
+  // 這樣不管畫面上有沒有渲染出對應的勾選框（例如人在「新客」分頁）都能正確更新
+  function renderGiftBadge(flag, done, total) {
+    var doneEl = document.getElementById(flag + '-done-count');
+    if (!doneEl) return;
     doneEl.textContent = done;
+    var remaining = total - done;
     var badgeEl = document.getElementById(flag + '-badge');
     if (badgeEl) {
       var remainingWord = flag === 'health_card_sent' ? '未讀' : '未完成';
@@ -448,6 +460,35 @@
     }
   }
 
+  function bumpGiftTile(flag, delta) {
+    var doneEl = document.getElementById(flag + '-done-count');
+    var totalEl = document.getElementById(flag + '-total-count');
+    if (!doneEl || !totalEl) return;
+    renderGiftBadge(flag, parseInt(doneEl.textContent, 10) + delta, parseInt(totalEl.textContent, 10));
+  }
+
+  // CRM維護未讀小卡（單純「X 人未讀」，非 done/total 格式）
+  function updateUnreadCountTile() {
+    var el = document.getElementById('crm_maintenance_unread-unread-count');
+    if (!el) return;
+    var count = document.querySelectorAll('.order-flag-checkbox[data-flag="crm_maintenance_unread"][data-scope="old"]:checked').length;
+    renderUnreadCountTile(count);
+  }
+
+  function renderUnreadCountTile(count) {
+    var el = document.getElementById('crm_maintenance_unread-unread-count');
+    if (!el) return;
+    el.textContent = count > 0 ? (count + ' 人未讀') : '✓ 沒有未讀';
+    el.className = count > 0 ? 'text-danger' : 'text-success';
+  }
+
+  function bumpUnreadTile(delta) {
+    var el = document.getElementById('crm_maintenance_unread-unread-count');
+    if (!el) return;
+    var current = parseInt(el.textContent, 10);
+    renderUnreadCountTile((isNaN(current) ? 0 : current) + delta);
+  }
+
   // CRM維護已讀／CRM維護未讀 已完成名單 modal：checkbox 勾選狀態改變時同步顯示/隱藏對應列
   function updateCareModal(flag) {
     var anyVisible = false;
@@ -457,9 +498,51 @@
       tr.style.display = visible ? '' : 'none';
       if (visible) anyVisible = true;
     });
+    refreshCareModalEmptyState(flag);
+  }
+
+  // 純粹依照目前列的顯示狀態重算「目前尚無已完成名單」要不要顯示，不依賴勾選框是否有渲染在畫面上
+  // （markAsRead 用這個，因為使用者可能是在「新客」分頁點開 modal，舊客表格的勾選框根本沒渲染出來）
+  function refreshCareModalEmptyState(flag) {
+    var anyVisible = false;
+    document.querySelectorAll('.care-modal-row[data-flag="' + flag + '"]').forEach(function(tr) {
+      if (tr.style.display !== 'none') anyVisible = true;
+    });
     var emptyRow = document.querySelector('.care-modal-empty[data-flag="' + flag + '"]');
     if (emptyRow) emptyRow.style.display = anyVisible ? 'none' : '';
   }
+
+  // CRM維護未讀名單 modal 的「標記已讀」按鈕：一次把 crm_maintenance_unread 關掉、health_card_sent 打開，
+  // 兩張小卡跟兩個 modal 都直接同步，不用整頁重新整理
+  document.querySelectorAll('.mark-read-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var orderNumber = btn.dataset.order;
+      var rowEl = btn.closest('tr');
+      btn.disabled = true;
+      fetch("<%= upsert_order_gift_record_path %>", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF },
+        body: JSON.stringify({ order_number: orderNumber, order_gift_record: { crm_maintenance_unread: false, health_card_sent: true }, page: 'daily_orders' })
+      }).then(function(r) {
+        if (!r.ok) { btn.disabled = false; alert('更新失敗，請重新整理頁面再試一次'); return; }
+
+        var unreadCb = document.querySelector('.order-flag-checkbox[data-flag="crm_maintenance_unread"][data-scope="old"][data-order="' + orderNumber + '"]');
+        if (unreadCb) unreadCb.checked = false;
+        var readCb = document.querySelector('.order-flag-checkbox[data-flag="health_card_sent"][data-scope="old"][data-order="' + orderNumber + '"]');
+        if (readCb) readCb.checked = true;
+
+        bumpUnreadTile(-1);
+        bumpGiftTile('health_card_sent', 1);
+
+        if (rowEl) rowEl.style.display = 'none';
+        var healthRow = document.querySelector('.care-modal-row[data-flag="health_card_sent"][data-order="' + orderNumber + '"]');
+        if (healthRow) healthRow.style.display = '';
+
+        refreshCareModalEmptyState('crm_maintenance_unread');
+        refreshCareModalEmptyState('health_card_sent');
+      });
+    });
+  });
 
   // 傳首購產品訊息／已加 IG tag／社群部維護訊息／CRM維護已讀／CRM維護未讀：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
   document.querySelectorAll('.order-flag-checkbox').forEach(function(cb) {
@@ -473,7 +556,11 @@
       }).then(function(r) {
         if (!r.ok) { cb.checked = !cb.checked; alert('更新失敗，請重新整理頁面再試一次'); }
         if (cb.dataset.scope === 'old') {
-          updateGiftSummary(cb.dataset.flag);
+          if (cb.dataset.flag === 'crm_maintenance_unread') {
+            updateUnreadCountTile();
+          } else {
+            updateGiftSummary(cb.dataset.flag);
+          }
           updateCareModal(cb.dataset.flag);
         }
       });
