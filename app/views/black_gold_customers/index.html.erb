@@ -101,13 +101,19 @@ end %>
 
 <p class="text-muted small mb-3">特別注意判定：金額比上次少一半以上（消費下滑），或距上次購買 <%= BlackGoldCustomersController::LONG_GAP_DAYS %> 天以上（間隔拉長）</p>
 
+<%# 特別注意篩選 %>
+<div class="btn-group mb-3" role="group" id="bg-attn-filter" style="font-size:0.85rem;">
+  <button type="button" class="btn btn-outline-secondary active" data-filter="all">全部（<%= @groups.sum { |_, rows| rows.size } %>）</button>
+  <button type="button" class="btn btn-outline-danger" data-filter="attn">只看特別注意（<%= @attention_count %>）</button>
+</div>
+
 <%# 依卡別分組，組內依本次購買日新到舊排序，全部往下疊在同一頁 %>
 <% @groups.each do |level, rows| %>
   <% badge_bg, badge_fg = level == '黑卡' ? ['#333', '#fff'] : ['#b8860b', '#fff'] %>
-  <div class="card border-0 shadow-sm mb-4">
+  <div class="card border-0 shadow-sm mb-4 bg-group-card">
     <div class="card-header bg-white d-flex align-items-center" style="gap:8px;">
       <span class="badge" style="background:<%= badge_bg %>; color:<%= badge_fg %>; font-size:0.8rem;"><%= level %></span>
-      <span class="badge bg-secondary"><%= rows.size %> 人</span>
+      <span class="badge bg-secondary bg-group-count" data-total="<%= rows.size %>" data-attn="<%= rows.count(&:needs_attention?) %>"><%= rows.size %> 人</span>
     </div>
     <div class="card-body p-0 table-responsive">
       <table class="table align-middle mb-0 bg-table" style="font-size:0.86rem;">
@@ -128,7 +134,7 @@ end %>
           <% rows.each do |r| %>
             <% url = bg_ig_link_url(r.ig_account) %>
             <% profile = r.profile %>
-            <tr style="<%= r.needs_attention? ? 'background:#fdf1ef;' : (profile&.black_gold_followed_up? ? '' : 'background:#fffbe6;') %>">
+            <tr class="bg-row" data-attn="<%= r.needs_attention? %>" style="<%= r.needs_attention? ? 'background:#fdf1ef;' : (profile&.black_gold_followed_up? ? '' : 'background:#fffbe6;') %>">
               <td class="ps-3 fw-semibold" data-label="姓名">
                 <%= link_to r.full_name, customer_path(r.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
               </td>
@@ -312,6 +318,44 @@ end %>
     e.preventDefault();
     var cell = trigger.closest('.ai-cell');
     runAnalyze(trigger.dataset.customerId, cell);
+  });
+
+  // 全部／只看特別注意 篩選：純前端切換列的顯示，同步更新每個卡別分組的人數
+  document.querySelectorAll('#bg-attn-filter button').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('#bg-attn-filter button').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      var onlyAttn = btn.dataset.filter === 'attn';
+
+      document.querySelectorAll('.bg-group-card').forEach(function(card) {
+        var visibleCount = 0;
+        card.querySelectorAll('.bg-row').forEach(function(row) {
+          var show = !onlyAttn || row.dataset.attn === 'true';
+          row.style.display = show ? '' : 'none';
+          if (show) visibleCount++;
+        });
+
+        var countBadge = card.querySelector('.bg-group-count');
+        if (countBadge) {
+          var n = onlyAttn ? countBadge.dataset.attn : countBadge.dataset.total;
+          countBadge.textContent = n + ' 人';
+        }
+
+        var emptyRow = card.querySelector('.bg-empty-filtered');
+        if (visibleCount === 0 && card.querySelectorAll('.bg-row').length > 0) {
+          if (!emptyRow) {
+            var tbody = card.querySelector('tbody');
+            emptyRow = document.createElement('tr');
+            emptyRow.className = 'bg-empty-filtered';
+            emptyRow.innerHTML = '<td colspan="9" class="text-center py-4 text-muted"><i class="fal fa-check-circle mb-2 d-block opacity-25" style="font-size:1.4rem;"></i>這個卡別沒有特別注意的人</td>';
+            tbody.appendChild(emptyRow);
+          }
+          emptyRow.style.display = '';
+        } else if (emptyRow) {
+          emptyRow.style.display = 'none';
+        }
+      });
+    });
   });
 
   // 特別注意名單自動排隊分析
