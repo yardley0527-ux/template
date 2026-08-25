@@ -41,8 +41,10 @@
 
         <% if notification.category == "livestream_review_due" && notification.metadata["livestream_date"] %>
           <%= link_to "查看直播數據", livestreams_path(year: Date.parse(notification.metadata["livestream_date"]).year), class: "btn btn-sm btn-outline-info mt-2" %>
-          <%= button_to "標記已完成檢討", complete_review_livestream_path(notification.metadata["livestream_id"]),
-                method: :post, class: "btn btn-sm btn-outline-success mt-2", form: { style: "display:inline-block;" } %>
+          <% if notification.subject_id.present? %>
+            <%= button_to "標記已完成檢討", complete_review_livestream_path(notification.subject_id),
+                  method: :post, class: "btn btn-sm btn-outline-success mt-2", form: { style: "display:inline-block;" } %>
+          <% end %>
         <% end %>
       </div>
 
