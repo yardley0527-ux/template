@@ -1,19 +1,11 @@
 <%# 舊客總攬完成度小卡（CRM維護已讀／CRM維護未讀）共用的「已完成名單」modal
-    locals: modal_id, title, field, done_count, care_applicable_rows, gift_records, export_path %>
+    locals: modal_id, title, field, done_count, care_applicable_rows, gift_records %>
 <div class="modal fade" id="<%= modal_id %>" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title"><%= title %></h5>
-        <div class="d-flex align-items-center" style="gap:8px;">
-          <button type="button" class="care-copy-btn btn btn-sm btn-outline-secondary" data-flag="<%= field %>">
-            <i class="fal fa-copy"></i> 複製名單
-          </button>
-          <%= link_to export_path, class: "btn btn-sm btn-outline-secondary" do %>
-            <i class="fal fa-file-excel"></i> 匯出 Excel
-          <% end %>
-          <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="margin-left:0;"><span aria-hidden="true">&times;</span></button>
-        </div>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
       </div>
       <div class="modal-body p-0">
         <table class="table align-middle mb-0" style="font-size:0.86rem;">
@@ -27,7 +19,7 @@
             <% care_applicable_rows.each do |row| %>
               <% checked = gift_records[row.order_number]&.public_send(:"#{field}?") %>
               <% url = daily_orders_ig_link(row.ig_account) %>
-              <tr class="care-modal-row" data-flag="<%= field %>" data-order="<%= row.order_number %>" data-name="<%= row.customer_name %>" data-ig="<%= url %>" style="<%= checked ? '' : 'display:none;' %>">
+              <tr class="care-modal-row" data-flag="<%= field %>" data-order="<%= row.order_number %>" style="<%= checked ? '' : 'display:none;' %>">
                 <td class="ps-3 fw-semibold">
                   <% if row.shopline_customer_id %>
                     <%= link_to row.customer_name, customer_path(row.shopline_customer_id), class: "text-decoration-none" %>

@@ -75,12 +75,10 @@
 </div>
 
 <%= render "care_modal", modal_id: "health-card-sent-modal", title: "CRM維護已讀名單", field: "health_card_sent",
-      done_count: @health_card_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records,
-      export_path: export_health_card_list_daily_orders_path(start_date: @start_date, end_date: @end_date, series_filter: @series_filter, first_purchase_only: @first_purchase_only ? "1" : nil, ig_search: @ig_search) %>
+      done_count: @health_card_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records %>
 
 <%= render "care_modal", modal_id: "crm-unread-modal", title: "CRM維護未讀名單", field: "crm_maintenance_unread",
-      done_count: @crm_unread_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records,
-      export_path: export_crm_unread_list_daily_orders_path(start_date: @start_date, end_date: @end_date, series_filter: @series_filter, first_purchase_only: @first_purchase_only ? "1" : nil, ig_search: @ig_search) %>
+      done_count: @crm_unread_done, care_applicable_rows: @care_applicable_rows, gift_records: @gift_records %>
 
 <ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
   <li class="nav-item">
@@ -464,26 +462,6 @@
     var emptyRow = document.querySelector('.care-modal-empty[data-flag="' + flag + '"]');
     if (emptyRow) emptyRow.style.display = anyVisible ? 'none' : '';
   }
-
-  // CRM維護已讀／CRM維護未讀 已完成名單 modal：一鍵複製姓名＋IG連結（只複製目前有顯示的列）
-  document.querySelectorAll('.care-copy-btn').forEach(function(copyBtn) {
-    copyBtn.addEventListener('click', function() {
-      var flag = copyBtn.dataset.flag;
-      var lines = [];
-      document.querySelectorAll('.care-modal-row[data-flag="' + flag + '"]').forEach(function(tr) {
-        if (tr.style.display === 'none') return;
-        lines.push(tr.dataset.name + '\t' + (tr.dataset.ig || ''));
-      });
-      var text = lines.join('\n');
-      navigator.clipboard.writeText(text).then(function() {
-        var original = copyBtn.innerHTML;
-        copyBtn.innerHTML = '<i class="fal fa-check"></i> 已複製';
-        setTimeout(function() { copyBtn.innerHTML = original; }, 1500);
-      }).catch(function() {
-        alert('複製失敗，請手動選取複製');
-      });
-    });
-  });
 
   // 傳首購產品訊息／已加 IG tag／社群部維護訊息／CRM維護已讀／CRM維護未讀：存在 order_gift_records（每張訂單一筆），與破8000頁共用 upsert endpoint
   document.querySelectorAll('.order-flag-checkbox').forEach(function(cb) {

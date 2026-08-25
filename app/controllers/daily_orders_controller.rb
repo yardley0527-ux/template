@@ -1,6 +1,5 @@
 class DailyOrdersController < ApplicationController
   include HighValueOrderScoping
-  include DailyOrdersHelper
 
   TIERS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
   TOGGLEABLE_FIELDS = %w[follows_chloe_ig invited_to_follow_product_ig health_inquiry_declined recipe_message_sent].freeze
@@ -73,16 +72,6 @@ class DailyOrdersController < ApplicationController
     @health_card_done       = care_applicable.count { |r| @gift_records[r.order_number]&.health_card_sent? }
     @crm_unread_done        = care_applicable.count { |r| @gift_records[r.order_number]&.crm_maintenance_unread? }
     @care_applicable_rows   = care_applicable
-  end
-
-  # CRM維護已讀小卡 modal 的「匯出 Excel」：只匯出已打勾（health_card_sent）的名單
-  def export_health_card_list
-    export_care_list(field: :health_card_sent, filename_label: "CRM維護已讀名單")
-  end
-
-  # CRM維護未讀小卡 modal 的「匯出 Excel」：只匯出已打勾（crm_maintenance_unread）的名單
-  def export_crm_unread_list
-    export_care_list(field: :crm_maintenance_unread, filename_label: "CRM維護未讀名單")
   end
 
   def toggle_customer_flag
@@ -164,36 +153,6 @@ class DailyOrdersController < ApplicationController
   def care_applicable_rows(old_rows)
     first_purchase_applicable = old_rows.select { |r| (@products_by_order[r.order_number] || []).any? { |p| p[:prior_date].nil? } }
     first_purchase_applicable.reject(&:has_repurchased)
-  end
-
-  # CRM維護已讀／CRM維護未讀 modal 共用的「匯出 Excel」：只匯出指定欄位已打勾的名單
-  def export_care_list(field:, filename_label:)
-    @start_date = parse_date(params[:start_date]) || parse_date(params[:date]) || Time.zone.yesterday
-    @end_date   = parse_date(params[:end_date]) || @start_date
-    @end_date   = @start_date if @end_date < @start_date
-    @ig_search  = params[:ig_search].presence
-    clamp_end_date! unless @ig_search
-    @series_filter = params[:series_filter].presence
-    @first_purchase_only = params[:first_purchase_only] == "1"
-    groups = build_groups(@start_date, @end_date)
-
-    old_rows = groups.drop(1).flat_map { |_, rows| rows }
-    all_order_nums = groups.flat_map { |_, rows| rows.map(&:order_number) }
-    gift_records = OrderGiftRecord.where(order_number: all_order_nums).index_by(&:order_number)
-
-    done_rows = care_applicable_rows(old_rows).select { |r| gift_records[r.order_number]&.public_send(:"#{field}?") }
-
-    csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["姓名", "IG"]
-      done_rows.each do |row|
-        csv << [row.customer_name, daily_orders_ig_link(row.ig_account)]
-      end
-    end
-
-    filename = "#{filename_label}_#{@start_date.strftime('%Y%m%d')}_#{@end_date.strftime('%Y%m%d')}.csv"
-    send_data "\xEF\xBB\xBF" + csv_data,
-      filename: filename,
-      type: "text/csv; charset=utf-8"
   end
 
   def parse_date(value)
