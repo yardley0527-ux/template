@@ -1,0 +1,318 @@
+<div class="subheader d-flex align-items-center justify-content-between flex-wrap gap-2">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-user-check"></i>
+    營運追蹤名單
+    <small>已列為「待追蹤客人」的名單，依卡別分組</small>
+  </h1>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr"><h2>篩選</h2></div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <%= form_with url: tracked_customers_path, method: :get, local: true, class: "row gx-3 gy-3 align-items-end" do %>
+            <div class="col-sm-6 col-md-4">
+              <label class="form-label">搜尋</label>
+              <%= text_field_tag :q, @q, class: "form-control", placeholder: "姓名 / Email / 手機 / IG" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2">
+              <label class="form-label">購物金 ≥</label>
+              <%= number_field_tag :min_credits, (@min_credits&.to_i), class: "form-control", placeholder: "3000" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2">
+              <label class="form-label">會員等級</label>
+              <%= select_tag :membership_level,
+                options_for_select([["全部", ""]] + @membership_levels.map { |l| [l, l] }, @membership_level),
+                class: "form-control" %>
+            </div>
+
+            <div class="w-100"></div>
+
+            <div class="col-sm-6 col-md-3 mt-md-2">
+              <label class="form-label">產品標籤</label>
+              <%= select_tag :product_tag,
+                  options_for_select([["全部", ""]] + @product_tag_options.map { |tag| [tag, tag] }, @product_tag),
+                  class: "form-control" %>
+            </div>
+
+            <div class="col-sm-6 col-md-3 mt-md-2">
+              <label class="form-label">健康標籤</label>
+              <%= select_tag :health_tag,
+                  options_for_select([["全部", ""]] + @health_tag_options.map { |tag| [tag, tag] }, @health_tag),
+                  class: "form-control" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2 mt-md-2">
+              <label class="form-label">品牌大使培訓</label>
+              <%= select_tag :brand_ambassador,
+                options_for_select([["全部", ""], ["已加入觀察名單", "1"]], @brand_ambassador),
+                class: "form-control" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2 mt-md-2">
+              <label class="form-label">破萬新客</label>
+              <%= select_tag :big_first,
+                options_for_select([["全部", ""], ["破萬新客", "1"]], @big_first_filter),
+                class: "form-control" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2 mt-md-2">
+              <label class="form-label">最近消費</label>
+              <%= select_tag :recent_purchase,
+                options_for_select([["全部", ""], ["3個月內有消費", "1"]], @recent_purchase),
+                class: "form-control" %>
+            </div>
+
+            <div class="col-sm-12 col-md-9 mt-md-3">
+              <%= button_tag "查詢", type: "submit", class: "btn btn-primary me-2 mt-2" %>
+              <%= link_to "清除", tracked_customers_path, class: "btn btn-outline-secondary mt-2" %>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="panel-content">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="text-muted">
+              總筆數：<%= number_with_delimiter(@total.to_i) %>
+              每頁：<%= TrackedCustomersController::PER_PAGE %>
+              頁數：<%= @page %> / <%= @total_pages %>
+              <% if @recent_purchase == "1" && @recent_purchase_denominator.to_i > 0 %>
+                <br>
+                待追蹤・<%= @membership_level.presence || "全部會員" %>共 <%= number_with_delimiter(@recent_purchase_denominator) %> 人，
+                3個月內有消費 <%= number_with_delimiter(@total.to_i) %> 人
+                （<%= (@total.to_f / @recent_purchase_denominator * 100).round(1) %>%）
+              <% end %>
+            </div>
+
+            <div class="btn-group">
+              <% prev_page = [@page - 1, 1].max %>
+              <% next_page = [@page + 1, @total_pages].min %>
+              <%= link_to "← 上一頁",
+                tracked_customers_path(request.query_parameters.merge(page: prev_page)),
+                class: "btn btn-outline-secondary btn-sm #{'disabled' if @page <= 1}" %>
+              <%= link_to "下一頁 →",
+                tracked_customers_path(request.query_parameters.merge(page: next_page)),
+                class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+            </div>
+          </div>
+
+          <div class="mobile-sort d-md-none mb-3">
+            <label class="form-label mb-1" style="font-size:12px; font-weight:600; color:#9ca3af;">排序方式</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <% [
+                ["👑 卡別",     "membership_asc", "membership_asc", "membership"],
+                ["💰 累積消費", "amount_desc",   "amount_asc",   "amount"],
+                ["📦 訂單數",   "orders_desc",   "orders_asc",   "orders"],
+                ["🪙 購物金",   "credits_desc",  "credits_asc",  "credits"],
+                ["⚠️ 未購警示", "inactive_desc", "inactive_asc", "inactive"],
+                ["🕒 最近消費", "last_purchase_desc", "last_purchase_asc", "last_purchase"],
+              ].each do |label, desc_val, asc_val, prefix| %>
+                <% active = @sort.start_with?(prefix) %>
+                <% next_sort = @sort == desc_val ? asc_val : desc_val %>
+                <% arrow = @sort == desc_val ? "↓" : @sort == asc_val ? "↑" : "↓" %>
+                <%= link_to "#{label} #{arrow}",
+                  tracked_customers_path(request.query_parameters.merge(sort: next_sort, page: 1)),
+                  class: "btn btn-sm #{active ? 'btn-primary' : 'btn-outline-secondary'}" %>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover table-striped w-100">
+              <thead class="bg-primary-600">
+                <tr>
+                  <th class="text-center">品牌</th>
+                  <th>姓名</th>
+                  <th>生日</th>
+                  <th>城市</th>
+                  <th class="text-end"><%= tracked_sort_link_tag("訂單數", "orders_asc", "orders_desc", @sort) %></th>
+                  <th class="text-end"><%= tracked_sort_link_tag("累積消費", "amount_asc", "amount_desc", @sort) %></th>
+                  <th class="text-end"><%= tracked_sort_link_tag("購物金", "credits_asc", "credits_desc", @sort) %></th>
+                  <th><%= tracked_sort_link_tag("會員", "membership_asc", "membership_asc", @sort) %></th>
+                  <th>常買</th>
+                  <th>產品標籤</th>
+                  <th>破萬新客</th>
+                  <th><%= tracked_sort_link_tag("未購警示", "inactive_asc", "inactive_desc", @sort) %></th>
+                  <th><%= tracked_sort_link_tag("最近消費", "last_purchase_asc", "last_purchase_desc", @sort) %></th>
+                  <th>編輯</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @customers.each do |c| %>
+                  <tr>
+                    <td data-label="品牌大使" class="text-center">
+                      <% if c.customer_profile&.brand_ambassador_blacklisted? %>
+                        ❌
+                      <% elsif c.customer_profile&.brand_ambassador_training? %>
+                        ✅
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
+                    <td data-label="姓名">
+                      <div class="fw-500">
+                        <%= link_to (c.full_name.presence || "(無名)"), customer_path(c) %>
+                        <% if @inactive_info[c.email] %>
+                          <% warn_color = @inactive_info[c.email][:days] >= 180 ? "#c0392b" : "#2980b9" %>
+                          <span style="color:<%= warn_color %>; font-size:0.75em;" title="未購警示">⚠</span>
+                        <% end %>
+                      </div>
+                      <div class="small text-muted">
+                        <% if c.instagram_account.present? %>
+                          <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer">
+                            <%= c.instagram_account %>
+                          </a>
+                        <% else %>
+                          <span class="opacity-0">—</span>
+                        <% end %>
+                      </div>
+                    </td>
+                    <td data-label="生日" class="small"><%= c.birthdate&.strftime("%Y/%m/%d") || "—" %></td>
+                    <td data-label="城市"><%= c.city.presence || "—" %></td>
+                    <td data-label="訂單數" class="text-end"><%= c.order_count.to_i %></td>
+                    <td data-label="累積消費" class="text-end">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
+                    <td data-label="購物金" class="text-end"><%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %></td>
+                    <td data-label="會員"><%= c.membership_level.presence || "一般" %></td>
+                    <td data-label="常買">
+                      <% if @top_products[c.email].present? %>
+                        <% @top_products[c.email].split(",").each do |product| %>
+                          <span class="badge badge-top-product me-1 mb-1"><%= product.strip %></span>
+                        <% end %>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
+                    <td>
+                      <% c.customer_profile&.shengting_product_tags.to_a.each do |tag| %>
+                        <span class="badge badge-pill bg-info-500 me-1 mb-1"><%= tag %></span>
+                      <% end %>
+                    </td>
+                    <td data-label="破萬新客" class="text-center small">
+                      <% if (date = @big_first_orders[c.email]) %>
+                        ✅ <%= date.strftime("%m/%d") %>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
+                    <td data-label="未購警示" class="small">
+                      <% if (info = @inactive_info[c.email]) %>
+                        <% color = info[:days] >= 180 ? "#c0392b" : "#2980b9" %>
+                        <span style="color:<%= color %>; font-weight:600;">⚠ <%= info[:days] %>天</span>
+                        <div class="text-muted" style="font-size:10px;"><%= info[:last_product] %></div>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
+                    <td data-label="最近消費" class="small">
+                      <% if c.last_order_date %>
+                        <%= link_to c.last_order_date.strftime("%Y/%m/%d"), customer_path(c) %>
+                        <% if @last_purchase_products[c.email].present? %>
+                          <div class="text-muted" style="font-size:10px;"><%= @last_purchase_products[c.email].join("、") %></div>
+                        <% end %>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
+                    <td data-label="編輯" class="text-center">
+                      <%= link_to "✏️", edit_customer_path(c), class: "btn btn-sm btn-outline-secondary" %>
+                    </td>
+                  </tr>
+                <% end %>
+
+                <% if @customers.blank? %>
+                  <tr><td colspan="13" class="text-center text-muted py-5">目前沒有被列為待追蹤的客人</td></tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex justify-content-end mt-3">
+            <% prev_page = [@page - 1, 1].max %>
+            <% next_page = [@page + 1, @total_pages].min %>
+            <%= link_to "← 上一頁",
+              tracked_customers_path(request.query_parameters.merge(page: prev_page)),
+              class: "btn btn-outline-secondary btn-sm me-2 #{'disabled' if @page <= 1}" %>
+            <%= link_to "下一頁 →",
+              tracked_customers_path(request.query_parameters.merge(page: next_page)),
+              class: "btn btn-outline-secondary btn-sm #{'disabled' if @page >= @total_pages}" %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<style>
+/* 針對電腦版的微調 */
+.table th { vertical-align: middle; }
+.bg-primary-600 { background-color: #886ab5 !important; color: white; }
+
+@media (max-width: 768px) {
+  .table-responsive table thead {
+    display: none;
+  }
+
+  .table-responsive table,
+  .table-responsive tbody,
+  .table-responsive tr,
+  .table-responsive td {
+    display: block;
+    width: 100%;
+  }
+
+  .table-responsive tr {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,.04);
+  }
+
+  .table-responsive td {
+    border: none;
+    padding: 6px 0;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  .table-responsive td:last-child {
+    border-bottom: none;
+    margin-top: 5px;
+    justify-content: center; /* 讓編輯按鈕置中 */
+  }
+
+  .table-responsive td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #6b7280;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .table-responsive td.text-end {
+    text-align: right;
+  }
+
+  .fw-500 { font-weight: 600; font-size: 1.1em; }
+  }
+
+  .badge-top-product {
+    display: inline-block;
+    background-color: #c62828;
+    color: #ffffff;
+    padding: 5px 10px;
+    font-size: 13px;
+    border-radius: 999px;
+  }
+</style>

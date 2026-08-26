@@ -17,6 +17,7 @@ class SidebarEntry
             { href: notification_board_path, title: "營運提醒", icon: "fa-bell",
               subtitle: (unread_notifications.positive? ? unread_notifications.to_s : nil),
               subtitle_class: "badge badge-danger" },
+            { href: tracked_customers_path, title: "營運追蹤名單", icon: "fa-user-check" },
           ]
         },
         {
