@@ -1,7 +1,9 @@
 import instaloader
 import json
 import os
+import sys
 import time
+import webbrowser
 from datetime import date
 
 ACCOUNTS = [
@@ -21,6 +23,10 @@ ACCOUNTS = [
     "shengting.eyeprotect",
 ]
 
+# chloechao0527 是個人帳號，session 失效時常常還是抓得到，不能拿來判斷登入是否有效。
+# shengting_official 是一定存在的官方帳號，抓不到幾乎可以肯定是 session 死了，不是帳號真的不存在。
+CANARY_ACCOUNT = "shengting_official"
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_FILE = os.path.join(REPO_ROOT, "data", "ig_followers_data.json")
 SESSION_FILE = os.path.join(REPO_ROOT, ".ig_session")
@@ -38,6 +44,17 @@ def save_data(data):
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
+def session_is_healthy(L):
+    # test_login() 只驗證 cookie 格式看起來像已登入，IG 有時候會讓這個檢查過但實際上
+    # 商業帳號的資料都抓不到（軟性登出/被判定可疑）——用一個一定存在的帳號實測一次才準。
+    try:
+        instaloader.Profile.from_username(L.context, CANARY_ACCOUNT)
+        return True
+    except Exception as e:
+        print(f"  健康檢查失敗（{CANARY_ACCOUNT}）：{e}")
+        return False
+
+
 def login(L, username, password):
     # 1. Cached session file
     if os.path.exists(SESSION_FILE):
@@ -47,8 +64,11 @@ def login(L, username, password):
             if actual:
                 L.context.username = actual
                 print(f"Loaded cached session ({actual})")
-                return True
-            print("Cached session expired")
+                if session_is_healthy(L):
+                    return True
+                print("Cached session 已失效（抓不到官方帳號），改嘗試從 Chrome 重新匯入登入資訊...")
+            else:
+                print("Cached session expired")
         except Exception as e:
             print(f"Cached session unusable: {e}")
 
@@ -61,26 +81,35 @@ def login(L, username, password):
         if cookies.get("sessionid"):
             L.context.update_cookies(cookies)
             actual = L.test_login()
-            if actual:
+            if actual and session_is_healthy(L):
                 L.context.username = actual
                 L.save_session_to_file(SESSION_FILE)
                 print(f"Imported session from Chrome ({actual})")
                 return True
-        print("No active Instagram session in Chrome")
+        print("No active/healthy Instagram session in Chrome")
     except Exception as e:
         print(f"Chrome cookie import failed: {e}")
 
     # 3. Password login (may trigger a checkpoint challenge)
-    if not (username and password):
-        return False
+    if username and password:
+        try:
+            L.login(username, password)
+            if session_is_healthy(L):
+                L.save_session_to_file(SESSION_FILE)
+                print(f"Logged in as {username}")
+                return True
+        except Exception as e:
+            print(f"Login failed: {e}")
+
+    # 4. 都失敗了——不要繼續用壞掉的 session 硬跑（會整批「Profile does not exist」，
+    # 資料看起來沒更新但也不會有明顯錯誤訊息）。跳出瀏覽器登入頁讓你直接重新登入，
+    # 登入完再重新執行一次這支 script 就會用新的 Chrome session。
+    print("\n請在跳出的瀏覽器分頁重新登入 Instagram（帳號 serena.ncs），登入完再重新執行一次這個指令。")
     try:
-        L.login(username, password)
-        L.save_session_to_file(SESSION_FILE)
-        print(f"Logged in as {username}")
-        return True
-    except Exception as e:
-        print(f"Login failed: {e}")
-        return False
+        webbrowser.open("https://www.instagram.com/accounts/login/")
+    except Exception:
+        pass
+    return False
 
 
 def main():
@@ -98,7 +127,9 @@ def main():
     ig_user = os.environ.get("IG_USERNAME")
     ig_pass = os.environ.get("IG_PASSWORD")
     if not login(L, ig_user, ig_pass):
-        print("WARNING: proceeding without login; business accounts will fail")
+        print("\n登入失敗，今天不會更新任何資料（避免整批寫入失敗結果蓋掉舊資料）。")
+        print("重新登入後再執行一次：python3 script/fetch_ig_followers.py")
+        sys.exit(1)
 
     data = load_data()
     today = str(date.today())
