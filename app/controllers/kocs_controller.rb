@@ -10,16 +10,12 @@ class KocsController < ApplicationController
     @sort = params[:sort]
     @kocs = @sort == "likes" ? Koc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : Koc.ordered_by_engagement
 
-    @show_hidden = params[:show_hidden] == "1" && current_user.admin?
-    @kocs = @show_hidden ? @kocs.where(hidden: true) : @kocs.visible
-
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
 
-    @total_count  = Koc.visible.count
-    @hidden_count = Koc.where(hidden: true).count
-    @paid_count   = Koc.visible.where(has_paid_partnership: true).count
-    @status_counts = Koc.visible.group(:status).count
+    @total_count  = Koc.count
+    @paid_count   = Koc.where(has_paid_partnership: true).count
+    @status_counts = Koc.group(:status).count
 
     @page = [params[:page].to_i, 1].max
     @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max
@@ -72,10 +68,10 @@ class KocsController < ApplicationController
     current_user.username != LOGISTICS_USERNAME
   end
 
-  # 社群部帳號能更新接洽狀態、拍影片狀態、Chloe IG／官方 IG 追蹤、聯絡備註，hidden 跟新增/刪除維持 admin 專用。
+  # 社群部帳號能更新接洽狀態、拍影片狀態、Chloe IG／官方 IG 追蹤、聯絡備註，新增/刪除維持 admin 專用。
   def koc_params
     permitted = if current_user.admin?
-      %i[ig_username ig_full_name alias email profile_url status notes hidden video_shoot_status follows_chloe_ig follows_official_ig email_sent]
+      %i[ig_username ig_full_name alias email profile_url status notes video_shoot_status follows_chloe_ig follows_official_ig email_sent]
     elsif can_edit_social_fields?
       %i[status notes video_shoot_status follows_chloe_ig follows_official_ig email_sent]
     else

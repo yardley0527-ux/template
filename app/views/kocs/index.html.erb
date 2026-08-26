@@ -85,13 +85,10 @@
 
 <%# ── 篩選列 ── %>
 <div class="d-flex flex-wrap gap-2 mb-3">
-  <%= link_to "全部", kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank? && !@show_hidden} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank? && !@show_hidden}" %>
-  <%= link_to "只看已業配", kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1' && !@show_hidden} #{'btn-outline-secondary' unless params[:paid] == '1' && !@show_hidden}" %>
+  <%= link_to "全部", kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank?} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank?}" %>
+  <%= link_to "只看已業配", kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1'} #{'btn-outline-secondary' unless params[:paid] == '1'}" %>
   <% Koc::STATUSES.each do |s| %>
-    <%= link_to s, kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s && !@show_hidden} #{'btn-outline-secondary' unless params[:status] == s && !@show_hidden}" %>
-  <% end %>
-  <% if current_user.admin? %>
-    <%= link_to "隱藏名單（#{@hidden_count}）", kocs_path(show_hidden: "1"), class: "btn btn-sm ml-auto #{'btn-dark' if @show_hidden} #{'btn-outline-secondary' unless @show_hidden}" %>
+    <%= link_to s, kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
   <% end %>
 </div>
 
@@ -108,12 +105,12 @@
             <th>業配</th>
             <th class="text-end">貼文數</th>
             <th class="text-end">
-              <%= link_to kocs_path(status: params[:status], paid: params[:paid], show_hidden: params[:show_hidden], sort: "views"), class: "text-decoration-none #{@sort == 'likes' ? 'text-muted' : 'text-dark fw-bold'}", style: "cursor:pointer" do %>
+              <%= link_to kocs_path(status: params[:status], paid: params[:paid], sort: "views"), class: "text-decoration-none #{@sort == 'likes' ? 'text-muted' : 'text-dark fw-bold'}", style: "cursor:pointer" do %>
                 最高觀看<%= @sort != "likes" ? " ▾" : "" %>
               <% end %>
             </th>
             <th class="text-end">
-              <%= link_to kocs_path(status: params[:status], paid: params[:paid], show_hidden: params[:show_hidden], sort: "likes"), class: "text-decoration-none #{@sort == 'likes' ? 'text-dark fw-bold' : 'text-muted'}", style: "cursor:pointer" do %>
+              <%= link_to kocs_path(status: params[:status], paid: params[:paid], sort: "likes"), class: "text-decoration-none #{@sort == 'likes' ? 'text-dark fw-bold' : 'text-muted'}", style: "cursor:pointer" do %>
                 最高讚數<%= @sort == "likes" ? " ▾" : "" %>
               <% end %>
             </th>
@@ -243,12 +240,6 @@
               </td>
               <td>
                 <% if current_user.admin? %>
-                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= hidden_field_tag "koc[hidden]", !koc.hidden? %>
-                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="<%= koc.hidden? ? '取消隱藏' : '隱藏' %>">
-                      <i class="fal <%= koc.hidden? ? 'fa-eye' : 'fa-eye-slash' %>"></i>
-                    </button>
-                  <% end %>
                   <%= link_to koc_path(koc), method: :delete, data: { confirm: "確定刪除 #{koc.ig_username}？" }, class: "btn btn-sm btn-outline-danger" do %>
                     <i class="fal fa-trash-alt"></i>
                   <% end %>

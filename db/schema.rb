@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_25_142324) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_26_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -544,7 +544,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_25_142324) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "max_video_views_url"
-    t.boolean "hidden", default: false, null: false
     t.string "video_shoot_status", default: "未拍攝", null: false
     t.boolean "follows_chloe_ig", default: false, null: false
     t.boolean "follows_official_ig", default: false, null: false
