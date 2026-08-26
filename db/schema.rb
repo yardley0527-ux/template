@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_26_160000) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_26_170003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -29,6 +29,60 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_26_160000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["shopline_customer_id"], name: "index_albums_on_shopline_customer_id"
+  end
+
+  create_table "betterbio_kocs", force: :cascade do |t|
+    t.string "ig_username"
+    t.string "ig_full_name"
+    t.string "ig_user_id"
+    t.string "email"
+    t.string "alias"
+    t.string "profile_url"
+    t.string "status"
+    t.boolean "has_paid_partnership"
+    t.integer "post_count"
+    t.integer "max_likes"
+    t.integer "max_video_views"
+    t.datetime "last_post_at"
+    t.string "last_post_url"
+    t.string "source"
+    t.text "notes"
+    t.boolean "follows_chloe_ig", default: false, null: false
+    t.boolean "follows_official_ig", default: false, null: false
+    t.string "video_shoot_status", default: "未拍攝", null: false
+    t.boolean "email_sent", default: false, null: false
+    t.text "logistics_notes"
+    t.date "pr_gift_shipped_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_username"], name: "index_betterbio_kocs_on_ig_username", unique: true
+  end
+
+  create_table "body_goals_kocs", force: :cascade do |t|
+    t.string "ig_username"
+    t.string "ig_full_name"
+    t.string "ig_user_id"
+    t.string "email"
+    t.string "alias"
+    t.string "profile_url"
+    t.string "status"
+    t.boolean "has_paid_partnership"
+    t.integer "post_count"
+    t.integer "max_likes"
+    t.integer "max_video_views"
+    t.datetime "last_post_at"
+    t.string "last_post_url"
+    t.string "source"
+    t.text "notes"
+    t.boolean "follows_chloe_ig", default: false, null: false
+    t.boolean "follows_official_ig", default: false, null: false
+    t.string "video_shoot_status", default: "未拍攝", null: false
+    t.boolean "email_sent", default: false, null: false
+    t.text "logistics_notes"
+    t.date "pr_gift_shipped_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_username"], name: "index_body_goals_kocs_on_ig_username", unique: true
   end
 
   create_table "bulletin_notes", force: :cascade do |t|
@@ -415,6 +469,33 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_26_160000) do
     t.datetime "updated_at", null: false
     t.index ["department", "log_date"], name: "index_department_updates_on_department_and_log_date", unique: true
     t.index ["log_date"], name: "index_department_updates_on_log_date"
+  end
+
+  create_table "dianbopopo_kocs", force: :cascade do |t|
+    t.string "ig_username"
+    t.string "ig_full_name"
+    t.string "ig_user_id"
+    t.string "email"
+    t.string "alias"
+    t.string "profile_url"
+    t.string "status"
+    t.boolean "has_paid_partnership"
+    t.integer "post_count"
+    t.integer "max_likes"
+    t.integer "max_video_views"
+    t.datetime "last_post_at"
+    t.string "last_post_url"
+    t.string "source"
+    t.text "notes"
+    t.boolean "follows_chloe_ig", default: false, null: false
+    t.boolean "follows_official_ig", default: false, null: false
+    t.string "video_shoot_status", default: "未拍攝", null: false
+    t.boolean "email_sent", default: false, null: false
+    t.text "logistics_notes"
+    t.date "pr_gift_shipped_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_username"], name: "index_dianbopopo_kocs_on_ig_username", unique: true
   end
 
   create_table "faq_categories", force: :cascade do |t|
