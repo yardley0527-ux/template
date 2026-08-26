@@ -2,51 +2,29 @@
 <% if @rows.blank? %>
   <div class="text-muted small py-2">目前沒有符合條件的客人（可能都已回購或資料已更新）</div>
 <% else %>
-  <%= form_tag notification_board_create_product_customer_task_path, method: :post, class: "js-customer-task-form", data: { turbo: false } do %>
-    <%= hidden_field_tag :product_key, @product_key %>
-    <div class="table-responsive">
-      <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.8rem;">
-        <thead class="table-light">
+  <div class="table-responsive">
+    <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.8rem;">
+      <thead class="table-light">
+        <tr>
+          <th>姓名</th><th>卡別</th><th>Email</th><th>LINE ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rows.each do |r| %>
           <tr>
-            <th style="width:24px;"><input type="checkbox" class="js-check-all"></th>
-            <th>姓名</th><th>卡別</th><th>Email</th><th>LINE ID</th>
+            <td>
+              <% if r[:customer_id] %>
+                <%= link_to (r[:full_name].presence || "（無名）"), customer_path(r[:customer_id]), target: "_blank", class: "fw-semibold text-decoration-none" %>
+              <% else %>
+                <span class="text-muted">（查無會員資料）</span>
+              <% end %>
+            </td>
+            <td><span class="text-muted small"><%= r[:membership_level].presence || "一般" %></span></td>
+            <td><span class="text-muted small"><%= r[:email] %></span></td>
+            <td><span class="text-muted small"><%= r[:line_id].presence || "—" %></span></td>
           </tr>
-        </thead>
-        <tbody>
-          <% @rows.each do |r| %>
-            <tr>
-              <td>
-                <% if r[:email].present? %>
-                  <input type="checkbox" name="emails[]" value="<%= r[:email] %>" class="js-row-check">
-                <% end %>
-              </td>
-              <td>
-                <% if r[:customer_id] %>
-                  <%= link_to (r[:full_name].presence || "（無名）"), customer_path(r[:customer_id]), target: "_blank", class: "fw-semibold text-decoration-none" %>
-                <% else %>
-                  <span class="text-muted">（查無會員資料）</span>
-                <% end %>
-              </td>
-              <td><span class="text-muted small"><%= r[:membership_level].presence || "一般" %></span></td>
-              <td><span class="text-muted small"><%= r[:email] %></span></td>
-              <td><span class="text-muted small"><%= r[:line_id].presence || "—" %></span></td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    </div>
-    <div class="d-flex align-items-center flex-wrap mt-2" style="gap:6px;">
-      <span class="text-muted small">已勾選 <span class="js-checked-count">0</span> 人</span>
-      <input type="date" name="contact_date" class="form-control form-control-sm" style="width:150px;" value="<%= Date.current %>">
-      <select name="assignee_id" class="form-control form-control-sm" style="width:160px;">
-        <option value="">（不指定負責人）</option>
-        <% User.order(:username).each do |u| %>
-          <option value="<%= u.id %>"><%= u.username %></option>
         <% end %>
-      </select>
-      <button type="submit" class="btn btn-sm btn-primary js-submit-customer-task" disabled>建立客服任務</button>
-    </div>
-  <% end %>
+      </tbody>
+    </table>
+  </div>
 <% end %>
-<%# 注意：innerHTML 插入不會執行 <script>，checkbox 全選/計數/送出的 JS 邏輯
-    集中寫在 index.html.erb 的 document 層級事件代理，跟 customers.html.erb 共用同一套。 %>

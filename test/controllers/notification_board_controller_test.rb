@@ -267,21 +267,6 @@ class NotificationBoardControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "阿明"
   end
 
-  test "create_product_customer_task creates a follow-up without being tied to a single notification id" do
-    CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
-    cycle = CrmCustomerProductCycle.create!(
-      identity_key: "a@example.com", email: "a@example.com", product_key: "metabolism",
-      cycle_started_at: 40.days.ago.to_date, bottle_count: 1, estimated_usage_days: 30,
-      estimated_finish_date: 10.days.ago.to_date, suggested_contact_date: 5.days.ago.to_date,
-      match_status: "not_yet_repurchased", refreshed_at: Time.current
-    )
-
-    post notification_board_create_product_customer_task_path,
-      params: { product_key: "metabolism", emails: ["a@example.com"], contact_date: Date.current.to_s }
-
-    assert_equal "rescheduled", cycle.reload.follow_up_status
-  end
-
   test "create_customer_task creates a follow-up on the matching cycle and skips customers with an existing active task" do
     CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
     cycle_a = CrmCustomerProductCycle.create!(

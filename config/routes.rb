@@ -215,7 +215,6 @@ Rails.application.routes.draw do
   post '/notification_board/:id/snooze',   to: 'notification_board#snooze',   as: :notification_board_snooze
   post '/notification_board/:id/dismiss',   to: 'notification_board#dismiss',   as: :notification_board_dismiss
   post '/notification_board/:id/create_customer_task', to: 'notification_board#create_customer_task', as: :notification_board_create_customer_task
-  post '/notification_board/create_product_customer_task', to: 'notification_board#create_product_customer_task', as: :notification_board_create_product_customer_task
 
   # ── Product Registry Review UI (Epic B2-0C) ─────────────────────────
   get   '/product_registry',                    to: 'product_registry#index',          as: :product_registry

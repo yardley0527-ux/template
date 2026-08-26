@@ -136,18 +136,6 @@ class NotificationBoardController < ApplicationController
     redirect_to notification_board_path(section: params[:section]), notice: customer_task_notice(result)
   end
 
-  # 「今日待處理」依產品合併後的名單版本——不綁單一通知卡，用 product_key
-  # 直接建任務（同一產品底下可能好幾張卡一起勾選聯絡名單）。
-  def create_product_customer_task
-    product_key = params[:product_key]
-    result = NotificationCustomerTaskService.call(
-      product_key: product_key, emails: Array(params[:emails]), actor: current_user,
-      note: "由營運提醒中心「今日待處理・#{JourneyProducts::PRODUCTS.dig(product_key, :label) || product_key}」建立",
-      assigned_to_user_id: params[:assignee_id].presence, contact_date: parse_date(params[:contact_date])
-    )
-    redirect_to notification_board_path(section: "today"), notice: customer_task_notice(result)
-  end
-
   private
 
   def notification
