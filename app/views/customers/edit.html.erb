@@ -12,7 +12,7 @@
         <h1><%= @customer.full_name.presence || "（無姓名）" %></h1>
         <div class="customer-meta">
           <span>
-            <%= @edit_section == "health" ? "🩺 編輯健康資料" : "✏️ 編輯備註與培訓" %>
+            <%= @edit_section == "health" ? "🩺 編輯健康資料" : "✏️ 編輯客人追蹤備註" %>
           </span>
         </div>
       </div>
@@ -21,7 +21,7 @@
 
   <section class="section">
     <h2 class="section-title">
-      <%= @edit_section == "health" ? "🩺 健康資料" : "📝 備註與培訓" %>
+      <%= @edit_section == "health" ? "🩺 健康資料" : "📝 客人追蹤備註" %>
     </h2>
 
     <%= form_with model: @profile, url: customer_path(@customer, section: @edit_section), method: :patch do |f| %>
@@ -84,6 +84,13 @@
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
               <span class="toggle-text">標記為已流失客人</span>
             </label>
+          </div>
+
+          <div class="edit-field">
+            <button type="submit" name="mark_tracked" value="1" class="btn btn-outline-primary btn-sm">📌 追蹤</button>
+            <% if @profile.last_tracked_at.present? %>
+              <span class="text-muted small ms-2">最後追蹤：<%= @profile.last_tracked_at.strftime("%Y/%m/%d %H:%M") %></span>
+            <% end %>
           </div>
 
           <div class="edit-field">

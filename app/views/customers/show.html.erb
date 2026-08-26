@@ -61,9 +61,9 @@
     </div>
   </section>
 
-  <%# === 備註與培訓 === %>
+  <%# === 客人追蹤備註 === %>
   <section class="section">
-    <h2 class="section-title">📝 備註與培訓</h2>
+    <h2 class="section-title">📝 客人追蹤備註</h2>
     <div class="customer-info-card profile-card">
 
       <div class="profile-status-row">
@@ -82,6 +82,15 @@
           <span class="profile-status-label">已流失</span>
           <% if @profile.churned? %>
             <span class="status-check">✅</span>
+          <% else %>
+            <span class="status-empty">—</span>
+          <% end %>
+        </div>
+
+        <div class="profile-status-item">
+          <span class="profile-status-label">最後追蹤</span>
+          <% if @profile.last_tracked_at.present? %>
+            <span class="status-check"><%= @profile.last_tracked_at.strftime("%Y/%m/%d") %></span>
           <% else %>
             <span class="status-empty">—</span>
           <% end %>

@@ -303,6 +303,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_26_160000) do
     t.boolean "blacklisted", default: false, null: false
     t.boolean "churned", default: false, null: false
     t.datetime "notes_updated_at"
+    t.datetime "last_tracked_at"
     t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin
     t.index ["product_tags"], name: "index_customer_profiles_on_product_tags", using: :gin
     t.index ["shopline_customer_id"], name: "index_customer_profiles_on_shopline_customer_id"

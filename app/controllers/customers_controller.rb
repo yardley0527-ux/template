@@ -350,9 +350,13 @@ class CustomersController < ApplicationController
       params[:customer_profile][:shengting_product_tags]&.reject!(&:blank?)
     end
 
+    # 「追蹤」按鈕：不管備註內容有沒有改，按下去就記錄今天已經追蹤過這位客人
+    @profile.last_tracked_at = Time.current if params[:mark_tracked].present?
+
     if @profile.update(profile_params)
       log_customer_edit(@customer, @profile, @edit_section)
-      redirect_to customer_path(@customer), notice: "已儲存"
+      notice = params[:mark_tracked].present? ? "已標記追蹤" : "已儲存"
+      redirect_to customer_path(@customer), notice: notice
     else
       render :edit, status: :unprocessable_entity
     end
@@ -482,7 +486,7 @@ class CustomersController < ApplicationController
   end
 
   def log_customer_edit(customer, profile, section)
-    changes = profile.previous_changes.except("updated_at", "created_at", "id", "shopline_customer_id", "notes_updated_at")
+    changes = profile.previous_changes.except("updated_at", "created_at", "id", "shopline_customer_id", "notes_updated_at", "last_tracked_at")
     return if changes.empty?
     CustomerEditLog.create!(
       customer_id:   customer.id,
