@@ -1,4 +1,4 @@
-class CoindevanityKocsController < ApplicationController
+class AkimiaKocsController < ApplicationController
   PER_PAGE = 10
   LOGISTICS_USERNAME = "crmdata".freeze
 
@@ -6,13 +6,13 @@ class CoindevanityKocsController < ApplicationController
 
   def index
     @sort = params[:sort]
-    @kocs = @sort == "likes" ? CoindevanityKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : CoindevanityKoc.ordered_by_engagement
+    @kocs = @sort == "likes" ? AkimiaKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : AkimiaKoc.ordered_by_engagement
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
 
-    @total_count = CoindevanityKoc.count
-    @paid_count  = CoindevanityKoc.where(has_paid_partnership: true).count
-    @status_counts = CoindevanityKoc.group(:status).count
+    @total_count = AkimiaKoc.count
+    @paid_count  = AkimiaKoc.where(has_paid_partnership: true).count
+    @status_counts = AkimiaKoc.group(:status).count
 
     @page = [params[:page].to_i, 1].max
     @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max
@@ -21,28 +21,28 @@ class CoindevanityKocsController < ApplicationController
   end
 
   def create
-    @koc = CoindevanityKoc.new(koc_params)
+    @koc = AkimiaKoc.new(koc_params)
     @koc.source = "手動新增"
 
     if @koc.save
-      redirect_to coindevanity_kocs_path, notice: "已新增 #{@koc.ig_username}"
+      redirect_to akimia_kocs_path, notice: "已新增 #{@koc.ig_username}"
     else
-      redirect_to coindevanity_kocs_path, alert: @koc.errors.full_messages.join("、")
+      redirect_to akimia_kocs_path, alert: @koc.errors.full_messages.join("、")
     end
   end
 
   def update
-    @koc = CoindevanityKoc.find(params[:id])
+    @koc = AkimiaKoc.find(params[:id])
     @koc.update(koc_params)
-    redirect_back fallback_location: coindevanity_kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
+    redirect_back fallback_location: akimia_kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
   end
 
   def destroy
     return head :forbidden unless current_user.admin? || current_user.role&.key == "social"
 
-    @koc = CoindevanityKoc.find(params[:id])
+    @koc = AkimiaKoc.find(params[:id])
     @koc.destroy
-    redirect_to coindevanity_kocs_path, notice: "已刪除 #{@koc.ig_username}"
+    redirect_to akimia_kocs_path, notice: "已刪除 #{@koc.ig_username}"
   end
 
   private
@@ -61,6 +61,6 @@ class CoindevanityKocsController < ApplicationController
     permitted = can_edit_social_fields? ? %i[ig_username ig_full_name alias email profile_url status notes follows_chloe_ig follows_official_ig video_shoot_status email_sent] : []
     permitted += %i[logistics_notes pr_gift_shipped_at] if can_edit_logistics_fields?
 
-    params.require(:coindevanity_koc).permit(*permitted)
+    params.require(:akimia_koc).permit(*permitted)
   end
 end

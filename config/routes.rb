@@ -85,7 +85,7 @@ Rails.application.routes.draw do
   resources :body_goals_kocs, only: [:index, :create, :update, :destroy]
   resources :betterbio_kocs, only: [:index, :create, :update, :destroy]
   resources :dianbopopo_kocs, only: [:index, :create, :update, :destroy]
-  resources :coindevanity_kocs, only: [:index, :create, :update, :destroy]
+  resources :akimia_kocs, only: [:index, :create, :update, :destroy]
   resources :podcast_contacts, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
   end

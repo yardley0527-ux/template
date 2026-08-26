@@ -1,4 +1,4 @@
-class CoindevanityKoc < ApplicationRecord
+class AkimiaKoc < ApplicationRecord
   STATUSES = %w[待接洽 已接洽 未回覆 已回覆 合作中 已合作 婉拒].freeze
   VIDEO_SHOOT_STATUSES = %w[未拍攝 已拍攝].freeze
 

@@ -1,4 +1,4 @@
-<%# app/views/coindevanity_kocs/index.html.erb %>
+<%# app/views/akimia_kocs/index.html.erb %>
 <% content_for :page_title, "微電流面膜業配名單" %>
 
 <%
@@ -56,8 +56,8 @@
       <div class="card-body">
         <div class="text-muted small mb-2">聯絡狀態分布</div>
         <div class="d-flex flex-wrap gap-2">
-          <% CoindevanityKoc::STATUSES.each do |s| %>
-            <a href="<%= coindevanity_kocs_path(status: s) %>" class="badge <%= koc_status_badge_class(s) %>" style="font-size:0.85rem">
+          <% AkimiaKoc::STATUSES.each do |s| %>
+            <a href="<%= akimia_kocs_path(status: s) %>" class="badge <%= koc_status_badge_class(s) %>" style="font-size:0.85rem">
               <%= s %> <%= @status_counts[s].to_i %>
             </a>
           <% end %>
@@ -69,10 +69,10 @@
 
 <%# ── 篩選列 ── %>
 <div class="d-flex flex-wrap gap-2 mb-3">
-  <%= link_to "全部", coindevanity_kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank?} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank?}" %>
-  <%= link_to "只看已業配", coindevanity_kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1'} #{'btn-outline-secondary' unless params[:paid] == '1'}" %>
-  <% CoindevanityKoc::STATUSES.each do |s| %>
-    <%= link_to s, coindevanity_kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
+  <%= link_to "全部", akimia_kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank?} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank?}" %>
+  <%= link_to "只看已業配", akimia_kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1'} #{'btn-outline-secondary' unless params[:paid] == '1'}" %>
+  <% AkimiaKoc::STATUSES.each do |s| %>
+    <%= link_to s, akimia_kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
   <% end %>
 </div>
 
@@ -89,12 +89,12 @@
             <th>業配</th>
             <th class="text-end">貼文數</th>
             <th class="text-end">
-              <%= link_to coindevanity_kocs_path(status: params[:status], paid: params[:paid], sort: "views"), class: "text-decoration-none #{@sort == 'likes' ? 'text-muted' : 'text-dark fw-bold'}", style: "cursor:pointer" do %>
+              <%= link_to akimia_kocs_path(status: params[:status], paid: params[:paid], sort: "views"), class: "text-decoration-none #{@sort == 'likes' ? 'text-muted' : 'text-dark fw-bold'}", style: "cursor:pointer" do %>
                 最高觀看<%= @sort != "likes" ? " ▾" : "" %>
               <% end %>
             </th>
             <th class="text-end">
-              <%= link_to coindevanity_kocs_path(status: params[:status], paid: params[:paid], sort: "likes"), class: "text-decoration-none #{@sort == 'likes' ? 'text-dark fw-bold' : 'text-muted'}", style: "cursor:pointer" do %>
+              <%= link_to akimia_kocs_path(status: params[:status], paid: params[:paid], sort: "likes"), class: "text-decoration-none #{@sort == 'likes' ? 'text-dark fw-bold' : 'text-muted'}", style: "cursor:pointer" do %>
                 最高讚數<%= @sort == "likes" ? " ▾" : "" %>
               <% end %>
             </th>
@@ -144,7 +144,7 @@
               <td><span class="small"><%= koc.email %></span></td>
               <td class="text-center">
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: akimia_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
                     <%= f.check_box :follows_chloe_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                   <% end %>
                 <% else %>
@@ -153,7 +153,7 @@
               </td>
               <td class="text-center">
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: akimia_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
                     <%= f.check_box :follows_official_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                   <% end %>
                 <% else %>
@@ -162,7 +162,7 @@
               </td>
               <td class="text-center">
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: akimia_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
                     <%= f.check_box :email_sent, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                   <% end %>
                 <% else %>
@@ -171,8 +171,8 @@
               </td>
               <td>
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.select :status, CoindevanityKoc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <%= form_with model: koc, url: akimia_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.select :status, AkimiaKoc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                   <% end %>
                 <% else %>
                   <span class="badge <%= koc_status_badge_class(koc.status) %>"><%= koc.status %></span>
@@ -180,8 +180,8 @@
               </td>
               <td>
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.select :video_shoot_status, CoindevanityKoc::VIDEO_SHOOT_STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <%= form_with model: koc, url: akimia_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.select :video_shoot_status, AkimiaKoc::VIDEO_SHOOT_STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                   <% end %>
                 <% else %>
                   <span class="small"><%= koc.video_shoot_status %></span>
@@ -189,7 +189,7 @@
               </td>
               <td style="min-width:220px">
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                  <%= form_with model: koc, url: akimia_koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
                     <%= f.text_field :notes, value: koc.notes, class: "form-control form-control-sm", placeholder: "社群聯絡備註" %>
                     <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
                   <% end %>
@@ -199,7 +199,7 @@
               </td>
               <td style="min-width:220px">
                 <% if can_edit_logistics_fields? %>
-                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                  <%= form_with model: koc, url: akimia_koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
                     <%= f.text_field :logistics_notes, value: koc.logistics_notes, class: "form-control form-control-sm", placeholder: "物流部備註" %>
                     <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
                   <% end %>
@@ -209,7 +209,7 @@
               </td>
               <td>
                 <% if can_edit_logistics_fields? %>
-                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: akimia_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
                     <%= f.date_field :pr_gift_shipped_at, value: koc.pr_gift_shipped_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                   <% end %>
                 <% else %>
@@ -218,7 +218,7 @@
               </td>
               <td>
                 <% if current_user.admin? || current_user.role&.key == "social" %>
-                  <%= link_to coindevanity_koc_path(koc), method: :delete, data: { confirm: "確定刪除 #{koc.ig_username}？" }, class: "btn btn-sm btn-outline-danger" do %>
+                  <%= link_to akimia_koc_path(koc), method: :delete, data: { confirm: "確定刪除 #{koc.ig_username}？" }, class: "btn btn-sm btn-outline-danger" do %>
                     <i class="fal fa-trash-alt"></i>
                   <% end %>
                 <% end %>
@@ -237,11 +237,11 @@
     <% prev_page = [@page - 1, 1].max %>
     <% next_page = [@page + 1, @total_pages].min %>
     <%= link_to "← 上一頁",
-          coindevanity_kocs_path(request.query_parameters.merge(page: prev_page)),
+          akimia_kocs_path(request.query_parameters.merge(page: prev_page)),
           class: "btn btn-sm btn-outline-secondary #{'disabled' if @page <= 1}" %>
     <span class="text-muted small">第 <%= @page %> 頁，共 <%= @total_pages %> 頁</span>
     <%= link_to "下一頁 →",
-          coindevanity_kocs_path(request.query_parameters.merge(page: next_page)),
+          akimia_kocs_path(request.query_parameters.merge(page: next_page)),
           class: "btn btn-sm btn-outline-secondary #{'disabled' if @page >= @total_pages}" %>
   </div>
 <% end %>
@@ -250,7 +250,7 @@
 <div class="modal fade" id="new-koc-modal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
-      <%= form_with model: CoindevanityKoc.new, url: coindevanity_kocs_path, local: true do |f| %>
+      <%= form_with model: AkimiaKoc.new, url: akimia_kocs_path, local: true do |f| %>
         <div class="modal-header">
           <h5 class="modal-title">新增 KOC</h5>
           <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
@@ -270,7 +270,7 @@
           </div>
           <div class="form-group">
             <label>聯絡狀態</label>
-            <%= f.select :status, CoindevanityKoc::STATUSES, {}, class: "form-control" %>
+            <%= f.select :status, AkimiaKoc::STATUSES, {}, class: "form-control" %>
           </div>
           <div class="form-group">
             <label>社群聯絡備註</label>
