@@ -1,0 +1,287 @@
+<%# app/views/coindevanity_kocs/index.html.erb %>
+<% content_for :page_title, "微電流面膜業配名單" %>
+
+<%
+  def koc_status_badge_class(status)
+    {
+      "待接洽" => "badge-secondary",
+      "已接洽" => "badge-info",
+      "未回覆" => "badge-dark",
+      "已回覆" => "badge-primary",
+      "合作中" => "badge-warning",
+      "已合作" => "badge-success",
+      "婉拒"   => "badge-danger",
+    }[status] || "badge-secondary"
+  end
+
+  def fmt_num(n); n.present? && n > 0 ? number_with_delimiter(n) : "—"; end
+%>
+
+<%# ── Header ── %>
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">微電流面膜業配名單</h4>
+      <p class="text-muted small mb-0">從 IG 標記/業配貼文蒐集而來的 微電流面膜 KOC 參考名單，供我們品牌挑選洽談業配對象</p>
+    </div>
+    <% if can_edit_social_fields? %>
+      <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#new-koc-modal">
+        <i class="fal fa-plus mr-1"></i>新增 KOC
+      </button>
+    <% end %>
+  </div>
+</div>
+
+<%# ── 摘要卡 ── %>
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small mb-1">總 KOC 數</div>
+        <div class="fw-bold" style="font-size:1.8rem;line-height:1"><%= @total_count %></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="text-muted small mb-1">已確認業配標記</div>
+        <div class="fw-bold text-success" style="font-size:1.8rem;line-height:1"><%= @paid_count %></div>
+        <div class="text-muted small mt-1">貼文有 #paidPartnership 標籤</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small mb-2">聯絡狀態分布</div>
+        <div class="d-flex flex-wrap gap-2">
+          <% CoindevanityKoc::STATUSES.each do |s| %>
+            <a href="<%= coindevanity_kocs_path(status: s) %>" class="badge <%= koc_status_badge_class(s) %>" style="font-size:0.85rem">
+              <%= s %> <%= @status_counts[s].to_i %>
+            </a>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ── 篩選列 ── %>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <%= link_to "全部", coindevanity_kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank?} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank?}" %>
+  <%= link_to "只看已業配", coindevanity_kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1'} #{'btn-outline-secondary' unless params[:paid] == '1'}" %>
+  <% CoindevanityKoc::STATUSES.each do |s| %>
+    <%= link_to s, coindevanity_kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
+  <% end %>
+</div>
+
+<%# ── KOC 列表 ── %>
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="bg-light">
+          <tr>
+            <th>IG 帳號</th>
+            <th>別稱</th>
+            <th>來源</th>
+            <th>業配</th>
+            <th class="text-end">貼文數</th>
+            <th class="text-end">
+              <%= link_to coindevanity_kocs_path(status: params[:status], paid: params[:paid], sort: "views"), class: "text-decoration-none #{@sort == 'likes' ? 'text-muted' : 'text-dark fw-bold'}", style: "cursor:pointer" do %>
+                最高觀看<%= @sort != "likes" ? " ▾" : "" %>
+              <% end %>
+            </th>
+            <th class="text-end">
+              <%= link_to coindevanity_kocs_path(status: params[:status], paid: params[:paid], sort: "likes"), class: "text-decoration-none #{@sort == 'likes' ? 'text-dark fw-bold' : 'text-muted'}", style: "cursor:pointer" do %>
+                最高讚數<%= @sort == "likes" ? " ▾" : "" %>
+              <% end %>
+            </th>
+            <th>最近標記貼文</th>
+            <th>Email</th>
+            <th class="text-center">Chloe IG</th>
+            <th class="text-center">官方 IG</th>
+            <th class="text-center">Email</th>
+            <th style="min-width:140px">聯絡狀態</th>
+            <th style="min-width:120px">拍影片狀態</th>
+            <th>社群聯絡備註</th>
+            <th>物流部備註</th>
+            <th style="min-width:150px">公關品寄出日期</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @kocs.each do |koc| %>
+            <tr>
+              <td>
+                <a href="<%= koc.profile_link %>" target="_blank" rel="noopener">
+                  @<%= koc.ig_username %>
+                </a>
+                <% if koc.ig_full_name.present? %>
+                  <div class="text-muted small"><%= koc.ig_full_name %></div>
+                <% end %>
+              </td>
+              <td><%= koc.alias %></td>
+              <td><span class="text-muted small"><%= koc.source %></span></td>
+              <td>
+                <% if koc.has_paid_partnership %>
+                  <span class="badge badge-success">已標記</span>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td class="text-end"><%= fmt_num(koc.post_count) %></td>
+              <td class="text-end"><%= fmt_num(koc.max_video_views) %></td>
+              <td class="text-end"><%= fmt_num(koc.max_likes) %></td>
+              <td>
+                <% if koc.last_post_at %>
+                  <%= link_to koc.last_post_at.strftime("%Y-%m-%d"), koc.last_post_url, target: "_blank", rel: "noopener", class: "small" %>
+                <% else %>
+                  <span class="text-muted small">—</span>
+                <% end %>
+              </td>
+              <td><span class="small"><%= koc.email %></span></td>
+              <td class="text-center">
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.check_box :follows_chloe_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.follows_chloe_ig? ? "✓" : "—" %></span>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.check_box :follows_official_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.follows_official_ig? ? "✓" : "—" %></span>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.check_box :email_sent, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.email_sent? ? "✓" : "—" %></span>
+                <% end %>
+              </td>
+              <td>
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.select :status, CoindevanityKoc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <% end %>
+                <% else %>
+                  <span class="badge <%= koc_status_badge_class(koc.status) %>"><%= koc.status %></span>
+                <% end %>
+              </td>
+              <td>
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.select :video_shoot_status, CoindevanityKoc::VIDEO_SHOOT_STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.video_shoot_status %></span>
+                <% end %>
+              </td>
+              <td style="min-width:220px">
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                    <%= f.text_field :notes, value: koc.notes, class: "form-control form-control-sm", placeholder: "社群聯絡備註" %>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.notes.presence || "—" %></span>
+                <% end %>
+              </td>
+              <td style="min-width:220px">
+                <% if can_edit_logistics_fields? %>
+                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                    <%= f.text_field :logistics_notes, value: koc.logistics_notes, class: "form-control form-control-sm", placeholder: "物流部備註" %>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.logistics_notes.presence || "—" %></span>
+                <% end %>
+              </td>
+              <td>
+                <% if can_edit_logistics_fields? %>
+                  <%= form_with model: koc, url: coindevanity_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.date_field :pr_gift_shipped_at, value: koc.pr_gift_shipped_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.pr_gift_shipped_at&.strftime("%Y-%m-%d") || "—" %></span>
+                <% end %>
+              </td>
+              <td>
+                <% if current_user.admin? || current_user.role&.key == "social" %>
+                  <%= link_to coindevanity_koc_path(koc), method: :delete, data: { confirm: "確定刪除 #{koc.ig_username}？" }, class: "btn btn-sm btn-outline-danger" do %>
+                    <i class="fal fa-trash-alt"></i>
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<%# ── 分頁 ── %>
+<% if @total_pages > 1 %>
+  <div class="d-flex align-items-center justify-content-center gap-3 mt-3">
+    <% prev_page = [@page - 1, 1].max %>
+    <% next_page = [@page + 1, @total_pages].min %>
+    <%= link_to "← 上一頁",
+          coindevanity_kocs_path(request.query_parameters.merge(page: prev_page)),
+          class: "btn btn-sm btn-outline-secondary #{'disabled' if @page <= 1}" %>
+    <span class="text-muted small">第 <%= @page %> 頁，共 <%= @total_pages %> 頁</span>
+    <%= link_to "下一頁 →",
+          coindevanity_kocs_path(request.query_parameters.merge(page: next_page)),
+          class: "btn btn-sm btn-outline-secondary #{'disabled' if @page >= @total_pages}" %>
+  </div>
+<% end %>
+
+<%# ── 新增 KOC Modal ── %>
+<div class="modal fade" id="new-koc-modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <%= form_with model: CoindevanityKoc.new, url: coindevanity_kocs_path, local: true do |f| %>
+        <div class="modal-header">
+          <h5 class="modal-title">新增 KOC</h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>IG 帳號（不含 @）</label>
+            <%= f.text_field :ig_username, class: "form-control", required: true %>
+          </div>
+          <div class="form-group">
+            <label>別稱</label>
+            <%= f.text_field :alias, class: "form-control" %>
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <%= f.text_field :email, class: "form-control" %>
+          </div>
+          <div class="form-group">
+            <label>聯絡狀態</label>
+            <%= f.select :status, CoindevanityKoc::STATUSES, {}, class: "form-control" %>
+          </div>
+          <div class="form-group">
+            <label>社群聯絡備註</label>
+            <%= f.text_area :notes, class: "form-control", rows: 2 %>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+          <button type="submit" class="btn btn-primary">新增</button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

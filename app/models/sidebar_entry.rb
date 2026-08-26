@@ -110,6 +110,7 @@ class SidebarEntry
                 { href: body_goals_kocs_path,  title: "Body Goals 業配名單", icon: "fa-star" },
                 { href: betterbio_kocs_path,   title: "好好生醫業配名單",   icon: "fa-star" },
                 { href: dianbopopo_kocs_path,  title: "Dianbopopo 業配名單", icon: "fa-star" },
+                { href: coindevanity_kocs_path, title: "微電流面膜業配名單", icon: "fa-star" },
                 { href: podcast_contacts_path, title: "Podcast 聯絡名單",  icon: "fa-star" },
                 { href: kol_contacts_path,     title: "KOL、藝人聯絡名單", icon: "fa-star" },
               ]
