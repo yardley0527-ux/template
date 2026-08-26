@@ -122,6 +122,29 @@ class NotificationBoardController < ApplicationController
     render layout: false
   end
 
+  # 「今日待處理」依產品分組的名單，一鍵記錄成訊息名單追蹤（message_lists），
+  # 之後可以在 /message_lists 看回購成效——重用既有的 MessageListBuilder，
+  # 不重造一套名單/回購比對邏輯。取的是「現在」符合條件的全部名單，不分批勾選。
+  def create_product_message_list
+    product_key = params[:product_key].to_s
+    label = JourneyProducts::PRODUCTS.dig(product_key, :label) || product_key
+    rows = NotificationProductCustomersService.call(todays_product_notifications(product_key))
+    emails = rows.filter_map { |r| r[:email].presence }
+
+    if emails.empty?
+      redirect_to notification_board_path(section: "today"), alert: "目前沒有符合條件的客人"
+      return
+    end
+
+    sent_on = Date.current
+    list = MessageListBuilder.create!(
+      name: "#{sent_on.strftime('%m/%d')} #{label}回購名單",
+      sent_on: sent_on, target_product: label, emails: emails,
+      source_note: "由營運提醒中心「今日待處理・#{label}」建立"
+    )
+    redirect_to message_list_path(list), notice: "已建立訊息名單（#{emails.size} 人），之後可以在這裡追蹤回購成效"
+  end
+
   # 客戶商機卡片的「建立客服任務」——把勾選的客戶寫進既有的
   # CrmCustomerProductCycle 回購追蹤系統（跟回購追蹤 Dashboard 是同一套資料），
   # 不是另開一個互不相通的任務表。同一客戶同一產品已有未完成任務就跳過，

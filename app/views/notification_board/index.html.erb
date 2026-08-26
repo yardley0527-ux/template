@@ -120,9 +120,8 @@ window.__DISMISSAL_REASONS__ = <%= raw Notification::DISMISSAL_REASONS.index_wit
   function updateCustomerTaskCount(form) {
     var checked = form.querySelectorAll(".js-row-check:checked").length;
     var countEl = form.querySelector(".js-checked-count");
-    var submitBtn = form.querySelector(".js-submit-customer-task");
     if (countEl) countEl.textContent = checked;
-    if (submitBtn) submitBtn.disabled = checked === 0;
+    form.querySelectorAll(".js-submit-customer-task").forEach(function(btn) { btn.disabled = checked === 0; });
   }
 
   function lookupUserId(usernameRaw) {

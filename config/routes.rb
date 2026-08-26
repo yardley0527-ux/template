@@ -208,6 +208,7 @@ Rails.application.routes.draw do
   get  '/notification_board',              to: 'notification_board#index',      as: :notification_board
   get  '/notification_board/:id/customers', to: 'notification_board#customers', as: :notification_board_customers
   get  '/notification_board/product_customers', to: 'notification_board#product_customers', as: :notification_board_product_customers
+  post '/notification_board/product_customers/create_message_list', to: 'notification_board#create_product_message_list', as: :notification_board_create_product_message_list
   post '/notification_board/:id/mark_read', to: 'notification_board#mark_read', as: :notification_board_mark_read
   post '/notification_board/:id/assign',              to: 'notification_board#assign',              as: :notification_board_assign
   post '/notification_board/:id/start',                to: 'notification_board#start',                as: :notification_board_start
