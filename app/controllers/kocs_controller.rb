@@ -48,7 +48,7 @@ class KocsController < ApplicationController
   end
 
   def destroy
-    return head :forbidden unless current_user.admin?
+    return head :forbidden unless current_user.admin? || current_user.role&.key == "social"
 
     @koc = Koc.find(params[:id])
     @koc.destroy
@@ -68,7 +68,7 @@ class KocsController < ApplicationController
     current_user.username != LOGISTICS_USERNAME
   end
 
-  # 社群部帳號能更新接洽狀態、拍影片狀態、Chloe IG／官方 IG 追蹤、聯絡備註，新增/刪除維持 admin 專用。
+  # 社群部帳號能更新接洽狀態、拍影片狀態、Chloe IG／官方 IG 追蹤、聯絡備註，也能刪除，新增維持 admin 專用。
   def koc_params
     permitted = if current_user.admin?
       %i[ig_username ig_full_name alias email profile_url status notes video_shoot_status follows_chloe_ig follows_official_ig email_sent]
