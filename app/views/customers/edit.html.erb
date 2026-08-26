@@ -87,17 +87,19 @@
           </div>
 
           <div class="edit-field">
-            <button type="submit" name="mark_tracked" value="1" class="btn btn-outline-primary btn-sm">📌 追蹤</button>
-            <% if @profile.last_tracked_at.present? %>
-              <span class="text-muted small ms-2">最後追蹤：<%= @profile.last_tracked_at.strftime("%Y/%m/%d %H:%M") %></span>
-            <% end %>
+            <label class="edit-label">追蹤</label>
+            <label class="toggle-wrap">
+              <%= f.check_box :tracked, class: "toggle-input" %>
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              <span class="toggle-text">列為待追蹤客人</span>
+            </label>
           </div>
 
           <div class="edit-field">
             <label class="edit-label">備註</label>
             <%= f.text_area :notes, rows: 6, class: "edit-textarea", placeholder: "輸入備註內容…" %>
             <% if @profile.notes_updated_at.present? %>
-              <p class="text-muted small mb-0 mt-1">追蹤更新日期：<%= @profile.notes_updated_at.strftime("%Y/%m/%d %H:%M") %></p>
+              <p class="text-muted small mb-0 mt-1">備註編輯日期：<%= @profile.notes_updated_at.strftime("%Y/%m/%d %H:%M") %></p>
             <% end %>
           </div>
 

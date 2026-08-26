@@ -88,9 +88,9 @@
         </div>
 
         <div class="profile-status-item">
-          <span class="profile-status-label">最後追蹤</span>
-          <% if @profile.last_tracked_at.present? %>
-            <span class="status-check"><%= @profile.last_tracked_at.strftime("%Y/%m/%d") %></span>
+          <span class="profile-status-label">追蹤</span>
+          <% if @profile.tracked? %>
+            <span class="status-check">✅</span>
           <% else %>
             <span class="status-empty">—</span>
           <% end %>
@@ -101,7 +101,7 @@
         <span class="profile-block-title">備註</span>
         <p class="profile-block-text"><%= @profile.notes.presence || "（尚無備註）" %></p>
         <% if @profile.notes_updated_at.present? %>
-          <p class="text-muted small mb-0">追蹤更新日期：<%= @profile.notes_updated_at.strftime("%Y/%m/%d %H:%M") %></p>
+          <p class="text-muted small mb-0">備註編輯日期：<%= @profile.notes_updated_at.strftime("%Y/%m/%d %H:%M") %></p>
         <% end %>
       </div>
 

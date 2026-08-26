@@ -85,7 +85,7 @@ class CustomerProfile < ApplicationRecord
     self.stickiness_followed_up_at = stickiness_note.present? ? (stickiness_followed_up_at || Time.current) : nil
   end
 
-  # 備註每次被改動就記下更新日期，讓「備註與培訓」卡片可以顯示追蹤更新日期
+  # 備註每次被改動就記下更新日期，讓「客人追蹤備註」卡片可以顯示備註編輯日期
   def stamp_notes_updated_at
     self.notes_updated_at = Time.current if notes_changed?
   end

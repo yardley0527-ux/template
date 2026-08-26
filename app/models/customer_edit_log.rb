@@ -21,6 +21,7 @@ class CustomerEditLog < ApplicationRecord
     "brand_ambassador_training"   => "品牌大使培訓",
     "brand_ambassador_blacklisted"=> "大使黑名單",
     "blacklisted"                 => "黑名單",
-    "churned"                     => "已流失"
+    "churned"                     => "已流失",
+    "tracked"                     => "追蹤"
   }.freeze
 end
