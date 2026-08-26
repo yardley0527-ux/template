@@ -17,7 +17,7 @@ class SidebarEntry
             { href: notification_board_path, title: "營運提醒", icon: "fa-bell",
               subtitle: (unread_notifications.positive? ? unread_notifications.to_s : nil),
               subtitle_class: "badge badge-danger" },
-            { href: tracked_customers_path, title: "營運追蹤名單", icon: "fa-user-check" },
+            { href: tracked_customers_path, title: "營運追蹤名單", icon: "fa-badge-check" },
           ]
         },
         {
@@ -42,12 +42,12 @@ class SidebarEntry
             ]},
             { href: high_spender_first_purchase_path, title: "破萬新客分析",   icon: "fa-gem" },
             { href: high_value_orders_path,           title: "破8000訂單速覽", icon: "fa-fire", children: [
-              { href: high_value_order_custom_messages_path, title: "客製化訊息", icon: "fa-comment-dots" },
-              { href: high_value_follow_ups_path,            title: "待追蹤名單", icon: "fa-user-clock" },
+              { href: high_value_order_custom_messages_path, title: "客製化訊息", icon: "fa-comment-alt" },
+              { href: high_value_follow_ups_path,            title: "待追蹤名單", icon: "fa-clock" },
               { href: high_value_follow_up_results_path,     title: "追蹤成效",   icon: "fa-clipboard-check" },
             ]},
-            { href: product_high_value_customers_path,       title: "產品高破萬次數客人", icon: "fa-medal" },
-            { href: spending_rankings_path,                  title: "消費排行榜",         icon: "fa-crown" },
+            { href: product_high_value_customers_path,       title: "產品高破萬次數客人", icon: "fa-badge" },
+            { href: spending_rankings_path,                  title: "消費排行榜",         icon: "fa-trophy-alt" },
             { href: stickiness_follow_ups_path,       title: "黏著度分析",     icon: "fa-magnet", children: [
               { href: stickiness_results_path, title: "黏著度成效", icon: "fa-chart-line" },
             ]},
@@ -58,7 +58,7 @@ class SidebarEntry
         {
           group_title: "直播管理",
           children: [
-            { href: livestream_overview_path,          title: "直播成效總覽", icon: "fa-broadcast-tower" },
+            { href: livestream_overview_path,          title: "直播成效總覽", icon: "fa-signal" },
             { href: livestreams_path,                  title: "直播場次",     icon: "fa-film" },
             { href: livestream_product_analysis_path,  title: "產品直播分析", icon: "fa-video" },
             { href: livestream_strategy_path,          title: "直播策略",     icon: "fa-chart-line" },
@@ -69,15 +69,15 @@ class SidebarEntry
           group_title: "CRM",
           children: [
             { href: crm_home_path(product: effective_key),      title: "CRM 首頁",    icon: "fa-chart-pie" },
-            { href: crm_journey_path(product: effective_key),   title: "客戶旅程管理", icon: "fa-route" },
+            { href: crm_journey_path(product: effective_key),   title: "客戶旅程管理", icon: "fa-map-signs" },
             { href: crm_repurchase_dashboard_path,               title: "回購追蹤 Dashboard", icon: "fa-tasks" },
-            { href: livestream_repurchase_candidates_path,       title: "直播回購候選名單", icon: "fa-broadcast-tower" },
+            { href: livestream_repurchase_candidates_path,       title: "直播回購候選名單", icon: "fa-signal" },
             { href: crm_outreach_tasks_path,                     title: "我的今日任務", icon: "fa-calendar-check" },
-            { href: message_lists_path, title: "訊息名單追蹤", icon: "fa-envelope-open-text" },
+            { href: message_lists_path, title: "訊息名單追蹤", icon: "fa-envelope-open" },
             { href: "#", title: "CRM 效益分析", icon: "fa-chart-bar", children: [
               { href: crm_roi_path(product: effective_key),        title: "ROI Dashboard",  icon: "fa-dollar-sign" },
               { href: crm_accuracy_path(product: effective_key),   title: "Journey 預測驗證", icon: "fa-crosshairs" },
-              { href: crm_operations_path(product: effective_key), title: "客服操作分析",     icon: "fa-headset" },
+              { href: crm_operations_path(product: effective_key), title: "客服操作分析",     icon: "fa-phone-volume" },
             ]},
           ]
         },
@@ -130,7 +130,7 @@ class SidebarEntry
           children: [
             { href: monitoring_path,                     title: "功能使用監控",     icon: "fa-chart-line" },
             { href: canceled_order_candidates_path,       title: "已取消訂單候選名單", icon: "fa-ban" },
-            { href: users_path,                           title: "使用者管理",       icon: "fa-users-cog" },
+            { href: users_path,                           title: "使用者管理",       icon: "fa-users" },
           ]
         },
       ]
