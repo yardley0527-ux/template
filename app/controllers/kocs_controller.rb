@@ -12,6 +12,7 @@ class KocsController < ApplicationController
 
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
+    @kocs = @kocs.where("email ILIKE ?", "%#{params[:email].to_s.strip}%") if params[:email].present?
 
     @total_count  = Koc.count
     @paid_count   = Koc.where(has_paid_partnership: true).count

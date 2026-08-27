@@ -9,6 +9,7 @@ class AkimiaKocsController < ApplicationController
     @kocs = @sort == "likes" ? AkimiaKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : AkimiaKoc.ordered_by_engagement
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
+    @kocs = @kocs.where("email ILIKE ?", "%#{params[:email].to_s.strip}%") if params[:email].present?
 
     @total_count = AkimiaKoc.count
     @paid_count  = AkimiaKoc.where(has_paid_partnership: true).count

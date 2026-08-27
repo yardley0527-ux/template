@@ -1,0 +1,80 @@
+<%# app/views/koc_search/index.html.erb %>
+<% content_for :page_title, "業配名單搜尋" %>
+
+<%
+  # 跟各品牌 kocs/index.html.erb 裡的定義各自獨立、不共用（ERB 內 def 的方法
+  # 是掛在編譯後的模板模組上，不能保證載入順序，所以這裡自己放一份，而不是
+  # 假設哪個品牌頁一定先被 render 過）。
+  def koc_status_badge_class(status)
+    {
+      "待接洽" => "badge-secondary",
+      "已接洽" => "badge-info",
+      "未回覆" => "badge-dark",
+      "已回覆" => "badge-primary",
+      "合作中" => "badge-warning",
+      "已合作" => "badge-success",
+      "婉拒"   => "badge-danger",
+    }[status] || "badge-secondary"
+  end
+%>
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <h4 class="fw-bold mb-0">業配名單搜尋</h4>
+    <p class="text-muted small mb-0">用 Email 找這個人被記在哪個品牌的業配名單裡，找到後直接跳去該名單頁編輯</p>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <%= form_with url: koc_search_path, method: :get, local: true, class: "d-flex gap-2" do %>
+      <input type="text" name="email" value="<%= @email %>" class="form-control" placeholder="輸入 Email（可只打部分）" autofocus>
+      <button type="submit" class="btn btn-primary"><i class="fal fa-search mr-1"></i>搜尋</button>
+    <% end %>
+  </div>
+</div>
+
+<% if @email.blank? %>
+  <div class="text-muted small">請輸入 Email 開始搜尋</div>
+<% elsif @results.blank? %>
+  <div class="text-muted small">找不到符合「<%= @email %>」的業配名單資料</div>
+<% else %>
+  <% @results.each do |result| %>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="fw-bold mb-0"><%= result[:label] %> 業配名單 <span class="badge badge-dark ms-1"><%= result[:records].size %> 筆</span></h5>
+          <%= link_to "前往這份名單編輯", result[:path], class: "btn btn-sm btn-outline-primary" %>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.85rem;">
+            <thead class="table-light">
+              <tr>
+                <th>IG 帳號</th><th>別稱</th><th>Email</th><th>接洽狀態</th><th>拍片狀態</th><th>備註</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% result[:records].each do |koc| %>
+                <tr>
+                  <td>
+                    <% if koc.profile_url.present? %>
+                      <%= link_to "@#{koc.ig_username}", koc.profile_url, target: "_blank", rel: "noopener", class: "fw-semibold text-decoration-none" %>
+                    <% else %>
+                      <span class="fw-semibold">@<%= koc.ig_username %></span>
+                    <% end %>
+                    <div class="text-muted small"><%= koc.ig_full_name %></div>
+                  </td>
+                  <td><span class="small"><%= koc.alias.presence || "—" %></span></td>
+                  <td><span class="small"><%= koc.email %></span></td>
+                  <td><span class="badge <%= koc_status_badge_class(koc.status) %>"><%= koc.status %></span></td>
+                  <td><span class="small"><%= koc.video_shoot_status %></span></td>
+                  <td><span class="small"><%= koc.notes.presence || "—" %></span></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>

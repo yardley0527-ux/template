@@ -9,6 +9,7 @@ class DianbopopoKocsController < ApplicationController
     @kocs = @sort == "likes" ? DianbopopoKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : DianbopopoKoc.ordered_by_engagement
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
+    @kocs = @kocs.where("email ILIKE ?", "%#{params[:email].to_s.strip}%") if params[:email].present?
 
     @total_count = DianbopopoKoc.count
     @paid_count  = DianbopopoKoc.where(has_paid_partnership: true).count

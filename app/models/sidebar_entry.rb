@@ -104,7 +104,7 @@ class SidebarEntry
             { href: line_broadcast_path,      title: "LINE 推播分析",  icon: "fa-paper-plane" },
             { href: ig_audience_path,         title: "IG 受眾重疊分析", icon: "fa-users" },
             { href: ig_followers_path,        title: "IG 粉絲成長追蹤", icon: "fa-chart-line" },
-            { href: "#", title: "業配名單", icon: "fa-star", children: [
+            { href: koc_search_path, title: "業配名單", icon: "fa-star", children: [
                 { href: kocs_path,             title: "Hiff 業配名單",     icon: "fa-star" },
                 { href: relove_kocs_path,      title: "Relove 業配名單",   icon: "fa-star" },
                 { href: body_goals_kocs_path,  title: "Body Goals 業配名單", icon: "fa-star" },
@@ -161,10 +161,11 @@ class SidebarEntry
         controller = PageRegistry.controller_for(child[:href])
 
         if child[:children].present?
-          # A "#" container (e.g. CRM 效益分析, 業配名單) has no controller of its
-          # own, so it must only show up when at least one child is allowed —
-          # unlike a real page (e.g. 客人資料庫) whose own controller permission
-          # should be enough on its own, even with no permitted children.
+          # A "#" container (e.g. CRM 效益分析) has no controller of its own, so
+          # it must only show up when at least one child is allowed — unlike a
+          # real page (e.g. 客人資料庫，或有自己頁面的 業配名單) whose own
+          # controller permission should be enough on its own, even with no
+          # permitted children.
           own_allowed = controller.present? && allowed.include?(controller)
           sub = filter_children(child[:children], allowed)
           next if sub.empty? && !own_allowed
