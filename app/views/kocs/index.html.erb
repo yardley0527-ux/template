@@ -118,7 +118,7 @@
             <th>Email</th>
             <th class="text-center">Chloe IG</th>
             <th class="text-center">官方 IG</th>
-            <th class="text-center">Email</th>
+            <th class="text-center">已寄信</th>
             <th style="min-width:140px">聯絡狀態</th>
             <th style="min-width:120px">拍影片狀態</th>
             <th>社群聯絡備註</th>
@@ -163,7 +163,16 @@
                   <span class="text-muted small">—</span>
                 <% end %>
               </td>
-              <td><span class="small"><%= koc.email %></span></td>
+              <td style="min-width:200px">
+                <% if can_edit_social_fields? %>
+                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "d-flex gap-1 mb-0" do |f| %>
+                    <%= f.text_field :email, value: koc.email, class: "form-control form-control-sm", placeholder: "Email" %>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="fal fa-save"></i></button>
+                  <% end %>
+                <% else %>
+                  <span class="small"><%= koc.email.presence || "—" %></span>
+                <% end %>
+              </td>
               <td class="text-center">
                 <% if can_edit_social_fields? %>
                   <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
