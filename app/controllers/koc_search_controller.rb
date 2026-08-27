@@ -2,8 +2,8 @@
 # frozen_string_literal: true
 
 # 「業配名單」分類群組底下有 6 個各品牌獨立的名單表（欄位結構完全相同），
-# 用 email 找人時常常不知道對方被記在哪個品牌名單裡——這頁跨 6 張表一次查，
-# 找到後導去該品牌原本的名單頁（帶 email 篩選），沿用該頁既有的權限控管與
+# 用 IG 帳號找人時常常不知道對方被記在哪個品牌名單裡——這頁跨 6 張表一次查，
+# 找到後導去該品牌原本的名單頁（帶 IG 帳號篩選），沿用該頁既有的權限控管與
 # 就地編輯表單，不重造一套跨品牌的編輯介面。
 class KocSearchController < ApplicationController
   BRANDS = [
@@ -16,18 +16,18 @@ class KocSearchController < ApplicationController
   ].freeze
 
   def index
-    @email = params[:email].to_s.strip
-    @results = @email.present? ? search(@email) : []
+    @ig_username = params[:ig_username].to_s.strip.delete_prefix("@")
+    @results = @ig_username.present? ? search(@ig_username) : []
   end
 
   private
 
-  def search(email)
+  def search(ig_username)
     BRANDS.filter_map do |brand|
-      records = brand[:model].where("email ILIKE ?", "%#{email}%").order(:ig_username)
+      records = brand[:model].where("ig_username ILIKE ?", "%#{ig_username}%").order(:ig_username)
       next if records.empty?
 
-      { label: brand[:label], records: records, path: public_send(brand[:path_helper], email: email) }
+      { label: brand[:label], records: records, path: public_send(brand[:path_helper], ig_username: ig_username) }
     end
   end
 end

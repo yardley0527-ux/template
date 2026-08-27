@@ -21,23 +21,23 @@
 <div class="row g-3 mb-3">
   <div class="col-12">
     <h4 class="fw-bold mb-0">業配名單搜尋</h4>
-    <p class="text-muted small mb-0">用 Email 找這個人被記在哪個品牌的業配名單裡，找到後直接跳去該名單頁編輯</p>
+    <p class="text-muted small mb-0">用 IG 帳號找這個人被記在哪個品牌的業配名單裡，找到後直接跳去該名單頁編輯</p>
   </div>
 </div>
 
 <div class="card border-0 shadow-sm mb-4">
   <div class="card-body">
     <%= form_with url: koc_search_path, method: :get, local: true, class: "d-flex gap-2" do %>
-      <input type="text" name="email" value="<%= @email %>" class="form-control" placeholder="輸入 Email（可只打部分）" autofocus>
+      <input type="text" name="ig_username" value="<%= @ig_username %>" class="form-control" placeholder="輸入 IG 帳號（可只打部分，免加 @）" autofocus>
       <button type="submit" class="btn btn-primary"><i class="fal fa-search mr-1"></i>搜尋</button>
     <% end %>
   </div>
 </div>
 
-<% if @email.blank? %>
-  <div class="text-muted small">請輸入 Email 開始搜尋</div>
+<% if @ig_username.blank? %>
+  <div class="text-muted small">請輸入 IG 帳號開始搜尋</div>
 <% elsif @results.blank? %>
-  <div class="text-muted small">找不到符合「<%= @email %>」的業配名單資料</div>
+  <div class="text-muted small">找不到符合「<%= @ig_username %>」的業配名單資料</div>
 <% else %>
   <% @results.each do |result| %>
     <div class="card border-0 shadow-sm mb-3">

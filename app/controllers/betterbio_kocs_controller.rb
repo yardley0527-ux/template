@@ -11,7 +11,7 @@ class BetterbioKocsController < ApplicationController
     @kocs = @sort == "likes" ? BetterbioKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : BetterbioKoc.ordered_by_engagement
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
-    @kocs = @kocs.where("email ILIKE ?", "%#{params[:email].to_s.strip}%") if params[:email].present?
+    @kocs = @kocs.where("ig_username ILIKE ?", "%#{params[:ig_username].to_s.strip.delete_prefix('@')}%") if params[:ig_username].present?
 
     @total_count = BetterbioKoc.count
     @paid_count  = BetterbioKoc.where(has_paid_partnership: true).count

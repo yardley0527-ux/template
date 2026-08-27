@@ -11,7 +11,7 @@ class ReloveKocsController < ApplicationController
     @kocs = @sort == "likes" ? ReloveKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : ReloveKoc.ordered_by_engagement
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
-    @kocs = @kocs.where("email ILIKE ?", "%#{params[:email].to_s.strip}%") if params[:email].present?
+    @kocs = @kocs.where("ig_username ILIKE ?", "%#{params[:ig_username].to_s.strip.delete_prefix('@')}%") if params[:ig_username].present?
 
     @total_count = ReloveKoc.count
     @paid_count  = ReloveKoc.where(has_paid_partnership: true).count
