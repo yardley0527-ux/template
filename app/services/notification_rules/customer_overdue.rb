@@ -43,9 +43,18 @@ module NotificationRules
 
       label = JourneyProducts::PRODUCTS.fetch(product_key)[:label]
       estimate_tag = ESTIMATED_CYCLE_PRODUCTS.include?(product_key) ? "（週期為估計值）" : ""
-      band_label = band[:range].end.infinite? ? "#{band[:range].begin} 天以上" : "#{band[:range].begin}–#{band[:range].end} 天"
+      last_chance = band[:range].begin == band[:range].end
+      band_label = if band[:range].end.infinite?
+                     "#{band[:range].begin} 天以上"
+                   elsif last_chance
+                     "滿 #{band[:range].begin} 天"
+                   else
+                     "#{band[:range].begin}–#{band[:range].end} 天"
+                   end
       # 逾期天數越久優先權越低（越冷的名單）；名單本身已經只剩高價值客，一律升一級。
+      # 剛好滿 14 天的人明天就要滾出 1_14 這份清單，優先度再拉高一級當作最後機會。
       base_priority = case band[:key]
+                       when "14" then "P1"
                        when "1_14", "15_30", "31_60" then "P2"
                        else "P3"
                        end
@@ -56,7 +65,7 @@ module NotificationRules
         priority: priority,
         title: "#{label}#{estimate_tag}逾期#{band_label}：#{total} 位高價值客人未回購",
         message: "逾期#{band_label}，僅列高價值客（黑/金卡、末單≥NT$#{HIGH_VALUE_AMOUNT}，或末單為#{HIGH_VALUE_BOTTLES}+大組數）待維護名單",
-        impact_summary: "#{total} 位高價值客人逾期未回購（另有 #{rows[:general_count]} 位一般客人未列入待處理名單），逾期越久轉換率通常越低。",
+        impact_summary: last_chance ? "#{total} 位高價值客人今天剛好逾期滿 14 天，明天就會滾出「今日待處理」的範圍，是聯繫他們的最後機會。" : "#{total} 位高價值客人逾期未回購（另有 #{rows[:general_count]} 位一般客人未列入待處理名單），逾期越久轉換率通常越低。",
         recommended_action: "依歷史消費排序，優先聯繫。",
         subject_type: "journey_product", subject_id: product_key,
         metadata: {

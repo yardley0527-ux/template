@@ -100,5 +100,35 @@ module NotificationRules
     test "no rows produces no card" do
       assert_empty CustomerOverdue.call
     end
+
+    test "a customer exactly 14 days overdue produces an extra higher-priority 'last chance' card on top of the 1-14 aggregate" do
+      customer(email: "day14@example.com", membership_level: "金卡")
+      track(product_key: "metabolism", email: "day14@example.com", overdue_days: 14)
+
+      results = CustomerOverdue.call.select { |r| r[:subject_id] == "metabolism" }
+      keys = results.map { |r| r[:notification_key] }
+
+      assert_includes keys, "customer_overdue_14"
+      assert_includes keys, "customer_overdue_1_14"
+
+      day14 = results.find { |r| r[:notification_key] == "customer_overdue_14" }
+      aggregate = results.find { |r| r[:notification_key] == "customer_overdue_1_14" }
+
+      assert_equal 1, day14[:metadata][:total_count]
+      assert_equal 1, aggregate[:metadata][:total_count], "the day-14 customer still counts toward the 1-14 aggregate too"
+      assert_includes day14[:title], "滿 14 天"
+      assert_not_includes day14[:title], "14–14"
+      assert_equal "P0", day14[:priority], "last-chance card should outrank the general 1-14 band"
+      assert_equal "P1", aggregate[:priority]
+    end
+
+    test "a customer overdue 10 days (not exactly 14) does not trigger the 'last chance' card" do
+      customer(email: "day10@example.com")
+      track(product_key: "metabolism", email: "day10@example.com", overdue_days: 10)
+
+      keys = CustomerOverdue.call.select { |r| r[:subject_id] == "metabolism" }.map { |r| r[:notification_key] }
+      assert_not_includes keys, "customer_overdue_14"
+      assert_includes keys, "customer_overdue_1_14"
+    end
   end
 end
