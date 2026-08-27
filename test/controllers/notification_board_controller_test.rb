@@ -215,6 +215,25 @@ class NotificationBoardControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "阿明"
   end
 
+  test "customer_runout's customers action offers the 建立客服任務 checkbox form (category is never suffixed _p1/_p2)" do
+    CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
+    ShoplineCustomer.create!(email: "a@example.com", full_name: "阿明")
+    CrmCustomerProductTracking.create!(
+      email: "a@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
+      last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
+      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+    )
+    n = build_notification(category: "customer_runout", notification_key: "customer_runout_p1", metadata: {
+      "query" => { "product_key" => "metabolism", "expected_return_date_from" => Date.current.to_s,
+                   "expected_return_date_to" => (Date.current + 7).to_s }
+    })
+
+    get notification_board_customers_path(n)
+    assert_response :success
+    assert_select "form.js-customer-task-form"
+    assert_select "button.js-submit-customer-task", text: "建立客服任務"
+  end
+
   test "a non-expandable category's customers action renders the empty-list message" do
     n = build_notification(category: "system_health")
     get notification_board_customers_path(n)

@@ -1,5 +1,5 @@
 <%# app/views/notification_board/customers.html.erb — rendered layout:false, fetched via JS %>
-<% task_creatable = %w[customer_runout_p1 customer_runout_p2 customer_overdue promotion_opportunity].include?(@notification.category) %>
+<% task_creatable = %w[customer_runout customer_overdue promotion_opportunity].include?(@notification.category) %>
 <% if @rows.blank? %>
   <div class="text-muted small py-2">目前沒有符合條件的客人（可能都已回購或資料已更新）</div>
 <% else %>
