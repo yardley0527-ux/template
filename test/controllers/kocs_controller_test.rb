@@ -32,6 +32,20 @@ class KocsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to kocs_path
   end
 
+  test "social 能新增 KOC 並填 Email，跟其他品牌業配名單頁權限一致" do
+    sign_in @social
+    assert_difference "Koc.count", 1 do
+      post kocs_path, params: { koc: { ig_username: "koc_social_new_#{SecureRandom.hex(4)}", email: "social_added@example.com" } }
+    end
+    assert_equal "social_added@example.com", Koc.last.email
+  end
+
+  test "social 能編輯既有 KOC 的 Email" do
+    sign_in @social
+    patch koc_path(@koc), params: { koc: { email: "updated_by_social@example.com" } }
+    assert_equal "updated_by_social@example.com", @koc.reload.email
+  end
+
   test "非 admin 非 social 不能刪除 KOC" do
     other_role = Role.find_or_create_by!(key: "data") { |r| r.name = "數據部" }
     PagePermission.find_or_create_by!(role: other_role, controller_name: "kocs")

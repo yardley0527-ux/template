@@ -24,7 +24,7 @@
       <h4 class="fw-bold mb-0">KOC 業配名單</h4>
       <p class="text-muted small mb-0">從 IG 標記/業配貼文蒐集而來的 KOC 參考名單，供我們品牌挑選洽談業配對象</p>
     </div>
-    <% if current_user.admin? %>
+    <% if can_edit_social_fields? %>
       <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#new-koc-modal">
         <i class="fal fa-plus mr-1"></i>新增 KOC
       </button>
@@ -269,7 +269,7 @@
 <% end %>
 
 <%# ── 新增 KOC Modal ── %>
-<% if current_user.admin? %>
+<% if can_edit_social_fields? %>
   <div class="modal fade" id="new-koc-modal" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
       <div class="modal-content">
