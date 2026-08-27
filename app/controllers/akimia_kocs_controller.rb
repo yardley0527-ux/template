@@ -5,6 +5,8 @@ class AkimiaKocsController < ApplicationController
   helper_method :can_edit_logistics_fields?, :can_edit_social_fields?
 
   def index
+    @message_template = AkimiaKocMessageTemplate.current
+
     @sort = params[:sort]
     @kocs = @sort == "likes" ? AkimiaKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : AkimiaKoc.ordered_by_engagement
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
@@ -19,6 +21,11 @@ class AkimiaKocsController < ApplicationController
     @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max
     @page = @total_pages if @page > @total_pages
     @kocs = @kocs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
+  end
+
+  def update_message_template
+    AkimiaKocMessageTemplate.current.update(content: params[:content])
+    redirect_to akimia_kocs_path, notice: "已更新發送訊息內容"
   end
 
   def create

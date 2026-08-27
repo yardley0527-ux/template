@@ -81,11 +81,21 @@ Rails.application.routes.draw do
   resources :kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
   end
-  resources :relove_kocs, only: [:index, :create, :update, :destroy]
-  resources :body_goals_kocs, only: [:index, :create, :update, :destroy]
-  resources :betterbio_kocs, only: [:index, :create, :update, :destroy]
-  resources :dianbopopo_kocs, only: [:index, :create, :update, :destroy]
-  resources :akimia_kocs, only: [:index, :create, :update, :destroy]
+  resources :relove_kocs, only: [:index, :create, :update, :destroy] do
+    patch :message_template, on: :collection, action: :update_message_template
+  end
+  resources :body_goals_kocs, only: [:index, :create, :update, :destroy] do
+    patch :message_template, on: :collection, action: :update_message_template
+  end
+  resources :betterbio_kocs, only: [:index, :create, :update, :destroy] do
+    patch :message_template, on: :collection, action: :update_message_template
+  end
+  resources :dianbopopo_kocs, only: [:index, :create, :update, :destroy] do
+    patch :message_template, on: :collection, action: :update_message_template
+  end
+  resources :akimia_kocs, only: [:index, :create, :update, :destroy] do
+    patch :message_template, on: :collection, action: :update_message_template
+  end
   get  '/koc_search', to: 'koc_search#index', as: :koc_search
   resources :podcast_contacts, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
