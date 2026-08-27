@@ -38,7 +38,7 @@ class ReloveKocsController < ApplicationController
   end
 
   def destroy
-    return head :forbidden unless current_user.admin?
+    return head :forbidden unless current_user.admin? || current_user.role&.key == "social"
 
     @koc = ReloveKoc.find(params[:id])
     @koc.destroy
