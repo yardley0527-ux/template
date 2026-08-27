@@ -100,14 +100,12 @@ module NotificationBoardHelper
 
   # previous_ids 空的代表上一輪沒有留下 sample（例如這張卡是今天第一次出現），
   # 這種情況沒有比較基準，不標「新進榜」以免誤導。
+  # 只標有變化的人（新進榜）；沒變化的人不顯示標籤——48 個人裡有變化的可能
+  # 只有 2、3 位，逐列都寫「連續在榜」是雜訊，看不出真正更新了誰。
   def customer_roster_badge(customer_id, previous_ids)
-    return nil if previous_ids.blank? || customer_id.blank?
+    return nil if previous_ids.blank? || customer_id.blank? || previous_ids.include?(customer_id)
 
-    if previous_ids.include?(customer_id)
-      content_tag(:span, "連續在榜", class: "badge badge-light text-muted border")
-    else
-      content_tag(:span, "🆕 新進榜", class: "badge badge-danger", style: "font-size:0.8rem;")
-    end
+    content_tag(:span, "🆕 新進榜", class: "badge badge-danger", style: "font-size:0.8rem;")
   end
 
   # 給表格列用：新進榜的整列都上色，不用逐格看小徽章才發現。
