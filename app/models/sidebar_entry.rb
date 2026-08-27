@@ -115,6 +115,7 @@ class SidebarEntry
                 { href: kol_contacts_path,     title: "KOL、藝人聯絡名單", icon: "fa-star" },
               ]
             },
+            { href: replied_contacts_path, title: "已回覆待追蹤", icon: "fa-reply" },
           ]
         },
         {

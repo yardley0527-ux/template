@@ -1,0 +1,51 @@
+<%# app/views/replied_contacts/index.html.erb %>
+<% content_for :page_title, "已回覆待追蹤" %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <h4 class="fw-bold mb-0">已回覆待追蹤 <span class="badge badge-dark ms-1"><%= @total_count %> 筆</span></h4>
+    <p class="text-muted small mb-0">彙整 8 個業配／聯絡名單裡「聯絡狀態」為「已回覆」的人，點進去可到該名單頁繼續追蹤或更新狀態</p>
+  </div>
+</div>
+
+<% if @results.blank? %>
+  <div class="text-muted small">目前沒有「已回覆」狀態的人</div>
+<% else %>
+  <% @results.each do |result| %>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="fw-bold mb-0"><%= result[:label] %> <span class="badge badge-primary ms-1"><%= result[:records].size %> 筆</span></h5>
+          <%= link_to "前往這份名單", result[:path], class: "btn btn-sm btn-outline-primary" %>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.85rem;">
+            <thead class="table-light">
+              <tr>
+                <th>IG 帳號</th><th>別稱</th><th>Email</th><th>拍片狀態</th><th>備註</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% result[:records].each do |contact| %>
+                <tr>
+                  <td>
+                    <% if contact.profile_url.present? %>
+                      <%= link_to "@#{contact.ig_username}", contact.profile_url, target: "_blank", rel: "noopener", class: "fw-semibold text-decoration-none" %>
+                    <% else %>
+                      <span class="fw-semibold">@<%= contact.ig_username %></span>
+                    <% end %>
+                    <div class="text-muted small"><%= contact.ig_full_name %></div>
+                  </td>
+                  <td><span class="small"><%= contact.alias.presence || "—" %></span></td>
+                  <td><span class="small"><%= contact.email %></span></td>
+                  <td><span class="small"><%= contact.respond_to?(:video_shoot_status) ? contact.video_shoot_status : "—" %></span></td>
+                  <td><span class="small"><%= contact.notes.presence || "—" %></span></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
