@@ -11,7 +11,7 @@
       </thead>
       <tbody>
         <% @rows.each do |r| %>
-          <tr>
+          <tr class="<%= new_entrant_row_class(r[:customer_id], @previous_customer_ids) %>">
             <td>
               <% if r[:customer_id] %>
                 <%= link_to (r[:full_name].presence || "（無名）"), customer_path(r[:customer_id]), target: "_blank", class: "fw-semibold text-decoration-none" %>

@@ -9,6 +9,7 @@
         <% if notification.overdue? %><span class="badge badge-danger">已逾期</span><% end %>
         <% if notification.metadata["recurred_after_resolution"] %><span class="badge badge-warning">再次發生</span><% end %>
         <% unless notification.read? %><span class="badge badge-secondary">未讀</span><% end %>
+        <%= new_entrant_count_badge(notification_new_entrant_count(notification)) %>
 
         <h6 class="fw-bold mt-2 mb-1"><%= notification.title %></h6>
         <% if notification.message.present? %>

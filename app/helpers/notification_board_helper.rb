@@ -103,8 +103,35 @@ module NotificationBoardHelper
   def customer_roster_badge(customer_id, previous_ids)
     return nil if previous_ids.blank? || customer_id.blank?
 
-    previous_ids.include?(customer_id) ? content_tag(:span, "連續在榜", class: "badge badge-light text-muted border") :
-                                          content_tag(:span, "🆕 新進榜", class: "badge badge-success")
+    if previous_ids.include?(customer_id)
+      content_tag(:span, "連續在榜", class: "badge badge-light text-muted border")
+    else
+      content_tag(:span, "🆕 新進榜", class: "badge badge-danger", style: "font-size:0.8rem;")
+    end
+  end
+
+  # 給表格列用：新進榜的整列都上色，不用逐格看小徽章才發現。
+  def new_entrant_row_class(customer_id, previous_ids)
+    return nil if previous_ids.blank? || customer_id.blank? || previous_ids.include?(customer_id)
+
+    "table-danger"
+  end
+
+  # 卡片／分組標題旁用：不用點開「查看名單」也能一眼看出這張卡今天有沒有新客人，
+  # 直接比對 metadata 裡目前跟上一輪的 sample_shopline_customer_ids 算數量，
+  # 不用另外查一次即時名單。第一次出現的卡片（沒有上一輪資料）回傳 nil，不誤標。
+  def notification_new_entrant_count(notification)
+    previous_ids = notification.metadata["previous_sample_shopline_customer_ids"]
+    return nil if previous_ids.blank?
+
+    current_ids = Array(notification.metadata["sample_shopline_customer_ids"])
+    (current_ids - previous_ids).size
+  end
+
+  def new_entrant_count_badge(count)
+    return nil if count.blank? || count.zero?
+
+    content_tag(:span, "🆕 新增 #{count} 位", class: "badge badge-danger ms-1")
   end
 
   EMPTY_STATE_MESSAGE = {

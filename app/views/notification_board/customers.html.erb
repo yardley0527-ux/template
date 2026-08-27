@@ -17,7 +17,7 @@
       </thead>
       <tbody>
         <% @rows.each do |r| %>
-          <tr>
+          <tr class="<%= new_entrant_row_class(r[:customer_id], @previous_customer_ids) %>">
             <% if task_creatable %>
               <td>
                 <% if r[:email].present? %>

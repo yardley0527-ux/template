@@ -5,6 +5,7 @@
     <h5 class="fw-bold mt-2 mb-1">
       <%= group[:icon] %> <%= group[:label] %>
       <span class="badge badge-pill badge-dark ms-1"><%= group[:total_count] %> 位待聯繫</span>
+      <%= new_entrant_count_badge(group[:notifications].filter_map { |n| notification_new_entrant_count(n) }.sum) %>
     </h5>
     <ul class="small text-muted mb-2 ps-3">
       <% group[:notifications].each do |n| %>
