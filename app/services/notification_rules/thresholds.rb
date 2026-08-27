@@ -5,8 +5,8 @@ module NotificationRules
   # 方便測試（RSpec/Minitest 可以 stub_const 覆寫）跟未來調整。
   module Thresholds
     # ── customer_runout（即將用完）分級 ──
-    RUNOUT_P1_DAYS = (0..3).freeze
-    RUNOUT_P2_DAYS = (4..7).freeze
+    # 8/27 使用者要求：不再拆 0–3(P1)／4–7(P2) 兩級，合併成單一 0–7 天(P1)。
+    RUNOUT_DAYS = (0..7).freeze
 
     # ── customer_overdue（逾期未回購）分段 ──
     # 8/25 使用者要求：待處理清單只留最新鮮的 0-14 天級距，逾期越久的名單轉換率

@@ -8,13 +8,12 @@ module NotificationRules
   # out_of_stock products entirely (nothing to sell them). preorder products
   # DO generate, tagged "預購中" in the title per spec.
   class CustomerRunout
-    RUNOUT_WINDOW = (0..7).freeze
     PREVIEW_WINDOW = (8..14).freeze
     METADATA_SAMPLE_SIZE = 50
-    # 剩餘 0–3 天＝P1（快沒了，這幾天最該提醒）、4–7 天＝P2（還有一點緩衝）。
+    # 8/27 使用者要求：原本 0–3 天(P1) / 4–7 天(P2) 拆兩張卡改成單一張
+    # 0–7 天(P1)，不再細分。
     BANDS = [
-      { key: "p1", range: NotificationRules::Thresholds::RUNOUT_P1_DAYS, priority: "P1", label: "0–3 天" },
-      { key: "p2", range: NotificationRules::Thresholds::RUNOUT_P2_DAYS, priority: "P2", label: "4–7 天" }
+      { key: "p1", range: NotificationRules::Thresholds::RUNOUT_DAYS, priority: "P1", label: "0–7 天" }
     ].freeze
 
     def self.call

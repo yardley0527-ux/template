@@ -24,6 +24,19 @@ module NotificationRules
       assert_equal 3, metabolism[:metadata][:count]
     end
 
+    test "0-3 and 4-7 day customers are merged into a single 0-7 day card, not split into two" do
+      track(product_key: "metabolism", email: "day2@example.com", days_until_runout: 2)
+      track(product_key: "metabolism", email: "day6@example.com", days_until_runout: 6)
+
+      results = CustomerRunout.call.select { |r| r[:subject_id] == "metabolism" }
+
+      assert_equal 1, results.size, "must be one merged card, not separate p1/p2 cards"
+      assert_equal 2, results.first[:metadata][:count]
+      assert_equal "P1", results.first[:priority]
+      assert_includes results.first[:title], "0–7 天"
+      assert_equal "customer_runout_p1", results.first[:notification_key]
+    end
+
     test "8-14 day customers are not their own notification, only a preview count in metadata" do
       track(product_key: "metabolism", email: "a@example.com", days_until_runout: 5)
       track(product_key: "metabolism", email: "b@example.com", days_until_runout: 10)
