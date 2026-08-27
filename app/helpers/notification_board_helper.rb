@@ -98,6 +98,15 @@ module NotificationBoardHelper
     EXPANDABLE_CATEGORIES.include?(notification.category)
   end
 
+  # previous_ids 空的代表上一輪沒有留下 sample（例如這張卡是今天第一次出現），
+  # 這種情況沒有比較基準，不標「新進榜」以免誤導。
+  def customer_roster_badge(customer_id, previous_ids)
+    return nil if previous_ids.blank? || customer_id.blank?
+
+    previous_ids.include?(customer_id) ? content_tag(:span, "連續在榜", class: "badge badge-light text-muted border") :
+                                          content_tag(:span, "🆕 新進榜", class: "badge badge-success")
+  end
+
   EMPTY_STATE_MESSAGE = {
     "today" => "今天沒有需要處理的事項", "customer_opportunity" => "目前沒有客戶商機提醒",
     "product_revenue" => "目前沒有商品營收提醒", "inventory" => "目前沒有庫存到貨提醒",

@@ -155,8 +155,9 @@ class NotificationEngine
 
       existing = Notification.active.find_by(deduplication_key: dedup_key)
       if existing
+        metadata = carry_forward_previous_sample(r[:metadata] || {}, existing.metadata)
         existing.update!(last_detected_at: now, title: r[:title], message: r[:message],
-                         severity: r[:severity], priority: priority, metadata: r[:metadata] || {},
+                         severity: r[:severity], priority: priority, metadata: metadata,
                          impact_summary: r[:impact_summary], recommended_action: r[:recommended_action],
                          occurrence_count: existing.occurrence_count + 1)
         # 條件在 pending_verification 期間仍持續發生，代表剛才的處理沒有真的
@@ -193,6 +194,17 @@ class NotificationEngine
 
     { hit_count: results.size, created: created, updated: updated, auto_resolved: auto_resolved,
       reopened: reopened, error: nil }
+  end
+
+  # 每輪 sync 把上一輪的 sample_shopline_customer_ids 存成 previous_sample_shopline_customer_ids，
+  # 讓畫面能標出「新進榜」／「連續在榜」，不用另外整套歷史紀錄表。
+  def carry_forward_previous_sample(new_metadata, old_metadata)
+    return new_metadata unless new_metadata.key?(:sample_shopline_customer_ids)
+
+    previous_ids = old_metadata["sample_shopline_customer_ids"]
+    return new_metadata if previous_ids.blank?
+
+    new_metadata.merge(previous_sample_shopline_customer_ids: previous_ids)
   end
 
   SEVERITY_TO_PRIORITY = { "critical" => "P0", "warning" => "P1", "opportunity" => "P2", "info" => "P3" }.freeze

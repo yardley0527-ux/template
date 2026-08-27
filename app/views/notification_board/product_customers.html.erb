@@ -6,7 +6,7 @@
     <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.8rem;">
       <thead class="table-light">
         <tr>
-          <th>姓名</th><th>卡別</th><th>Email</th><th>LINE ID</th>
+          <th>姓名</th><th>卡別</th><th>Email</th><th>LINE ID</th><th>名單狀態</th>
         </tr>
       </thead>
       <tbody>
@@ -22,6 +22,7 @@
             <td><span class="text-muted small"><%= r[:membership_level].presence || "一般" %></span></td>
             <td><span class="text-muted small"><%= r[:email] %></span></td>
             <td><span class="text-muted small"><%= r[:line_id].presence || "—" %></span></td>
+            <td><%= customer_roster_badge(r[:customer_id], @previous_customer_ids) %></td>
           </tr>
         <% end %>
       </tbody>

@@ -62,6 +62,31 @@ class NotificationEngineTest < ActiveSupport::TestCase
     end
   end
 
+  test "re-running snapshots the prior sample_shopline_customer_ids into previous_sample_shopline_customer_ids" do
+    with_stub_rules("system_health" => StubRule) do
+      StubRule.results = [result(key: "r1", dedup: "r1:x:1").merge(metadata: { sample_shopline_customer_ids: [1, 2, 3] })]
+      NotificationEngine.new.run(["system_health"])
+
+      StubRule.results = [result(key: "r1", dedup: "r1:x:1").merge(metadata: { sample_shopline_customer_ids: [2, 3, 4] })]
+      NotificationEngine.new.run(["system_health"])
+
+      n = Notification.find_by(deduplication_key: "r1:x:1")
+      assert_equal [2, 3, 4], n.metadata["sample_shopline_customer_ids"]
+      assert_equal [1, 2, 3], n.metadata["previous_sample_shopline_customer_ids"]
+    end
+  end
+
+  test "previous_sample_shopline_customer_ids is not set when the rule's metadata has no sample ids to compare" do
+    with_stub_rules("system_health" => StubRule) do
+      StubRule.results = [result(key: "r1", dedup: "r1:x:1")]
+      NotificationEngine.new.run(["system_health"])
+      NotificationEngine.new.run(["system_health"])
+
+      n = Notification.find_by(deduplication_key: "r1:x:1")
+      assert_not n.metadata.key?("previous_sample_shopline_customer_ids")
+    end
+  end
+
   test "a condition that stops firing is auto-resolved" do
     with_stub_rules("system_health" => StubRule) do
       StubRule.results = [result(key: "r1", dedup: "r1:x:1")]

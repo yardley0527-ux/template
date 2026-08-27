@@ -108,6 +108,7 @@ class NotificationBoardController < ApplicationController
   def customers
     @notification = notification
     @rows = NotificationCustomerListService.call(@notification)
+    @previous_customer_ids = Array(@notification.metadata["previous_sample_shopline_customer_ids"]).to_set
     render layout: false
   end
 
@@ -119,6 +120,7 @@ class NotificationBoardController < ApplicationController
     @label = JourneyProducts::PRODUCTS.dig(@product_key, :label) || @product_key
     @notifications = todays_product_notifications(@product_key)
     @rows = NotificationProductCustomersService.call(@notifications)
+    @previous_customer_ids = @notifications.flat_map { |n| Array(n.metadata["previous_sample_shopline_customer_ids"]) }.to_set
     render layout: false
   end
 

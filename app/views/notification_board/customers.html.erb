@@ -12,6 +12,7 @@
           <th>姓名</th><th>卡別</th><th>電話</th><th>IG</th>
           <% if @rows.first.key?(:expected_return_date) %><th>預計用完</th><% end %>
           <% if @rows.first.key?(:first_amount) %><th>首購金額</th><% end %>
+          <th>名單狀態</th>
         </tr>
       </thead>
       <tbody>
@@ -48,6 +49,7 @@
             <% if r.key?(:first_amount) %>
               <td>NT$<%= number_with_delimiter(r[:first_amount]) %></td>
             <% end %>
+            <td><%= customer_roster_badge(r[:customer_id], @previous_customer_ids) %></td>
           </tr>
         <% end %>
       </tbody>
