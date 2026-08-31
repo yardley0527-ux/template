@@ -1,0 +1,143 @@
+<% content_for :page_title, "直播廣告測試" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-bullhorn mr-2 text-danger"></i> 直播廣告測試
+  </h1>
+  <div class="ml-auto">
+    <%= link_to new_live_ad_test_path, class: "btn btn-primary btn-sm" do %>
+      <i class="fal fa-plus mr-1"></i> 新增紀錄
+    <% end %>
+  </div>
+</div>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  這裡記的是廣告測試／實驗性質的直播（進場人數、廣告花費、廣告通過時間），跟「直播場次」（有真實訂單歸因）是不同性質，分開管理。
+</div>
+
+<div class="panel">
+  <div class="panel-container show">
+    <div class="panel-content">
+
+      <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+          <%= link_to "全部 (#{@counts[:all]})", live_ad_tests_path, class: "nav-link #{'active' unless @selected_platform}" %>
+        </li>
+        <li class="nav-item">
+          <%= link_to "IG (#{@counts['IG']})", live_ad_tests_path(platform: "IG"), class: "nav-link #{'active' if @selected_platform == 'IG'}" %>
+        </li>
+        <li class="nav-item">
+          <%= link_to "蝦皮 (#{@counts['蝦皮']})", live_ad_tests_path(platform: "蝦皮"), class: "nav-link #{'active' if @selected_platform == '蝦皮'}" %>
+        </li>
+      </ul>
+
+      <% if @live_ad_tests.empty? %>
+        <div class="text-center py-5 text-muted">
+          <i class="fal fa-bullhorn fa-3x mb-3 d-block opacity-25"></i>
+          <% if @selected_platform %>
+            這個平台還沒有紀錄，<%= link_to "清除篩選", live_ad_tests_path %>
+          <% else %>
+            尚無紀錄，<%= link_to "新增第一筆", new_live_ad_test_path %>
+          <% end %>
+        </div>
+      <% else %>
+
+        <%# ── 桌機：表格 ── %>
+        <div class="d-none d-lg-block" style="overflow-x:auto;">
+          <table class="table table-bordered table-hover align-middle small">
+            <thead class="thead-light">
+              <tr>
+                <th>日期</th>
+                <th>平台</th>
+                <th>產品</th>
+                <th>連結關鍵字</th>
+                <th>時段</th>
+                <th>廣告通過</th>
+                <th class="text-right">進場</th>
+                <th class="text-right">最高在線</th>
+                <th class="text-right">收播</th>
+                <th class="text-right">廣告花費</th>
+                <th class="text-right">訂單</th>
+                <th class="text-right">營收</th>
+                <th>備註</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @live_ad_tests.each do |t| %>
+                <tr>
+                  <td class="text-nowrap"><%= t.date.strftime("%Y/%m/%d") %></td>
+                  <td>
+                    <% if t.platform.present? %>
+                      <span class="badge <%= t.platform == 'IG' ? 'badge-primary' : 'badge-warning' %>"><%= t.platform %></span>
+                    <% else %>
+                      <span class="text-muted">—</span>
+                    <% end %>
+                  </td>
+                  <td><%= t.product.presence || "—" %></td>
+                  <td><%= t.link_keyword.presence || "—" %></td>
+                  <td class="text-nowrap"><%= [t.start_time, t.end_time].all?(&:present?) ? "#{t.start_time}–#{t.end_time}" : "—" %></td>
+                  <td class="text-nowrap"><%= t.ran_ads? ? t.ad_approved_time.presence || "—" : "未下廣告" %></td>
+                  <td class="text-right"><%= t.viewers_entry.presence || "—" %></td>
+                  <td class="text-right"><%= t.viewers_peak.presence || "—" %></td>
+                  <td class="text-right"><%= t.viewers_end.presence || "—" %></td>
+                  <td class="text-right"><%= t.ran_ads? ? number_with_delimiter(t.ad_spend.to_i) : "—" %></td>
+                  <td class="text-right"><%= t.orders %></td>
+                  <td class="text-right"><%= t.revenue.to_i.positive? ? number_with_delimiter(t.revenue.to_i) : "—" %></td>
+                  <td class="text-muted"><%= t.notes.presence || "—" %></td>
+                  <td class="text-nowrap">
+                    <%= link_to edit_live_ad_test_path(t), class: "btn btn-xs btn-outline-secondary mr-1" do %>
+                      <i class="fal fa-edit"></i>
+                    <% end %>
+                    <%= link_to live_ad_test_path(t), method: :delete, data: { confirm: "確定刪除 #{t.date.strftime('%m/%d')} 的紀錄？" }, class: "btn btn-xs btn-outline-danger" do %>
+                      <i class="fal fa-trash"></i>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <%# ── 手機：卡片 ── %>
+        <div class="d-lg-none">
+          <% @live_ad_tests.each do |t| %>
+            <div class="card mb-3">
+              <div class="card-header d-flex align-items-center py-2" style="background:#f5ede8;">
+                <span class="font-weight-bold"><%= t.date.strftime("%Y/%m/%d") %></span>
+                <% if t.platform.present? %>
+                  <span class="badge <%= t.platform == 'IG' ? 'badge-primary' : 'badge-warning' %> ml-2"><%= t.platform %></span>
+                <% end %>
+                <div class="ml-auto" style="white-space:nowrap;">
+                  <%= link_to edit_live_ad_test_path(t), class: "btn btn-xs btn-outline-secondary mr-1" do %>
+                    <i class="fal fa-edit"></i>
+                  <% end %>
+                  <%= link_to live_ad_test_path(t), method: :delete, data: { confirm: "確定刪除？" }, class: "btn btn-xs btn-outline-danger" do %>
+                    <i class="fal fa-trash"></i>
+                  <% end %>
+                </div>
+              </div>
+              <div class="card-body py-2 px-3 small">
+                <div class="font-weight-bold mb-1"><%= t.product.presence || "（未命名）" %></div>
+                <div class="d-flex justify-content-between border-bottom py-1">
+                  <span class="text-muted">進場／最高／收播</span>
+                  <span><%= t.viewers_entry.presence || "—" %> ／ <%= t.viewers_peak.presence || "—" %> ／ <%= t.viewers_end.presence || "—" %></span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom py-1">
+                  <span class="text-muted">廣告花費</span>
+                  <span><%= t.ran_ads? ? number_with_delimiter(t.ad_spend.to_i) : "未下廣告" %></span>
+                </div>
+                <div class="d-flex justify-content-between py-1">
+                  <span class="text-muted">訂單／營收</span>
+                  <span><%= t.orders %> 單／<%= number_with_delimiter(t.revenue.to_i) %></span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+      <% end %>
+    </div>
+  </div>
+</div>

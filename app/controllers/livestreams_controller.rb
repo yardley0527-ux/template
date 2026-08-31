@@ -6,7 +6,6 @@ class LivestreamsController < ApplicationController
     @selected_year    = params[:year].presence&.to_i
     @selected_month   = params[:month].presence&.to_i
     @selected_product = params[:product].presence
-    @selected_platform = params[:platform].presence
     @product_options  = CrmProduct.for_analysis.order(:label).pluck(:key, :label)
     @product_labels   = CrmProduct.pluck(:key, :label).to_h
 
@@ -91,7 +90,6 @@ class LivestreamsController < ApplicationController
     end
     # GIN 相容的 array contains 查詢（同 PR1 設計文件記錄的寫法）。
     scope = scope.where("product_keys @> ARRAY[?]::varchar[]", @selected_product) if @selected_product
-    scope = scope.where(platform: @selected_platform) if @selected_platform
 
     scope
   end
@@ -105,12 +103,6 @@ class LivestreamsController < ApplicationController
   end
 
   def livestream_params
-    params.require(:livestream).permit(
-      :date, :title, :notes, :owner_user_id,
-      :platform, :link_keyword, :start_time, :end_time,
-      :ran_ads, :ad_approved_time, :ad_spend,
-      :viewers_entry, :viewers_peak, :viewers_end,
-      product_keys: []
-    )
+    params.require(:livestream).permit(:date, :title, :notes, :owner_user_id, product_keys: [])
   end
 end

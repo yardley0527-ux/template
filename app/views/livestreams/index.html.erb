@@ -33,10 +33,6 @@
           <%= select_tag :product, options_for_select([["全部", ""]] + @product_options.map { |k, l| [l, k] }, @selected_product),
                 class: "form-control form-control-sm ml-1" %>
         </label>
-        <label class="mr-2 mb-2">平台
-          <%= select_tag :platform, options_for_select([["全部", ""], ["IG", "IG"], ["蝦皮", "蝦皮"]], @selected_platform),
-                class: "form-control form-control-sm ml-1" %>
-        </label>
         <button type="submit" class="btn btn-sm btn-outline-primary mb-2 mr-1">
           <i class="fal fa-search mr-1"></i>篩選
         </button>
@@ -46,7 +42,7 @@
       <% if @livestreams.empty? %>
         <div class="text-center py-5 text-muted">
           <i class="fal fa-video fa-3x mb-3 d-block opacity-25"></i>
-          <% if @selected_year || @selected_month || @selected_product || @selected_platform %>
+          <% if @selected_year || @selected_month || @selected_product %>
             篩選條件下沒有場次，<%= link_to "清除篩選", livestreams_path %>
           <% else %>
             尚無直播紀錄，<%= link_to "新增第一場", new_livestream_path %>
@@ -60,7 +56,6 @@
             <thead class="thead-light">
               <tr>
                 <th>日期</th>
-                <th>平台</th>
                 <th>標題</th>
                 <th>本場銷售產品</th>
                 <th class="text-right">推定檔期營收</th>
@@ -77,13 +72,6 @@
                 <tr>
                   <td class="text-nowrap">
                     <%= link_to ls.date.strftime("%Y/%m/%d"), livestream_path(ls), class: "font-weight-bold" %>
-                  </td>
-                  <td>
-                    <% if ls.platform.present? %>
-                      <span class="badge <%= ls.platform == 'IG' ? 'badge-primary' : 'badge-warning' %>"><%= ls.platform %></span>
-                    <% else %>
-                      <span class="text-muted">—</span>
-                    <% end %>
                   </td>
                   <td><%= ls.title.presence || "（未命名場次）" %></td>
                   <td>
@@ -146,12 +134,7 @@
                 </div>
               </div>
               <div class="card-body py-2 px-3 small">
-                <div class="font-weight-bold mb-1">
-                  <% if ls.platform.present? %>
-                    <span class="badge <%= ls.platform == 'IG' ? 'badge-primary' : 'badge-warning' %> mr-1"><%= ls.platform %></span>
-                  <% end %>
-                  <%= ls.title.presence || "（未命名場次）" %>
-                </div>
+                <div class="font-weight-bold mb-1"><%= ls.title.presence || "（未命名場次）" %></div>
                 <div class="mb-2">
                   <% ls.product_keys.each do |key| %>
                     <span class="badge badge-light border mr-1"><%= @product_labels[key] || key %></span>

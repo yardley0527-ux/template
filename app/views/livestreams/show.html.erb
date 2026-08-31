@@ -40,46 +40,9 @@
             <dd class="col-7"><%= @livestream.date.strftime("%Y/%m/%d") %></dd>
             <dt class="col-5">標題</dt>
             <dd class="col-7"><%= @livestream.title.presence || "—" %></dd>
-            <dt class="col-5">平台</dt>
-            <dd class="col-7">
-              <% if @livestream.platform.present? %>
-                <span class="badge <%= @livestream.platform == 'IG' ? 'badge-primary' : 'badge-warning' %>"><%= @livestream.platform %></span>
-              <% else %>—<% end %>
-            </dd>
-            <dt class="col-5">連結關鍵字</dt>
-            <dd class="col-7"><%= @livestream.link_keyword.presence || "—" %></dd>
-            <dt class="col-5">時段</dt>
-            <dd class="col-7"><%= [@livestream.start_time, @livestream.end_time].all?(&:present?) ? "#{@livestream.start_time}–#{@livestream.end_time}" : "—" %></dd>
             <dt class="col-5">備註</dt>
             <dd class="col-7"><%= @livestream.notes.presence || "—" %></dd>
           </dl>
-
-          <hr>
-          <h6 class="font-weight-bold">廣告成效</h6>
-          <% if @livestream.ran_ads? %>
-            <dl class="row mb-0 small">
-              <dt class="col-5">廣告通過時間</dt>
-              <dd class="col-7"><%= @livestream.ad_approved_time.presence || "—" %></dd>
-              <dt class="col-5">廣告花費</dt>
-              <dd class="col-7"><%= number_with_delimiter(@livestream.ad_spend.to_i) %> 元</dd>
-            </dl>
-          <% else %>
-            <p class="text-muted small">本場未下廣告</p>
-          <% end %>
-
-          <h6 class="font-weight-bold mt-3">進場／在線人數</h6>
-          <% if [@livestream.viewers_entry, @livestream.viewers_peak, @livestream.viewers_end].any?(&:present?) %>
-            <dl class="row mb-0 small">
-              <dt class="col-5">進場</dt>
-              <dd class="col-7"><%= @livestream.viewers_entry.presence || "—" %></dd>
-              <dt class="col-5">最高在線</dt>
-              <dd class="col-7"><%= @livestream.viewers_peak.presence || "—" %></dd>
-              <dt class="col-5">收播</dt>
-              <dd class="col-7"><%= @livestream.viewers_end.presence || "—" %></dd>
-            </dl>
-          <% else %>
-            <p class="text-muted small">無紀錄</p>
-          <% end %>
 
           <hr>
           <h6 class="font-weight-bold">商品</h6>
