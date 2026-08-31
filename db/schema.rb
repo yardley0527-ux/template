@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_28_114538) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_31_103811) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -809,8 +809,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_28_114538) do
     t.bigint "owner_user_id"
     t.datetime "review_completed_at"
     t.bigint "review_completed_by_user_id"
+    t.string "platform"
+    t.string "link_keyword"
+    t.string "start_time"
+    t.string "end_time"
+    t.boolean "ran_ads", default: false, null: false
+    t.string "ad_approved_time"
+    t.decimal "ad_spend", precision: 12, scale: 2, default: "0.0", null: false
+    t.integer "viewers_entry"
+    t.integer "viewers_peak"
+    t.integer "viewers_end"
     t.index ["date"], name: "index_livestreams_on_date", unique: true
     t.index ["owner_user_id"], name: "index_livestreams_on_owner_user_id"
+    t.index ["platform"], name: "index_livestreams_on_platform"
     t.index ["product_keys"], name: "index_livestreams_on_product_keys", using: :gin
   end
 

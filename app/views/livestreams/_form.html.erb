@@ -39,6 +39,61 @@
     </div>
   </div>
 
+  <div class="card mb-4">
+    <div class="card-header"><strong>直播＋廣告數據</strong></div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group col-md-3">
+          <%= f.label :platform, "平台" %>
+          <%= f.select :platform, [["IG", "IG"], ["蝦皮", "蝦皮"]], { include_blank: "未選擇" }, class: "form-control" %>
+        </div>
+        <div class="form-group col-md-3">
+          <%= f.label :link_keyword, "連結關鍵字" %>
+          <%= f.text_field :link_keyword, class: "form-control", placeholder: "e.g. 膠原" %>
+        </div>
+        <div class="form-group col-md-3">
+          <%= f.label :start_time, "開播時間" %>
+          <%= f.text_field :start_time, class: "form-control", placeholder: "HH:MM" %>
+        </div>
+        <div class="form-group col-md-3">
+          <%= f.label :end_time, "收播時間" %>
+          <%= f.text_field :end_time, class: "form-control", placeholder: "HH:MM" %>
+        </div>
+      </div>
+
+      <div class="form-group form-check">
+        <%= f.check_box :ran_ads, class: "form-check-input" %>
+        <%= f.label :ran_ads, "有下廣告", class: "form-check-label" %>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group col-md-3">
+          <%= f.label :ad_approved_time, "廣告通過時間" %>
+          <%= f.text_field :ad_approved_time, class: "form-control", placeholder: "HH:MM" %>
+        </div>
+        <div class="form-group col-md-3">
+          <%= f.label :ad_spend, "廣告花費（元）" %>
+          <%= f.number_field :ad_spend, class: "form-control", step: 1 %>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group col-md-3">
+          <%= f.label :viewers_entry, "進場人數" %>
+          <%= f.number_field :viewers_entry, class: "form-control" %>
+        </div>
+        <div class="form-group col-md-3">
+          <%= f.label :viewers_peak, "最高在線人數" %>
+          <%= f.number_field :viewers_peak, class: "form-control" %>
+        </div>
+        <div class="form-group col-md-3">
+          <%= f.label :viewers_end, "收播人數" %>
+          <%= f.number_field :viewers_end, class: "form-control" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <% if livestream.persisted? %>
     <%# Images section %>
     <div class="card mb-4">
