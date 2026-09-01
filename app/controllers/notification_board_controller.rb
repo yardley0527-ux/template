@@ -29,6 +29,14 @@ class NotificationBoardController < ApplicationController
     case @section
     when "today"
       @product_groups, @other_notifications = TodayProductBoard.groups(woken_ids: @woken_ids)
+      # 這裡也補一次快照——「今日待處理」是即時查詢，一天內可能有新產品冒出來
+      # （例如延後的提醒到時間醒來），只靠早上那次 rake 會漏掉，讓快照跟畫面
+      # 上看到的產品脫節。idempotent，重複呼叫不會重複建立，失敗也不擋畫面。
+      begin
+        DailyMessageListSnapshotService.call(woken_ids: @woken_ids)
+      rescue StandardError => e
+        Rails.logger.error("[notification_board] daily message list snapshot failed: #{e.class}: #{e.message}")
+      end
     when "completed"
       @page = [params[:page].to_i, 1].max
       scope = Notification.where(status: %w[resolved dismissed]).order(updated_at: :desc)
