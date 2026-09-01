@@ -10,6 +10,9 @@ class MessageListsController < ApplicationController
     @lists = MessageList.order(sent_on: :desc, id: :desc).to_a
     @recipient_counts = MessageListRecipient.group(:message_list_id).count
     @stats = @lists.to_h { |list| [list.id, build_stats(list, repurchases_for(list))] }
+
+    @week_range = (Date.current - 6)..Date.current
+    @weekly_summary = weekly_summary(@lists, @week_range)
   end
 
   def show
@@ -63,6 +66,26 @@ class MessageListsController < ApplicationController
   end
 
   private
+
+  # 近 7 天（含週末，但平日 cron 才會產生名單）依目標商品彙總——「這個產品這週
+  # 傳了幾天、共幾人、回購幾人」，讓使用者一進頁面就看到最近成效，不用逐批點進去看。
+  def weekly_summary(lists, range)
+    lists.select { |l| range.cover?(l.sent_on) }
+         .group_by(&:target_product)
+         .map do |product, group|
+      stats = group.map { |l| @stats[l.id] }
+      total = stats.sum { |s| s[:total] }
+      repurchased = stats.sum { |s| s[:repurchased] }
+      {
+        product: product,
+        days: group.size,
+        total: total,
+        repurchased: repurchased,
+        rate: total.positive? ? (repurchased * 100.0 / total).round(1) : nil,
+        revenue: stats.sum { |s| s[:revenue] }
+      }
+    end.sort_by { |h| -h[:total] }
+  end
 
   def sorted_recipients(list)
     list.recipients.sort_by { |r| [MEMBERSHIP_RANK.fetch(r.membership_level, 6), r.full_name.to_s] }

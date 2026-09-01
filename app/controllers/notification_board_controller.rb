@@ -8,7 +8,6 @@
 # full status lifecycle.
 class NotificationBoardController < ApplicationController
   SECTIONS = %w[today customer_opportunity product_revenue inventory livestream_event system_health completed].freeze
-  TODAY_LIMIT = 30
   SECTION_CATEGORIES = {
     "customer_opportunity" => %w[customer_runout customer_overdue high_spender_no_second vip_silent promotion_opportunity],
     "product_revenue"      => %w[product_attention],
@@ -18,10 +17,6 @@ class NotificationBoardController < ApplicationController
     "system_health"        => %w[system_health]
   }.freeze
   COMPLETED_PER_PAGE = 20
-  # 這三類卡片的 metadata 有單一 product_key，可以合併成「依產品列出待聯絡客人」——
-  # vip_silent/high_spender_no_second 沒有單一產品可對應（跨產品沉睡／首購批次），
-  # 留在「其他待處理」用原本的卡片形式顯示。
-  PRODUCT_GROUPABLE_CATEGORIES = %w[customer_runout customer_overdue promotion_opportunity].freeze
 
   before_action :wake_expired_snoozes!, only: %i[index product_customers]
 
@@ -29,11 +24,11 @@ class NotificationBoardController < ApplicationController
     @section = SECTIONS.include?(params[:section]) ? params[:section] : "today"
     @unread_count = Notification.unread.count
     @tab_counts = SECTION_CATEGORIES.transform_values { |cats| Notification.active.by_category(cats).count }
-    @tab_counts["today"] = todays_todo_scope.count
+    @tab_counts["today"] = TodayProductBoard.todo_scope(woken_ids: @woken_ids).count
 
     case @section
     when "today"
-      @product_groups, @other_notifications = grouped_today_list
+      @product_groups, @other_notifications = TodayProductBoard.groups(woken_ids: @woken_ids)
     when "completed"
       @page = [params[:page].to_i, 1].max
       scope = Notification.where(status: %w[resolved dismissed]).order(updated_at: :desc)
@@ -118,33 +113,10 @@ class NotificationBoardController < ApplicationController
   def product_customers
     @product_key = params[:product_key].to_s
     @label = JourneyProducts::PRODUCTS.dig(@product_key, :label) || @product_key
-    @notifications = todays_product_notifications(@product_key)
+    @notifications = TodayProductBoard.for_product(@product_key, woken_ids: @woken_ids)
     @rows = NotificationProductCustomersService.call(@notifications)
     @previous_customer_ids = @notifications.flat_map { |n| Array(n.metadata["previous_sample_shopline_customer_ids"]) }.to_set
     render layout: false
-  end
-
-  # 「今日待處理」依產品分組的名單，一鍵記錄成訊息名單追蹤（message_lists），
-  # 之後可以在 /message_lists 看回購成效——重用既有的 MessageListBuilder，
-  # 不重造一套名單/回購比對邏輯。取的是「現在」符合條件的全部名單，不分批勾選。
-  def create_product_message_list
-    product_key = params[:product_key].to_s
-    label = JourneyProducts::PRODUCTS.dig(product_key, :label) || product_key
-    rows = NotificationProductCustomersService.call(todays_product_notifications(product_key))
-    emails = rows.filter_map { |r| r[:email].presence }
-
-    if emails.empty?
-      redirect_to notification_board_path(section: "today"), alert: "目前沒有符合條件的客人"
-      return
-    end
-
-    sent_on = Date.current
-    list = MessageListBuilder.create!(
-      name: "#{sent_on.strftime('%m/%d')} #{label}回購名單",
-      sent_on: sent_on, target_product: label, emails: emails,
-      source_note: "由營運提醒中心「今日待處理・#{label}」建立"
-    )
-    redirect_to message_list_path(list), notice: "已建立訊息名單（#{emails.size} 人），之後可以在這裡追蹤回購成效"
   end
 
   # 客戶商機卡片的「建立客服任務」——把勾選的客戶寫進既有的
@@ -176,59 +148,6 @@ class NotificationBoardController < ApplicationController
   def wake_expired_snoozes!
     @woken_ids = Notification.snooze_expired.pluck(:id)
     Notification.wake_expired_snoozes!
-  end
-
-  # 「今日待處理」＝依 due_at／status／snoozed_until 判斷，不是「今天才第一次
-  # 偵測到」。涵蓋：今天新發生的P0/P1、到期或已逾期、待分派、待系統驗證的高
-  # 優先事項、延後到今天重新出現的事項。
-  def todays_todo_scope
-    today_start = Date.current.beginning_of_day
-    tomorrow_start = Date.current.tomorrow.beginning_of_day
-    woken = @woken_ids.presence || [0]
-
-    Notification.active.where(
-      "(priority IN ('P0','P1') AND first_detected_at >= :today_start) " \
-      "OR (due_at IS NOT NULL AND due_at < :tomorrow_start) " \
-      "OR status = 'pending_assignment' " \
-      "OR (status = 'pending_verification' AND priority IN ('P0','P1')) " \
-      "OR id IN (:woken)",
-      today_start: today_start, tomorrow_start: tomorrow_start, woken: woken
-    )
-  end
-
-  def todays_todo_list
-    todays_todo_scope.includes(:owner).to_a.sort_by do |n|
-      [Notification::PRIORITY_RANK.fetch(n.priority, 9), n.overdue? ? 0 : 1, -n.last_detected_at.to_i]
-    end.first(TODAY_LIMIT)
-  end
-
-  # 「先看現在有哪些產品，再依產品列出要聯絡的客人」——把今日待處理清單拆成
-  # 「可歸屬單一產品」跟「不能歸屬單一產品」兩堆，前者依 product_key 合併成
-  # 一個產品一組（可能好幾張卡疊在一起），後者維持原本一張卡一張卡顯示。
-  def grouped_today_list
-    list = todays_todo_list
-    groupable, other = list.partition { |n| PRODUCT_GROUPABLE_CATEGORIES.include?(n.category) && n.metadata["product_key"].present? }
-
-    groups = groupable.group_by { |n| n.metadata["product_key"] }.map do |key, notifs|
-      {
-        product_key: key,
-        label: JourneyProducts::PRODUCTS.dig(key, :label) || key,
-        icon: JourneyProducts::PRODUCTS.dig(key, :icon),
-        notifications: notifs,
-        total_count: notifs.sum { |n| (n.metadata["count"] || n.metadata["total_count"] || 0).to_i },
-        min_priority: notifs.min_by { |n| Notification::PRIORITY_RANK.fetch(n.priority, 9) }.priority
-      }
-    end.sort_by { |g| Notification::PRIORITY_RANK.fetch(g[:min_priority], 9) }
-
-    [groups, other]
-  end
-
-  # product_customers action 用：重新現查（不吃前端傳來的清單），確保跟畫面上
-  # 當下顯示的「今日待處理」內容一致。
-  def todays_product_notifications(product_key)
-    todays_todo_scope.where(category: PRODUCT_GROUPABLE_CATEGORIES).select do |n|
-      n.metadata["product_key"] == product_key
-    end
   end
 
   def board_summary

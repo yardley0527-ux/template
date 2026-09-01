@@ -41,5 +41,12 @@ namespace :ops do
       puts "  #{category}: hit=#{stats[:hit_count]} created=#{stats[:created]} " \
            "updated=#{stats[:updated]} auto_resolved=#{stats[:auto_resolved]} error=#{stats[:error] || 'none'}"
     end
+
+    # 只有跑全部規則（非 RULE=單一規則）才代表「今天的板已經是完整版」，
+    # 這時才把依產品分組的名單記錄成訊息名單快照——見 DailyMessageListSnapshotService。
+    if ENV["RULE"].blank?
+      snapshot = DailyMessageListSnapshotService.call
+      puts "[ops:notifications] message list snapshot: #{snapshot}"
+    end
   end
 end
