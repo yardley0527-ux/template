@@ -37,8 +37,8 @@
           <thead class="thead-light">
             <tr>
               <th style="width:160px;">帳號</th>
-              <th style="width:280px;">上班（<%= ManychatCheck::TIME_SLOTS["morning"] %>）</th>
-              <th style="width:280px;">下班（<%= ManychatCheck::TIME_SLOTS["evening"] %>）</th>
+              <th style="width:320px;"><%= ManychatCheck::TIME_SLOTS["morning"] %></th>
+              <th style="width:320px;"><%= ManychatCheck::TIME_SLOTS["evening"] %></th>
             </tr>
           </thead>
           <tbody>
@@ -58,7 +58,7 @@
                           <%= rec.checked? ? "#{rec.checked_by&.username} #{rec.checked_at&.strftime('%H:%M')}" : "尚未確認" %>
                         </span>
                       </label>
-                      <textarea class="form-control form-control-sm mc-note" rows="1" placeholder="備註（選填）"><%= rec.note %></textarea>
+                      <textarea class="form-control mc-note" rows="3" placeholder="備註（選填）"><%= rec.note %></textarea>
                     </div>
                   </td>
                 <% end %>
@@ -88,7 +88,7 @@
                         <%= rec.checked? ? "#{rec.checked_by&.username} #{rec.checked_at&.strftime('%H:%M')}" : "尚未確認" %>
                       </span>
                     </label>
-                    <textarea class="form-control form-control-sm mc-note" rows="1" placeholder="備註（選填）"><%= rec.note %></textarea>
+                    <textarea class="form-control mc-note" rows="3" placeholder="備註（選填）"><%= rec.note %></textarea>
                   </div>
                 </div>
               <% end %>
