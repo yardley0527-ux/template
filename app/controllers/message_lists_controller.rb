@@ -6,8 +6,18 @@
 class MessageListsController < ApplicationController
   MEMBERSHIP_RANK = { "黑卡" => 1, "金卡" => 2, "銀卡" => 3, "白卡" => 4, "一般會員" => 5 }.freeze
 
+  # 人工湊的名單（例如回購 cohort × 買過某商品）——跟每天自動記錄的
+  # 「今日待處理」快照分開顯示，見 #daily。
   def index
-    @lists = MessageList.order(sent_on: :desc, id: :desc).to_a
+    @lists = MessageList.manual.order(sent_on: :desc, id: :desc).to_a
+    @recipient_counts = MessageListRecipient.group(:message_list_id).count
+    @stats = @lists.to_h { |list| [list.id, build_stats(list, repurchases_for(list))] }
+  end
+
+  # 每天早上 ops:notifications 自動依「今日待處理」記錄的名單快照，
+  # 上面加一個依產品彙總的本週回購成效，跟人工名單（#index）分開顯示。
+  def daily
+    @lists = MessageList.daily_snapshot.order(sent_on: :desc, id: :desc).to_a
     @recipient_counts = MessageListRecipient.group(:message_list_id).count
     @stats = @lists.to_h { |list| [list.id, build_stats(list, repurchases_for(list))] }
 

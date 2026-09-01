@@ -1,0 +1,93 @@
+<%# app/views/message_lists/daily.html.erb %>
+<% content_for :page_title, "每日名單回購成效" %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <h4 class="fw-bold mb-0">每日名單回購成效</h4>
+    <p class="text-muted small mb-0">每個平日早上系統依「今日待處理」自動記錄一批名單，追蹤傳送日之後是否回購目標商品</p>
+    <p class="small mb-0"><%= link_to "人工湊的訊息名單在這裡 →", message_lists_path %></p>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <h6 class="fw-bold mb-1">本週回購成效（<%= @week_range.first.strftime("%-m/%-d") %>–<%= @week_range.last.strftime("%-m/%-d") %>）</h6>
+    <p class="text-muted small mb-3">依產品彙總最近幾個平日自動記錄的名單</p>
+    <% if @weekly_summary.empty? %>
+      <div class="text-muted small">這週還沒有自動記錄的名單。</div>
+    <% else %>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0" style="font-size:0.88rem;">
+          <thead>
+            <tr class="text-muted">
+              <th>產品</th>
+              <th class="text-end">記錄天數</th>
+              <th class="text-end">人數</th>
+              <th class="text-end">已回購</th>
+              <th class="text-end">回購率</th>
+              <th class="text-end">回購帶回營業額</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @weekly_summary.each do |row| %>
+              <tr>
+                <td><span class="badge bg-light text-dark border"><%= row[:product] %></span></td>
+                <td class="text-end"><%= row[:days] %></td>
+                <td class="text-end"><%= row[:total] %></td>
+                <td class="text-end fw-bold" style="color:#188038;"><%= row[:repurchased] %></td>
+                <td class="text-end"><%= row[:rate] ? "#{row[:rate]}%" : "—" %></td>
+                <td class="text-end fw-bold" style="color:#6e4a2e;">NT$<%= number_with_delimiter(row[:revenue]) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0" style="font-size:0.88rem;">
+      <thead style="background-color:#4a4a4a; color:white;">
+        <tr>
+          <th class="ps-3" style="min-width:160px;">名單名稱</th>
+          <th style="width:110px;">傳送日期</th>
+          <th style="width:140px;">目標商品</th>
+          <th class="text-end" style="width:90px;">人數</th>
+          <th class="text-end" style="width:110px;">已回購</th>
+          <th class="text-end" style="width:90px;">回購率</th>
+          <th class="text-end" style="width:140px;">回購帶回營業額</th>
+          <th style="width:80px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @lists.each do |list| %>
+          <% s = @stats[list.id] %>
+          <tr>
+            <td class="ps-3" style="max-width:220px;">
+              <%= link_to list.name, message_list_path(list), class: "text-decoration-none fw-semibold" %>
+            </td>
+            <td class="text-nowrap"><%= list.sent_on.strftime("%Y/%-m/%-d") %></td>
+            <td><span class="badge bg-light text-dark border"><%= list.target_product %></span></td>
+            <td class="text-end"><%= s[:total] %></td>
+            <td class="text-end fw-bold" style="color:#188038;"><%= s[:repurchased] %></td>
+            <td class="text-end"><%= s[:rate] ? "#{s[:rate]}%" : "—" %></td>
+            <td class="text-end fw-bold" style="color:#6e4a2e;">NT$<%= number_with_delimiter(s[:revenue]) %></td>
+            <td class="text-end pe-3">
+              <%= link_to "明細", message_list_path(list), class: "btn btn-sm btn-outline-primary" %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @lists.empty? %>
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">
+              <i class="fal fa-inbox fa-2x mb-2 d-block opacity-25"></i>
+              還沒有自動記錄的名單，平日早上 ops:notifications 跑過之後就會出現。
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

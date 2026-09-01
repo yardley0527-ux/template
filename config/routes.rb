@@ -202,6 +202,7 @@ Rails.application.routes.draw do
   get '/tag_extractions/:id/export', to: 'tag_extractions#export', as: :export_tag_extraction
   post '/tag_extraction_runs/update_field', to: 'tag_extractions#update_field', as: :update_tag_extraction_run_field
   get '/message_lists',            to: 'message_lists#index',  as: :message_lists
+  get '/message_lists/daily',      to: 'message_lists#daily',  as: :daily_message_lists
   get '/message_lists/:id',        to: 'message_lists#show',   as: :message_list
   patch '/message_lists/:id',      to: 'message_lists#update'
   get '/message_lists/:id/export', to: 'message_lists#export', as: :export_message_list

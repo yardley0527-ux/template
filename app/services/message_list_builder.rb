@@ -13,7 +13,7 @@
 #     segments: { "a@x.com" => "回購鐵粉" }   # 選填：email → 分類標籤
 #   )
 class MessageListBuilder
-  def self.create!(name:, sent_on:, target_product:, emails:, source_note: nil, segments: {})
+  def self.create!(name:, sent_on:, target_product:, emails:, source_note: nil, segments: {}, source: "manual")
     normalized = emails.filter_map { |e| e.to_s.strip.downcase.presence }.uniq
     raise ArgumentError, "emails 不可為空" if normalized.empty?
 
@@ -22,7 +22,7 @@ class MessageListBuilder
 
     MessageList.transaction do
       list = MessageList.create!(
-        name: name, sent_on: sent_on, target_product: target_product, source_note: source_note
+        name: name, sent_on: sent_on, target_product: target_product, source_note: source_note, source: source
       )
       now = Time.current
       rows = normalized.map do |email|

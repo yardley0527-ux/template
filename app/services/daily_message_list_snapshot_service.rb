@@ -25,7 +25,7 @@ class DailyMessageListSnapshotService
       list = MessageListBuilder.create!(
         name: "#{Date.current.strftime('%m/%d')} #{group[:label]}回購名單",
         sent_on: Date.current, target_product: group[:label], emails: emails,
-        source_note: "由營運提醒中心「今日待處理・#{group[:label]}」自動記錄"
+        source_note: "由營運提醒中心「今日待處理・#{group[:label]}」自動記錄", source: "daily_snapshot"
       )
       created << list.name
     end
