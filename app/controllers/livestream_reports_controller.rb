@@ -55,6 +55,15 @@ class LivestreamReportsController < ApplicationController
         desc: "6場歷史走勢比較＋定價階梯拆解：現行1~4盒折扣已達-27%但止步4盒，附8/21建議定價",
       },
     ],
+    "魚油" => [
+      {
+        title: "魚油直播檢討：9/4 場前的診斷與建議",
+        date: Date.new(2026, 9, 4),
+        type: :pre,
+        url: "https://claude.ai/code/artifact/ec872847-dc76-405f-8da3-333649e2f5d3",
+        desc: "直播前診斷：15個月買氣走勢（4月起近乎歸零，回補後仍未回升）、4場歷史場次比較（客單價/黑卡/24h佔比）、逐場買家與新客趨勢、4場逐時賣貨速度、建議定價表（6盒送1/10盒送2）與行動建議",
+      },
+    ],
   }.freeze
 
   def index
