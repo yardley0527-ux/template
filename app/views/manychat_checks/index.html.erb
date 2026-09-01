@@ -1,0 +1,134 @@
+<% content_for :page_title, "ManyChat 每日確認" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-comment-dots mr-2 text-danger"></i> ManyChat 每日確認
+  </h1>
+</div>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  每天上班後、下班前各進 ManyChat 看一次這幾個帳號有沒有新訊息，看完打勾（會記錄是誰、什麼時間打的），有需要跟進的事情寫在備註。
+</div>
+
+<div class="d-flex align-items-center mb-3" style="gap:8px;">
+  <%= link_to manychat_checks_path(date: @date - 1), class: "btn btn-sm btn-outline-secondary" do %>
+    <i class="fal fa-chevron-left"></i>
+  <% end %>
+  <%= form_with url: manychat_checks_path, method: :get, local: true, class: "form-inline mb-0" do %>
+    <input type="date" name="date" value="<%= @date.iso8601 %>" class="form-control form-control-sm" onchange="this.form.submit()">
+  <% end %>
+  <%= link_to manychat_checks_path(date: @date + 1), class: "btn btn-sm btn-outline-secondary" do %>
+    <i class="fal fa-chevron-right"></i>
+  <% end %>
+  <% unless @date == Date.current %>
+    <%= link_to "回到今天", manychat_checks_path, class: "btn btn-sm btn-outline-primary" %>
+  <% end %>
+  <span class="ml-2 font-weight-bold"><%= @date.strftime("%Y/%m/%d (%a)") %></span>
+</div>
+
+<div class="panel">
+  <div class="panel-container show">
+    <div class="panel-content">
+
+      <%# ── 桌機：表格 ── %>
+      <div class="d-none d-lg-block" style="overflow-x:auto;">
+        <table class="table table-bordered align-middle small mb-0">
+          <thead class="thead-light">
+            <tr>
+              <th style="width:160px;">帳號</th>
+              <th style="width:280px;">上班（<%= ManychatCheck::TIME_SLOTS["morning"] %>）</th>
+              <th style="width:280px;">下班（<%= ManychatCheck::TIME_SLOTS["evening"] %>）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @grid.each do |row| %>
+              <tr>
+                <td>
+                  <div class="font-weight-bold"><%= row[:label] %></div>
+                  <div class="text-muted" style="font-size:0.75rem;"><%= row[:account_key] %></div>
+                </td>
+                <% %w[morning evening].each do |slot| %>
+                  <% rec = row[:slots][slot] %>
+                  <td>
+                    <div class="mc-cell" data-id="<%= rec.id %>">
+                      <label class="d-flex align-items-center mb-1" style="cursor:pointer;">
+                        <input type="checkbox" class="mc-checked mr-2" <%= "checked" if rec.checked? %>>
+                        <span class="mc-status small <%= rec.checked? ? 'text-success' : 'text-muted' %>">
+                          <%= rec.checked? ? "#{rec.checked_by&.username} #{rec.checked_at&.strftime('%H:%M')}" : "尚未確認" %>
+                        </span>
+                      </label>
+                      <textarea class="form-control form-control-sm mc-note" rows="1" placeholder="備註（選填）"><%= rec.note %></textarea>
+                    </div>
+                  </td>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%# ── 手機：卡片 ── %>
+      <div class="d-lg-none">
+        <% @grid.each do |row| %>
+          <div class="card mb-3">
+            <div class="card-header py-2" style="background:#f5ede8;">
+              <span class="font-weight-bold"><%= row[:label] %></span>
+              <span class="text-muted ml-1" style="font-size:0.75rem;"><%= row[:account_key] %></span>
+            </div>
+            <div class="card-body py-2 px-3 small">
+              <% %w[morning evening].each do |slot| %>
+                <% rec = row[:slots][slot] %>
+                <div class="mb-2 pb-2 <%= 'border-bottom' if slot == 'morning' %>">
+                  <div class="font-weight-bold mb-1"><%= ManychatCheck::TIME_SLOTS[slot] %></div>
+                  <div class="mc-cell" data-id="<%= rec.id %>">
+                    <label class="d-flex align-items-center mb-1" style="cursor:pointer;">
+                      <input type="checkbox" class="mc-checked mr-2" <%= "checked" if rec.checked? %>>
+                      <span class="mc-status small <%= rec.checked? ? 'text-success' : 'text-muted' %>">
+                        <%= rec.checked? ? "#{rec.checked_by&.username} #{rec.checked_at&.strftime('%H:%M')}" : "尚未確認" %>
+                      </span>
+                    </label>
+                    <textarea class="form-control form-control-sm mc-note" rows="1" placeholder="備註（選填）"><%= rec.note %></textarea>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+  function save(cell, attrs) {
+    var id = cell.getAttribute('data-id');
+    fetch('/manychat_checks/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': CSRF_TOKEN },
+      body: JSON.stringify({ manychat_check: attrs })
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        cell.querySelectorAll('.mc-status').forEach(function (el) {
+          el.textContent = data.checked ? (data.checked_by || '') + ' ' + (data.checked_at || '') : '尚未確認';
+          el.classList.toggle('text-success', data.checked);
+          el.classList.toggle('text-muted', !data.checked);
+        });
+      });
+  }
+
+  document.querySelectorAll('.mc-cell').forEach(function (cell) {
+    cell.querySelector('.mc-checked').addEventListener('change', function (e) {
+      save(cell, { checked: e.target.checked });
+    });
+    cell.querySelector('.mc-note').addEventListener('blur', function (e) {
+      save(cell, { note: e.target.value });
+    });
+  });
+});
+</script>

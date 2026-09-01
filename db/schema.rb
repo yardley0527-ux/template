@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_31_110456) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_01_082733) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -834,6 +834,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_31_110456) do
     t.index ["date"], name: "index_livestreams_on_date", unique: true
     t.index ["owner_user_id"], name: "index_livestreams_on_owner_user_id"
     t.index ["product_keys"], name: "index_livestreams_on_product_keys", using: :gin
+  end
+
+  create_table "manychat_checks", force: :cascade do |t|
+    t.date "date", null: false
+    t.string "account_key", null: false
+    t.string "time_slot", null: false
+    t.boolean "checked", default: false, null: false
+    t.bigint "checked_by_user_id"
+    t.datetime "checked_at"
+    t.text "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["checked_by_user_id"], name: "index_manychat_checks_on_checked_by_user_id"
+    t.index ["date", "account_key", "time_slot"], name: "index_manychat_checks_on_date_account_slot", unique: true
   end
 
   create_table "membership_level_changes", force: :cascade do |t|
