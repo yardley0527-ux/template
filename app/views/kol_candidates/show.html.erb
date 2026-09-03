@@ -87,12 +87,7 @@
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="fw-bold">帳號數據歷史</div>
-          <% if @candidate.instagram_handle.present? %>
-            <%= button_to "透過 Apify 重新查詢 IG 數據", refresh_ig_metrics_kol_candidate_path(@candidate), method: :post, class: "btn btn-sm btn-outline-info", form: { data: { turbo_confirm: nil } } %>
-          <% end %>
-        </div>
+        <div class="fw-bold mb-2">帳號數據歷史</div>
         <% if @candidate.kol_metric_snapshots.any? %>
           <div class="table-responsive mb-3">
             <table class="table table-sm mb-0">
