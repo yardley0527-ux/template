@@ -1,0 +1,64 @@
+<%= form_with model: group_buy_contact, local: true do |f| %>
+  <% if group_buy_contact.errors.any? %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% group_buy_contact.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="card mb-4">
+    <div class="card-header"><strong>品牌與提案</strong></div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group col-md-4">
+          <%= f.label :brand_name, "品牌名稱" %>
+          <%= f.text_field :brand_name, class: "form-control", placeholder: "e.g. Grandeline" %>
+        </div>
+        <div class="form-group col-md-8">
+          <%= f.label :product, "提案產品" %>
+          <%= f.text_field :product, class: "form-control", placeholder: "e.g. 義大利特級冷壓初榨橄欖油" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header"><strong>聯繫資訊</strong></div>
+    <div class="card-body">
+      <div class="form-row">
+        <div class="form-group col-md-3">
+          <%= f.label :channel, "聯繫管道" %>
+          <%= f.select :channel, GroupBuyContact::CHANNELS, { include_blank: "未選擇" }, class: "form-control" %>
+        </div>
+        <div class="form-group col-md-3">
+          <%= f.label :contact_handle, "聯繫對象" %>
+          <%= f.text_field :contact_handle, class: "form-control", placeholder: "email 或 IG 帳號" %>
+        </div>
+        <div class="form-group col-md-3">
+          <%= f.label :contacted_on, "聯繫日期" %>
+          <%= f.date_field :contacted_on, class: "form-control" %>
+        </div>
+        <div class="form-group col-md-3">
+          <%= f.label :status, "狀態" %>
+          <%= f.select :status, GroupBuyContact::STATUSES, {}, class: "form-control" %>
+        </div>
+      </div>
+      <div class="form-group">
+        <%= f.label :follow_up_on, "下次跟進日期" %>
+        <%= f.date_field :follow_up_on, class: "form-control", style: "max-width:200px;" %>
+      </div>
+      <div class="form-group mb-0">
+        <%= f.label :notes, "備註（對話摘要／後續進度）" %>
+        <%= f.text_area :notes, class: "form-control", rows: 4 %>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex" style="gap:8px;">
+    <%= f.submit "儲存", class: "btn btn-primary" %>
+    <%= link_to "取消", group_buy_contacts_path, class: "btn btn-secondary" %>
+  </div>
+<% end %>

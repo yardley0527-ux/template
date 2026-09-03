@@ -118,6 +118,7 @@ class SidebarEntry
               ]
             },
             { href: replied_contacts_path, title: "已回覆待追蹤", icon: "fa-reply" },
+            { href: group_buy_contacts_path, title: "團購合作聯繫", icon: "fa-handshake" },
           ]
         },
         {

@@ -37,6 +37,7 @@ Rails.application.routes.draw do
 
   resources :live_ad_tests, only: [:index, :new, :create, :edit, :update, :destroy]
   resources :manychat_checks, only: [:index, :update]
+  resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]
 
   resources :livestreams, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
     resources :livestream_images, only: [:create, :destroy]

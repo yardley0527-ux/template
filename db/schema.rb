@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_03_053905) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_03_113721) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -575,6 +575,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_03_053905) do
     t.datetime "updated_at", null: false
     t.index ["faq_category_id", "position"], name: "index_faqs_on_faq_category_id_and_position"
     t.index ["faq_category_id"], name: "index_faqs_on_faq_category_id"
+  end
+
+  create_table "group_buy_contacts", force: :cascade do |t|
+    t.string "brand_name", null: false
+    t.string "product"
+    t.string "channel"
+    t.string "contact_handle"
+    t.date "contacted_on"
+    t.string "status", default: "待回覆", null: false
+    t.date "follow_up_on"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contacted_on"], name: "index_group_buy_contacts_on_contacted_on"
+    t.index ["status"], name: "index_group_buy_contacts_on_status"
   end
 
   create_table "health_assessment_products", force: :cascade do |t|

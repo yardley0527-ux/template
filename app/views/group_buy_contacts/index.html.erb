@@ -1,0 +1,127 @@
+<% content_for :page_title, "團購合作聯繫" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-handshake mr-2 text-danger"></i> 團購合作聯繫
+  </h1>
+  <div class="ml-auto">
+    <%= link_to new_group_buy_contact_path, class: "btn btn-primary btn-sm" do %>
+      <i class="fal fa-plus mr-1"></i> 新增聯繫
+    <% end %>
+  </div>
+</div>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  我們主動去接洽其他品牌談團購合作的紀錄（Email／IG留言／私訊都算），跟「業配名單」（找 KOL 幫忙推廣）方向相反，這裡是我們去問別人。
+</div>
+
+<div class="panel">
+  <div class="panel-container show">
+    <div class="panel-content">
+
+      <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+          <%= link_to "全部 (#{GroupBuyContact.count})", group_buy_contacts_path, class: "nav-link #{'active' unless @selected_status}" %>
+        </li>
+        <% GroupBuyContact::STATUSES.each do |status| %>
+          <li class="nav-item">
+            <%= link_to "#{status} (#{@counts[status].to_i})", group_buy_contacts_path(status: status), class: "nav-link #{'active' if @selected_status == status}" %>
+          </li>
+        <% end %>
+      </ul>
+
+      <% if @contacts.empty? %>
+        <div class="text-center py-5 text-muted">
+          <i class="fal fa-handshake fa-3x mb-3 d-block opacity-25"></i>
+          <% if @selected_status %>
+            這個狀態還沒有紀錄，<%= link_to "清除篩選", group_buy_contacts_path %>
+          <% else %>
+            尚無紀錄，<%= link_to "新增第一筆", new_group_buy_contact_path %>
+          <% end %>
+        </div>
+      <% else %>
+
+        <%# ── 桌機：表格 ── %>
+        <div class="d-none d-lg-block" style="overflow-x:auto;">
+          <table class="table table-bordered table-hover align-middle small">
+            <thead class="thead-light">
+              <tr>
+                <th>品牌</th>
+                <th>提案產品</th>
+                <th>管道</th>
+                <th>聯繫對象</th>
+                <th>聯繫日期</th>
+                <th>狀態</th>
+                <th>下次跟進</th>
+                <th>備註</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @contacts.each do |c| %>
+                <tr>
+                  <td class="font-weight-bold"><%= c.brand_name %></td>
+                  <td><%= c.product.presence || "—" %></td>
+                  <td><%= c.channel.presence || "—" %></td>
+                  <td><%= c.contact_handle.presence || "—" %></td>
+                  <td class="text-nowrap"><%= c.contacted_on&.strftime("%Y/%m/%d") || "—" %></td>
+                  <td>
+                    <span class="badge <%= c.status == '已成團' ? 'badge-success' : c.status == '婉拒' ? 'badge-secondary' : 'badge-warning' %>">
+                      <%= c.status %>
+                    </span>
+                  </td>
+                  <td class="text-nowrap"><%= c.follow_up_on&.strftime("%Y/%m/%d") || "—" %></td>
+                  <td class="text-muted" style="max-width:220px;"><%= truncate(c.notes.to_s, length: 60) %></td>
+                  <td class="text-nowrap">
+                    <%= link_to edit_group_buy_contact_path(c), class: "btn btn-xs btn-outline-secondary mr-1" do %>
+                      <i class="fal fa-edit"></i>
+                    <% end %>
+                    <%= link_to group_buy_contact_path(c), method: :delete, data: { confirm: "確定刪除 #{c.brand_name} 的紀錄？" }, class: "btn btn-xs btn-outline-danger" do %>
+                      <i class="fal fa-trash"></i>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <%# ── 手機：卡片 ── %>
+        <div class="d-lg-none">
+          <% @contacts.each do |c| %>
+            <div class="card mb-3">
+              <div class="card-header d-flex align-items-center py-2" style="background:#f5ede8;">
+                <span class="font-weight-bold"><%= c.brand_name %></span>
+                <span class="badge <%= c.status == '已成團' ? 'badge-success' : c.status == '婉拒' ? 'badge-secondary' : 'badge-warning' %> ml-2"><%= c.status %></span>
+                <div class="ml-auto" style="white-space:nowrap;">
+                  <%= link_to edit_group_buy_contact_path(c), class: "btn btn-xs btn-outline-secondary mr-1" do %>
+                    <i class="fal fa-edit"></i>
+                  <% end %>
+                  <%= link_to group_buy_contact_path(c), method: :delete, data: { confirm: "確定刪除？" }, class: "btn btn-xs btn-outline-danger" do %>
+                    <i class="fal fa-trash"></i>
+                  <% end %>
+                </div>
+              </div>
+              <div class="card-body py-2 px-3 small">
+                <div class="mb-1"><%= c.product.presence || "（未填提案產品）" %></div>
+                <div class="d-flex justify-content-between border-bottom py-1">
+                  <span class="text-muted">管道／對象</span>
+                  <span><%= c.channel.presence || "—" %>／<%= c.contact_handle.presence || "—" %></span>
+                </div>
+                <div class="d-flex justify-content-between py-1">
+                  <span class="text-muted">聯繫日期／跟進</span>
+                  <span><%= c.contacted_on&.strftime("%m/%d") || "—" %>／<%= c.follow_up_on&.strftime("%m/%d") || "—" %></span>
+                </div>
+                <% if c.notes.present? %>
+                  <div class="text-muted mt-1" style="font-size:0.75rem;"><%= truncate(c.notes, length: 80) %></div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+      <% end %>
+    </div>
+  </div>
+</div>
