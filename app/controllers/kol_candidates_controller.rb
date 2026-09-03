@@ -66,7 +66,7 @@ class KolCandidatesController < ApplicationController
   def candidate_params
     params.require(:kol_candidate).permit(
       :name, :campaign, :status, :instagram_handle, :tiktok_handle, :youtube_handle,
-      :bio, :content_tags, :contact_email, :contact_line_id, :notes,
+      :bio, :content_tags, :contact_email, :contact_line_id, :notes, :ai_analysis,
       kol_quote_items_attributes: %i[id item_name amount tax_included period notes _destroy]
     )
   end

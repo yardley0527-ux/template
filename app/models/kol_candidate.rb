@@ -18,6 +18,7 @@ class KolCandidate < ApplicationRecord
   validates :status, inclusion: { in: STATUSES }
 
   before_validation { self.status = STATUSES.first if status.blank? }
+  before_save { self.ai_analysis_updated_at = Time.current if ai_analysis_changed? }
 
   def latest_metric(platform)
     kol_metric_snapshots.where(platform: platform).order(fetched_at: :desc).first

@@ -29,6 +29,20 @@
   </div>
 </div>
 
+<% if @candidate.ai_analysis.present? %>
+  <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #6c63ff !important;">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="fw-bold">綜合分析</div>
+        <% if @candidate.ai_analysis_updated_at %>
+          <span class="text-muted small">更新於 <%= @candidate.ai_analysis_updated_at.strftime("%Y-%m-%d") %></span>
+        <% end %>
+      </div>
+      <div><%= simple_format(@candidate.ai_analysis) %></div>
+    </div>
+  </div>
+<% end %>
+
 <div class="row g-3 mb-3">
   <div class="col-md-6">
     <div class="card border-0 shadow-sm h-100">

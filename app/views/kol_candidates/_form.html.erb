@@ -56,6 +56,10 @@
       <label class="form-label">內部備註</label>
       <%= f.text_area :notes, class: "form-control", rows: 3 %>
     </div>
+    <div class="col-12">
+      <label class="form-label">綜合分析</label>
+      <%= f.text_area :ai_analysis, class: "form-control", rows: 6, placeholder: "根據報價/帳號數據/聲量查核寫的整體評估" %>
+    </div>
   </div>
 
   <hr>
