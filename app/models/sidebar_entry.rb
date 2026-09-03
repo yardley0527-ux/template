@@ -122,6 +122,7 @@ class SidebarEntry
         },
         {
           group_title: "業配評估",
+          group_icon: "fa-handshake",
           children: [
             { href: kol_candidates_path, title: "業配報價評估", icon: "fa-user-tie" },
           ]

@@ -1,7 +1,13 @@
 <ul id="js-nav-menu" class="nav-menu">
   <% SidebarEntry.visible_for(current_user, product_key: @product_key).each do |entry| %>
     <% if entry[:group_title].present? %>
-      <li class="nav-title"><%= entry[:group_title]%></li>
+      <li class="nav-title">
+        <% if entry[:group_icon].present? %>
+          <% group_icon_class = entry[:group_icon].include?(' ') ? entry[:group_icon] : "fal #{entry[:group_icon]}" %>
+          <i class="<%= group_icon_class %> mr-1"></i>
+        <% end %>
+        <%= entry[:group_title]%>
+      </li>
     <% end %>
     <%= render partial: 'shared/nav_sub_entry', collection: entry[:children], as: :sub_entry, locals: {parents: []} %>
   <% end %>
