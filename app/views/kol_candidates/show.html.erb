@@ -91,13 +91,22 @@
         <% if @candidate.kol_metric_snapshots.any? %>
           <div class="table-responsive mb-3">
             <table class="table table-sm mb-0">
-              <thead><tr><th>平台</th><th class="text-right">追蹤者</th><th class="text-right">互動率</th><th>來源</th><th>查詢日</th><th></th></tr></thead>
+              <thead>
+                <tr>
+                  <th>平台</th><th class="text-right">追蹤者</th><th class="text-right">互動率</th>
+                  <th class="text-right">平均讚</th><th class="text-right">平均留言</th><th class="text-right">平均觀看</th>
+                  <th>來源</th><th>查詢日</th><th></th>
+                </tr>
+              </thead>
               <tbody>
                 <% @candidate.kol_metric_snapshots.each do |s| %>
                   <tr>
                     <td><%= s.platform %></td>
                     <td class="text-right"><%= fmt_num(s.followers_count) %></td>
                     <td class="text-right"><%= s.engagement_rate.present? ? "#{s.engagement_rate}%" : "—" %></td>
+                    <td class="text-right"><%= fmt_num(s.avg_likes) %></td>
+                    <td class="text-right"><%= fmt_num(s.raw_data["avg_comments"]) %></td>
+                    <td class="text-right"><%= fmt_num(s.avg_views) %></td>
                     <td><span class="badge <%= s.source == 'apify' ? 'badge-info' : 'badge-light' %>"><%= s.source %></span></td>
                     <td class="text-muted small"><%= s.fetched_at.strftime("%Y-%m-%d") %></td>
                     <td><%= link_to "刪除", kol_candidate_kol_metric_snapshot_path(@candidate, s), method: :delete, data: { confirm: "確定刪除？" }, class: "text-danger small" %></td>
