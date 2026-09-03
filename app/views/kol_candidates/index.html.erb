@@ -1,0 +1,92 @@
+<%# app/views/kol_candidates/index.html.erb %>
+<% content_for :page_title, "業配報價評估" %>
+
+<%
+  def kol_status_badge_class(status)
+    {
+      "待接洽" => "badge-secondary",
+      "已接洽" => "badge-info",
+      "未回覆" => "badge-dark",
+      "已回覆" => "badge-primary",
+      "合作中" => "badge-warning",
+      "已合作" => "badge-success",
+      "婉拒"   => "badge-danger",
+    }[status] || "badge-secondary"
+  end
+
+  def kol_sentiment_badge_class(sentiment)
+    { "positive" => "badge-success", "negative" => "badge-danger", "mixed" => "badge-warning", "neutral" => "badge-secondary" }[sentiment] || "badge-light"
+  end
+
+  def fmt_num(n); n.present? && n > 0 ? number_with_delimiter(n) : "—"; end
+%>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0">業配報價評估</h4>
+      <p class="text-muted small mb-0">帳號數據＋報價細節＋聲量查核，供老闆與社群部評估合作對象</p>
+    </div>
+    <%= link_to new_kol_candidate_path, class: "btn btn-primary btn-sm" do %>
+      <i class="fal fa-plus mr-1"></i>新增候選人
+    <% end %>
+  </div>
+</div>
+
+<div class="mb-3">
+  <%= link_to "全部", kol_candidates_path, class: "btn btn-sm #{'btn-primary' unless params[:status].present?} #{'btn-outline-secondary' if params[:status].present?} mr-1" %>
+  <% @status_counts.each do |status, count| %>
+    <%= link_to "#{status} (#{count})", kol_candidates_path(status: status), class: "btn btn-sm #{params[:status] == status ? 'btn-primary' : 'btn-outline-secondary'} mr-1" %>
+  <% end %>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="bg-light">
+        <tr>
+          <th>候選人</th>
+          <th>合作案</th>
+          <th>狀態</th>
+          <th class="text-right">IG 追蹤者</th>
+          <th class="text-right">單支報價</th>
+          <th class="text-right">每千粉絲單價</th>
+          <th>聲量查核</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @candidates.each do |c| %>
+          <% ig = c.latest_metric("instagram") %>
+          <% buzz = c.latest_buzz_check %>
+          <tr>
+            <td>
+              <%= link_to c.name, kol_candidate_path(c), class: "fw-bold text-dark" %>
+              <% if c.instagram_handle.present? %>
+                <div class="text-muted small">@<%= c.instagram_handle %></div>
+              <% end %>
+            </td>
+            <td><%= c.campaign %></td>
+            <td><span class="badge <%= kol_status_badge_class(c.status) %>"><%= c.status %></span></td>
+            <td class="text-right"><%= fmt_num(ig&.followers_count) %></td>
+            <td class="text-right"><%= c.total_one_time_quote.positive? ? number_to_currency(c.total_one_time_quote, unit: "$", precision: 0) : "—" %></td>
+            <td class="text-right"><%= c.cost_per_thousand_followers ? number_to_currency(c.cost_per_thousand_followers, unit: "$", precision: 0) : "—" %></td>
+            <td>
+              <% if buzz %>
+                <span class="badge <%= kol_sentiment_badge_class(buzz.sentiment) %>"><%= KolCandidate::SENTIMENT_LABELS[buzz.sentiment] %></span>
+              <% else %>
+                <span class="text-muted small">尚未查核</span>
+              <% end %>
+            </td>
+            <td class="text-right">
+              <%= link_to kol_candidate_path(c), class: "btn btn-sm btn-outline-primary" do %>看細節<% end %>
+            </td>
+          </tr>
+        <% end %>
+        <% if @candidates.empty? %>
+          <tr><td colspan="8" class="text-center text-muted py-4">還沒有候選人，點右上角新增</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

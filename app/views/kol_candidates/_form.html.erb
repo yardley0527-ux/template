@@ -1,0 +1,100 @@
+<%= form_with model: @candidate, local: true do |f| %>
+  <% if @candidate.errors.any? %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% @candidate.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">名字 / 暱稱</label>
+      <%= f.text_field :name, class: "form-control", required: true %>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">合作案／品牌</label>
+      <%= f.text_field :campaign, class: "form-control", placeholder: "例如：苼莛生技 - 比利時代謝錠" %>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">狀態</label>
+      <%= f.select :status, KolCandidate::STATUSES, {}, class: "form-control" %>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">Instagram 帳號</label>
+      <div class="input-group">
+        <span class="input-group-text">@</span>
+        <%= f.text_field :instagram_handle, class: "form-control" %>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">TikTok 帳號</label>
+      <div class="input-group">
+        <span class="input-group-text">@</span>
+        <%= f.text_field :tiktok_handle, class: "form-control" %>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">聯絡 Email</label>
+      <%= f.text_field :contact_email, class: "form-control" %>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">聯絡 LINE ID</label>
+      <%= f.text_field :contact_line_id, class: "form-control" %>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label">內容調性標籤</label>
+      <%= f.text_field :content_tags, class: "form-control", placeholder: "例如：情侶／遊戲／喜劇" %>
+    </div>
+    <div class="col-12">
+      <label class="form-label">簡介 / Bio</label>
+      <%= f.text_area :bio, class: "form-control", rows: 2 %>
+    </div>
+    <div class="col-12">
+      <label class="form-label">內部備註</label>
+      <%= f.text_area :notes, class: "form-control", rows: 3 %>
+    </div>
+  </div>
+
+  <hr>
+  <h6 class="fw-bold">報價項目</h6>
+  <div id="quote-items">
+    <%= f.fields_for :kol_quote_items do |qf| %>
+      <div class="row g-2 align-items-center mb-2 quote-item-row">
+        <div class="col-md-4">
+          <%= qf.text_field :item_name, class: "form-control form-control-sm", placeholder: "例如：IG Reels 一支" %>
+        </div>
+        <div class="col-md-2">
+          <%= qf.number_field :amount, class: "form-control form-control-sm", placeholder: "金額" %>
+        </div>
+        <div class="col-md-2">
+          <%= qf.text_field :period, class: "form-control form-control-sm", placeholder: "週期(留空=單次)" %>
+        </div>
+        <div class="col-md-1 text-center">
+          <div class="form-check">
+            <%= qf.check_box :tax_included, class: "form-check-input" %>
+            <label class="form-check-label small">含稅</label>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <%= qf.text_field :notes, class: "form-control form-control-sm", placeholder: "附加條件" %>
+        </div>
+        <div class="col-md-1">
+          <% if qf.object.persisted? %>
+            <div class="form-check">
+              <%= qf.check_box :_destroy, class: "form-check-input" %>
+              <label class="form-check-label small text-danger">刪除</label>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="mt-3">
+    <%= f.submit @candidate.persisted? ? "儲存" : "新增候選人", class: "btn btn-primary" %>
+    <%= link_to "取消", @candidate.persisted? ? kol_candidate_path(@candidate) : kol_candidates_path, class: "btn btn-outline-secondary" %>
+  </div>
+<% end %>

@@ -121,6 +121,12 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "業配評估",
+          children: [
+            { href: kol_candidates_path, title: "業配報價評估", icon: "fa-user-tie" },
+          ]
+        },
+        {
           group_title: "Omnichat 加 tag 名單",
           children: [
             { href: tag_extractions_path, title: "Omnichat 加 tag 名單", icon: "fa-tag" },

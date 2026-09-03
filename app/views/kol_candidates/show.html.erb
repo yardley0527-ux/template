@@ -1,0 +1,186 @@
+<% content_for :page_title, @candidate.name %>
+
+<%
+  def kol_status_badge_class(status)
+    {
+      "待接洽" => "badge-secondary", "已接洽" => "badge-info", "未回覆" => "badge-dark",
+      "已回覆" => "badge-primary", "合作中" => "badge-warning", "已合作" => "badge-success", "婉拒" => "badge-danger",
+    }[status] || "badge-secondary"
+  end
+  def kol_sentiment_badge_class(sentiment)
+    { "positive" => "badge-success", "negative" => "badge-danger", "mixed" => "badge-warning", "neutral" => "badge-secondary" }[sentiment] || "badge-light"
+  end
+  def fmt_num(n); n.present? && n > 0 ? number_with_delimiter(n) : "—"; end
+%>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0"><%= @candidate.name %> <span class="badge <%= kol_status_badge_class(@candidate.status) %>"><%= @candidate.status %></span></h4>
+      <p class="text-muted small mb-0"><%= @candidate.campaign %></p>
+    </div>
+    <div>
+      <%= link_to "編輯", edit_kol_candidate_path(@candidate), class: "btn btn-sm btn-outline-secondary" %>
+      <% if current_user.admin? %>
+        <%= link_to "刪除", kol_candidate_path(@candidate), method: :delete, data: { confirm: "確定要刪除 #{@candidate.name} 嗎？" }, class: "btn btn-sm btn-outline-danger" %>
+      <% end %>
+      <%= link_to "回列表", kol_candidates_path, class: "btn btn-sm btn-outline-secondary" %>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="fw-bold mb-2">基本資料</div>
+        <table class="table table-sm mb-0">
+          <tr><td class="text-muted" style="width:120px;">Instagram</td><td><% if @candidate.instagram_handle.present? %><%= link_to "@#{@candidate.instagram_handle}", "https://www.instagram.com/#{@candidate.instagram_handle}", target: "_blank" %><% else %>—<% end %></td></tr>
+          <tr><td class="text-muted">TikTok</td><td><% if @candidate.tiktok_handle.present? %><%= link_to "@#{@candidate.tiktok_handle}", "https://www.tiktok.com/@#{@candidate.tiktok_handle}", target: "_blank" %><% else %>—<% end %></td></tr>
+          <tr><td class="text-muted">內容調性</td><td><%= @candidate.content_tags.presence || "—" %></td></tr>
+          <tr><td class="text-muted">聯絡Email</td><td><%= @candidate.contact_email.presence || "—" %></td></tr>
+          <tr><td class="text-muted">聯絡LINE</td><td><%= @candidate.contact_line_id.presence || "—" %></td></tr>
+          <tr><td class="text-muted">簡介</td><td><%= @candidate.bio.presence || "—" %></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="fw-bold mb-2">報價摘要</div>
+        <div class="d-flex justify-content-between mb-1"><span class="text-muted">單次項目合計</span><span class="fw-bold"><%= number_to_currency(@candidate.total_one_time_quote, unit: "$", precision: 0) %></span></div>
+        <div class="d-flex justify-content-between mb-1"><span class="text-muted">週期性項目合計</span><span class="fw-bold"><%= number_to_currency(@candidate.total_recurring_quote, unit: "$", precision: 0) %></span></div>
+        <div class="d-flex justify-content-between"><span class="text-muted">每千粉絲單價（IG）</span><span class="fw-bold"><%= @candidate.cost_per_thousand_followers ? number_to_currency(@candidate.cost_per_thousand_followers, unit: "$", precision: 0) : "—（缺IG數據或報價）" %></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <div class="fw-bold mb-2">報價項目明細</div>
+    <% if @candidate.kol_quote_items.any? %>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>項目</th><th class="text-right">金額</th><th>週期</th><th>含稅</th><th>備註</th></tr></thead>
+          <tbody>
+            <% @candidate.kol_quote_items.each do |q| %>
+              <tr>
+                <td><%= q.item_name %></td>
+                <td class="text-right"><%= number_to_currency(q.amount, unit: "$", precision: 0) %></td>
+                <td><%= q.period.presence || "單次" %></td>
+                <td><%= q.tax_included? ? "是" : "未稅" %></td>
+                <td><%= q.notes %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-muted small mb-0">還沒有報價項目，點編輯新增</p>
+    <% end %>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="fw-bold mb-2">帳號數據歷史</div>
+        <% if @candidate.kol_metric_snapshots.any? %>
+          <div class="table-responsive mb-3">
+            <table class="table table-sm mb-0">
+              <thead><tr><th>平台</th><th class="text-right">追蹤者</th><th class="text-right">互動率</th><th>來源</th><th>查詢日</th><th></th></tr></thead>
+              <tbody>
+                <% @candidate.kol_metric_snapshots.each do |s| %>
+                  <tr>
+                    <td><%= s.platform %></td>
+                    <td class="text-right"><%= fmt_num(s.followers_count) %></td>
+                    <td class="text-right"><%= s.engagement_rate.present? ? "#{s.engagement_rate}%" : "—" %></td>
+                    <td><span class="badge <%= s.source == 'apify' ? 'badge-info' : 'badge-light' %>"><%= s.source %></span></td>
+                    <td class="text-muted small"><%= s.fetched_at.strftime("%Y-%m-%d") %></td>
+                    <td><%= link_to "刪除", kol_candidate_kol_metric_snapshot_path(@candidate, s), method: :delete, data: { confirm: "確定刪除？" }, class: "text-danger small" %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p class="text-muted small">還沒有數據紀錄</p>
+        <% end %>
+
+        <%= form_with url: kol_candidate_kol_metric_snapshots_path(@candidate), local: true do |f| %>
+          <div class="row g-2">
+            <div class="col-4">
+              <%= f.select :platform, KolMetricSnapshot::PLATFORMS, {}, class: "form-control form-control-sm" %>
+            </div>
+            <div class="col-4">
+              <%= f.number_field :followers_count, class: "form-control form-control-sm", placeholder: "追蹤者數" %>
+            </div>
+            <div class="col-4">
+              <%= f.number_field :engagement_rate, step: "0.01", class: "form-control form-control-sm", placeholder: "互動率%" %>
+            </div>
+          </div>
+          <div class="mt-2">
+            <%= f.hidden_field :source, value: "manual" %>
+            <%= f.submit "新增數據快照", class: "btn btn-sm btn-outline-primary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="fw-bold mb-2">聲量／口碑查核</div>
+        <% if @candidate.kol_buzz_checks.any? %>
+          <% @candidate.kol_buzz_checks.each do |b| %>
+            <div class="border rounded p-2 mb-2">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="badge <%= kol_sentiment_badge_class(b.sentiment) %>"><%= KolCandidate::SENTIMENT_LABELS[b.sentiment] %></span>
+                <span class="text-muted small"><%= b.checked_at.strftime("%Y-%m-%d") %> · <%= b.source %></span>
+              </div>
+              <div class="small"><%= simple_format(b.summary) %></div>
+              <% if b.raw_links.present? %>
+                <div class="small mt-1">
+                  <% b.raw_links.each do |link| %>
+                    <div><%= link_to link, link, target: "_blank", class: "text-muted" %></div>
+                  <% end %>
+                </div>
+              <% end %>
+              <%= link_to "刪除", kol_candidate_kol_buzz_check_path(@candidate, b), method: :delete, data: { confirm: "確定刪除？" }, class: "text-danger small" %>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-muted small">還沒有查核紀錄</p>
+        <% end %>
+
+        <%= form_with url: kol_candidate_kol_buzz_checks_path(@candidate), local: true do |f| %>
+          <%= f.text_area :summary, class: "form-control form-control-sm mb-2", rows: 3, placeholder: "查核發現摘要..." %>
+          <div class="row g-2">
+            <div class="col-6">
+              <%= f.select :sentiment, KolBuzzCheck::SENTIMENTS.map { |s| [KolCandidate::SENTIMENT_LABELS[s], s] }, {}, class: "form-control form-control-sm" %>
+            </div>
+            <div class="col-6">
+              <%= f.text_field :source, class: "form-control form-control-sm", value: "threads", placeholder: "來源" %>
+            </div>
+          </div>
+          <div class="mt-2">
+            <%= f.submit "新增查核紀錄", class: "btn btn-sm btn-outline-primary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @candidate.notes.present? %>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="fw-bold mb-2">內部備註</div>
+      <div><%= simple_format(@candidate.notes) %></div>
+    </div>
+  </div>
+<% end %>

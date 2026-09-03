@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_01_102337) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_03_040839) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -686,6 +686,36 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_01_102337) do
     t.index ["ig_username"], name: "index_kocs_on_ig_username", unique: true
   end
 
+  create_table "kol_buzz_checks", force: :cascade do |t|
+    t.bigint "kol_candidate_id", null: false
+    t.string "source", default: "web", null: false
+    t.text "summary", null: false
+    t.string "sentiment", default: "unknown", null: false
+    t.string "checked_by", default: "claude_websearch", null: false
+    t.datetime "checked_at", null: false
+    t.jsonb "raw_links", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["kol_candidate_id"], name: "index_kol_buzz_checks_on_kol_candidate_id"
+  end
+
+  create_table "kol_candidates", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "campaign"
+    t.string "status", default: "待接洽", null: false
+    t.string "instagram_handle"
+    t.string "tiktok_handle"
+    t.string "youtube_handle"
+    t.text "bio"
+    t.string "content_tags"
+    t.string "contact_email"
+    t.string "contact_line_id"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_kol_candidates_on_status"
+  end
+
   create_table "kol_contacts", force: :cascade do |t|
     t.string "ig_username"
     t.string "ig_full_name"
@@ -709,6 +739,35 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_01_102337) do
     t.text "content", default: "", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "kol_metric_snapshots", force: :cascade do |t|
+    t.bigint "kol_candidate_id", null: false
+    t.string "platform", null: false
+    t.integer "followers_count"
+    t.integer "following_count"
+    t.integer "posts_count"
+    t.decimal "engagement_rate", precision: 6, scale: 3
+    t.integer "avg_views"
+    t.integer "avg_likes"
+    t.string "source", default: "manual", null: false
+    t.datetime "fetched_at", null: false
+    t.jsonb "raw_data", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["kol_candidate_id"], name: "index_kol_metric_snapshots_on_kol_candidate_id"
+  end
+
+  create_table "kol_quote_items", force: :cascade do |t|
+    t.bigint "kol_candidate_id", null: false
+    t.string "item_name", null: false
+    t.decimal "amount", precision: 12, scale: 2, null: false
+    t.boolean "tax_included", default: false, null: false
+    t.string "period"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["kol_candidate_id"], name: "index_kol_quote_items_on_kol_candidate_id"
   end
 
   create_table "korean_brand_leads", force: :cascade do |t|
@@ -1565,6 +1624,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_01_102337) do
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"
   add_foreign_key "ig_posts", "ig_profiles"
   add_foreign_key "ig_snapshots", "ig_profiles"
+  add_foreign_key "kol_buzz_checks", "kol_candidates"
+  add_foreign_key "kol_metric_snapshots", "kol_candidates"
+  add_foreign_key "kol_quote_items", "kol_candidates"
   add_foreign_key "livestream_gifts", "livestreams"
   add_foreign_key "livestream_images", "livestreams"
   add_foreign_key "livestream_products", "livestreams"
