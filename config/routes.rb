@@ -108,6 +108,7 @@ Rails.application.routes.draw do
     patch :message_template, on: :collection, action: :update_message_template
   end
   resources :kol_candidates do
+    post :refresh_ig_metrics, on: :member
     resources :kol_metric_snapshots, only: [:create, :destroy]
     resources :kol_buzz_checks, only: [:create, :destroy]
   end
