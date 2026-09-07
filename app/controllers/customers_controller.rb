@@ -415,6 +415,38 @@ class CustomersController < ApplicationController
     in_period.group(:direction, :from_level, :to_level).count.sort_by { |_, c| -c }.each do |(dir, from, to), c|
       lines << "  #{dir} #{from} -> #{to}: #{c}"
     end
+    lines << ""
+
+    lines << "== 逐會員淨變化（同一會員取期間內第一筆的 from_level -> 最後一筆的 to_level，忽略中間反覆震盪）=="
+    rank = MembershipLevelChange::LEVEL_RANK
+    ordered = in_period.order(:changed_at).pluck(:shopline_id, :from_level, :to_level, :changed_at)
+    per_member = ordered.group_by { |sid, _, _, _| sid }
+    net_up = 0
+    net_down = 0
+    net_same = 0
+    flap_examples = []
+    per_member.each do |sid, records|
+      start_level = records.first[1]
+      end_level   = records.last[2]
+      sr = rank[start_level]
+      er = rank[end_level]
+      next unless sr && er
+      if er > sr
+        net_up += 1
+      elsif er < sr
+        net_down += 1
+      else
+        net_same += 1
+      end
+      flap_examples << [sid, records.size, start_level, end_level] if records.size >= 10
+    end
+    lines << "受影響不重複會員數（有 from/to 都能辨識卡別的）：#{per_member.size}"
+    lines << "淨上升會員數（期末卡別 > 期初卡別）：#{net_up}"
+    lines << "淨下降會員數（期末卡別 < 期初卡別）：#{net_down}"
+    lines << "來回震盪但期末=期初的會員數：#{net_same}"
+    lines << "淨升:淨降 = 1 : #{net_up.zero? ? 'N/A' : (net_down.to_f / net_up).round(2)}"
+    lines << "單一會員在期間內異動 >=10 次的個案數：#{flap_examples.size}"
+    lines << "範例（shopline_id, 異動次數, 期初, 期末）：#{flap_examples.sort_by { |r| -r[1] }.first(5)}"
 
     render plain: lines.join("\n")
   end
