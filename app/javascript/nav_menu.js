@@ -27,3 +27,28 @@ document.addEventListener("click", function (e) {
 
   document.body.classList.remove("mobile-nav-on");
 });
+
+// 手機版點側邊欄連結換頁後，漢堡選單會整個失效（不是只有上面那個「還卡著沒收合」
+// 的小問題）：SmartAdmin 範本自己的初始化只在整頁重新整理（DOMContentLoaded）時
+// 跑一次，Turbolinks 換頁不會重新觸發，換頁後即使 document.body 節點沒變、範本
+// 綁在它上面的委派點擊監聽器理論上還在，選單按鈕實際上還是點不動，確切卡在
+// 範本裡哪一段還沒查出來——範本被壓縮過又沒有文件，要查清楚風險是可能得動到
+// 影響全站互動的共用初始化流程。改用更直接、可預期的做法：手機版寬度下
+// （< 992px，跟漢堡選單按鈕自己 hidden-lg-up 用的斷點一致）點側邊欄裡的真實連結，
+// 直接放棄 Turbolinks 的軟導覽，讓瀏覽器做完整換頁——跟點一般連結、輸入網址進來
+// 的效果一樣，一定會重新觸發 DOMContentLoaded、讓範本整套初始化重新跑一次，
+// 選單保證正常。用 capture phase 綁，確保比 Turbolinks 自己（bubble phase）
+// 更早設定 data-turbolinks="false"。桌面版（≥992px）不受影響，沿用原本的
+// Turbolinks 快速換頁。
+document.addEventListener(
+  "click",
+  function (e) {
+    if (window.innerWidth >= 992) return;
+
+    var link = e.target.closest('.page-sidebar a[href]:not([href="#"])');
+    if (!link) return;
+
+    link.setAttribute("data-turbolinks", "false");
+  },
+  true
+);
