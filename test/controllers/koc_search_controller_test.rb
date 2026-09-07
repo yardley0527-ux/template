@@ -11,14 +11,14 @@ class KocSearchControllerTest < ActionDispatch::IntegrationTest
     sign_in @admin
   end
 
-  test "no ig_username param renders the empty prompt" do
+  test "no query param renders the empty prompt" do
     get koc_search_path
     assert_response :success
-    assert_includes response.body, "請輸入 IG 帳號開始搜尋"
+    assert_includes response.body, "請輸入 IG 帳號或 Email 開始搜尋"
   end
 
-  test "blank result set for an unmatched ig_username" do
-    get koc_search_path(ig_username: "nobody_matches_this")
+  test "blank result set for an unmatched query" do
+    get koc_search_path(query: "nobody_matches_this")
     assert_response :success
     assert_includes response.body, "找不到符合"
   end
@@ -27,7 +27,7 @@ class KocSearchControllerTest < ActionDispatch::IntegrationTest
     Koc.create!(ig_username: "shared_koc", email: "hiff@example.com", source: "手動新增")
     ReloveKoc.create!(ig_username: "shared_koc", email: "relove@example.com", source: "手動新增")
 
-    get koc_search_path(ig_username: "shared_koc")
+    get koc_search_path(query: "shared_koc")
     assert_response :success
     assert_includes response.body, "Hiff 業配名單"
     assert_includes response.body, "Relove 業配名單"
@@ -38,7 +38,7 @@ class KocSearchControllerTest < ActionDispatch::IntegrationTest
   test "strips a leading @ from the search term" do
     Koc.create!(ig_username: "at_prefixed_koc", source: "手動新增")
 
-    get koc_search_path(ig_username: "@at_prefixed_koc")
+    get koc_search_path(query: "@at_prefixed_koc")
     assert_response :success
     assert_includes response.body, "at_prefixed_koc"
   end
@@ -47,9 +47,28 @@ class KocSearchControllerTest < ActionDispatch::IntegrationTest
     Koc.create!(ig_username: "hiff_only", source: "手動新增")
     ReloveKoc.create!(ig_username: "relove_unrelated", source: "手動新增")
 
-    get koc_search_path(ig_username: "hiff_only")
+    get koc_search_path(query: "hiff_only")
     assert_response :success
     assert_includes response.body, "hiff_only"
     assert_not_includes response.body, "relove_unrelated"
+  end
+
+  test "finds a KOC by email and links to the brand page filtered by that record's own ig_username" do
+    Koc.create!(ig_username: "eat_meatmeat", email: "zo920726@example.com", source: "手動新增")
+
+    get koc_search_path(query: "zo920726@example.com")
+    assert_response :success
+    assert_includes response.body, "Hiff 業配名單"
+    assert_includes response.body, "eat_meatmeat"
+    assert_includes response.body, kocs_path(ig_username: "eat_meatmeat")
+  end
+
+  test "email search does not clobber a broader ig_username substring match in the same brand" do
+    Koc.create!(ig_username: "match_by_ig_one", email: "one@example.com", source: "手動新增")
+    Koc.create!(ig_username: "match_by_ig_two", email: "two@example.com", source: "手動新增")
+
+    get koc_search_path(query: "match_by_ig")
+    assert_response :success
+    assert_includes response.body, kocs_path(ig_username: "match_by_ig")
   end
 end

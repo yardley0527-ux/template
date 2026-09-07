@@ -16,18 +16,29 @@ class KocSearchController < ApplicationController
   ].freeze
 
   def index
-    @ig_username = params[:ig_username].to_s.strip.delete_prefix("@")
-    @results = @ig_username.present? ? search(@ig_username) : []
+    @query = params[:query].to_s.strip.delete_prefix("@")
+    @results = @query.present? ? search(@query) : []
   end
 
   private
 
-  def search(ig_username)
+  # 目的頁（各品牌名單頁）只支援用 ig_username 篩選，沒有 email 篩選。
+  # 如果這次搜尋字串本身就能比對到 ig_username，就沿用原本行為——直接把搜尋字串
+  # 帶過去（目的頁自己也是用同樣的 ILIKE 部分比對，可以一次篩出好幾筆同時符合的人）。
+  # 但如果是「只比對到 email、比對不到 ig_username」的情況（例如直接搜 email），
+  # 搜尋字串本身沒辦法拿去給目的頁篩選，改用「這筆記錄自己的」ig_username
+  # （presence + uniqueness 驗證保證存在且能精準篩到那一筆）。
+  def search(query)
     BRANDS.filter_map do |brand|
-      records = brand[:model].where("ig_username ILIKE ?", "%#{ig_username}%").order(:ig_username)
+      records = brand[:model]
+                  .where("ig_username ILIKE :q OR email ILIKE :q", q: "%#{query}%")
+                  .order(:ig_username)
       next if records.empty?
 
-      { label: brand[:label], records: records, path: public_send(brand[:path_helper], ig_username: ig_username) }
+      matched_by_ig = records.any? { |r| r.ig_username.to_s.downcase.include?(query.downcase) }
+      filter_value = matched_by_ig ? query : records.first.ig_username
+
+      { label: brand[:label], records: records, path: public_send(brand[:path_helper], ig_username: filter_value) }
     end
   end
 end
