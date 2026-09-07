@@ -148,3 +148,28 @@ table thead tr th,
   background-color: #fbb6ce !important;
   color: #6b1f38 !important;
 }
+
+/* 手機版側邊欄關閉鈕：側邊欄打開時它自己的 LOGO 會疊在頁首漢堡選單按鈕正上方，
+   使用者直覺點同個角落想關閉時點不到，這裡在側邊欄自己的 LOGO 旁邊加一顆明顯的
+   ×，固定在側邊欄右上角，比照 header-btn 的觸控尺寸。 */
+.page-sidebar {
+  position: relative;
+}
+
+.sidebar-mobile-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+}
+
+.sidebar-mobile-close .header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-size: 28px;
+  line-height: 1;
+  color: #6b4c3b;
+}

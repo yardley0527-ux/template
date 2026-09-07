@@ -2,6 +2,17 @@
 
   <%= render 'shared/logo' %>
 
+  <%# 手機版側邊欄一打開，這份 LOGO 會直接疊在原本頁首那顆漢堡選單按鈕正上方（兩者
+      都固定在螢幕左上角同一個位置），導致使用者直覺地想再點一次同個角落關閉選單時，
+      點到的其實是這裡的 LOGO 連結（連去首頁），不是漢堡按鈕，感覺像「點了沒反應」。
+      這裡加一顆獨立的關閉鈕，沿用跟 _page_content_overlay.html.erb 背景遮罩一樣的
+      data-action="toggle" 機制（vendor JS 已經有現成的委派事件處理，不用另外寫 JS）。 %>
+  <div class="hidden-lg-up sidebar-mobile-close">
+    <%= link_to '#', class: 'header-btn btn press-scale-down', data: {action: 'toggle', class: 'mobile-nav-on'}, aria: {label: '關閉選單'} do %>
+      &times;
+    <% end %>
+  </div>
+
   <!-- BEGIN PRIMARY NAVIGATION -->
   <nav id="js-primary-nav" class="primary-nav" role="navigation">
 
