@@ -262,6 +262,103 @@
   </div>
 </div>
 
+<%# ── 升降級是否成正比（真實異動紀錄，非快照對照） ── %>
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2>🔁 升降級是否成正比（實際異動紀錄）</h2>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <% if @level_change_tracking_started_at.nil? %>
+            <div class="alert alert-secondary small mb-0">
+              <i class="fal fa-info-circle mr-1"></i>
+              目前還沒有任何一筆異動紀錄（<code>MembershipLevelChange</code>），要等下一次匯入 Shopline 會員報表、
+              系統比對出卡別變化後才會有數字。
+            </div>
+          <% else %>
+            <div class="alert alert-info small mb-4">
+              <i class="fal fa-flag mr-1"></i>
+              這裡的升級／降級人數是<b>系統每次匯入 Shopline 會員報表時，實際比對每個會員卡別變化算出來的</b>，
+              看的是卡別名稱的相對高低（黑卡 &gt; 金卡 &gt; 銀卡 &gt; 白卡 &gt; 一般會員），不是門檻金額，
+              所以今年 5 月調整卡別門檻之後的資料一樣可以公平比較升級數 vs 降級數。
+              但這張表是從 <b><%= @level_change_tracking_started_at.strftime("%Y/%m/%d") %></b> 才開始記錄，
+              5 月調整門檻當下造成的一次性重分類沒有算進來——下面的城市對照表下方會有一份 2025 vs 2026 的人工整理數字，
+              那份因為橫跨新舊兩套門檻，不能直接拿來當作「升降級成不成比例」的證據。
+            </div>
+
+            <div class="row text-center mb-4">
+              <div class="col-6 col-md-4">
+                <div class="text-muted small">累計升級人次</div>
+                <div class="h3 mb-0 text-success">+<%= number_with_delimiter(@level_change_total["upgrade"]) %></div>
+              </div>
+              <div class="col-6 col-md-4">
+                <div class="text-muted small">累計降級人次</div>
+                <div class="h3 mb-0 text-danger">-<%= number_with_delimiter(@level_change_total["downgrade"]) %></div>
+              </div>
+              <div class="col-12 col-md-4">
+                <div class="text-muted small">升級：降級比</div>
+                <% total_dg = @level_change_total["downgrade"] %>
+                <div class="h3 mb-0">
+                  <%= total_dg.zero? ? "—" : (@level_change_total["upgrade"].to_f / total_dg).round(2) %>
+                  <small class="text-muted">: 1</small>
+                </div>
+              </div>
+            </div>
+
+            <h3 class="h6 fw-bold">每月升級 vs 降級人次</h3>
+            <div class="table-responsive mb-4">
+              <table class="table table-sm table-bordered text-right">
+                <thead class="thead-light">
+                  <tr>
+                    <th class="text-left">月份</th><th>升級</th><th>降級</th><th>升級：降級比</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @level_change_monthly.each do |month, counts| %>
+                    <tr>
+                      <td class="text-left"><%= month %></td>
+                      <td class="text-success">+<%= counts["upgrade"] %></td>
+                      <td class="text-danger">-<%= counts["downgrade"] %></td>
+                      <td><%= counts["downgrade"].zero? ? "—" : (counts["upgrade"].to_f / counts["downgrade"]).round(2) %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 class="h6 fw-bold">異動明細（依卡別轉換分組）</h3>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered text-right">
+                <thead class="thead-light">
+                  <tr>
+                    <th class="text-left">方向</th><th class="text-left">從</th><th class="text-left">到</th><th>人次</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% @level_change_pairs.each do |r| %>
+                    <tr>
+                      <td class="text-left">
+                        <span class="badge badge-<%= r[:direction] == 'upgrade' ? 'success' : 'danger' %>">
+                          <%= r[:direction] == 'upgrade' ? '升級' : '降級' %>
+                        </span>
+                      </td>
+                      <td class="text-left"><%= r[:from] %></td>
+                      <td class="text-left"><%= r[:to] %></td>
+                      <td><%= r[:count] %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <%# ── 城市 ── %>
 <div class="row mb-4">
   <div class="col-12">

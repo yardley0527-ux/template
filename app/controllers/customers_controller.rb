@@ -324,6 +324,7 @@ class CustomersController < ApplicationController
 
     load_new_member_stats
     load_membership_level_trend
+    load_membership_level_change_report
     @membership_manual_reference = MEMBERSHIP_MANUAL_REFERENCE
   end
 
@@ -479,6 +480,40 @@ class CustomersController < ApplicationController
       d30: MembershipLevelSnapshot.closest_to(today - 30),
       y1:  MembershipLevelSnapshot.closest_to(today - 365)
     }.transform_values { |snap| snap == @latest_snapshot ? nil : snap }
+  end
+
+  # 升降級是否成正比：直接吃 MembershipLevelChange 的真實異動紀錄（每次匯入 Shopline
+  # 報表時，比對匯入前後每個會員的卡別名稱算出來的 upgrade/downgrade）。用的是卡別
+  # 名稱的相對排名（見 MembershipLevelChange::LEVEL_RANK），不是門檻金額，所以就算
+  # 5月的級距門檻調整讓「同樣消費金額」對應到不同卡名，只要是這張表記錄到的異動，
+  # 前後都在算同一套新制下的排名，可以直接拿升級數 vs 降級數來比。
+  #
+  # 限制：這張表是 2026/06/15 這次匯入功能上線後才開始記錄，5月那次門檻調整當下
+  # 造成的一次性重分類沒有被記錄進來——這裡回答的是「新制上路後，升降級是否成
+  # 正比」，不是「新舊制切換那一次的影響」（那個只能看 MEMBERSHIP_MANUAL_REFERENCE
+  # 的人工整理數字，且新舊制混在一起本來就不是公平比較）。
+  def load_membership_level_change_report
+    @level_change_tracking_started_at = MembershipLevelChange.minimum(:changed_at)
+    return unless @level_change_tracking_started_at
+
+    changes = MembershipLevelChange.all
+    @level_change_total = {
+      "upgrade"   => changes.upgrades.count,
+      "downgrade" => changes.downgrades.count
+    }
+
+    @level_change_pairs = changes
+      .group(:direction, :from_level, :to_level)
+      .count
+      .map { |(direction, from, to), count| { direction: direction, from: from, to: to, count: count } }
+      .sort_by { |r| -r[:count] }
+
+    monthly = Hash.new { |h, k| h[k] = { "upgrade" => 0, "downgrade" => 0 } }
+    changes
+      .group(Arel.sql("to_char(changed_at, 'YYYY-MM')"), :direction)
+      .count
+      .each { |(month, direction), count| monthly[month][direction] = count }
+    @level_change_monthly = monthly.sort.to_h
   end
 
   def log_customer_edit(customer, profile, section)
