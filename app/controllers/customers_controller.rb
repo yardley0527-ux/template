@@ -328,6 +328,97 @@ class CustomersController < ApplicationController
     @membership_manual_reference = MEMBERSHIP_MANUAL_REFERENCE
   end
 
+  # 暫時性資料驗證工具：老闆要求把 2026/01/01–09/07 全期間的卡別升降級重新算過，
+  # 而且要先驗證資料本身（異動紀錄實際涵蓋期間、匯入頻率、有沒有同一會員重複異動等），
+  # 不能直接沿用舊報告的數字。這個 action 只是把驗證需要的原始事實印出來看，
+  # 不是要留下來的功能——確認完數字後可以移除這個 action 跟 route。
+  def level_change_audit
+    lines = []
+    lines << "查詢時間：#{Time.zone.now.strftime('%Y-%m-%d %H:%M:%S %z')}"
+    lines << "Rails time_zone: #{Time.zone.name}"
+    lines << ""
+
+    total   = MembershipLevelChange.count
+    min_at  = MembershipLevelChange.minimum(:changed_at)
+    max_at  = MembershipLevelChange.maximum(:changed_at)
+    lines << "== 全表事實 =="
+    lines << "總異動筆數（不分期間）：#{total}"
+    lines << "最早 changed_at：#{min_at}"
+    lines << "最晚 changed_at：#{max_at}"
+    lines << "from_level = to_level 異常筆數（應為0）：#{MembershipLevelChange.where('from_level = to_level').count}"
+    lines << ""
+
+    period_start = Time.zone.parse("2026-01-01 00:00:00")
+    period_end   = Time.zone.parse("2026-09-07 23:59:59")
+    in_period = MembershipLevelChange.where(changed_at: period_start..period_end)
+    lines << "== 分析期間 2026/01/01–2026/09/07 =="
+    lines << "期間內筆數：#{in_period.count}"
+    lines << "期間外筆數（應為0，因為全表最早就是6/15）：#{total - in_period.count}"
+    lines << ""
+
+    lines << "== customers_report ImportRun 匯入紀錄（2026年，決定了異動被「偵測到」的時間粒度）=="
+    ImportRun.where(kind: "customers_report")
+             .where("started_at >= ?", Time.zone.parse("2026-01-01"))
+             .order(:started_at)
+             .each do |run|
+      lines << "  ##{run.id} started=#{run.started_at} finished=#{run.finished_at} file=#{run.file_name} upserted=#{run.upserted_rows}"
+    end
+    lines << ""
+
+    by_sid = in_period.group(:shopline_id).count
+    repeats = by_sid.select { |_, c| c > 1 }
+    lines << "== 重複異動檢查 =="
+    lines << "期間內不重複 shopline_id 數：#{by_sid.size}"
+    lines << "出現超過 1 次異動的會員數：#{repeats.size}"
+    lines << "範例（前5筆，shopline_id => 次數）：#{repeats.sort_by { |_, c| -c }.first(5)}"
+    lines << ""
+
+    lines << "== 逐月異動筆數（依 changed_at 所在月份分組——是「系統偵測到」的月份，不是「真實發生」的月份）=="
+    monthly = in_period.group(Arel.sql("to_char(changed_at, 'YYYY-MM')"), :direction).count
+    (1..9).each do |m|
+      key = format("2026-%02d", m)
+      lines << "  #{key}: 升級=#{monthly[[key, 'upgrade']] || 0} 降級=#{monthly[[key, 'downgrade']] || 0}"
+    end
+    lines << ""
+
+    up_sids   = in_period.upgrades.distinct.pluck(:shopline_id)
+    down_sids = in_period.downgrades.distinct.pluck(:shopline_id)
+    lines << "== 不重複會員數 vs 異動人次 =="
+    lines << "升級：事件數=#{in_period.upgrades.count}　不重複會員數=#{up_sids.size}"
+    lines << "降級：事件數=#{in_period.downgrades.count}　不重複會員數=#{down_sids.size}"
+    lines << "同時有升級也有降級紀錄的會員數：#{(up_sids & down_sids).size}"
+    lines << ""
+
+    amount_by_sid = ShoplineCustomer.where.not(shopline_id: nil).pluck(:shopline_id, :total_amount).to_h
+    amt = { "upgrade" => 0.0, "downgrade" => 0.0 }
+    matched = { "upgrade" => 0, "downgrade" => 0 }
+    in_period.pluck(:shopline_id, :direction).each do |sid, dir|
+      a = amount_by_sid[sid]
+      next unless a
+      amt[dir] += a.to_f
+      matched[dir] += 1
+    end
+    lines << "== 金額（ShoplineCustomer.total_amount，目前累積總額）=="
+    lines << "升級組：金額=#{amt['upgrade'].round} 對得到筆數=#{matched['upgrade']}/#{in_period.upgrades.count}"
+    lines << "降級組：金額=#{amt['downgrade'].round} 對得到筆數=#{matched['downgrade']}/#{in_period.downgrades.count}"
+    lines << ""
+
+    lines << "== 相鄰卡別淨流向（全期間，升往上層 - 降回下層）=="
+    [["一般會員", "白卡"], ["白卡", "銀卡"], ["銀卡", "金卡"], ["金卡", "黑卡"]].each do |lower, upper|
+      up_c   = in_period.where(from_level: lower, to_level: upper, direction: "upgrade").count
+      down_c = in_period.where(from_level: upper, to_level: lower, direction: "downgrade").count
+      lines << "  #{lower} <-> #{upper}: 升往上層=#{up_c} 降回下層=#{down_c} 淨流向=#{up_c - down_c}"
+    end
+    lines << ""
+
+    lines << "== 全部卡別轉換組合（期間內，依人次排序）=="
+    in_period.group(:direction, :from_level, :to_level).count.sort_by { |_, c| -c }.each do |(dir, from, to), c|
+      lines << "  #{dir} #{from} -> #{to}: #{c}"
+    end
+
+    render plain: lines.join("\n")
+  end
+
   def edit
     @customer = ShoplineCustomer.find(params[:id])
     @profile  = @customer.customer_profile || @customer.build_customer_profile

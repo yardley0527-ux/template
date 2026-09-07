@@ -253,6 +253,7 @@ Rails.application.routes.draw do
   resources :customers, only: [:index, :show] do
     collection do
       get :stats
+      get :level_change_audit
     end
   end
   resources :customers, only: [:index, :show, :edit, :update]do
