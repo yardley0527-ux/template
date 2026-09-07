@@ -451,6 +451,84 @@ class CustomersController < ApplicationController
     render plain: lines.join("\n")
   end
 
+  # 老闆問：membership_level_changes 查不到 1-6月中的資料，可以用會員的「消費軌跡」
+  # 來補嗎？可以——Shopline 的訂單匯出檔本身每一筆訂單就有一欄「會員等級」，是下單當下
+  # 系統認定的卡別（app/services/importing/paid_orders_workbook_importer.rb 的
+  # raw[:membership_level]，非本站推算）。把同一位會員的歷史訂單依日期排序，
+  # 相鄰兩筆卡別不一樣，就是一次真實發生過的升降級，而且有訂單日期可以定位到大概時間。
+  #
+  # 限制：只有「剛好在那個月有下單」的會員才會被看到，不常買的會員即使卡別真的變了也
+  # 不會被抓到——所以這個方法算出來的筆數一定會比異動紀錄表少很多，只能拿來看「方向」
+  # 對不對，不能拿人次的絕對值去跟 membership_level_changes 比。這裡順便拿兩者在
+  # 6/15 之後重疊的時間做交叉驗證，看這個方法可不可信。
+  def level_change_from_orders
+    lines = []
+    valid_levels = %w[一般會員 白卡 銀卡 金卡 黑卡]
+    rank = MembershipLevelChange::LEVEL_RANK
+
+    lines << "查詢時間：#{Time.zone.now}"
+    lines << ""
+    lines << "== ShoplineOrder 資料涵蓋 =="
+    lines << "總筆數：#{ShoplineOrder.count}"
+    lines << "membership_level 有效值筆數：#{ShoplineOrder.where(membership_level: valid_levels).count}"
+    lines << "非空但無效值：#{ShoplineOrder.where.not(membership_level: [nil, ''] + valid_levels).distinct.pluck(:membership_level)}"
+    lines << "order_date 範圍：#{ShoplineOrder.minimum(:order_date)} ~ #{ShoplineOrder.maximum(:order_date)}"
+    lines << ""
+
+    rows = ShoplineOrder
+           .joins("INNER JOIN shopline_customers ON shopline_customers.id = shopline_orders.shopline_customer_id")
+           .where(shopline_orders: { membership_level: valid_levels })
+           .where("shopline_orders.order_date >= ?", Time.zone.parse("2025-01-01"))
+           .order("shopline_customers.shopline_id, shopline_orders.order_date")
+           .pluck("shopline_customers.shopline_id", "shopline_orders.order_date", "shopline_orders.membership_level")
+    lines << "用於重建的訂單列數（2025/01 起，卡別欄位有效）：#{rows.size}"
+    lines << "涉及不重複會員數：#{rows.map(&:first).uniq.size}"
+    lines << ""
+
+    transitions = []
+    rows.group_by { |sid, _, _| sid }.each do |sid, list|
+      prev_level = nil
+      list.each do |_, date, level|
+        transitions << { sid: sid, date: date, from: prev_level, to: level } if prev_level && prev_level != level
+        prev_level = level
+      end
+    end
+    lines << "由訂單卡別欄位重建出的異動次數（2025/01起，任何期間）：#{transitions.size}"
+    lines << ""
+
+    period_start = Time.zone.parse("2026-01-01")
+    period_end   = Time.zone.parse("2026-09-07 23:59:59")
+    in_2026 = transitions.select { |t| t[:date] >= period_start && t[:date] <= period_end }
+    lines << "== 2026/01/01–09/07（訂單重建）=="
+    lines << "筆數：#{in_2026.size}"
+
+    monthly = Hash.new { |h, k| h[k] = { up: 0, down: 0 } }
+    in_2026.each do |t|
+      r_from = rank[t[:from]]
+      r_to   = rank[t[:to]]
+      next unless r_from && r_to
+      key = t[:date].strftime("%Y-%m")
+      monthly[key][r_to > r_from ? :up : :down] += 1
+    end
+    (1..9).each do |m|
+      key = format("2026-%02d", m)
+      d = monthly[key]
+      lines << "  #{key}: 升級=#{d[:up]} 降級=#{d[:down]}"
+    end
+    lines << ""
+
+    lines << "== 交叉驗證：6/15 後訂單重建 vs 真實異動紀錄表（同一段時間、兩種方法）=="
+    overlap_start = Time.zone.parse("2026-06-15")
+    overlap = in_2026.select { |t| t[:date] >= overlap_start }
+    ov_up   = overlap.count { |t| rank[t[:to]] && rank[t[:from]] && rank[t[:to]] > rank[t[:from]] }
+    ov_down = overlap.count { |t| rank[t[:to]] && rank[t[:from]] && rank[t[:to]] < rank[t[:from]] }
+    real_scope = MembershipLevelChange.where(changed_at: overlap_start..period_end)
+    lines << "訂單重建法：升級=#{ov_up} 降級=#{ov_down}（涉及會員數=#{overlap.map { |t| t[:sid] }.uniq.size}，受限於這些人剛好有下單）"
+    lines << "真實異動表：升級=#{real_scope.upgrades.count} 降級=#{real_scope.downgrades.count}（涵蓋全部會員，不論有沒有下單）"
+
+    render plain: lines.join("\n")
+  end
+
   def edit
     @customer = ShoplineCustomer.find(params[:id])
     @profile  = @customer.customer_profile || @customer.build_customer_profile

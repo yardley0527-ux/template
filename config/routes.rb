@@ -254,6 +254,7 @@ Rails.application.routes.draw do
     collection do
       get :stats
       get :level_change_audit
+      get :level_change_from_orders
     end
   end
   resources :customers, only: [:index, :show, :edit, :update]do
