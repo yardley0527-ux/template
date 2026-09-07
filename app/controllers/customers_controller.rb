@@ -529,6 +529,93 @@ class CustomersController < ApplicationController
     render plain: lines.join("\n")
   end
 
+  # 回答老闆問題5：淨降級的 1,117 人，是真的消費變少了，還是只是新門檻比較高，
+  # 他們其實消費金額沒變、只是不夠格了？
+  #
+  # 做法：對每個淨降級會員，用他「起始卡別」對應的「舊門檻」金額去比對他近 365 天
+  # 的實際訂單金額（COALESCE(MAX(NULLIF(total_amount,0)), SUM(checkout_amount))
+  # 每張訂單算一次，跟其他營收報表同一套口徑）。
+  #   近365天消費 >= 舊門檻 → 純重新分類（門檻調高造成的，不是他變差）
+  #   近365天消費 <  舊門檻 → 真實消費下滑（就算用舊制的寬鬆門檻也不夠格了）
+  def level_change_spend_check
+    lines = []
+    rank = MembershipLevelChange::LEVEL_RANK
+    old_threshold = { "白卡" => 20_000, "銀卡" => 50_000, "金卡" => 100_000, "黑卡" => 200_000, "一般會員" => 0 }
+
+    period_start = Time.zone.parse("2026-01-01")
+    period_end   = Time.zone.parse("2026-09-07 23:59:59")
+    in_period = MembershipLevelChange.where(changed_at: period_start..period_end)
+
+    ordered = in_period.order(:changed_at).pluck(:shopline_id, :from_level, :to_level)
+    per_member = ordered.group_by { |sid, _, _| sid }
+
+    net_down_members = []
+    per_member.each do |sid, records|
+      start_level = records.first[1]
+      end_level   = records.last[2]
+      sr = rank[start_level]
+      er = rank[end_level]
+      next unless sr && er && er < sr
+      net_down_members << { sid: sid, from: start_level, to: end_level }
+    end
+
+    window_end   = Time.zone.now
+    window_start = window_end - 365.days
+    lines << "淨下降會員數：#{net_down_members.size}"
+    lines << "近12個月消費計算窗口：#{window_start.strftime('%Y-%m-%d')} ~ #{window_end.strftime('%Y-%m-%d')}"
+    lines << ""
+
+    customer_map = ShoplineCustomer.where(shopline_id: net_down_members.map { |m| m[:sid] }).pluck(:shopline_id, :id).to_h
+
+    spend_by_customer = Hash.new(0.0)
+    ShoplineOrder
+      .where(shopline_customer_id: customer_map.values)
+      .where(order_date: window_start..window_end)
+      .group(:shopline_customer_id, :order_number)
+      .select("shopline_customer_id, order_number, COALESCE(MAX(NULLIF(total_amount,0)), SUM(COALESCE(checkout_amount,0))) AS order_amount")
+      .each { |row| spend_by_customer[row.shopline_customer_id] += row.order_amount.to_f }
+
+    reclass = 0
+    decline = 0
+    unmatched = 0
+    reclass_amount = 0.0
+    decline_amount = 0.0
+    by_from = Hash.new { |h, k| h[k] = { reclass: 0, decline: 0 } }
+
+    net_down_members.each do |m|
+      cust_id = customer_map[m[:sid]]
+      if cust_id.nil?
+        unmatched += 1
+        next
+      end
+      spend = spend_by_customer[cust_id] || 0.0
+      bar = old_threshold[m[:from]]
+      if bar && spend >= bar
+        reclass += 1
+        reclass_amount += spend
+        by_from[m[:from]][:reclass] += 1
+      else
+        decline += 1
+        decline_amount += spend
+        by_from[m[:from]][:decline] += 1
+      end
+    end
+
+    lines << "== 分類結果 =="
+    lines << "對不到 ShoplineCustomer 記錄：#{unmatched}"
+    lines << "純重新分類（近12個月消費仍達『舊門檻』）：#{reclass} 人，近12個月消費合計 NT$#{reclass_amount.round}"
+    lines << "真實消費下滑（近12個月消費已低於『舊門檻』）：#{decline} 人，近12個月消費合計 NT$#{decline_amount.round}"
+    lines << "純重新分類 : 真實下滑 = #{decline.zero? ? 'N/A' : (reclass.to_f / decline).round(2)} : 1"
+    lines << ""
+
+    lines << "== 依起始卡別拆分 =="
+    by_from.each do |lvl, c|
+      lines << "  從 #{lvl} 降級：純重新分類=#{c[:reclass]}　真實下滑=#{c[:decline]}"
+    end
+
+    render plain: lines.join("\n")
+  end
+
   def edit
     @customer = ShoplineCustomer.find(params[:id])
     @profile  = @customer.customer_profile || @customer.build_customer_profile
