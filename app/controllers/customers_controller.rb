@@ -514,6 +514,40 @@ class CustomersController < ApplicationController
       .count
       .each { |(month, direction), count| monthly[month][direction] = count }
     @level_change_monthly = monthly.sort.to_h
+
+    load_membership_level_change_amounts(changes)
+  end
+
+  # 金額口徑：升級組 vs 降級組各自代表多少消費金額，不只是人頭數。
+  # 用 ShoplineCustomer.total_amount（累積消費金額，跟顧客列表/詳情頁顯示的「累積消費」
+  # 是同一個欄位，Shopline 匯出時就算好的數字）當作每個人的金額大小，按 shopline_id
+  # 對回 membership_level_changes 逐筆加總。
+  #
+  # 限制：total_amount 是「目前的累積總額」，不是異動發生那個當下、決定卡別的那 12
+  # 個月消費金額——這裡只能拿它當作「這個人大概是多大的客戶」的相對比較基準，不是
+  # 精確重建每次升降級當下的金額。另外少數 shopline_id 在客戶表已經被合併/刪除、
+  # 對不到人，會被排除，畫面上會顯示「對得到金額的異動筆數／總異動筆數」讓你知道涵蓋率。
+  def load_membership_level_change_amounts(changes)
+    amount_by_shopline_id = ShoplineCustomer.where.not(shopline_id: nil).pluck(:shopline_id, :total_amount).to_h
+
+    amount_total  = { "upgrade" => 0.0, "downgrade" => 0.0 }
+    matched_count = { "upgrade" => 0, "downgrade" => 0 }
+    pair_amounts  = Hash.new(0.0)
+
+    changes.pluck(:shopline_id, :direction, :from_level, :to_level).each do |sid, direction, from, to|
+      amt = amount_by_shopline_id[sid]
+      next unless amt
+
+      amount_total[direction]  += amt.to_f
+      matched_count[direction] += 1
+      pair_amounts[[direction, from, to]] += amt.to_f
+    end
+
+    @level_change_amount_total   = amount_total
+    @level_change_amount_matched = matched_count
+    @level_change_pairs.each do |row|
+      row[:amount_total] = pair_amounts[[row[:direction], row[:from], row[:to]]]
+    end
   end
 
   def log_customer_edit(customer, profile, section)

@@ -307,6 +307,42 @@
               </div>
             </div>
 
+            <h3 class="h6 fw-bold">金額口徑：升級組 vs 降級組的累積消費總額</h3>
+            <div class="alert alert-warning small mb-3">
+              <i class="fal fa-exclamation-triangle mr-1"></i>
+              這裡的金額用的是<b>顧客目前的累積消費總額</b>（跟顧客列表/詳情頁「累積消費」同一個欄位），
+              不是異動當下、決定卡別的那 12 個月消費金額——只能拿來看「升級組跟降級組大概各自代表多大的客戶量」，
+              不是精確重建每次升降級當下的實際金額。
+              對得到金額的異動筆數：升級 <%= number_with_delimiter(@level_change_amount_matched["upgrade"]) %> / <%= number_with_delimiter(@level_change_total["upgrade"]) %>，
+              降級 <%= number_with_delimiter(@level_change_amount_matched["downgrade"]) %> / <%= number_with_delimiter(@level_change_total["downgrade"]) %>
+              （對不到的是客戶資料後來被合併或刪除）。
+            </div>
+            <div class="row text-center mb-4">
+              <div class="col-6 col-md-4">
+                <div class="text-muted small">升級組累積消費總額</div>
+                <div class="h4 mb-0 text-success">NT$ <%= number_with_delimiter(@level_change_amount_total["upgrade"].round) %></div>
+                <div class="small text-muted">
+                  平均每人 NT$ <%= @level_change_amount_matched["upgrade"].zero? ? "—" : number_with_delimiter((@level_change_amount_total["upgrade"] / @level_change_amount_matched["upgrade"]).round) %>
+                </div>
+              </div>
+              <div class="col-6 col-md-4">
+                <div class="text-muted small">降級組累積消費總額</div>
+                <div class="h4 mb-0 text-danger">NT$ <%= number_with_delimiter(@level_change_amount_total["downgrade"].round) %></div>
+                <div class="small text-muted">
+                  平均每人 NT$ <%= @level_change_amount_matched["downgrade"].zero? ? "—" : number_with_delimiter((@level_change_amount_total["downgrade"] / @level_change_amount_matched["downgrade"]).round) %>
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <div class="text-muted small">升級組：降級組 金額比</div>
+                <% amt_dg = @level_change_amount_total["downgrade"] %>
+                <div class="h4 mb-0">
+                  <%= amt_dg.zero? ? "—" : (@level_change_amount_total["upgrade"] / amt_dg).round(2) %>
+                  <small class="text-muted">: 1</small>
+                </div>
+                <div class="small text-muted">（人數比是 <%= @level_change_total["downgrade"].zero? ? "—" : (@level_change_total["upgrade"].to_f / @level_change_total["downgrade"]).round(2) %> : 1）</div>
+              </div>
+            </div>
+
             <h3 class="h6 fw-bold">每月升級 vs 降級人次</h3>
             <div class="table-responsive mb-4">
               <table class="table table-sm table-bordered text-right">
@@ -333,7 +369,7 @@
               <table class="table table-sm table-bordered text-right">
                 <thead class="thead-light">
                   <tr>
-                    <th class="text-left">方向</th><th class="text-left">從</th><th class="text-left">到</th><th>人次</th>
+                    <th class="text-left">方向</th><th class="text-left">從</th><th class="text-left">到</th><th>人次</th><th>累積消費總額（對得到的部分）</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -347,6 +383,7 @@
                       <td class="text-left"><%= r[:from] %></td>
                       <td class="text-left"><%= r[:to] %></td>
                       <td><%= r[:count] %></td>
+                      <td>NT$ <%= number_with_delimiter(r[:amount_total].round) %></td>
                     </tr>
                   <% end %>
                 </tbody>
