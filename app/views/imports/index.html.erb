@@ -4,9 +4,11 @@
   <h1 class="subheader-title"><i class="fal fa-file-upload mr-2 text-danger"></i> 資料匯入</h1>
 </div>
 
+<div id="import-toast-container"></div>
+
 <div class="alert alert-light border small mb-3">
   <i class="fal fa-info-circle mr-1"></i>
-  上傳後會排入背景處理，離開這頁也不影響匯入進度；處理時間依檔案大小而定，重新整理這頁可看最新狀態。
+  上傳後會排入背景處理，離開這頁也不影響匯入進度；這頁會自動偵測匯入是否完成並跳出提示，不用手動重新整理。
 </div>
 
 <div class="row">
@@ -86,28 +88,28 @@
   </div>
   <div class="panel-container show">
     <div class="panel-content">
-      <% if @import_runs.empty? %>
-        <div class="text-center py-4 text-muted">尚無匯入紀錄</div>
-      <% else %>
-        <div style="overflow-x:auto;">
-          <table class="table table-bordered table-hover align-middle small">
-            <thead class="thead-light">
-              <tr>
-                <th>類型</th>
-                <th>檔名</th>
-                <th>開始時間</th>
-                <th>結束時間</th>
-                <th class="text-right">處理</th>
-                <th class="text-right">寫入</th>
-                <th class="text-right">略過</th>
-                <th class="text-right">錯誤</th>
-                <th>狀態</th>
-              </tr>
-            </thead>
-            <tbody>
+      <div style="overflow-x:auto;">
+        <table class="table table-bordered table-hover align-middle small" id="import-runs-table">
+          <thead class="thead-light">
+            <tr>
+              <th>類型</th>
+              <th>檔名</th>
+              <th>開始時間</th>
+              <th>結束時間</th>
+              <th class="text-right">處理</th>
+              <th class="text-right">寫入</th>
+              <th class="text-right">略過</th>
+              <th class="text-right">錯誤</th>
+              <th>狀態</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if @import_runs.empty? %>
+              <tr><td colspan="9" class="text-center text-muted py-4">尚無匯入紀錄</td></tr>
+            <% else %>
               <% @import_runs.each do |run| %>
-                <tr>
-                  <td><%= run.kind %></td>
+                <tr data-import-run-id="<%= run.id %>" data-finished="<%= run.finished_at.present? ? 1 : 0 %>">
+                  <td><%= run.kind_label %></td>
                   <td class="text-break"><%= run.file_name %></td>
                   <td class="text-nowrap"><%= run.started_at&.strftime("%m/%d %H:%M") || "—" %></td>
                   <td class="text-nowrap"><%= run.finished_at&.strftime("%m/%d %H:%M") || "—" %></td>
@@ -126,10 +128,123 @@
                   </td>
                 </tr>
               <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  function initImportsPolling() {
+    var table = document.getElementById("import-runs-table");
+    if (!table || table.dataset.pollingBound === "1") return;
+    table.dataset.pollingBound = "1";
+
+    // 先記住畫面上（伺服器端 render）已經是完成狀態的紀錄，避免一進頁面
+    // 就把舊紀錄也跳出「完成」提示——只在「處理中 -> 完成」這個轉變發生
+    // 時才提示。
+    var seenFinished = {};
+    table.querySelectorAll("tr[data-import-run-id]").forEach(function(tr) {
+      if (tr.dataset.finished === "1") seenFinished[tr.dataset.importRunId] = true;
+    });
+
+    var pollCount = 0;
+    var maxPolls = 60; // 5 分鐘（60 次 * 5 秒），避免分頁開著無限輪詢
+
+    var timer = setInterval(function() {
+      pollCount++;
+      fetch("<%= status_imports_path %>", { headers: { "Accept": "application/json" } })
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(runs) {
+          renderTable(runs);
+
+          var stillPending = false;
+          runs.forEach(function(run) {
+            if (!run.finished_at) {
+              stillPending = true;
+              return;
+            }
+            if (!seenFinished[run.id]) {
+              seenFinished[run.id] = true;
+              notifyFinished(run);
+            }
+          });
+
+          if (!stillPending || pollCount >= maxPolls) clearInterval(timer);
+        })
+        .catch(function() {});
+    }, 5000);
+  }
+
+  function notifyFinished(run) {
+    var ok = !run.error_rows || run.error_rows === 0;
+    var container = document.getElementById("import-toast-container");
+    if (!container) return;
+
+    var box = document.createElement("div");
+    box.className = "alert " + (ok ? "alert-success" : "alert-warning") + " alert-dismissible fade show";
+    box.setAttribute("role", "alert");
+    box.innerHTML =
+      (ok ? "✓ " : "⚠ ") + escapeHtml(run.kind_label) + "匯入完成，寫入 " + numberWithDelimiter(run.upserted_rows) + " 筆" +
+      (ok ? "" : "，其中 " + numberWithDelimiter(run.error_rows) + " 筆有錯誤") +
+      '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>';
+    container.appendChild(box);
+  }
+
+  function renderTable(runs) {
+    var tbody = document.querySelector("#import-runs-table tbody");
+    if (!tbody) return;
+
+    if (runs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">尚無匯入紀錄</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = runs.map(function(run) {
+      var statusBadge;
+      if (!run.finished_at) {
+        statusBadge = '<span class="badge badge-warning">處理中</span>';
+      } else if (run.error_rows > 0) {
+        statusBadge = '<span class="badge badge-danger" title="' + escapeHtml((run.error_messages || []).join("; ")) + '">有錯誤</span>';
+      } else {
+        statusBadge = '<span class="badge badge-success">完成</span>';
+      }
+
+      return '<tr data-import-run-id="' + run.id + '" data-finished="' + (run.finished_at ? "1" : "0") + '">' +
+        "<td>" + escapeHtml(run.kind_label) + "</td>" +
+        '<td class="text-break">' + escapeHtml(run.file_name) + "</td>" +
+        '<td class="text-nowrap">' + formatTime(run.started_at) + "</td>" +
+        '<td class="text-nowrap">' + formatTime(run.finished_at) + "</td>" +
+        '<td class="text-right">' + numberWithDelimiter(run.processed_rows) + "</td>" +
+        '<td class="text-right">' + numberWithDelimiter(run.upserted_rows) + "</td>" +
+        '<td class="text-right">' + numberWithDelimiter(run.skipped_rows) + "</td>" +
+        '<td class="text-right">' + numberWithDelimiter(run.error_rows) + "</td>" +
+        "<td>" + statusBadge + "</td>" +
+      "</tr>";
+    }).join("");
+  }
+
+  function numberWithDelimiter(n) { return (n || 0).toLocaleString("en-US"); }
+
+  function formatTime(iso) {
+    if (!iso) return "—";
+    var d = new Date(iso);
+    var pad = function(n) { return String(n).padStart(2, "0"); };
+    return (d.getMonth() + 1) + "/" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+
+  function escapeHtml(s) {
+    var div = document.createElement("div");
+    div.textContent = s || "";
+    return div.innerHTML;
+  }
+
+  document.addEventListener("DOMContentLoaded", initImportsPolling);
+  document.addEventListener("turbolinks:load", initImportsPolling);
+})();
+</script>
+<% end %>

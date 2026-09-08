@@ -16,6 +16,26 @@ class ImportsController < ApplicationController
     @import_runs = ImportRun.order(created_at: :desc).limit(30)
   end
 
+  # 前端輪詢用：匯入在背景 job 執行，這支給頁面上的 JS 定期讀取最新狀態，
+  # 一完成就跳提示、不用手動重新整理。
+  def status
+    runs = ImportRun.order(created_at: :desc).limit(30)
+    render json: runs.map { |run|
+      {
+        id: run.id,
+        kind_label: run.kind_label,
+        file_name: run.file_name,
+        started_at: run.started_at,
+        finished_at: run.finished_at,
+        processed_rows: run.processed_rows,
+        upserted_rows: run.upserted_rows,
+        skipped_rows: run.skipped_rows,
+        error_rows: run.error_rows,
+        error_messages: run.error_messages.first(5)
+      }
+    }
+  end
+
   def create
     uploaded = params[:file]
     if uploaded.blank?

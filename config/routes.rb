@@ -57,7 +57,9 @@ Rails.application.routes.draw do
   get '/livestream_product_analysis/export_action',  to: 'livestream_product_analysis#export_action',  as: :export_action_livestream_product_analysis
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
   resources :users, only: [:index, :new, :create, :update]
-  resources :imports, only: [:index, :create]
+  resources :imports, only: [:index, :create] do
+    collection { get :status }
+  end
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
   get  '/high_value_orders/custom_messages', to: 'high_value_order_custom_messages#index', as: :high_value_order_custom_messages
   get  '/high_value_orders/follow_ups', to: 'high_value_follow_ups#index', as: :high_value_follow_ups

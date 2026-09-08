@@ -80,6 +80,37 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to imports_path
   end
 
+  test "status 回傳 JSON，含中文類型標籤與完成狀態" do
+    done_run = ImportRun.create!(
+      kind: "paid_orders_workbook", file_name: "done.xlsx", file_checksum: SecureRandom.hex(16),
+      finished_at: Time.current, upserted_rows: 12, error_rows: 0
+    )
+    pending_run = ImportRun.create!(
+      kind: "customers_report", file_name: "pending.csv", file_checksum: SecureRandom.hex(16)
+    )
+    sign_in @admin
+
+    get status_imports_path
+
+    assert_response :success
+    json = JSON.parse(response.body)
+    by_id = json.index_by { |r| r["id"] }
+
+    assert_equal "已付款訂單", by_id[done_run.id]["kind_label"]
+    assert_equal 12, by_id[done_run.id]["upserted_rows"]
+    assert_not_nil by_id[done_run.id]["finished_at"]
+
+    assert_equal "顧客名單", by_id[pending_run.id]["kind_label"]
+    assert_nil by_id[pending_run.id]["finished_at"]
+  end
+
+  test "非 admin 不能打 status 端點" do
+    sign_in @staff
+    get status_imports_path
+
+    assert_redirected_to root_path
+  end
+
   private
 
   def fixture_file_upload_for(filename, content)
