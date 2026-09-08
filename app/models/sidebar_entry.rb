@@ -147,6 +147,7 @@ class SidebarEntry
             { href: monitoring_path,                     title: "功能使用監控",     icon: "fa-chart-line" },
             { href: canceled_order_candidates_path,       title: "已取消訂單候選名單", icon: "fa-ban" },
             { href: users_path,                           title: "使用者管理",       icon: "fa-users" },
+            { href: imports_path,                         title: "資料匯入",         icon: "fa-file-upload" },
           ]
         },
       ]

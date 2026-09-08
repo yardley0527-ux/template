@@ -34,5 +34,7 @@ class ImportCustomersJob < ApplicationJob
     Rails.logger.error "[ImportCustomersJob] FAILED #{e.class} - #{e.message}"
     Rails.logger.error e.backtrace.first(10).join("\n")
     raise
+  ensure
+    File.delete(file_path) if file_path && File.exist?(file_path)
   end
 end

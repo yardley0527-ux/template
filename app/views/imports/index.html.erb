@@ -1,0 +1,135 @@
+<% content_for :page_title, "資料匯入" %>
+
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-file-upload mr-2 text-danger"></i> 資料匯入</h1>
+</div>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  上傳後會排入背景處理，離開這頁也不影響匯入進度；處理時間依檔案大小而定，重新整理這頁可看最新狀態。
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2>已付款訂單</h2>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <%= form_with url: imports_path, method: :post, multipart: true, local: true do %>
+            <input type="hidden" name="kind" value="paid_orders">
+
+            <div class="form-group">
+              <label>檔案（.xlsx 或 .csv）</label>
+              <input type="file" name="file" class="form-control-file" accept=".xlsx,.xls,.csv" required>
+              <small class="form-text text-muted">XLSX 的分頁名稱需為月份數字（1–12）；單月 CSV 請在下方填月份。</small>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label>年份</label>
+                <select name="source_year" class="form-control" required>
+                  <% (Date.current.year + 1).downto(Date.current.year - 3) do |y| %>
+                    <option value="<%= y %>" <%= "selected" if y == Date.current.year %>><%= y %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div class="form-group col-6">
+                <label>月份（CSV 需填；XLSX 可留空）</label>
+                <select name="source_month" class="form-control">
+                  <option value="">（留空）</option>
+                  <% (1..12).each do |m| %>
+                    <option value="<%= m %>"><%= m %></option>
+                  <% end %>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              <i class="fal fa-upload mr-1"></i> 上傳並匯入
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2>顧客名單</h2>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <%= form_with url: imports_path, method: :post, multipart: true, local: true do %>
+            <input type="hidden" name="kind" value="customers_report">
+
+            <div class="form-group">
+              <label>檔案（.xls / .xlsx / .csv）</label>
+              <input type="file" name="file" class="form-control-file" accept=".xlsx,.xls,.csv" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+              <i class="fal fa-upload mr-1"></i> 上傳並匯入
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr">
+    <h2>最近匯入紀錄</h2>
+  </div>
+  <div class="panel-container show">
+    <div class="panel-content">
+      <% if @import_runs.empty? %>
+        <div class="text-center py-4 text-muted">尚無匯入紀錄</div>
+      <% else %>
+        <div style="overflow-x:auto;">
+          <table class="table table-bordered table-hover align-middle small">
+            <thead class="thead-light">
+              <tr>
+                <th>類型</th>
+                <th>檔名</th>
+                <th>開始時間</th>
+                <th>結束時間</th>
+                <th class="text-right">處理</th>
+                <th class="text-right">寫入</th>
+                <th class="text-right">略過</th>
+                <th class="text-right">錯誤</th>
+                <th>狀態</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @import_runs.each do |run| %>
+                <tr>
+                  <td><%= run.kind %></td>
+                  <td class="text-break"><%= run.file_name %></td>
+                  <td class="text-nowrap"><%= run.started_at&.strftime("%m/%d %H:%M") || "—" %></td>
+                  <td class="text-nowrap"><%= run.finished_at&.strftime("%m/%d %H:%M") || "—" %></td>
+                  <td class="text-right"><%= number_with_delimiter(run.processed_rows) %></td>
+                  <td class="text-right"><%= number_with_delimiter(run.upserted_rows) %></td>
+                  <td class="text-right"><%= number_with_delimiter(run.skipped_rows) %></td>
+                  <td class="text-right"><%= number_with_delimiter(run.error_rows) %></td>
+                  <td>
+                    <% if run.finished_at.blank? %>
+                      <span class="badge badge-warning">處理中</span>
+                    <% elsif run.error_rows.to_i > 0 %>
+                      <span class="badge badge-danger" title="<%= run.error_messages.first(5).join("; ") %>">有錯誤</span>
+                    <% else %>
+                      <span class="badge badge-success">完成</span>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
