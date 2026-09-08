@@ -252,9 +252,11 @@ module Importing
         email:             email || customer.email,
         mobile_phone:      phone || customer.mobile_phone,  # ← 改這裡
         instagram_account: ig || customer.instagram_account,
-        membership_level:  raw[:membership_level]&.to_s&.strip.presence || customer.membership_level,
         city:              raw[:city]&.to_s&.strip.presence || customer.city
       )
+      # membership_level 不從訂單檔回填：訂單上的「會員等級」是下單當下的歷史快照，
+      # 重跑舊訂單檔會用過期的卡別覆蓋掉會員報表剛同步好的目前卡別，之前因此讓同一次
+      # 真實升降級被 MembershipLevelChange 重複記錄。目前卡別只由 CustomersReportImporter 更新。
 
       customer.import_run_id = import_run_id if customer.respond_to?(:import_run_id=)
       if customer.respond_to?(:source_row_hash) && customer.source_row_hash.blank?

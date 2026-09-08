@@ -21,11 +21,22 @@ class MembershipLevelChange < ApplicationRecord
       .pluck(:shopline_id, :full_name, :email, :membership_level)
       .each_with_object({}) { |(sid, name, email, lvl), h| h[sid] = { level: lvl, name: name, email: email } }
 
+    candidate_sids = (before_snapshot.keys & after_snapshot.keys)
+                       .select { |sid| before_snapshot[sid][:level] != after_snapshot[sid][:level] }
+
+    # 同一人最近一次記錄的 to_level 若跟這次偵測到的一樣，代表這不是新的淨變化，
+    # 而是卡別在兩次匯入之間被別的流程短暫改回舊值、又被這次匯入修正回原本就有紀錄的
+    # 現況——不記錄，避免同一次真實異動被重複灌水（見 2026-09-08 稽核）。
+    last_to_level_by_sid = where(shopline_id: candidate_sids)
+      .select("DISTINCT ON (shopline_id) shopline_id, to_level")
+      .order(:shopline_id, changed_at: :desc)
+      .to_h { |r| [r.shopline_id, r.to_level] }
+
     changes = []
-    (before_snapshot.keys & after_snapshot.keys).each do |sid|
+    candidate_sids.each do |sid|
       from = before_snapshot[sid][:level]
       to   = after_snapshot[sid][:level]
-      next if from == to
+      next if last_to_level_by_sid[sid] == to
       from_rank = LEVEL_RANK[from]
       to_rank   = LEVEL_RANK[to]
       next unless from_rank && to_rank
