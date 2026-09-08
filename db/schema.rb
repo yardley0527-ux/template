@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_03_113721) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_08_020426) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -608,6 +608,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_03_113721) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["identity_key"], name: "index_high_spender_follow_ups_on_identity_key"
+  end
+
+  create_table "ig_follower_snapshots", force: :cascade do |t|
+    t.string "account", null: false
+    t.date "snapshot_date", null: false
+    t.integer "followers", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account", "snapshot_date"], name: "index_ig_follower_snapshots_on_account_and_snapshot_date", unique: true
   end
 
   create_table "ig_posts", force: :cascade do |t|

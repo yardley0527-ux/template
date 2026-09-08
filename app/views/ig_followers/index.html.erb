@@ -7,7 +7,14 @@
       <h4 class="fw-bold mb-0">IG 粉絲成長追蹤</h4>
       <p class="text-muted small mb-0">苼莛官方 + 各品牌子帳號 + Chloe IG 每日追蹤數</p>
     </div>
-    <span class="text-muted small">上次更新：<%= @last_updated || '尚無資料' %></span>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="text-muted small">上次更新：<%= @last_updated || '尚無資料' %></span>
+      <% if @graph_api_configured %>
+        <%= button_to "立即更新粉絲數", update_now_ig_followers_path, method: :post, class: "btn btn-sm btn-primary", data: { confirm: "要現在向 Instagram 抓取最新粉絲數嗎？（Chloe IG 個人帳號不在這個按鈕的更新範圍內，要用原本本機的方式更新）" } %>
+      <% else %>
+        <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="尚未設定 IG_GRAPH_ACCESS_TOKEN 環境變數">立即更新粉絲數（尚未設定）</button>
+      <% end %>
+    </div>
   </div>
 </div>
 

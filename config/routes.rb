@@ -57,6 +57,7 @@ Rails.application.routes.draw do
   get '/livestream_product_analysis/export_action',  to: 'livestream_product_analysis#export_action',  as: :export_action_livestream_product_analysis
   get '/monitoring',          to: 'monitoring#index',           as: :monitoring
   resources :users, only: [:index, :new, :create, :update]
+  resources :imports, only: [:index, :create]
   get  '/high_value_orders',        to: 'high_value_orders#index',    as: :high_value_orders
   get  '/high_value_orders/custom_messages', to: 'high_value_order_custom_messages#index', as: :high_value_order_custom_messages
   get  '/high_value_orders/follow_ups', to: 'high_value_follow_ups#index', as: :high_value_follow_ups
@@ -81,6 +82,7 @@ Rails.application.routes.draw do
   post '/member_contacts/update_sl',     to: 'member_contacts#update_sl',      as: :member_contacts_update_sl
   get  '/ig_dashboard',             to: 'ig_dashboard#index',         as: :ig_dashboard
   get  '/ig_followers',             to: 'ig_followers#index',         as: :ig_followers
+  post '/ig_followers/update_now',  to: 'ig_followers#update_now',     as: :update_now_ig_followers
   get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
   resources :kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
