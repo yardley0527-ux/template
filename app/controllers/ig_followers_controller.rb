@@ -50,9 +50,13 @@ class IgFollowersController < ApplicationController
 
   private
 
-  # DB（Graph API 更新的 13 個品牌帳號）優先，JSON 檔案（本機 script 更新的
-  # chloechao0527 + 尚未 backfill 的舊資料）補齊其餘——回傳的形狀跟原本的
-  # ig_followers_data.json 一模一樣，view 端的 JS 完全不用改。
+  # 同一帳號兩邊都有資料時，比較「哪邊最後一筆日期比較新」決定用誰的——不能無條件
+  # 讓 DB 贏（之前的寫法），不然 ig_follower_snapshots 只在資料表第一次被讀到是空的
+  # 時候，從 JSON 整批 backfill 一次，之後就凍結住：沒設定 IG_GRAPH_ACCESS_TOKEN
+  # （「立即更新」按鈕不會動）的帳號，本機 script 對 JSON 的更新會被那次性的舊快照
+  # 永久蓋掉，看起來像是「怎麼推都沒生效」。這樣改之後，DB 只在真的比 JSON 新（例如
+  # 之後有設定 Graph API 且按了「立即更新」）時才會贏，否則用本機 script 剛更新的
+  # JSON——回傳的形狀跟原本的 ig_followers_data.json 一模一樣，view 端的 JS 不用改。
   #
   # 用 ig_follower_snapshots_table_ready? 保護：如果正式站的 migration 還沒跑（新
   # 資料表還不存在），就先只用 JSON 檔案顯示舊資料，不要整頁 500。
@@ -66,7 +70,11 @@ class IgFollowersController < ApplicationController
       rows.map { |r| { "date" => r.snapshot_date.to_s, "followers" => r.followers } }
     end
 
-    json_data.merge(db_data)
+    json_data.merge(db_data) do |_account, json_entries, db_entries|
+      json_last = json_entries.last&.dig("date")
+      db_last = db_entries.last&.dig("date")
+      (db_last && (json_last.nil? || db_last > json_last)) ? db_entries : json_entries
+    end
   end
 
   def ig_follower_snapshots_table_ready?
