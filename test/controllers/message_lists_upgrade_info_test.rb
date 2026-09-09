@@ -30,7 +30,7 @@ class MessageListsUpgradeInfoTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "銀卡"
-    assert_includes response.body, "本次維護內容"
+    assert_includes response.body, "本次維護"
     assert_includes response.body, "客人目前狀態"
   end
 
@@ -41,6 +41,6 @@ class MessageListsUpgradeInfoTest < ActionDispatch::IntegrationTest
     get message_list_path(list, tab: "pending")
 
     assert_response :success
-    refute_includes response.body, "本次維護內容"
+    refute_includes response.body, "本次維護"
   end
 end

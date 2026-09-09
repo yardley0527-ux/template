@@ -212,6 +212,112 @@ end %>
       <%= @tab == 'repurchased' ? "這批名單還沒有人回購目標商品" : "這批名單沒有未回購的客人" %>
     </div>
   </div>
+<% elsif @is_upgrade_list %>
+  <%# 升級名單：一個人一張卡，維護要填的欄位直接放在卡片下半部，不做表格跟摺疊分類——
+      這批人本來就是同一個卡別升上來的，分了也只有一組，反而多一次點擊。 %>
+  <div class="ml-card-list">
+    <% @rows.each do |r| %>
+      <% url = ig_link_url(r.instagram_account) %>
+      <% rep = @repurchases[r.email] %>
+      <% info = @upgrade_info[r.id] %>
+      <div class="ml-cust-card">
+        <div class="ml-cust-top">
+          <div class="ml-cust-name">
+            <% if r.shopline_customer_id %>
+              <%= link_to r.full_name.presence || r.email, customer_path(r.shopline_customer_id), target: "_blank" %>
+            <% else %>
+              <%= r.full_name.presence || r.email %>
+            <% end %>
+            <% if r.segment.present? %>
+              <% seg_bg, seg_fg = r.segment == "回購鐵粉" ? ["#6e4a2e", "#fff"] : ["#f0e2cf", "#6e4a2e"] %>
+              <span class="badge ms-1" style="background:<%= seg_bg %>; color:<%= seg_fg %>; font-size:0.7rem; font-weight:500;"><%= r.segment %></span>
+            <% end %>
+          </div>
+          <div class="d-flex align-items-center" style="gap:10px;">
+            <% if url %>
+              <%= link_to url, target: "_blank", class: "ml-ig-link" do %>
+                <i class="fal fa-at"></i> <%= r.instagram_account&.sub(/^@/, '') %>
+              <% end %>
+            <% end %>
+            <% if rep %>
+              <span class="ml-repurchase-badge ml-repurchase-yes">✓ 已回購</span>
+            <% else %>
+              <span class="ml-repurchase-badge ml-repurchase-no">尚未回購</span>
+            <% end %>
+          </div>
+        </div>
+
+        <% if rep %>
+          <div class="ml-repurchase-detail">
+            <%= rep["product_names"] %>・<%= rep["order_date"].to_date.strftime('%-m/%-d') %>・NT$<%= number_with_delimiter(rep["order_total"].to_i) %>・傳送後 <%= (rep["order_date"].to_date - @list.sent_on).to_i %> 天
+          </div>
+        <% end %>
+
+        <% if info %>
+          <div class="ml-info-grid">
+            <div class="ml-info-item">
+              <div class="ml-info-label">距離下一級</div>
+              <div class="ml-info-value">
+                <% if info[:next_level] %>
+                  <strong>NT$<%= number_with_delimiter(info[:amount_needed].to_i) %></strong>（<%= info[:next_level] %>）
+                <% else %>
+                  <span class="text-muted">已是最高卡別</span>
+                <% end %>
+              </div>
+            </div>
+            <div class="ml-info-item">
+              <div class="ml-info-label">這次購買</div>
+              <div class="ml-info-value"><%= info[:this_time_product].presence || "—" %></div>
+            </div>
+            <div class="ml-info-item">
+              <div class="ml-info-label">最近購買</div>
+              <div class="ml-info-value"><%= info[:latest_product].presence || "—" %></div>
+            </div>
+            <div class="ml-info-item">
+              <div class="ml-info-label">還沒買過</div>
+              <div class="ml-info-value"><%= info[:never_bought].any? ? info[:never_bought].join("、") : "核心商品都買過了" %></div>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="ml-maintenance">
+          <div class="ml-maintenance-title">本次維護</div>
+
+          <div class="ml-maintenance-dates">
+            <label>
+              維護日期
+              <input type="date" class="recipient-field-input" data-recipient-id="<%= r.id %>"
+                     data-field="maintenance_date" value="<%= r.maintenance_date&.iso8601 %>">
+            </label>
+            <label>
+              下次追蹤日期
+              <input type="date" class="recipient-field-input" data-recipient-id="<%= r.id %>"
+                     data-field="next_follow_up_date" value="<%= r.next_follow_up_date&.iso8601 %>">
+            </label>
+            <label>
+              客人目前狀態
+              <select class="recipient-field-input" data-recipient-id="<%= r.id %>" data-field="customer_status">
+                <option value="">— 尚未選擇 —</option>
+                <% MessageListRecipient::CUSTOMER_STATUS_OPTIONS.each do |opt| %>
+                  <option value="<%= opt %>" <%= "selected" if r.customer_status == opt %>><%= opt %></option>
+                <% end %>
+              </select>
+            </label>
+          </div>
+
+          <div class="ml-check-row">
+            <% MessageListRecipient::MAINTENANCE_CONTENT_FIELDS.each do |field, label| %>
+              <label class="ml-check-pill <%= 'is-checked' if r.public_send(field) %>">
+                <input type="checkbox" class="recipient-field-input" data-recipient-id="<%= r.id %>"
+                       data-field="<%= field %>" <%= "checked" if r.public_send(field) %>>
+                <%= label %>
+              </label>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
 <% else %>
   <% @rows.group_by { |r| r.membership_level.presence || "—" }.each_with_index do |(tier, tier_rows), idx| %>
     <% panel_id = "tier-panel-#{@tab}-#{idx}" %>
@@ -228,36 +334,18 @@ end %>
           <table class="table align-middle mb-0" style="font-size:0.86rem;">
             <thead style="background-color:#6c757d; color:white;">
               <tr>
-                <% if @is_upgrade_list %>
-                  <th class="ps-3" style="width:110px;">本次維護日期</th>
-                <% end %>
-                <th class="<%= 'ps-3' unless @is_upgrade_list %>" style="width:130px;">姓名</th>
+                <th class="ps-3" style="width:130px;">姓名</th>
                 <th style="width:160px;">IG</th>
                 <th style="width:110px;">分類</th>
-                <% if @is_upgrade_list %>
-                  <th style="width:210px;">商品資訊</th>
-                <% end %>
                 <th>回購狀態</th>
-                <% if @is_upgrade_list %>
-                  <th style="width:230px;">本次維護內容</th>
-                  <th style="width:120px;">客人目前狀態</th>
-                  <th style="width:110px;">下次追蹤日期</th>
-                <% end %>
               </tr>
             </thead>
             <tbody>
               <% tier_rows.each do |r| %>
                 <% url = ig_link_url(r.instagram_account) %>
                 <% rep = @repurchases[r.email] %>
-                <% info = @upgrade_info[r.id] %>
                 <tr>
-                  <% if @is_upgrade_list %>
-                    <td class="ps-3">
-                      <input type="date" class="form-control form-control-sm recipient-field-input" style="font-size:0.78rem;"
-                             data-recipient-id="<%= r.id %>" data-field="maintenance_date" value="<%= r.maintenance_date&.iso8601 %>">
-                    </td>
-                  <% end %>
-                  <td class="<%= 'ps-3' unless @is_upgrade_list %> fw-semibold">
+                  <td class="ps-3 fw-semibold">
                     <% if r.shopline_customer_id %>
                       <%= link_to r.full_name.presence || r.email, customer_path(r.shopline_customer_id), target: "_blank", class: "text-decoration-none" %>
                     <% else %>
@@ -284,27 +372,6 @@ end %>
                       <span class="text-muted small">—</span>
                     <% end %>
                   </td>
-                  <% if @is_upgrade_list %>
-                    <td style="font-size:0.75rem; line-height:1.6;">
-                      <% if info %>
-                        <div>
-                          <% if info[:next_level] %>
-                            距「<%= info[:next_level] %>」還差
-                            <strong>NT$<%= number_with_delimiter(info[:amount_needed].to_i) %></strong>
-                          <% else %>
-                            <span class="text-muted">已是最高卡別</span>
-                          <% end %>
-                        </div>
-                        <div class="text-muted">這次購買：<%= info[:this_time_product].presence || "—" %></div>
-                        <div class="text-muted">最近購買：<%= info[:latest_product].presence || "—" %></div>
-                        <div class="text-muted">
-                          未購：<%= info[:never_bought].any? ? info[:never_bought].join("、") : "核心商品都買過了" %>
-                        </div>
-                      <% else %>
-                        <span class="text-muted">—</span>
-                      <% end %>
-                    </td>
-                  <% end %>
                   <td>
                     <% if rep %>
                       <div style="font-size:0.8rem;">
@@ -318,30 +385,6 @@ end %>
                       <span class="badge bg-light text-muted border" style="font-size:0.75rem;">尚未回購</span>
                     <% end %>
                   </td>
-                  <% if @is_upgrade_list %>
-                    <td>
-                      <% MessageListRecipient::MAINTENANCE_CONTENT_FIELDS.each do |field, label| %>
-                        <div class="form-check form-check-inline" style="margin-right:0.5rem;">
-                          <input type="checkbox" class="form-check-input recipient-field-input" id="<%= field %>-<%= r.id %>"
-                                 data-recipient-id="<%= r.id %>" data-field="<%= field %>" <%= "checked" if r.public_send(field) %>>
-                          <label class="form-check-label" for="<%= field %>-<%= r.id %>" style="font-size:0.75rem;"><%= label %></label>
-                        </div>
-                      <% end %>
-                    </td>
-                    <td>
-                      <select class="form-select form-select-sm recipient-field-input" style="font-size:0.78rem;"
-                              data-recipient-id="<%= r.id %>" data-field="customer_status">
-                        <option value="">—</option>
-                        <% MessageListRecipient::CUSTOMER_STATUS_OPTIONS.each do |opt| %>
-                          <option value="<%= opt %>" <%= "selected" if r.customer_status == opt %>><%= opt %></option>
-                        <% end %>
-                      </select>
-                    </td>
-                    <td>
-                      <input type="date" class="form-control form-control-sm recipient-field-input" style="font-size:0.78rem;"
-                             data-recipient-id="<%= r.id %>" data-field="next_follow_up_date" value="<%= r.next_follow_up_date&.iso8601 %>">
-                    </td>
-                  <% end %>
                 </tr>
               <% end %>
             </tbody>
@@ -360,16 +403,20 @@ end %>
         var isCheckbox = el.type === "checkbox";
         var eventName = isCheckbox || el.tagName === "SELECT" ? "change" : "blur";
         var previousValue = isCheckbox ? el.checked : el.value;
+        var pill = el.closest(".ml-check-pill");
 
         el.addEventListener(eventName, function () {
           var value = isCheckbox ? el.checked : el.value;
+          if (pill) { pill.classList.toggle("is-checked", el.checked); }
+
           fetch("<%= update_message_list_recipient_field_path %>", {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
             body: JSON.stringify({ recipient_id: el.dataset.recipientId, field: el.dataset.field, value: value })
           }).then(function (r) {
             if (!r.ok) {
-              if (isCheckbox) { el.checked = previousValue; } else { el.value = previousValue; }
+              if (isCheckbox) { el.checked = previousValue; if (pill) { pill.classList.toggle("is-checked", previousValue); } }
+              else { el.value = previousValue; }
               alert("更新失敗，請重新整理頁面再試一次");
             } else {
               previousValue = value;
@@ -380,3 +427,45 @@ end %>
     })();
   </script>
 <% end %>
+
+<style>
+.ml-card-list { display: flex; flex-direction: column; gap: 12px; }
+.ml-cust-card { background: #fff; border: 1px solid #e9e2d8; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(78,51,32,.05); }
+
+.ml-cust-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.ml-cust-name { font-weight: 700; font-size: 1rem; color: #2f2a24; }
+.ml-cust-name a { color: #2f2a24; text-decoration: none; }
+.ml-cust-name a:hover { color: #8f6340; text-decoration: underline; }
+
+.ml-ig-link { font-size: 0.8rem; color: #6c757d; text-decoration: none; white-space: nowrap; }
+.ml-ig-link:hover { color: #8f6340; }
+.ml-ig-link i { color: #d6336c; margin-right: 2px; }
+
+.ml-repurchase-badge { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
+.ml-repurchase-yes { background: #e8f4ea; color: #188038; }
+.ml-repurchase-no { background: #f1f1ef; color: #8a8577; }
+.ml-repurchase-detail { font-size: 0.78rem; color: #6c757d; margin: -2px 0 10px; }
+
+.ml-info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 16px; background: #faf7f2; border: 1px solid #f0e9dc; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
+.ml-info-label { font-size: 0.68rem; color: #a89a86; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 2px; }
+.ml-info-value { font-size: 0.82rem; color: #2f2a24; line-height: 1.4; }
+
+.ml-maintenance { border-top: 1px dashed #e9e2d8; padding-top: 12px; }
+.ml-maintenance-title { font-size: 0.72rem; font-weight: 700; color: #8f6340; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+
+.ml-maintenance-dates { display: flex; flex-wrap: wrap; gap: 14px 20px; margin-bottom: 10px; }
+.ml-maintenance-dates label { display: flex; flex-direction: column; gap: 4px; font-size: 0.72rem; color: #6c757d; font-weight: 600; }
+.ml-maintenance-dates input, .ml-maintenance-dates select { font-size: 0.85rem; padding: 5px 8px; border: 1px solid #dcd3c4; border-radius: 6px; color: #2f2a24; background: #fff; min-width: 140px; }
+.ml-maintenance-dates input:focus, .ml-maintenance-dates select:focus { outline: none; border-color: #8f6340; box-shadow: 0 0 0 2px rgba(143,99,64,.12); }
+
+.ml-check-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.ml-check-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #6c757d; background: #f6f4f0; border: 1px solid #e9e2d8; border-radius: 99px; padding: 6px 14px; cursor: pointer; user-select: none; transition: background .12s, border-color .12s, color .12s; }
+.ml-check-pill input { margin: 0; }
+.ml-check-pill:hover { border-color: #cbbfa9; }
+.ml-check-pill.is-checked { background: #efe6d4; border-color: #c9a96a; color: #6e4a2e; font-weight: 600; }
+
+@media (max-width: 640px) {
+  .ml-info-grid { grid-template-columns: repeat(2, 1fr); }
+  .ml-cust-top { align-items: flex-start; }
+}
+</style>
