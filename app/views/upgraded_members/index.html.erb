@@ -18,7 +18,7 @@
           <%# 卡別統計卡片：今天新增的升級人數，點下去可篩選下方名單 %>
           <div class="um-level-grid mb-4">
             <% UpgradedMembersController::TARGET_LEVELS.each do |level| %>
-              <a href="<%= upgraded_members_path(level: level) %>"
+              <a href="<%= upgraded_members_path(level: level, month: @selected_month) %>"
                  class="um-level-card <%= @selected_level == level ? 'is-active' : '' %>">
                 <span class="um-level-badge um-level-<%= level.delete('卡') %>"><%= level %></span>
                 <div class="um-level-count"><%= number_with_delimiter(@period_counts["今天"][level]) %></div>
@@ -51,13 +51,25 @@
             </table>
           </div>
 
+          <% if @available_months.any? %>
+            <div class="um-month-tabs mb-3">
+              <% @available_months.each do |month| %>
+                <% y, m = month.split("-") %>
+                <a href="<%= upgraded_members_path(level: @selected_level, month: month) %>"
+                   class="um-month-tab <%= @selected_month == month ? 'is-active' : '' %>">
+                  <%= y %>年<%= m.to_i %>月
+                </a>
+              <% end %>
+            </div>
+          <% end %>
+
           <div class="um-filter-bar mb-3">
             <span class="um-filter-meta">
               <% if @selected_level %>
                 目前篩選：<span class="um-level fp-level-<%= @selected_level.delete('卡') %>"><%= @selected_level %></span>
-                <%= link_to "清除篩選", upgraded_members_path, class: "um-clear-link" %>
+                <%= link_to "清除卡別篩選", upgraded_members_path(month: @selected_month), class: "um-clear-link" %>
               <% else %>
-                顯示全部卡別的歷史升級名單
+                顯示<%= @selected_month.present? ? "#{@selected_month.split('-').last.to_i}月" : "全部" %>全部卡別的升級名單
               <% end %>
             </span>
           </div>
@@ -65,9 +77,9 @@
           <% if @lists.empty? %>
             <div class="um-empty-hint">
               <% if @selected_level %>
-                目前還沒有<%= @selected_level %>的升級名單紀錄。
+                這個月還沒有<%= @selected_level %>的升級名單紀錄。
               <% else %>
-                目前還沒有任何升級名單紀錄——下一次會員報表匯入若偵測到升級，會自動在這裡出現。
+                這個月還沒有任何升級名單紀錄。
               <% end %>
             </div>
           <% else %>
@@ -123,6 +135,11 @@
 .fp-level-銀 { background: #9ca3af; color: #fff; }
 .fp-level-金 { background: #d97706; color: #fff; }
 .fp-level-黑 { background: #1f2937; color: #fff; }
+
+.um-month-tabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+.um-month-tab { font-size: 13px; font-weight: 600; color: #6b7280; padding: 6px 14px; border-radius: 99px; text-decoration: none; background: #f3f4f6; white-space: nowrap; }
+.um-month-tab:hover { background: #e5e7eb; color: #374151; }
+.um-month-tab.is-active { background: #374151; color: #fff; }
 
 .um-filter-bar { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; }
 .um-filter-meta { font-size: 13px; color: #6b7280; }

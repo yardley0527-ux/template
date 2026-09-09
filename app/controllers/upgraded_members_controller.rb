@@ -22,7 +22,13 @@ class UpgradedMembersController < ApplicationController
     all_lists = MessageList.daily_snapshot.where(target_product: TARGET_LEVELS).to_a
     @period_counts = build_period_counts(all_lists)
 
-    scope = @selected_level ? all_lists.select { |l| l.target_product == @selected_level } : all_lists
+    # 月份分頁：新到舊排序（"2026-09" 這種 key），畫面上顯示成「2026年9月」。
+    # 名單一多（累計已經 160 份），一次全部攤開列出來很難找，改成一次只看一個月。
+    @available_months = all_lists.map { |l| l.sent_on.strftime("%Y-%m") }.uniq.sort.reverse
+    @selected_month = @available_months.include?(params[:month].to_s) ? params[:month].to_s : @available_months.first
+
+    by_level = @selected_level ? all_lists.select { |l| l.target_product == @selected_level } : all_lists
+    scope = @selected_month ? by_level.select { |l| l.sent_on.strftime("%Y-%m") == @selected_month } : by_level
     @lists = scope.sort_by { |l| [-l.sent_on.to_time.to_i, -l.id] }
     @recipient_counts = MessageListRecipient.where(message_list_id: @lists.map(&:id)).group(:message_list_id).count
   end

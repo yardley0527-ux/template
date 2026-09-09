@@ -58,4 +58,35 @@ class UpgradedMembersControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{message_list_path(black_list)}']"
     assert_select "a[href='#{message_list_path(gold_list)}']", count: 0
   end
+
+  test "defaults to the most recent month with data, not the full history" do
+    this_month_list = make_upgrade_list(level: "白卡", sent_on: Date.current)
+    last_month_list  = make_upgrade_list(level: "白卡", sent_on: Date.current.prev_month)
+
+    get upgraded_members_path
+
+    assert_response :success
+    assert_select "a[href='#{message_list_path(this_month_list)}']"
+    assert_select "a[href='#{message_list_path(last_month_list)}']", count: 0
+  end
+
+  test "switching the month tab shows that month's lists instead" do
+    this_month_list = make_upgrade_list(level: "白卡", sent_on: Date.current)
+    last_month_list  = make_upgrade_list(level: "白卡", sent_on: Date.current.prev_month)
+
+    get upgraded_members_path(month: Date.current.prev_month.strftime("%Y-%m"))
+
+    assert_response :success
+    assert_select "a[href='#{message_list_path(last_month_list)}']"
+    assert_select "a[href='#{message_list_path(this_month_list)}']", count: 0
+  end
+
+  test "an unrecognized month param falls back to the most recent month" do
+    this_month_list = make_upgrade_list(level: "白卡", sent_on: Date.current)
+
+    get upgraded_members_path(month: "not-a-real-month")
+
+    assert_response :success
+    assert_select "a[href='#{message_list_path(this_month_list)}']"
+  end
 end
