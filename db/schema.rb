@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_08_020426) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_09_084642) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -969,6 +969,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_08_020426) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "segment"
+    t.boolean "maintained", default: false, null: false
+    t.boolean "follow_up_needed", default: false, null: false
     t.index ["message_list_id", "email"], name: "index_message_list_recipients_on_message_list_id_and_email", unique: true
     t.index ["message_list_id"], name: "index_message_list_recipients_on_message_list_id"
   end

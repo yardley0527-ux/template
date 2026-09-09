@@ -25,6 +25,7 @@ class SidebarEntry
           group_title: "會員管理",
           children: [
             { href: customers_path,          title: "客人資料庫",     icon: "fa-address-book" },
+            { href: upgraded_members_path,   title: "升級名單",       icon: "fa-arrow-up" },
             { href: inactive_members_path,   title: "近期未消費名單", icon: "fa-user-times" },
             { href: member_contacts_path,    title: "會員分群",       icon: "fa-address-card" },
             { href: expiring_members_path,   title: "即將降級會員",   icon: "fa-bell" },

@@ -46,6 +46,19 @@ class MessageListsController < ApplicationController
     redirect_to message_list_path(list), notice: "訊息內容已儲存"
   end
 
+  # 名單裡每個人自己的追蹤勾選（已維護／後續追蹤），跟回購成效分開記錄，
+  # 給人工跟進用——例如升級名單，姐姐一個一個聯絡完就打勾，不用等系統判斷回購。
+  TOGGLEABLE_RECIPIENT_FIELDS = %w[maintained follow_up_needed].freeze
+
+  def toggle_recipient_flag
+    field = params[:field].to_s
+    return head :bad_request unless TOGGLEABLE_RECIPIENT_FIELDS.include?(field)
+
+    recipient = MessageListRecipient.find(params[:recipient_id])
+    recipient.update!(field => ActiveModel::Type::Boolean.new.cast(params[:value]))
+    head :ok
+  end
+
   def export
     list = MessageList.find(params[:id])
     repurchases = repurchases_for(list)

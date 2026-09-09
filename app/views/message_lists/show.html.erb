@@ -232,6 +232,8 @@ end %>
                 <th style="width:160px;">IG</th>
                 <th style="width:110px;">分類</th>
                 <th>回購狀態</th>
+                <th class="text-center" style="width:80px;">已維護</th>
+                <th class="text-center" style="width:90px;">後續追蹤</th>
               </tr>
             </thead>
             <tbody>
@@ -279,6 +281,12 @@ end %>
                       <span class="badge bg-light text-muted border" style="font-size:0.75rem;">尚未回購</span>
                     <% end %>
                   </td>
+                  <td class="text-center">
+                    <input type="checkbox" class="recipient-flag-checkbox" data-recipient-id="<%= r.id %>" data-field="maintained" <%= "checked" if r.maintained? %>>
+                  </td>
+                  <td class="text-center">
+                    <input type="checkbox" class="recipient-flag-checkbox" data-recipient-id="<%= r.id %>" data-field="follow_up_needed" <%= "checked" if r.follow_up_needed? %>>
+                  </td>
                 </tr>
               <% end %>
             </tbody>
@@ -287,4 +295,23 @@ end %>
       </div>
     </div>
   <% end %>
+<% end %>
+
+<% content_for :scripts_block do %>
+  <script>
+    (function () {
+      var CSRF = document.querySelector('meta[name="csrf-token"]')?.content;
+      document.querySelectorAll(".recipient-flag-checkbox").forEach(function (cb) {
+        cb.addEventListener("change", function () {
+          fetch("<%= toggle_message_list_recipient_flag_path %>", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
+            body: JSON.stringify({ recipient_id: cb.dataset.recipientId, field: cb.dataset.field, value: cb.checked })
+          }).then(function (r) {
+            if (!r.ok) { cb.checked = !cb.checked; alert("更新失敗，請重新整理頁面再試一次"); }
+          });
+        });
+      });
+    })();
+  </script>
 <% end %>
