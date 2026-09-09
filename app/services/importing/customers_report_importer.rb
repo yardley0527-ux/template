@@ -230,6 +230,9 @@ module Importing
       changed_count = MembershipLevelChange.detect_and_record!(run, before_snapshot)
       log "[import] membership_level_changes=#{changed_count}"
 
+      upgrade_lists = DailyUpgradeMessageListService.call(run)
+      log "[import] upgrade_message_lists=#{upgrade_lists[:created].join(', ')}" if upgrade_lists[:created].any?
+
       run.update!(
         processed_rows: processed,
         upserted_rows: upserted,
