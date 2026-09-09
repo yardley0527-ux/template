@@ -7,18 +7,39 @@
 class UpgradedMembersController < ApplicationController
   TARGET_LEVELS = %w[白卡 銀卡 金卡 黑卡].freeze
 
+  # 本週／本月／本年都是「該期間至今」（例如本月＝這個月 1 號到今天），
+  # 不是固定往前推 7/30/365 天，符合一般講「本週升了幾個」的直覺。
+  PERIODS = {
+    "今天" => ->(today) { today..today },
+    "本週" => ->(today) { today.beginning_of_week..today },
+    "本月" => ->(today) { today.beginning_of_month..today },
+    "本年" => ->(today) { today.beginning_of_year..today }
+  }.freeze
+
   def index
     @selected_level = TARGET_LEVELS.include?(params[:level].to_s) ? params[:level].to_s : nil
 
-    lists = MessageList.daily_snapshot.where(target_product: TARGET_LEVELS)
-    todays_list_ids_by_level = lists.where(sent_on: Date.current).pluck(:target_product, :id).to_h
-    @tier_counts = TARGET_LEVELS.index_with do |level|
-      list_id = todays_list_ids_by_level[level]
-      list_id ? MessageListRecipient.where(message_list_id: list_id).count : 0
-    end
+    all_lists = MessageList.daily_snapshot.where(target_product: TARGET_LEVELS).to_a
+    @period_counts = build_period_counts(all_lists)
 
-    scope = @selected_level ? lists.where(target_product: @selected_level) : lists
-    @lists = scope.order(sent_on: :desc, id: :desc).to_a
+    scope = @selected_level ? all_lists.select { |l| l.target_product == @selected_level } : all_lists
+    @lists = scope.sort_by { |l| [-l.sent_on.to_time.to_i, -l.id] }
     @recipient_counts = MessageListRecipient.where(message_list_id: @lists.map(&:id)).group(:message_list_id).count
+  end
+
+  private
+
+  # { "今天" => { "白卡" => 3, "銀卡" => 0, ... }, "本週" => {...}, ... }
+  def build_period_counts(lists)
+    today = Date.current
+    lists_by_level = lists.group_by(&:target_product)
+
+    PERIODS.each_with_object({}) do |(label, range_for), out|
+      range = range_for.call(today)
+      out[label] = TARGET_LEVELS.index_with do |level|
+        ids = (lists_by_level[level] || []).select { |l| range.cover?(l.sent_on) }.map(&:id)
+        ids.empty? ? 0 : MessageListRecipient.where(message_list_id: ids).count
+      end
+    end
   end
 end
