@@ -89,4 +89,31 @@ class UpgradedMembersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "a[href='#{message_list_path(this_month_list)}']"
   end
+
+  test "defaults to the most recent day within the selected month, not every day" do
+    today_list = make_upgrade_list(level: "白卡", sent_on: Date.current)
+    earlier_in_month = Date.current.day > 5 ? Date.current - 3.days : Date.current.beginning_of_month
+    earlier_list = make_upgrade_list(level: "銀卡", sent_on: earlier_in_month)
+
+    get upgraded_members_path
+
+    assert_response :success
+    assert_select "a[href='#{message_list_path(today_list)}']"
+    assert_select "a[href='#{message_list_path(earlier_list)}']", count: 0
+  end
+
+  test "switching the day tab shows only that day's lists across all tiers" do
+    day_a = Date.current
+    day_b = Date.current.day > 5 ? Date.current - 3.days : Date.current.beginning_of_month
+    white_today  = make_upgrade_list(level: "白卡", sent_on: day_a)
+    gold_earlier = make_upgrade_list(level: "金卡", sent_on: day_b)
+    silver_earlier = make_upgrade_list(level: "銀卡", sent_on: day_b)
+
+    get upgraded_members_path(day: day_b.iso8601)
+
+    assert_response :success
+    assert_select "a[href='#{message_list_path(gold_earlier)}']"
+    assert_select "a[href='#{message_list_path(silver_earlier)}']"
+    assert_select "a[href='#{message_list_path(white_today)}']", count: 0
+  end
 end

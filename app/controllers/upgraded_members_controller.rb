@@ -22,14 +22,19 @@ class UpgradedMembersController < ApplicationController
     all_lists = MessageList.daily_snapshot.where(target_product: TARGET_LEVELS).to_a
     @period_counts = build_period_counts(all_lists)
 
-    # 月份分頁：新到舊排序（"2026-09" 這種 key），畫面上顯示成「2026年9月」。
-    # 名單一多（累計已經 160 份），一次全部攤開列出來很難找，改成一次只看一個月。
+    # 第一層：月份分頁（"2026-09" 這種 key，畫面上顯示成「2026年9月」）。
     @available_months = all_lists.map { |l| l.sent_on.strftime("%Y-%m") }.uniq.sort.reverse
     @selected_month = @available_months.include?(params[:month].to_s) ? params[:month].to_s : @available_months.first
+    lists_in_month = all_lists.select { |l| l.sent_on.strftime("%Y-%m") == @selected_month }
 
-    by_level = @selected_level ? all_lists.select { |l| l.target_product == @selected_level } : all_lists
-    scope = @selected_month ? by_level.select { |l| l.sent_on.strftime("%Y-%m") == @selected_month } : by_level
-    @lists = scope.sort_by { |l| [-l.sent_on.to_time.to_i, -l.id] }
+    # 第二層：日期分頁——同一天最多就 4 張卡別的名單，不用再往下列成一長串。
+    @available_days = lists_in_month.map(&:sent_on).uniq.sort.reverse
+    @selected_day = @available_days.find { |d| d.iso8601 == params[:day].to_s } || @available_days.first
+    lists_on_day = lists_in_month.select { |l| l.sent_on == @selected_day }
+
+    # 第三層：卡別篩選（選填）——同一天本來就只有 4 張，篩選只是輔助，不是必要。
+    scope = @selected_level ? lists_on_day.select { |l| l.target_product == @selected_level } : lists_on_day
+    @lists = scope.sort_by { |l| TARGET_LEVELS.index(l.target_product).to_i }
     @recipient_counts = MessageListRecipient.where(message_list_id: @lists.map(&:id)).group(:message_list_id).count
   end
 

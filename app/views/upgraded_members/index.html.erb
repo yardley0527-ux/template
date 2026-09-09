@@ -18,7 +18,7 @@
           <%# 卡別統計卡片：今天新增的升級人數，點下去可篩選下方名單 %>
           <div class="um-level-grid mb-4">
             <% UpgradedMembersController::TARGET_LEVELS.each do |level| %>
-              <a href="<%= upgraded_members_path(level: level, month: @selected_month) %>"
+              <a href="<%= upgraded_members_path(level: level, month: @selected_month, day: @selected_day&.iso8601) %>"
                  class="um-level-card <%= @selected_level == level ? 'is-active' : '' %>">
                 <span class="um-level-badge um-level-<%= level.delete('卡') %>"><%= level %></span>
                 <div class="um-level-count"><%= number_with_delimiter(@period_counts["今天"][level]) %></div>
@@ -63,13 +63,25 @@
             </div>
           <% end %>
 
+          <% if @available_days.any? %>
+            <div class="um-day-tabs mb-3">
+              <% @available_days.each do |day| %>
+                <a href="<%= upgraded_members_path(level: @selected_level, month: @selected_month, day: day.iso8601) %>"
+                   class="um-day-tab <%= @selected_day == day ? 'is-active' : '' %>">
+                  <%= day.strftime("%-m/%-d") %>
+                </a>
+              <% end %>
+            </div>
+          <% end %>
+
           <div class="um-filter-bar mb-3">
             <span class="um-filter-meta">
+              <%= @selected_day&.strftime("%Y/%-m/%-d") %>
               <% if @selected_level %>
-                目前篩選：<span class="um-level fp-level-<%= @selected_level.delete('卡') %>"><%= @selected_level %></span>
-                <%= link_to "清除卡別篩選", upgraded_members_path(month: @selected_month), class: "um-clear-link" %>
+                ・目前篩選：<span class="um-level fp-level-<%= @selected_level.delete('卡') %>"><%= @selected_level %></span>
+                <%= link_to "清除卡別篩選", upgraded_members_path(month: @selected_month, day: @selected_day&.iso8601), class: "um-clear-link" %>
               <% else %>
-                顯示<%= @selected_month.present? ? "#{@selected_month.split('-').last.to_i}月" : "全部" %>全部卡別的升級名單
+                ・顯示這天全部卡別的升級名單
               <% end %>
             </span>
           </div>
@@ -77,9 +89,9 @@
           <% if @lists.empty? %>
             <div class="um-empty-hint">
               <% if @selected_level %>
-                這個月還沒有<%= @selected_level %>的升級名單紀錄。
+                這天還沒有<%= @selected_level %>的升級名單紀錄。
               <% else %>
-                這個月還沒有任何升級名單紀錄。
+                這天還沒有任何升級名單紀錄。
               <% end %>
             </div>
           <% else %>
@@ -87,7 +99,6 @@
               <table class="um-table">
                 <thead>
                   <tr>
-                    <th>日期</th>
                     <th>升級卡別</th>
                     <th class="um-nowrap">人數</th>
                     <th>操作</th>
@@ -96,7 +107,6 @@
                 <tbody>
                   <% @lists.each do |list| %>
                     <tr>
-                      <td class="um-nowrap"><%= list.sent_on.strftime("%Y/%-m/%-d") %></td>
                       <td><span class="um-level fp-level-<%= list.target_product.delete('卡') %>"><%= list.target_product %></span></td>
                       <td class="um-nowrap"><%= number_with_delimiter(@recipient_counts.fetch(list.id, 0)) %> 人</td>
                       <td class="um-nowrap">
@@ -140,6 +150,11 @@
 .um-month-tab { font-size: 13px; font-weight: 600; color: #6b7280; padding: 6px 14px; border-radius: 99px; text-decoration: none; background: #f3f4f6; white-space: nowrap; }
 .um-month-tab:hover { background: #e5e7eb; color: #374151; }
 .um-month-tab.is-active { background: #374151; color: #fff; }
+
+.um-day-tabs { display: flex; flex-wrap: wrap; gap: 5px; }
+.um-day-tab { font-size: 12px; font-weight: 600; color: #6b7280; padding: 5px 11px; border-radius: 6px; text-decoration: none; background: #fff; border: 1px solid #e5e7eb; white-space: nowrap; }
+.um-day-tab:hover { border-color: #9ca3af; color: #374151; }
+.um-day-tab.is-active { background: #8f6340; border-color: #8f6340; color: #fff; }
 
 .um-filter-bar { background: #f8f9fa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; }
 .um-filter-meta { font-size: 13px; color: #6b7280; }
