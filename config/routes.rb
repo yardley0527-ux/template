@@ -216,7 +216,7 @@ Rails.application.routes.draw do
   get '/message_lists/:id',        to: 'message_lists#show',   as: :message_list
   patch '/message_lists/:id',      to: 'message_lists#update'
   get '/message_lists/:id/export', to: 'message_lists#export', as: :export_message_list
-  post '/message_list_recipients/toggle_flag', to: 'message_lists#toggle_recipient_flag', as: :toggle_message_list_recipient_flag
+  post '/message_list_recipients/update_field', to: 'message_lists#update_recipient_field', as: :update_message_list_recipient_field
   get '/inactive_members',           to: 'inactive_members#index',     as: :inactive_members
   get '/upgraded_members',           to: 'upgraded_members#index',     as: :upgraded_members
   get  '/duplicate_customers',         to: 'duplicate_customers#index', as: :duplicate_customers

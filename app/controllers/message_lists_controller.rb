@@ -6,6 +6,12 @@
 class MessageListsController < ApplicationController
   MEMBERSHIP_RANK = { "黑卡" => 1, "金卡" => 2, "銀卡" => 3, "白卡" => 4, "一般會員" => 5 }.freeze
 
+  # 升級名單專用的維護資訊（距離下一級、購買品項）——卡別由低到高排序，
+  # 跟上面 MEMBERSHIP_RANK（顯示排序用，黑卡最前）方向相反，這裡要的是「下一級是誰」。
+  TIER_PROGRESSION = %w[一般會員 白卡 銀卡 金卡 黑卡].freeze
+  UPGRADE_TIERS = %w[白卡 銀卡 金卡 黑卡].freeze
+  CORE_PRODUCTS = %w[代謝錠 全能 清纖粉 益生菌 私密粉 穀胱甘肽 薑黃 魚油 膠原蛋白].freeze
+
   # 人工湊的名單（例如回購 cohort × 買過某商品）——跟每天自動記錄的
   # 「今日待處理」快照分開顯示，見 #daily。
   def index
@@ -38,6 +44,9 @@ class MessageListsController < ApplicationController
 
     @segment_rows = segment_stats(recipients, @repurchases)
     @curve = repurchase_curve(@list, recipients, @repurchases, top_segments: @segment_rows.map { |r| r[:segment] } - ["其他"])
+
+    @is_upgrade_list = UPGRADE_TIERS.include?(@list.target_product)
+    @upgrade_info = @is_upgrade_list ? build_upgrade_info(@list, recipients) : {}
   end
 
   def update
@@ -46,16 +55,29 @@ class MessageListsController < ApplicationController
     redirect_to message_list_path(list), notice: "訊息內容已儲存"
   end
 
-  # 名單裡每個人自己的追蹤勾選（已維護／後續追蹤），跟回購成效分開記錄，
-  # 給人工跟進用——例如升級名單，姐姐一個一個聯絡完就打勾，不用等系統判斷回購。
-  TOGGLEABLE_RECIPIENT_FIELDS = %w[maintained follow_up_needed].freeze
+  # 名單裡每個人自己的維護紀錄（本次維護日期／維護內容勾選／客人狀態／下次追蹤日），
+  # 跟系統自動判斷的回購成效分開記錄——姐姐聯繫完客人就直接在名單上填，不用等回購。
+  BOOLEAN_RECIPIENT_FIELDS = MessageListRecipient::MAINTENANCE_CONTENT_FIELDS.keys.freeze
+  DATE_RECIPIENT_FIELDS    = %w[maintenance_date next_follow_up_date].freeze
+  SELECT_RECIPIENT_FIELDS  = %w[customer_status].freeze
+  EDITABLE_RECIPIENT_FIELDS = (BOOLEAN_RECIPIENT_FIELDS + DATE_RECIPIENT_FIELDS + SELECT_RECIPIENT_FIELDS).freeze
 
-  def toggle_recipient_flag
+  def update_recipient_field
     field = params[:field].to_s
-    return head :bad_request unless TOGGLEABLE_RECIPIENT_FIELDS.include?(field)
+    return head :bad_request unless EDITABLE_RECIPIENT_FIELDS.include?(field)
 
     recipient = MessageListRecipient.find(params[:recipient_id])
-    recipient.update!(field => ActiveModel::Type::Boolean.new.cast(params[:value]))
+    value =
+      if BOOLEAN_RECIPIENT_FIELDS.include?(field)
+        ActiveModel::Type::Boolean.new.cast(params[:value])
+      elsif SELECT_RECIPIENT_FIELDS.include?(field)
+        return head :bad_request if params[:value].present? && !MessageListRecipient::CUSTOMER_STATUS_OPTIONS.include?(params[:value])
+
+        params[:value].presence
+      else
+        params[:value].presence
+      end
+    recipient.update!(field => value)
     head :ok
   end
 
@@ -227,5 +249,83 @@ class MessageListsController < ApplicationController
 
   def connection
     ActiveRecord::Base.connection
+  end
+
+  # 升級名單每個人旁邊的「距離下一級／這次購買／最近購買／還沒買過」——
+  # 用現在的即時卡別與消費（不是名單建立當下的快照），因為姐姐是之後才打電話維護，
+  # 這幾天可能又有新訂單進來。回傳 { recipient_id => { ... } }。
+  def build_upgrade_info(list, recipients)
+    customer_ids = recipients.filter_map(&:shopline_customer_id)
+    return {} if customer_ids.empty?
+
+    customers = ShoplineCustomer.where(id: customer_ids).index_by(&:id)
+    latest_products    = latest_order_products(customer_ids)
+    this_time_products = latest_order_products(customer_ids, on_or_before: list.sent_on)
+    bought_products     = bought_core_products(customer_ids)
+    threshold_cache = {}
+
+    recipients.each_with_object({}) do |r, out|
+      customer = customers[r.shopline_customer_id]
+      next unless customer
+
+      current_level = customer.membership_level
+      tier_index = TIER_PROGRESSION.index(current_level)
+      next_level = tier_index && TIER_PROGRESSION[tier_index + 1]
+
+      amount_needed = nil
+      if next_level
+        threshold_cache[next_level] ||= tier_threshold_estimate(next_level)
+        amount_needed = [threshold_cache[next_level].to_f - customer.total_amount.to_f, 0].max
+      end
+
+      out[r.id] = {
+        current_level: current_level,
+        next_level: next_level,
+        amount_needed: amount_needed,
+        this_time_product: this_time_products[customer.id],
+        latest_product: latest_products[customer.id],
+        never_bought: CORE_PRODUCTS - (bought_products[customer.id] || [])
+      }
+    end
+  end
+
+  # 該卡別現有持卡人消費金額後 5%——系統沒有存官方門檻金額，用這個當估計值
+  # （跟 9/8 會員卡別流動報告用的同一套推算方法）。
+  def tier_threshold_estimate(level)
+    connection.select_value(<<~SQL).to_f
+      SELECT percentile_disc(0.05) WITHIN GROUP (ORDER BY total_amount)
+      FROM shopline_customers
+      WHERE membership_level = #{connection.quote(level)}
+    SQL
+  end
+
+  # 每位顧客最新一筆已付款訂單的商品名稱；on_or_before 給的話只看那個日期（含）以前。
+  def latest_order_products(customer_ids, on_or_before: nil)
+    date_filter = on_or_before ? "AND order_date <= #{connection.quote(on_or_before)}" : ""
+    sql = <<~SQL
+      SELECT DISTINCT ON (shopline_customer_id) shopline_customer_id, product_name, order_date
+      FROM shopline_orders
+      WHERE shopline_customer_id IN (#{customer_ids.join(',')})
+        AND payment_status = '已付款'
+        #{date_filter}
+      ORDER BY shopline_customer_id, order_date DESC
+    SQL
+    connection.select_all(sql).to_a.to_h { |r| [r["shopline_customer_id"].to_i, r["product_name"]] }
+  end
+
+  # 每位顧客買過哪些公司核心商品（子字串比對，跟訂單裡實際的商品名稱，例如「魚油12送1」）。
+  def bought_core_products(customer_ids)
+    sql = <<~SQL
+      SELECT shopline_customer_id, ARRAY_AGG(DISTINCT product_name) AS names
+      FROM shopline_orders
+      WHERE shopline_customer_id IN (#{customer_ids.join(',')})
+        AND payment_status = '已付款'
+      GROUP BY shopline_customer_id
+    SQL
+    connection.select_all(sql).to_a.to_h do |r|
+      product_names = r["names"].is_a?(String) ? r["names"].delete_prefix("{").delete_suffix("}").split(",") : Array(r["names"])
+      matched = CORE_PRODUCTS.select { |core| product_names.any? { |n| n.include?(core) } }
+      [r["shopline_customer_id"].to_i, matched]
+    end
   end
 end
