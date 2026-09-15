@@ -16,6 +16,19 @@ class WeeklyPeriod
     new(week_start.to_date)
   end
 
+  # 「正式週報」的預設週期——最新一個已經完整結束的週一~週日。今天是週二
+  # 時，本週(週一~週日)還沒過完，正式週報預設要退回上一週，不能拿只過了
+  # 一兩天的本週跟上週完整7天比較（見 2026-09-15 第五輪修正）。
+  def self.latest_complete_week_start(reference_date = Date.current)
+    new(reference_date).prev_week_start
+  end
+
+  # 這個週期本身（週一~週日）是否已經完整結束——用「今天」判斷，不是用
+  # 產生報告當下的時間，這樣同一筆資料在不同天讀取，這個判斷結果不會變。
+  def complete?(reference_date = Date.current)
+    week_end < reference_date
+  end
+
   def range
     week_start..week_end
   end
@@ -116,16 +129,21 @@ class WeeklyPeriod
     (days_remaining_in_year / 7.0)
   end
 
+  # 2026-09-15 修正：這個 hash 會被塞進 WeeklyMetricsService 的
+  # "period" => @period.as_json，跟其餘全篇用字串鍵的 metrics 混在一起——
+  # 原本用符號鍵，導致 metrics["period"]["week_start"] 這種字串鍵查找永遠
+  # 讀到 nil（跟 data_gaps 先前踩過的同一類 bug），這裡統一轉字串鍵。
   def as_json(*)
     {
-      week_start: week_start, week_end: week_end,
-      prev_week_start: prev_week_start, prev_week_end: prev_week_end,
-      trailing4_start: trailing4_start, trailing4_end: trailing4_end,
-      ytd_start: ytd_start,
-      last_year_same_period_start: Date.new(week_end.year - 1, 1, 1),
-      last_year_same_period_end: last_year_same_period_end,
-      last_year_start: last_year_start, last_year_end: last_year_end,
-      days_remaining_in_year: days_remaining_in_year
+      "week_start" => week_start, "week_end" => week_end,
+      "prev_week_start" => prev_week_start, "prev_week_end" => prev_week_end,
+      "trailing4_start" => trailing4_start, "trailing4_end" => trailing4_end,
+      "ytd_start" => ytd_start,
+      "last_year_same_period_start" => Date.new(week_end.year - 1, 1, 1),
+      "last_year_same_period_end" => last_year_same_period_end,
+      "last_year_start" => last_year_start, "last_year_end" => last_year_end,
+      "days_remaining_in_year" => days_remaining_in_year,
+      "complete" => complete?
     }
   end
 

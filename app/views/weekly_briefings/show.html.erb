@@ -30,11 +30,14 @@
     <%= link_to weekly_briefings_path, class: "btn btn-outline-secondary btn-sm mr-1" do %>
       <i class="fal fa-list mr-1"></i>歷史週報
     <% end %>
+    <%= link_to in_progress_weekly_briefing_path, class: "btn btn-outline-secondary btn-sm mr-1" do %>
+      <i class="fal fa-hourglass-half mr-1"></i>查看本週即時進度
+    <% end %>
     <button type="button" class="btn btn-outline-secondary btn-sm mr-1" onclick="window.print()">
       <i class="fal fa-print mr-1"></i>列印／另存為PDF
     </button>
     <% if current_user.admin? %>
-      <%= button_to "重新產生本週報告", regenerate_weekly_briefing_path(week_start: @period.week_start.to_s),
+      <%= button_to "重新產生最新完整週報", regenerate_weekly_briefing_path(week_start: @period.week_start.to_s),
                     method: :post, class: "btn btn-info btn-sm", data: { confirm: "重新產生會覆蓋這一週目前的分析，確定嗎？（若上游快取過期會自動一併刷新，可能需要一點時間）" } %>
     <% end %>
   </div>
@@ -57,13 +60,30 @@
   <% briefing = @briefing %>
   <% wt = m["week_type"] || {} %>
 
+  <%#================ 頂部醒目警示：品質未過或內容格式異常時 ================%>
+  <% if briefing.needs_review_banner? %>
+    <div class="alert alert-danger">
+      <i class="fal fa-exclamation-triangle mr-1"></i>
+      <strong>此報告尚未通過品質驗收，不建議作為正式決策依據。</strong>
+    </div>
+  <% end %>
+
   <%#================ 報告狀態與品質驗收（管理頁一眼看到，不用查資料庫） ================%>
   <div class="panel">
     <div class="panel-content">
       <div class="row text-center">
         <div class="col-6 col-md-2 mb-2">
           <div class="text-muted small">產生狀態</div>
-          <div><%= briefing.status == "success" ? content_tag(:span, "成功", class: "badge badge-success") : content_tag(:span, "失敗", class: "badge badge-danger") %></div>
+          <div>
+            <% case briefing.status
+               when "success" %>
+              <span class="badge badge-success">成功</span>
+            <% when "invalid_response" %>
+              <span class="badge badge-warning">格式異常</span>
+            <% else %>
+              <span class="badge badge-danger">失敗</span>
+            <% end %>
+          </div>
         </div>
         <div class="col-6 col-md-2 mb-2">
           <div class="text-muted small">AI API</div>
@@ -72,7 +92,9 @@
         <div class="col-6 col-md-2 mb-2">
           <div class="text-muted small">品質驗收</div>
           <div>
-            <% if briefing.status != "success" %>
+            <% if briefing.status == "invalid_response" %>
+              <span class="badge badge-warning">內容不完整</span>
+            <% elsif briefing.status != "success" %>
               <span class="badge badge-secondary">尚未產生內容</span>
             <% elsif briefing.quality_passed? %>
               <span class="badge badge-success">已完成驗收</span>
@@ -97,6 +119,12 @@
       <% if briefing.status == "failed" %>
         <div class="alert alert-danger small mb-0 mt-2"><strong>錯誤摘要：</strong><%= briefing.error_message %></div>
       <% end %>
+      <% if briefing.status == "invalid_response" %>
+        <div class="alert alert-warning small mb-0 mt-2">
+          <strong>AI 回應解析成功，但以下必要欄位缺失或空白（<%= briefing.retried? ? "已自動重試一次仍缺" : "" %>）：</strong>
+          <ul class="mb-0"><% briefing.missing_fields.each do |f| %><li><%= f %></li><% end %></ul>
+        </div>
+      <% end %>
       <% if briefing.quality_needs_review? %>
         <div class="alert alert-warning small mb-0 mt-2">
           <strong>品質驗收未通過，以下項目需要檢查：</strong>
@@ -113,10 +141,10 @@
     <% if wt["campaign_size_note"] %><span class="badge badge-light border">⚠️ <%= wt["campaign_size_note"] %></span><% end %>
   </div>
 
-  <% if briefing.status == "failed" && m.present? %>
+  <% if briefing.status != "success" && m.present? %>
     <div class="alert alert-danger">
       <i class="fal fa-exclamation-triangle mr-1"></i>
-      下方數據仍為本次計算結果，可放心參考；只有 AI 解讀／決策建議沒有產生（錯誤摘要見上方狀態卡片）。
+      下方數據仍為本次計算結果，可放心參考；只有 AI 解讀／決策建議沒有正常產生（詳情見上方狀態卡片）。
     </div>
   <% end %>
 

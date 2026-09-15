@@ -4,7 +4,10 @@
 # 首頁與 /weekly_briefings 只讀已落地的資料——不即時呼叫 API，可回溯、成本可控。
 # 跟 DailyBriefing 是同一種設計（見 app/services/daily_briefing_service.rb）。
 class WeeklyBriefing < ApplicationRecord
-  STATUSES = %w[pending success failed].freeze
+  # invalid_response：Claude API 呼叫本身成功（HTTP 200、JSON 語法合法），
+  # 但驗證後發現必要欄位缺失或空殼（重試一次仍然缺）——跟 failed（API呼叫
+  # 失敗/JSON語法錯誤/沒有金鑰）是不同的失敗模式，故意分開，畫面文案也不同。
+  STATUSES = %w[pending success failed invalid_response].freeze
 
   has_many :todos, class_name: "WeeklyBriefingTodo", dependent: :destroy, inverse_of: :weekly_briefing
 
@@ -97,5 +100,20 @@ class WeeklyBriefing < ApplicationRecord
 
   def data_completeness_score
     metrics.dig("data_gaps", "completeness_score")
+  end
+
+  def missing_fields
+    Array(meta["missing_fields"])
+  end
+
+  def retried?
+    meta["retried"] == true
+  end
+
+  # 品質未過（quality_check沒通過）或內容驗證沒過（invalid_response）都要
+  # 擋掉「這份可以直接拿去做決策」的觀感——畫面用這個決定要不要在最上方
+  # 顯示醒目警示。
+  def needs_review_banner?
+    status == "invalid_response" || quality_needs_review?
   end
 end

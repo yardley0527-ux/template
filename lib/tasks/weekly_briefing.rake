@@ -15,10 +15,17 @@
 # 每週固定跑一次完整重算。手動補跑／測試：
 #   bin/rails ops:weekly_briefing
 #   WEEK=2026-09-08 bin/rails ops:weekly_briefing   # 指定週一日期補算某一週
+#
+# 2026-09-15 第五輪修正：沒帶 WEEK 時，舊版直接用 Date.current 當
+# week_start——如果排程剛好在週一早上跑，Date.current 那天正好是「剛開始
+# 的本週」的週一，WeeklyPeriod.new(Date.current) 會解析成「本週」而不是
+# 「剛結束的上週」，等於每次排程都在產生一份還沒開始累積資料的週報。改用
+# WeeklyPeriod.latest_complete_week_start，永遠對應到最新一個已完整結束
+# 的週一~週日，不管排程是哪一天觸發都一樣。
 namespace :ops do
-  desc "刷新每週報告依賴的分析快取，再產生本週經營決策報告"
+  desc "刷新每週報告依賴的分析快取，再產生最新一個完整週的經營決策報告"
   task weekly_briefing: :environment do
-    week_start = ENV["WEEK"].presence ? Date.parse(ENV["WEEK"]) : Date.current
+    week_start = ENV["WEEK"].presence ? Date.parse(ENV["WEEK"]) : WeeklyPeriod.latest_complete_week_start
 
     briefing, refresh_log = WeeklyBriefingRunner.call(week_start: week_start, force_refresh: true)
     refresh_log.each { |k, v| puts "[ops:weekly_briefing] #{k}: #{v}" }

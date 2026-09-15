@@ -137,9 +137,18 @@ class WeeklyBriefingQualityChecker
     business_status = @report.dig("executive_summary", "status")
     failures << "有#{high_risk_flags}項高風險旗標，但整體狀態卻是healthy_growth" if high_risk_flags.positive? && business_status == "healthy_growth"
 
+    # 2026-09-15 第五輪修正新增：週期未結束時，本週vs上週的原始差異是「兩天
+    # 累計 vs 完整七天」這種不可比較的比較——正式週報不該在這種狀態下產生，
+    # 這裡當作驗收失敗項目，逼報告顯示「需要檢查」而不是靜靜放行。
+    period_complete = @metrics.dig("period", "complete")
+    failures << "統計週期尚未結束（#{@metrics.dig('period', 'week_start')}~#{@metrics.dig('period', 'week_end')}），本週vs上週比較不具參考性" if period_complete == false
+
+    failures << "資料完整度分數尚未產生（data_gaps.completeness_score 缺失）" if @metrics.dig("data_gaps", "completeness_score").nil?
+
     {
       failures: failures,
       summary: {
+        "period_complete"                   => period_complete,
         "new_plus_returning_equals_total"   => new_c + ret_c == total_c,
         "new_plus_returning_revenue_equals_total" => (new_r + ret_r - total_r).abs <= 1.0,
         "membership_unclassified_pct"       => unclassified_pct,

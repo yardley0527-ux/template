@@ -26,12 +26,25 @@ require "net/http"
 # 改成要求AI用「比對結果尚未更新完成、此數字暫不採用」等具體描述，不使用
 # 被禁字面短語本身。
 #
+# 2026-09-15 第四輪修正（PROMPT_VERSION v5）：正式站出現「AI API 成功、
+# status:success，但判斷依據/信心/風險/機會/決策全部空白」——根因是舊版
+# 「JSON.parse 沒丟例外＝成功」的判斷太寬鬆：executive_summary 語法上合法
+# 卻可以是空殼 {}，仍然被存成 success。新增 WeeklyBriefingResponseValidator
+# 在存檔前檢查必要欄位是否真的有內容，缺欄位就在同一次請求內重試一次（prompt
+# 附上缺什麼），重試後仍缺才存成 status: "invalid_response"（不是success，
+# 也不是failed——API呼叫本身有回應，只是內容不合格）。同時把 parse_response
+# 從單純正規表達式硬抓改成「先試整段直接parse→再試去掉code fence→最後才退
+# 回抓第一個{到最後一個}」，降低抓錯內容的風險；max_tokens 從8000提高到
+# 16000，避免schema變大後內容被截斷。
+#
 # 跟 DailyBriefingService 是同一種落地模式：生成後存進 weekly_briefings，
 # 頁面只讀已落地資料，不即時呼叫 API。同一週重新產生會更新同一筆 row。
 class WeeklyBriefingService
   CLAUDE_API_URL  = "https://api.anthropic.com/v1/messages"
   MODEL           = "claude-opus-4-8"
-  PROMPT_VERSION  = "v4"
+  PROMPT_VERSION  = "v5"
+  MAX_TOKENS      = 16_000
+  RAW_RESPONSE_DEBUG_LENGTH = 4000 # invalid_response 時存這麼多原始回應供除錯，不整段存避免meta過大
 
   def self.call(week_start: Date.current)
     new(week_start).call
@@ -57,8 +70,33 @@ class WeeklyBriefingService
       return briefing
     end
 
-    raw = call_claude(build_prompt(metrics, risk_flags, status), api_key)
+    prompt = build_prompt(metrics, risk_flags, status)
+    raw = call_claude(prompt, api_key)
     parsed = parse_response(raw)
+    validation = WeeklyBriefingResponseValidator.call(parsed)
+    retried = false
+
+    unless validation[:valid]
+      retried = true
+      retry_prompt = build_retry_prompt(prompt, validation[:missing_fields])
+      raw = call_claude(retry_prompt, api_key)
+      parsed = parse_response(raw)
+      validation = WeeklyBriefingResponseValidator.call(parsed)
+    end
+
+    unless validation[:valid]
+      briefing.update!(
+        status: "invalid_response", metrics: metrics, error_message: "AI報告格式異常，需要重新產生（缺少：#{validation[:missing_fields].join('、')}）",
+        model: MODEL, prompt_version: PROMPT_VERSION,
+        meta: {
+          "risk_flags" => risk_flags, "status_classification" => status, "ai_api_success" => true,
+          "missing_fields" => validation[:missing_fields], "retried" => retried,
+          "raw_response_excerpt" => raw.to_s.truncate(RAW_RESPONSE_DEBUG_LENGTH)
+        }
+      )
+      return briefing
+    end
+
     parsed["executive_summary"] = status.merge(parsed["executive_summary"] || {})
     ai_report = parsed.except("todos")
     quality_check = WeeklyBriefingQualityChecker.call(ai_report: ai_report, metrics: metrics, risk_flags: risk_flags)
@@ -72,7 +110,8 @@ class WeeklyBriefingService
         model:          MODEL,
         prompt_version: PROMPT_VERSION,
         generated_at:   Time.current,
-        meta:           { "risk_flags" => risk_flags, "status_classification" => status, "quality_check" => quality_check, "ai_api_success" => true }
+        meta:           { "risk_flags" => risk_flags, "status_classification" => status, "quality_check" => quality_check,
+                           "ai_api_success" => true, "retried" => retried }
       )
       upsert_todos!(briefing, parsed["todos"])
     end
@@ -88,6 +127,16 @@ class WeeklyBriefingService
   end
 
   private
+
+  def build_retry_prompt(original_prompt, missing_fields)
+    original_prompt + <<~RETRY
+
+      ＝＝ 重試提示 ＝＝
+      你上一次的回應缺少以下必要欄位（不能是nil、空字串或空陣列，請務必全部補上實際內容）：
+      #{missing_fields.join('、')}
+      請重新輸出完整、符合上面格式的JSON，不要只回傳缺少的片段。
+    RETRY
+  end
 
   def upsert_todos!(briefing, raw_todos)
     seen_keys = []
@@ -250,7 +299,7 @@ class WeeklyBriefingService
     req["content-type"]      = "application/json"
     req.body = {
       model:      MODEL,
-      max_tokens: 8000,
+      max_tokens: MAX_TOKENS,
       messages:   [{ role: "user", content: prompt }]
     }.to_json
 
@@ -258,14 +307,27 @@ class WeeklyBriefingService
     body     = JSON.parse(response.body)
     raise "Claude API #{response.code}: #{body.dig('error', 'message')}" unless response.code == "200"
 
+    stop_reason = body["stop_reason"]
+    Rails.logger.warn("[WeeklyBriefingService] stop_reason=max_tokens：回應可能被截斷") if stop_reason == "max_tokens"
+
     body.dig("content", 0, "text").to_s
   end
 
+  # 三段嘗試，由嚴謹到寬鬆：
+  #   1. 整段文字直接當JSON解析（模型乖乖只輸出JSON時最常見、也最不會抓錯）
+  #   2. 去掉 ```json ... ``` 這類code fence後再試一次
+  #   3. 最後才退回「抓文字裡第一個{到最後一個}」的寬鬆比對——只在前兩步都
+  #      失敗時才用，因為大型巢狀JSON裡如果前後有雜訊文字，這個正規表達式
+  #      有抓錯範圍的風險。
   def parse_response(text)
-    json = text[/\{.*\}/m]
-    raise "AI 回應不含 JSON：#{text.truncate(200)}" if json.nil?
+    parsed = JSON.parse(text) rescue nil
+    parsed ||= (JSON.parse(text.gsub(/```json|```/, "").strip) rescue nil)
+    parsed ||= begin
+      match = text[/\{.*\}/m]
+      match && (JSON.parse(match) rescue nil)
+    end
+    raise "AI 回應不含有效JSON：#{text.truncate(300)}" if parsed.nil?
 
-    parsed = JSON.parse(json)
     {
       "executive_summary" => parsed["executive_summary"].is_a?(Hash) ? parsed["executive_summary"] : {},
       "business_analysis" => parsed["business_analysis"].is_a?(Hash) ? parsed["business_analysis"] : {},

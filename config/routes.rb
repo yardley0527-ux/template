@@ -52,6 +52,7 @@ Rails.application.routes.draw do
   get '/livestream_reports', to: 'livestream_reports#index', as: :livestream_reports
 
   get  '/weekly_briefings',                          to: 'weekly_briefings#index',      as: :weekly_briefings
+  get  '/weekly_briefings/in_progress',               to: 'weekly_briefings#in_progress', as: :in_progress_weekly_briefing
   get  '/weekly_briefings/:week_start',               to: 'weekly_briefings#show',       as: :weekly_briefing,
                                                        constraints: { week_start: /current|\d{4}-\d{2}-\d{2}/ }
   post '/weekly_briefings/:week_start/regenerate',    to: 'weekly_briefings#regenerate', as: :regenerate_weekly_briefing,

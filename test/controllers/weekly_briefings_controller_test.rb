@@ -83,10 +83,17 @@ class WeeklyBriefingsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "需要先補的資料"
   end
 
-  test "current resolves to this week without needing an exact date" do
-    sign_in @admin
-    get weekly_briefing_path(week_start: "current")
-    assert_response :success
+  test "current resolves to the latest complete week, not the in-progress current calendar week" do
+    travel_to Date.new(2026, 9, 15) do # a Tuesday; the 09/14~09/20 week has not ended
+      sign_in @admin
+      get weekly_briefing_path(week_start: "current")
+
+      assert_response :success
+      assert_includes response.body, "2026/09/07" # last complete week's start date, not 09/14 (this week, still running)
+      assert_not_includes response.body, "2026/09/14 ~ 09/20"
+    end
+  ensure
+    travel_back
   end
 
   test "regenerate is forbidden for a non-admin user" do
@@ -95,5 +102,32 @@ class WeeklyBriefingsControllerTest < ActionDispatch::IntegrationTest
       post regenerate_weekly_briefing_path(week_start: "2026-06-15")
     end
     assert_redirected_to weekly_briefing_path(week_start: "2026-06-15")
+  end
+
+  test "regenerate refuses to run for a week that has not ended yet, even if an admin requests it directly by URL" do
+    travel_to Date.new(2026, 9, 15) do
+      sign_in @admin
+      assert_no_difference -> { WeeklyBriefing.count } do
+        post regenerate_weekly_briefing_path(week_start: "2026-09-14") # this week, not yet complete
+      end
+      assert_redirected_to weekly_briefing_path(week_start: "2026-09-14")
+      follow_redirect!
+      assert_includes flash[:alert].to_s, "尚未結束"
+    end
+  ensure
+    travel_back
+  end
+
+  test "in_progress shows same-elapsed-day comparisons for the still-running week, not a full week vs full week comparison" do
+    travel_to Date.new(2026, 9, 15) do
+      sign_in @admin
+      get in_progress_weekly_briefing_path
+
+      assert_response :success
+      assert_includes response.body, "本週即時進度"
+      assert_includes response.body, "尚未結束"
+    end
+  ensure
+    travel_back
   end
 end

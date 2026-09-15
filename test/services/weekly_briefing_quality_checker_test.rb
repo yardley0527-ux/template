@@ -27,6 +27,8 @@ class WeeklyBriefingQualityCheckerTest < ActiveSupport::TestCase
 
   def good_metrics
     {
+      "period" => { "complete" => true, "week_start" => "2026-06-15", "week_end" => "2026-06-21" },
+      "data_gaps" => { "completeness_score" => 46.15 },
       "new_vs_returning" => { "this_week" => { "new_customers" => 5, "returning_customers" => 10, "total_customers" => 15,
                                                  "new_revenue" => 100.0, "returning_revenue" => 200.0, "total_revenue" => 300.0 } },
       "membership" => { "reconciliation" => { "unclassified_pct" => 2.0 } },
@@ -108,6 +110,24 @@ class WeeklyBriefingQualityCheckerTest < ActiveSupport::TestCase
     result = WeeklyBriefingQualityChecker.call(ai_report: good_report, metrics: metrics, risk_flags: [])
     assert_not result["passed"]
     assert result["failed_items"].any? { |f| f.include?("年度營收缺口") }
+  end
+
+  test "fails when the statistics period has not ended yet" do
+    metrics = good_metrics
+    metrics["period"]["complete"] = false
+
+    result = WeeklyBriefingQualityChecker.call(ai_report: good_report, metrics: metrics, risk_flags: [])
+    assert_not result["passed"]
+    assert result["failed_items"].any? { |f| f.include?("尚未結束") }
+  end
+
+  test "fails when the data completeness score was not produced" do
+    metrics = good_metrics
+    metrics["data_gaps"] = {}
+
+    result = WeeklyBriefingQualityChecker.call(ai_report: good_report, metrics: metrics, risk_flags: [])
+    assert_not result["passed"]
+    assert result["failed_items"].any? { |f| f.include?("資料完整度") }
   end
 
   test "fails when high-severity risk flags exist but the status is healthy_growth" do

@@ -53,6 +53,18 @@ class WeeklyPeriodTest < ActiveSupport::TestCase
     assert period.days_remaining_in_year > 360
   end
 
+  test "latest_complete_week_start resolves to the previous week when the current week has not ended" do
+    # 2026-09-15 is a Tuesday; the week containing it (09/14~09/20) has not ended.
+    assert_equal Date.new(2026, 9, 7), WeeklyPeriod.latest_complete_week_start(Date.new(2026, 9, 15))
+  end
+
+  test "complete? is false for a week that has not ended and true once it has" do
+    period = WeeklyPeriod.new(Date.new(2026, 9, 14)) # week_end = 2026-09-20
+    assert_not period.complete?(Date.new(2026, 9, 15))
+    assert_not period.complete?(Date.new(2026, 9, 20)) # still the last day, not "ended" yet
+    assert period.complete?(Date.new(2026, 9, 21))
+  end
+
   test "for_week_start builds the same period as new" do
     a = WeeklyPeriod.new(Date.new(2026, 9, 14))
     b = WeeklyPeriod.for_week_start(Date.new(2026, 9, 14))

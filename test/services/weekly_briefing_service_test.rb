@@ -4,16 +4,28 @@ require "test_helper"
 
 class WeeklyBriefingServiceTest < ActiveSupport::TestCase
   class StubbedService < WeeklyBriefingService
-    attr_writer :fake_response, :raise_error
-    attr_reader :sent_prompt
+    attr_writer :raise_error
+    attr_reader :sent_prompts, :call_count
+
+    # fake_response 可以是單一字串（每次呼叫都回同一個）或字串陣列（依呼叫
+    # 次序輪流回傳，第二次呼叫模擬重試時的回應）。
+    def fake_response=(value)
+      @fake_responses = value.is_a?(Array) ? value : [value]
+    end
+
+    def sent_prompt
+      sent_prompts&.last
+    end
 
     private
 
     def call_claude(prompt, _api_key)
-      @sent_prompt = prompt
+      @sent_prompts ||= []
+      @sent_prompts << prompt
+      @call_count = (@call_count || 0) + 1
       raise @raise_error if @raise_error
 
-      @fake_response
+      @fake_responses[[@call_count - 1, @fake_responses.size - 1].min]
     end
   end
 
@@ -22,7 +34,9 @@ class WeeklyBriefingServiceTest < ActiveSupport::TestCase
       executive_summary: {
         one_liner: one_liner, status_basis: "b",
         top_findings: [{ finding: "f1", data_evidence: "d1", why_it_matters: "w1", nature: "short_term", revenue_impact: "r1", confidence: "medium" }],
-        decisions: decisions, biggest_risk: nil, biggest_opportunity: nil
+        decisions: decisions,
+        biggest_risk: { description: "risk desc", data_evidence: "evidence" },
+        biggest_opportunity: { description: "opp desc", data_evidence: "evidence" }
       },
       business_analysis: {
         revenue_and_forecast: ["r1"], revenue_change_breakdown: [], new_and_returning_customers: [],
@@ -39,7 +53,7 @@ class WeeklyBriefingServiceTest < ActiveSupport::TestCase
   end
 
   def default_decisions
-    [{ question: "q1", current_situation: "s1", data_evidence: "d1", decision_type: "small_test",
+    [{ question: "q1", current_situation: "s1", data_evidence: "d1", decision_type: "small_test", confidence: "medium",
        option_a: { action: "a", benefit: "b", risk: "r", condition: "c" },
        option_b: { action: "a2", benefit: "b2", risk: "r2", condition: "c2" }, option_c: nil,
        recommended_option: "A", recommendation_reason: "reason",
@@ -189,6 +203,59 @@ class WeeklyBriefingServiceTest < ActiveSupport::TestCase
     briefing = build_service(response: "```json\n#{good_json}\n```").call
     assert_equal "success", briefing.status
     assert_equal "測試週摘要", briefing.one_liner
+  end
+
+  test "parses a plain JSON response with no surrounding prose or fences" do
+    briefing = build_service(response: good_json).call
+    assert_equal "success", briefing.status
+  end
+
+  # ── 這一輪修正的核心：AI API HTTP成功、JSON語法合法，但內容是空殼 ──
+  test "HTTP success with a syntactically valid but semantically empty executive_summary is not marked success" do
+    empty_response = { executive_summary: {}, business_analysis: {} }.to_json
+
+    briefing = build_service(response: empty_response).call
+
+    assert_equal "invalid_response", briefing.status
+    assert briefing.ai_api_success?, "the HTTP call itself succeeded, so this should stay true even though the content is invalid"
+    assert_not_equal "success", briefing.status
+    assert briefing.missing_fields.include?("executive_summary")
+    assert_includes briefing.error_message, "AI報告格式異常"
+  end
+
+  test "an invalid first response triggers exactly one retry, and a valid retry response is saved as success" do
+    empty_response = { executive_summary: {}, business_analysis: {} }.to_json
+    service = build_service(response: [empty_response, good_json])
+
+    briefing = service.call
+
+    assert_equal "success", briefing.status
+    assert_equal 2, service.call_count
+    assert briefing.retried?
+    assert_includes service.sent_prompts.last, "重試提示"
+    assert_includes service.sent_prompts.last, "executive_summary"
+  end
+
+  test "an invalid response that is still invalid after the retry is saved as invalid_response, not success, and only retries once" do
+    empty_response = { executive_summary: {}, business_analysis: {} }.to_json
+    service = build_service(response: empty_response) # every call returns the same empty response
+
+    briefing = service.call
+
+    assert_equal "invalid_response", briefing.status
+    assert_equal 2, service.call_count, "should retry exactly once, not loop forever"
+    assert briefing.retried?
+    assert briefing.metrics["revenue_progress"].present?, "metrics must still be saved so the page can show real numbers"
+  end
+
+  test "a decision missing option_b triggers invalid_response, matching the field-level validator" do
+    incomplete_decision = default_decisions.first.merge(option_b: nil)
+    response = good_json(decisions: [incomplete_decision])
+
+    briefing = build_service(response: response).call
+
+    assert_equal "invalid_response", briefing.status
+    assert_includes briefing.missing_fields, "decisions[0].option_b"
   end
 
   test "prompt embeds the computed metrics, status classification, and risk flags as JSON, not prose the AI must recompute" do

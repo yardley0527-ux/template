@@ -1,0 +1,85 @@
+<% content_for :page_title, "本週即時進度" %>
+<% s = @snapshot %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-hourglass-half mr-2 text-info"></i> 本週即時進度
+    <span class="text-muted small ml-2"><%= s["week_start"].strftime("%Y/%m/%d") %> ~ <%= s["week_end"].strftime("%m/%d") %></span>
+  </h1>
+  <div class="ml-auto">
+    <%= link_to weekly_briefings_path, class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="fal fa-list mr-1"></i>歷史週報
+    <% end %>
+  </div>
+</div>
+
+<div class="alert alert-info">
+  <i class="fal fa-info-circle mr-1"></i>
+  這一週<strong>尚未結束</strong>（截至 <%= s["today"].strftime("%Y/%m/%d") %>，已過 <%= s["days_elapsed"] %> 天，還剩 <%= s["days_remaining"] %> 天）。
+  這裡只顯示「同樣天數」之間的比較與依目前日均的推估，<strong>不是正式週報</strong>——正式的經營決策報告只在週期結束後產生，
+  請到 <%= link_to "/weekly_briefings/current", weekly_briefing_path(week_start: "current") %> 查看最新一份完整週報告。
+</div>
+
+<div class="panel">
+  <div class="panel-hdr"><h2>本週 vs 上週：同樣天數比較（不是本週兩天比上週完整七天）</h2></div>
+  <div class="panel-content p-0">
+    <div class="table-responsive">
+      <table class="table table-sm mb-0">
+        <thead class="thead-light">
+          <tr><th></th><th>本週截至第<%= s["days_elapsed"] %>天</th><th>上週同樣前<%= s["days_elapsed"] %>天（至<%= s.dig("prev_week_same_elapsed","range_end")&.strftime("%m/%d") %>）</th><th>成長率</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-muted small">營收</td>
+            <td><%= number_to_currency(s.dig("this_week_partial","revenue"), unit: "NT$", precision: 0) %></td>
+            <td><%= number_to_currency(s.dig("prev_week_same_elapsed","revenue"), unit: "NT$", precision: 0) %></td>
+            <td>
+              <% g = s["revenue_growth_pct_same_elapsed"] %>
+              <% if g.nil? %>—<% else %>
+                <span class="badge <%= g.positive? ? 'badge-success' : (g.negative? ? 'badge-danger' : 'badge-secondary') %>">
+                  <%= g.positive? ? "▲" : (g.negative? ? "▼" : "―") %> <%= number_with_precision(g.abs, precision: 1) %>%
+                </span>
+              <% end %>
+            </td>
+          </tr>
+          <tr>
+            <td class="text-muted small">訂單數</td>
+            <td><%= s.dig("this_week_partial","orders") %></td>
+            <td><%= s.dig("prev_week_same_elapsed","orders") %></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td class="text-muted small">買家數</td>
+            <td><%= s.dig("this_week_partial","buyers") %></td>
+            <td><%= s.dig("prev_week_same_elapsed","buyers") %></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr"><h2>日均營收與整週推估</h2></div>
+  <div class="panel-content">
+    <div class="row text-center mb-3">
+      <div class="col-4">
+        <div class="text-muted small">本週日均</div>
+        <div class="h6"><%= number_to_currency(s["daily_avg_this_week"], unit: "NT$", precision: 0) %></div>
+      </div>
+      <div class="col-4">
+        <div class="text-muted small">上週同樣天數日均</div>
+        <div class="h6"><%= number_to_currency(s["daily_avg_prev_week_same_elapsed"], unit: "NT$", precision: 0) %></div>
+      </div>
+      <div class="col-4">
+        <div class="text-muted small">上週完整七天日均</div>
+        <div class="h6"><%= number_to_currency(s["daily_avg_prev_week_full"], unit: "NT$", precision: 0) %></div>
+      </div>
+    </div>
+    <div class="alert alert-warning small mb-0">
+      <strong>依目前日均推估整週營收：<%= number_to_currency(s["projected_full_week_revenue"], unit: "NT$", precision: 0) %></strong>
+      <div><%= s["projection_note"] %></div>
+    </div>
+  </div>
+</div>
