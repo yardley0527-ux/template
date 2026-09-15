@@ -101,6 +101,21 @@ class WeeklyBriefingServiceTest < ActiveSupport::TestCase
     assert briefing.meta["status_classification"].present?
   end
 
+  test "a quality check runs automatically after a successful generation and is readable without querying the database again" do
+    briefing = build_service.call
+
+    assert briefing.ai_api_success?
+    assert briefing.quality_check.present?
+    assert_includes [true, false], briefing.quality_passed?
+  end
+
+  test "ai_api_success? is false when the API key is missing, without needing to inspect error_message" do
+    ENV.delete("ANTHROPIC_API_KEY")
+    briefing = build_service.call
+
+    assert_not briefing.ai_api_success?
+  end
+
   test "regenerating the same week updates the existing row instead of creating a duplicate" do
     build_service.call
     assert_no_difference -> { WeeklyBriefing.count } do

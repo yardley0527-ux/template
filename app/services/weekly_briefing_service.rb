@@ -19,12 +19,19 @@ require "net/http"
 # decision_type（immediate/small_test/needs_more_data），資料不完整時改用
 # 小規模測試而不是放棄提出決策。
 #
+# 2026-09-15 第三輪修正（PROMPT_VERSION v4）：本機用真實 ANTHROPIC_API_KEY
+# 實際產生一次報告後，WeeklyBriefingQualityChecker 抓到 v3 舊版規則7仍指示
+# AI 對null的回購數字寫「資料不足／計算未完成」，跟同一份prompt別處「全篇
+# 禁止這三個字面短語」的規則自相矛盾，導致實測仍有1次「資料不足」殘留。
+# 改成要求AI用「比對結果尚未更新完成、此數字暫不採用」等具體描述，不使用
+# 被禁字面短語本身。
+#
 # 跟 DailyBriefingService 是同一種落地模式：生成後存進 weekly_briefings，
 # 頁面只讀已落地資料，不即時呼叫 API。同一週重新產生會更新同一筆 row。
 class WeeklyBriefingService
   CLAUDE_API_URL  = "https://api.anthropic.com/v1/messages"
   MODEL           = "claude-opus-4-8"
-  PROMPT_VERSION  = "v3"
+  PROMPT_VERSION  = "v4"
 
   def self.call(week_start: Date.current)
     new(week_start).call
@@ -44,7 +51,8 @@ class WeeklyBriefingService
 
     api_key = ENV["ANTHROPIC_API_KEY"].to_s.strip
     if api_key.blank?
-      briefing.update!(status: "failed", metrics: metrics, meta: { "risk_flags" => risk_flags, "status_classification" => status },
+      briefing.update!(status: "failed", metrics: metrics,
+                        meta: { "risk_flags" => risk_flags, "status_classification" => status, "ai_api_success" => false },
                         error_message: "ANTHROPIC_API_KEY 未設定")
       return briefing
     end
@@ -52,17 +60,19 @@ class WeeklyBriefingService
     raw = call_claude(build_prompt(metrics, risk_flags, status), api_key)
     parsed = parse_response(raw)
     parsed["executive_summary"] = status.merge(parsed["executive_summary"] || {})
+    ai_report = parsed.except("todos")
+    quality_check = WeeklyBriefingQualityChecker.call(ai_report: ai_report, metrics: metrics, risk_flags: risk_flags)
 
     ActiveRecord::Base.transaction do
       briefing.update!(
         status:         "success",
         metrics:        metrics,
-        ai_report:      parsed.except("todos"),
+        ai_report:      ai_report,
         error_message:  nil,
         model:          MODEL,
         prompt_version: PROMPT_VERSION,
         generated_at:   Time.current,
-        meta:           { "risk_flags" => risk_flags, "status_classification" => status }
+        meta:           { "risk_flags" => risk_flags, "status_classification" => status, "quality_check" => quality_check, "ai_api_success" => true }
       )
       upsert_todos!(briefing, parsed["todos"])
     end
@@ -72,7 +82,7 @@ class WeeklyBriefingService
     Rails.logger.error("[WeeklyBriefingService] #{e.class}: #{e.message}")
     briefing ||= WeeklyBriefing.for_week(@period.week_start)
     briefing.update!(status: "failed", metrics: metrics || briefing.metrics.presence || {},
-                      meta: (risk_flags && status) ? { "risk_flags" => risk_flags, "status_classification" => status } : briefing.meta,
+                      meta: (risk_flags && status) ? { "risk_flags" => risk_flags, "status_classification" => status, "ai_api_success" => false } : briefing.meta,
                       error_message: "#{e.class}: #{e.message}")
     briefing
   end
@@ -146,11 +156,13 @@ class WeeklyBriefingService
       B級·代理指標：CRM沒有完整直接數據，但可用現有數據合理判斷方向，用保守語氣下結論，不得省略判斷
         （例：「沒有廣告投放資料，但新客人數、新客營收同步下降，可判斷新客入口明顯轉弱」）。標示：證據強度：中
       C級·無有效證據：CRM完全沒有直接數據也沒有合理代理指標——這種主題不要寫進正文，直接略過（附錄已經
-        由程式列出所有已知缺口，你不需要在正文重複提）。絕對不要在正文寫「資料不足」「需人工確認」
-        「無法判斷」這類字眼，尤其是 one_liner、top_findings的finding、decisions的question、
-        biggest_risk、biggest_opportunity 這幾個標題型欄位，一律不能出現這些字。
+        由程式列出所有已知缺口，你不需要在正文重複提）。「資料不足」「需人工確認」「無法判斷」這三個字面
+        短語，全篇任何地方都不能出現——包括提示critical缺口的時候也一樣，改用具體描述交代情況（例如寫
+        「本次比對尚未更新完成，此數字暫不採用」，不要寫「資料不足」；寫「已知XX原因，暫不確認YY」，
+        不要寫「無法判斷」）。程式事後會逐字掃描這三個短語，出現就算驗收沒過，請務必換句話說。
       下面這份「本週已知的critical等級資料缺口」（會直接影響核心結論能否成立的缺口，已由程式判定，不是
-      你來判斷）如果非空，你可以在對應段落簡短提一次（例如「本週回購比對資料尚未更新完成」），但只能提
+      你來判斷）如果非空，你可以在對應段落簡短提一次（例如「本週回購比對資料尚未更新完成，此數字暫不
+      採用」，不要用「資料不足」這個詞），但只能提
       一次、不要每段重複：
       #{critical_gaps.to_json}
       除了上面這份清單以外，任何 important/supplementary 等級的缺口都不要在正文出現，那些已經自動整理
@@ -180,7 +192,7 @@ class WeeklyBriefingService
           "status_basis": "為什麼是這個狀態，具體引用數據",
           "top_findings": [{"finding":"發生什麼（標題不能是資料不足）","data_evidence":"數據證據","why_it_matters":"為什麼重要","nature":"short_term或structural","revenue_impact":"對未來營收的影響","confidence":"high或medium"}]（最多3項，只放high/medium信心的發現，low信心的判斷放進business_analysis段落就好，不要放這裡）,
           "decisions": [{"question":"決策問題（標題不能是資料不足）","current_situation":"目前狀況","data_evidence":"數據證據",
-            "decision_type":"immediate或small_test或needs_more_data",
+            "decision_type":"immediate或small_test或needs_more_data","confidence":"high或medium或low",
             "option_a":{"action":"做法","benefit":"預期效益","risk":"風險","condition":"適用條件"},
             "option_b":{"action":"做法","benefit":"預期效益","risk":"風險","condition":"適用條件"},
             "option_c":null或同上格式,
@@ -212,7 +224,7 @@ class WeeklyBriefingService
       4. 不要因為單週波動就判斷長期趨勢——除非風險旗標清單裡有 consecutive_revenue_decline 或 status 本身是 structural_decline/high_risk。
       5. 不要用「腰斬」「崩跌」等情緒化詞彙，除非數字確實符合腰斬（≥50%下降）等明確定義。
       6. week_type 是直播週還是自然週要納入考量，不要把活動週跟自然週當同條件比較；comparable_basis 找不到基準時，改用「本週vs上週」的原始差異做B級代理判斷（仍要下結論，只是信心降為中），不要整句寫成無法判斷。
-      7. product_repurchase 裡 repurchased_this_week 或 overdue_growth_pct 是 null 的產品，那個「數字」寫「資料不足／計算未完成」，但不影響你對其他有資料的產品或整體舊客回購趨勢下判斷——不要因為某幾個產品的單一數字不可信，就連整個商品段落都放棄判斷。
+      7. product_repurchase 裡 repurchased_this_week 或 overdue_growth_pct 是 null 的產品，那個「數字」要說明「比對結果尚未更新完成、此數字暫不採用」（不要用「資料不足」字面），但不影響你對其他有資料的產品或整體舊客回購趨勢下判斷——不要因為某幾個產品的單一數字不可信，就連整個商品段落都放棄判斷。
       8. 付款失敗率低只能判斷「已建立訂單本身沒有付款失敗異常」這個成交結果，不能延伸推論轉換漏斗或需求端正常——但這不代表整段要寫資料不足，正常引用即可，不用每次強調CRM缺什麼。
       9. new_vs_returning.cohort_repurchase 樣本不足時仍要給出「早期訊號，暫定方向」的B級判斷，不要直接跳過不寫。
       10. risks 只能對應「已觸發的風險旗標」清單逐一寫，不要發明清單以外的風險；清單是空的代表本週真的沒有已知風險觸發，但如果 top_findings 裡已經指出重大惡化，仍要在 biggest_risk 誠實反映。
@@ -222,6 +234,7 @@ class WeeklyBriefingService
       14. decisions 最少1項、最多3項，資料不完整不是不提決策的理由，改用 small_test 類型降低風險。
       15. 不要把 CRM 沒有的行銷活動、廣告成本、庫存細節寫成確定事實。
       16. 同一個資料缺口全文只能提一次（例如「沒有廣告資料」只在new_and_returning_customers第一次出現時簡短標註，其他段落不要重複）。
+      17. 每項decision都要標confidence；low信心不代表不能提決策，改用decision_type="small_test"降低風險，不要因為信心低就不寫。
     PROMPT
   end
 

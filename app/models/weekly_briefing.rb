@@ -75,4 +75,27 @@ class WeeklyBriefing < ApplicationRecord
   def risk_flags
     Array(meta["risk_flags"]).map(&:with_indifferent_access)
   end
+
+  # ── 驗收/監控用中繼資料（管理頁不用查資料庫就能看到）──────────────
+  def ai_api_success?
+    meta.key?("ai_api_success") ? meta["ai_api_success"] : status == "success"
+  end
+
+  def quality_check
+    meta["quality_check"]
+  end
+
+  def quality_passed?
+    quality_check.present? && quality_check["passed"] == true
+  end
+
+  # true＝有品質檢查結果但沒通過；false＝通過或本來就沒有（例如AI失敗，
+  # 沒有ai_report可以檢查）。畫面用這個決定要不要顯示「需要檢查」badge。
+  def quality_needs_review?
+    quality_check.present? && !quality_passed?
+  end
+
+  def data_completeness_score
+    metrics.dig("data_gaps", "completeness_score")
+  end
 end

@@ -57,16 +57,66 @@
   <% briefing = @briefing %>
   <% wt = m["week_type"] || {} %>
 
+  <%#================ 報告狀態與品質驗收（管理頁一眼看到，不用查資料庫） ================%>
+  <div class="panel">
+    <div class="panel-content">
+      <div class="row text-center">
+        <div class="col-6 col-md-2 mb-2">
+          <div class="text-muted small">產生狀態</div>
+          <div><%= briefing.status == "success" ? content_tag(:span, "成功", class: "badge badge-success") : content_tag(:span, "失敗", class: "badge badge-danger") %></div>
+        </div>
+        <div class="col-6 col-md-2 mb-2">
+          <div class="text-muted small">AI API</div>
+          <div><%= briefing.ai_api_success? ? content_tag(:span, "成功", class: "badge badge-success") : content_tag(:span, "失敗", class: "badge badge-danger") %></div>
+        </div>
+        <div class="col-6 col-md-2 mb-2">
+          <div class="text-muted small">品質驗收</div>
+          <div>
+            <% if briefing.status != "success" %>
+              <span class="badge badge-secondary">尚未產生內容</span>
+            <% elsif briefing.quality_passed? %>
+              <span class="badge badge-success">已完成驗收</span>
+            <% else %>
+              <span class="badge badge-warning">需要檢查</span>
+            <% end %>
+          </div>
+        </div>
+        <div class="col-6 col-md-2 mb-2">
+          <div class="text-muted small">資料完整度</div>
+          <div><%= wb_pct(briefing.data_completeness_score) %></div>
+        </div>
+        <div class="col-6 col-md-2 mb-2">
+          <div class="text-muted small">使用模型／Prompt版本</div>
+          <div class="small"><%= briefing.model || "—" %> / <%= briefing.prompt_version || "—" %></div>
+        </div>
+        <div class="col-6 col-md-2 mb-2">
+          <div class="text-muted small">產生時間</div>
+          <div class="small"><%= briefing.generated_at&.strftime("%m/%d %H:%M") || briefing.updated_at.strftime("%m/%d %H:%M") %></div>
+        </div>
+      </div>
+      <% if briefing.status == "failed" %>
+        <div class="alert alert-danger small mb-0 mt-2"><strong>錯誤摘要：</strong><%= briefing.error_message %></div>
+      <% end %>
+      <% if briefing.quality_needs_review? %>
+        <div class="alert alert-warning small mb-0 mt-2">
+          <strong>品質驗收未通過，以下項目需要檢查：</strong>
+          <ul class="mb-0">
+            <% Array(briefing.quality_check["failed_items"]).each do |item| %><li><%= item %></li><% end %>
+          </ul>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
   <div class="mb-2 no-print">
     <span class="badge badge-light border">週型：<%= wt["type_label"] %></span>
     <% if wt["campaign_size_note"] %><span class="badge badge-light border">⚠️ <%= wt["campaign_size_note"] %></span><% end %>
   </div>
 
-  <% if briefing.status == "failed" %>
+  <% if briefing.status == "failed" && m.present? %>
     <div class="alert alert-danger">
       <i class="fal fa-exclamation-triangle mr-1"></i>
-      AI 分析生成失敗：<%= briefing.error_message %>
-      <% if m.present? %>（下方數據仍為本次計算結果，可放心參考；只有 AI 解讀／決策建議沒有產生）<% end %>
+      下方數據仍為本次計算結果，可放心參考；只有 AI 解讀／決策建議沒有產生（錯誤摘要見上方狀態卡片）。
     </div>
   <% end %>
 
