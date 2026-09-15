@@ -48,6 +48,41 @@ class WeeklyBriefingsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "測試一句話"
   end
 
+  test "show renders decision_type-specific fields (small_test / needs_more_data) without error" do
+    metrics = WeeklyMetricsService.call(week_start: Date.new(2026, 6, 15))
+    briefing = WeeklyBriefing.create!(
+      week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21), status: "success",
+      ai_report: {
+        "executive_summary" => {
+          "status" => "flat", "status_label" => "大致持平", "one_liner" => "測試一句話", "status_basis" => "b", "confidence" => "medium", "reasons" => [],
+          "top_findings" => [{ "finding" => "f1", "data_evidence" => "d1", "why_it_matters" => "w1", "nature" => "short_term", "revenue_impact" => "r1", "confidence" => "medium" }],
+          "decisions" => [
+            { "question" => "q1", "current_situation" => "s1", "data_evidence" => "d1", "decision_type" => "small_test",
+              "option_a" => { "action" => "a", "benefit" => "b", "risk" => "r", "condition" => "c" }, "option_b" => nil, "option_c" => nil,
+              "recommended_option" => "A", "recommendation_reason" => "reason",
+              "test_design" => { "target" => "逾期顧客", "scale" => "100人", "method" => "傳訊息", "success_kpi" => "回購率", "stop_condition" => "無效", "decision_point" => "兩週後" },
+              "data_needed" => nil, "impact_if_no_decision" => "impact", "next_week_kpi" => "kpi" },
+            { "question" => "q2", "current_situation" => "s2", "data_evidence" => "d2", "decision_type" => "needs_more_data",
+              "option_a" => { "action" => "a", "benefit" => "b", "risk" => "r", "condition" => "c" }, "option_b" => nil, "option_c" => nil,
+              "recommended_option" => "A", "recommendation_reason" => "reason",
+              "test_design" => nil,
+              "data_needed" => { "missing_data" => "廣告花費", "who_should_provide" => "廣告部", "when_needed" => "下週前", "decision_once_available" => "決定加碼與否" },
+              "impact_if_no_decision" => "impact", "next_week_kpi" => "kpi" }
+          ]
+        },
+        "business_analysis" => {}, "action_items" => []
+      },
+      metrics: metrics
+    )
+    sign_in @admin
+
+    get weekly_briefing_path(week_start: briefing.week_start.to_s)
+
+    assert_response :success
+    assert_includes response.body, "測試設計"
+    assert_includes response.body, "需要先補的資料"
+  end
+
   test "current resolves to this week without needing an exact date" do
     sign_in @admin
     get weekly_briefing_path(week_start: "current")

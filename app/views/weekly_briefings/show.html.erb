@@ -93,6 +93,7 @@
             <div class="wb-finding-card">
               <div class="font-weight-bold"><%= i + 1 %>. <%= f["finding"] %>
                 <span class="badge badge-light border ml-1"><%= f["nature"] == "structural" ? "結構性" : "短期波動" %></span>
+                <span class="badge <%= f['confidence'] == 'high' ? 'badge-success' : 'badge-info' %> ml-1">證據強度：<%= f["confidence"] == "high" ? "高" : "中" %></span>
               </div>
               <div class="small text-muted">數據證據：<%= f["data_evidence"] %></div>
               <div class="small">為什麼重要：<%= f["why_it_matters"] %></div>
@@ -109,7 +110,10 @@
         <div class="panel-content">
           <% briefing.decisions.each_with_index do |d, i| %>
             <div class="mb-4 <%= 'border-bottom pb-4' if i < briefing.decisions.size - 1 %>">
-              <h5>決策 <%= i + 1 %>：<%= d["question"] %></h5>
+              <h5>決策 <%= i + 1 %>：<%= d["question"] %>
+                <%= content_tag(:span, { "immediate" => "可立即決定", "small_test" => "小規模測試後決定", "needs_more_data" => "補資料後決定" }.fetch(d["decision_type"], d["decision_type"]),
+                      class: "badge #{ {'immediate'=>'badge-success','small_test'=>'badge-info','needs_more_data'=>'badge-warning'}.fetch(d['decision_type'], 'badge-secondary') }") %>
+              </h5>
               <div class="small text-muted mb-1">目前狀況：<%= d["current_situation"] %></div>
               <div class="small text-muted mb-2">數據證據：<%= d["data_evidence"] %></div>
               <div class="row">
@@ -131,6 +135,23 @@
                   </div>
                 <% end %>
               </div>
+              <% if d["decision_type"] == "small_test" && d["test_design"].present? %>
+                <% td = d["test_design"] %>
+                <div class="alert alert-info small mt-2 mb-2">
+                  <strong>測試設計：</strong>
+                  對象：<%= td["target"] %>／規模：<%= td["scale"] %>／方式：<%= td["method"] %>／
+                  成功KPI：<%= td["success_kpi"] %>／停止條件：<%= td["stop_condition"] %>／
+                  <%= td["decision_point"] %>
+                </div>
+              <% end %>
+              <% if d["decision_type"] == "needs_more_data" && d["data_needed"].present? %>
+                <% dn = d["data_needed"] %>
+                <div class="alert alert-warning small mt-2 mb-2">
+                  <strong>需要先補的資料：</strong><%= dn["missing_data"] %>／
+                  由誰補：<%= dn["who_should_provide"] %>／何時補：<%= dn["when_needed"] %>／
+                  補完後要決定：<%= dn["decision_once_available"] %>
+                </div>
+              <% end %>
               <div class="small mt-2"><strong>建議原因：</strong><%= d["recommendation_reason"] %></div>
               <div class="small text-danger"><strong>不決策的影響：</strong><%= d["impact_if_no_decision"] %></div>
               <div class="small"><strong>下週驗證KPI：</strong><%= d["next_week_kpi"] %></div>
@@ -385,7 +406,6 @@
                降級 <%= mem.dig("changes","downgrade_count") %> 人（近4週平均 <%= mem.dig("changes","trailing4_weekly_avg_downgrade_count") %> 人）</div>
           <div>卡別營收加總校驗：未分類營收 <%= wb_money(mem.dig("reconciliation","unclassified_revenue")) %>（<%= wb_pct(mem.dig("reconciliation","unclassified_pct")) %>）
             <%= mem.dig("reconciliation","note") %></div>
-          <div class="text-muted mt-1"><%= mem["near_threshold_note"] %></div>
         </div>
       </div>
     </div>
@@ -560,15 +580,30 @@
           <li>週型判斷（直播週/活動週/自然週）＝<code>livestreams.date</code> 與 <code>calendar_events(event_type: campaign)</code> 是否落在本週。</li>
         </ul>
 
-        <h6 class="mt-3">資料缺口</h6>
-        <ul class="small">
-          <li>Shopline 會員等級升降門檻規則未落地在本站資料庫，無法計算「即將降級/接近升級門檻」人數。</li>
-          <li>CRM 沒有前端流量／商品頁瀏覽／加購／結帳啟動等轉換漏斗資料，付款失敗率無法代表完整購買漏斗。</li>
-          <li>CRM 沒有活動規模分級欄位，活動週無法細分「大型檔期」與「一般促銷」。</li>
-          <% dq = m["data_quality"] || {} %>
-          <% if dq["last_year_same_week_data_incomplete"] %><li>去年同一週完全沒有訂單資料，YoY 比較可能不完整。</li><% end %>
-          <% Array(dq["stale_livestream_stats"]).each do |s| %><li>直播 <%= s["date"] %>「<%= s["title"] %>」統計快取可能過期。</li><% end %>
-        </ul>
+        <% dg = m["data_gaps"] || {} %>
+        <h6 class="mt-3">資料完整度：<%= wb_pct(dg["completeness_score"]) %></h6>
+        <p class="small text-muted"><%= dg["score_note"] %></p>
+        <div class="table-responsive">
+          <table class="table table-sm mb-3">
+            <thead class="thead-light">
+              <tr><th>主題</th><th>影響程度</th><th>可用資料</th><th>缺少資料</th><th>目前作法</th><th>未來整合建議</th></tr>
+            </thead>
+            <tbody>
+              <% Array(dg["gaps"]).sort_by { |g| { "critical" => 0, "important" => 1, "supplementary" => 2 }.fetch(g["impact"], 3) }.each do |g| %>
+                <tr>
+                  <td><%= g["topic"] %><% if g["scope"] == "this_week" %><span class="badge badge-light border ml-1">本週</span><% end %></td>
+                  <td><%= { "critical" => content_tag(:span, "關鍵", class: "badge badge-danger"),
+                            "important" => content_tag(:span, "重要", class: "badge badge-warning"),
+                            "supplementary" => content_tag(:span, "補充", class: "badge badge-light border") }[g["impact"]] %></td>
+                  <td class="small"><%= g["available"] %></td>
+                  <td class="small"><%= g["missing"] %></td>
+                  <td class="small"><%= g["proxy_used"] %></td>
+                  <td class="small"><%= g["suggested_integration"] %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
 
         <% if pr.present? %>
           <h6 class="mt-3">產品逾期分級距與可行動人數（完整明細）</h6>

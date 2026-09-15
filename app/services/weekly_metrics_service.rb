@@ -35,6 +35,9 @@ class WeeklyMetricsService
     week_type          = WeeklyWeekTypeClassifier.call(@period)
     product_repurchase = build_product_repurchase(new_vs_returning)
     membership         = build_membership
+    revenue_progress   = build_revenue_progress(week_type)
+    order_quality      = build_order_quality
+    data_quality       = build_data_quality(product_repurchase, membership)
 
     {
       "period"             => @period.as_json,
@@ -43,9 +46,10 @@ class WeeklyMetricsService
       "livestreams"        => build_livestreams,
       "membership"         => membership,
       "product_repurchase" => product_repurchase,
-      "revenue_progress"   => build_revenue_progress(week_type),
-      "order_quality"      => build_order_quality,
-      "data_quality"       => build_data_quality(product_repurchase, membership)
+      "revenue_progress"   => revenue_progress,
+      "order_quality"      => order_quality,
+      "data_quality"       => data_quality,
+      "data_gaps"          => build_data_gaps(week_type, revenue_progress, membership, data_quality)
     }
   end
 
@@ -335,8 +339,7 @@ class WeeklyMetricsService
         "unclassified_pct"      => round2(pct(unclassified_revenue, total_week_revenue)),
         "note" => "unclassified＝訂單 email 在 shopline_customers 找不到卡別（例如訪客結帳、資料未同步）"
       },
-      "near_threshold_data_available" => false,
-      "near_threshold_note"           => "Shopline 會員等級升降門檻規則未落地在本站資料庫（僅有使用者手動提供的歷史截圖，非可查詢資料），無法計算「即將降級／接近升級門檻」人數，資料不足，需人工確認。"
+      "near_threshold_data_available" => false
     }
   end
 
@@ -509,9 +512,7 @@ class WeeklyMetricsService
       "trailing4_failed_rate_pct"  => round2(pct(trailing4_all.where(payment_status: "付款失敗").count, trailing4_total)),
       "this_week_unpaid_rate_pct"  => round2(pct(this_week_all.where(payment_status: "未付款").count, this_week_total)),
       "trailing4_unpaid_rate_pct"  => round2(pct(trailing4_all.where(payment_status: "未付款").count, trailing4_total)),
-      "funnel_data_available"      => false,
-      "funnel_data_note"           => "本站已建立訂單中未觀察到付款失敗率異常；由於 CRM 缺少前端流量、商品頁瀏覽、加購與結帳啟動等漏斗資料，" \
-                                       "無法排除訂單建立前的轉換流失，不能把「訂單失敗率低」直接推論為「需求端以外的流程都正常」。"
+      "funnel_data_available"      => false
     }
   end
 
@@ -769,6 +770,83 @@ class WeeklyMetricsService
       "last_year_same_week_order_count"      => last_year_same_week_orders,
       "last_year_same_week_data_incomplete"  => last_year_same_week_orders.zero?,
       "stale_livestream_stats" => stale_livestreams.map { |ls| { "date" => ls.date, "title" => ls.title } }
+    }
+  end
+
+  # ── 資料缺口登記表（附錄用）──────────────────────────────────────
+  # 2026-09-15 второй輪修正：舊版把「沒有資料」的警語散落在 membership/
+  # order_quality/week_type 好幾個地方,還規定 AI 要逐字引用,導致正文充滿
+  # 「資料不足/需人工確認」。改成集中登記在這裡，每個缺口只出現一次、分
+  # critical(會讓核心結論站不住)/important(能判斷方向但不能確認原因)/
+  # supplementary(不影響本週決策)三級——只有 critical 才要求 AI 在正文提示，
+  # important/supplementary 一律只出現在附錄。「permanent」代表 CRM 結構性
+  # 缺口（每週都一樣），「this_week」代表本週才發生的資料品質例外（過期快取/
+  # 矛盾/去年同期缺資料等）。
+  #
+  # completeness_score 只統計 permanent 缺口，避免單週的暫時性异常（例如快取
+  # 剛好還沒刷新）讓分數忽高忽低——那類例外已經個別出現在 this_week 缺口
+  # 跟 WeeklyRiskFlagDetector 的 data_quality 風險裡，分數不需要重複反映。
+  def build_data_gaps(week_type, revenue_progress, membership, data_quality)
+    permanent = [
+      { topic: "會員等級升降門檻規則", available: "實際升降級紀錄、各卡別活躍率/客單價/最近購買日", missing: "Shopline官方門檻金額",
+        impact: "important", proxy_used: "用升降級紀錄與活躍率判斷會員健康度方向", suggested_integration: "跟Shopline要一份門檻規則表或API" },
+      { topic: "前端流量與轉換漏斗", available: "有效訂單數、付款失敗率、新客訂單數", missing: "網站流量、商品頁瀏覽、加購、結帳啟動",
+        impact: "important", proxy_used: "用「成交結果」（訂單/買家/營收）判斷，不推論轉換率", suggested_integration: "串接GA4或Shopline流量報表" },
+      { topic: "廣告投放與成本", available: "新客人數、新客營收、新客占比", missing: "廣告花費、ROAS、素材成效",
+        impact: "supplementary", proxy_used: "新客量能變化間接反映拉新入口強弱", suggested_integration: "串接廣告平台API或每週手動匯入花費" },
+      { topic: "商品成本與毛利", available: "營收、買家數、回購率", missing: "商品成本、毛利率",
+        impact: "supplementary", proxy_used: "商品優先順序以營收/買家/回購機會評估，不代表利潤排序", suggested_integration: "建立商品成本主檔" },
+      { topic: "活動規模分級", available: "活動是否存在（calendar_events campaign）", missing: "活動規模（大型檔期vs一般促銷）",
+        impact: "supplementary", proxy_used: "只標記「活動週」，不細分規模", suggested_integration: "在活動行事曆加一個規模欄位" },
+      { topic: "直播觀看數與互動率", available: "直播營收、訂單數、買家數、客單價、卡別分布", missing: "觀看人數、互動率",
+        impact: "supplementary", proxy_used: "只判斷「成交表現」，不判斷「流量或轉換率」", suggested_integration: "串接直播平台後台數據" },
+      { topic: "精確庫存週轉", available: "庫存狀態（有貨/低庫存/缺貨/預購）", missing: "精確庫存量與週轉天數",
+        impact: "supplementary", proxy_used: "缺貨標記+本週銷量=0時，判斷「可能受缺貨影響」", suggested_integration: "串接倉儲系統庫存數字" }
+    ]
+
+    this_week = []
+    if data_quality["last_year_same_week_data_incomplete"]
+      this_week << { topic: "去年同期比較資料", available: "今年本週資料", missing: "去年同一週完全沒有訂單記錄", impact: "important",
+                      proxy_used: "YoY比較本週無法使用，改用近13週去極值平均等短期基準判斷", suggested_integration: "檢查去年資料是否有匯入缺漏" }
+    end
+    if Array(data_quality["stale_product_cycles"]).any?
+      this_week << { topic: "商品回購比對快取", available: "逾期人數（依上次刷新時的快照）", missing: "本週回購比對結果",
+                      impact: "critical", proxy_used: "無，已將受影響數字標示為資料不足", suggested_integration: "確認 ops:weekly_briefing 排程有正常執行" }
+    end
+    if data_quality["product_cycle_contradiction_detected"]
+      this_week << { topic: "商品回購資料一致性", available: "舊客購買人數", missing: "商品層級回購比對結果（本週互相矛盾）", impact: "critical",
+                      proxy_used: "無，已將受影響數字標示為資料不足", suggested_integration: "同上，確認排程/快取正常" }
+    end
+    if revenue_progress.dig("comparable_basis", "basis_note").present?
+      this_week << { topic: "可比較歷史週基準", available: "本週與上週原始營收", missing: "近26週內同類型（#{week_type['type_label']}）的歷史週",
+                      impact: "important", proxy_used: "只能用本週vs上週的原始差異判斷方向，信心降級", suggested_integration: "累積更多同類型週次後會自動改善" }
+    end
+    if Array(data_quality["stale_livestream_stats"]).any?
+      this_week << { topic: "直播統計快取", available: "直播訂單/營收原始資料", missing: "最新統計快取（可能落後於實際訂單）", impact: "important",
+                      proxy_used: "直接查詢當場訂單原始資料當佐證，統計數字僅供參考", suggested_integration: "重跑 livestreams:stats:refresh" }
+    end
+    if week_type["campaign_size_note"].present?
+      this_week << { topic: "本週活動規模", available: "活動存在與日期", missing: "活動規模分級", impact: "supplementary",
+                      proxy_used: "只標記本週是活動週，不判斷規模大小", suggested_integration: nil }
+    end
+
+    # metrics 全篇慣例用字串鍵（供 to_json 序列化跟 DB 存讀一致），這裡的字面量
+    # hash 為求可讀性用符號鍵寫，最後統一轉成字串鍵，避免呼叫端用 g["topic"]
+    # 卻因為鍵是 symbol 而永遠讀不到值。
+    gaps = (permanent.map { |g| g.merge(scope: "permanent") } + this_week.map { |g| g.merge(scope: "this_week") })
+           .map(&:stringify_keys)
+    # completeness_score：permanent 缺口全部視為「未整合」扣分，分母是
+    # 「已知會用到的資料主題總數」＝ permanent 缺口數 + 本報告已經有資料可用的
+    # 核心主題數（營收/訂單/新舊客/會員卡別/直播成交/商品回購，共6項固定視為
+    # 已具備）。分數只用來提醒，不做為是否產生報告的門檻。
+    core_available_topics = 6
+    total_topics = core_available_topics + permanent.size
+    completeness_score = round2((core_available_topics.to_f / total_topics) * 100)
+
+    {
+      "completeness_score" => completeness_score,
+      "score_note"         => "分數僅供參考，不作為是否產生報告的門檻；即使未達100%，本週報告仍須提出經營判斷與決策建議。",
+      "gaps"               => gaps
     }
   end
 end

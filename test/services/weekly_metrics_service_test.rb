@@ -152,4 +152,32 @@ class WeeklyMetricsServiceTest < ActiveSupport::TestCase
     oq = WeeklyMetricsService.call(week_start: @week_start)["order_quality"]
     assert_equal 50.0, oq["this_week_failed_rate_pct"]
   end
+
+  test "data_gaps always includes the permanent CRM-wide gaps with a stable completeness score" do
+    dg = WeeklyMetricsService.call(week_start: @week_start)["data_gaps"]
+
+    assert dg["completeness_score"].is_a?(Numeric)
+    permanent_topics = dg["gaps"].select { |g| g["scope"] == "permanent" }.map { |g| g["topic"] }
+    assert_includes permanent_topics, "會員等級升降門檻規則"
+    assert_includes permanent_topics, "前端流量與轉換漏斗"
+    # 每個缺口都要附代理指標做法，不是只寫「沒有資料」
+    assert dg["gaps"].all? { |g| g["proxy_used"].present? }
+  end
+
+  test "data_gaps flags a this_week critical gap when the product cycle cache is stale" do
+    key = "gap_#{SecureRandom.hex(4)}"
+    CrmProduct.create!(key: key, label: "缺口測試品", status: "confirmed",
+                        sql_pattern: "product_name LIKE '%缺口測試品%'", regex_pattern: "缺口測試品(\\d+)")
+    CrmCustomerProductCycle.create!(
+      identity_key: "g@example.com", email: "g@example.com", product_key: key,
+      cycle_started_at: @period.week_start - 60, bottle_count: 1, estimated_usage_days: 30,
+      estimated_finish_date: @period.week_start - 30, suggested_contact_date: @period.week_start - 30,
+      match_status: "not_yet_repurchased", refreshed_at: 10.days.ago
+    )
+
+    dg = WeeklyMetricsService.call(week_start: @week_start)["data_gaps"]
+    critical = dg["gaps"].select { |g| g["impact"] == "critical" }
+
+    assert critical.any? { |g| g["topic"] == "商品回購比對快取" }
+  end
 end
