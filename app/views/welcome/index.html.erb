@@ -114,6 +114,27 @@
   </div>
 <% end %>
 
+<%# ── 每週營運檢討報告摘要入口 ── %>
+<% weekly = @snapshot[:weekly_briefing] %>
+<% if weekly %>
+  <div class="card mb-3" style="border-left:6px solid #17a2b8;">
+    <div class="card-header py-2 d-flex align-items-center">
+      <strong>📅 每週檢討報告</strong>
+      <span class="ml-auto small text-muted">
+        <%= weekly.week_start.strftime("%-m/%-d") %>~<%= weekly.week_end.strftime("%-m/%-d") %>
+      </span>
+    </div>
+    <div class="card-body py-2">
+      <% if weekly.status == "success" %>
+        <div class="mb-2"><%= weekly.one_liner %></div>
+      <% else %>
+        <div class="text-danger"><i class="fal fa-exclamation-triangle mr-1"></i>本週報告生成失敗：<%= weekly.error_message %></div>
+      <% end %>
+      <%= link_to "查看完整週報 →", weekly_briefing_path(week_start: weekly.week_start.to_s), class: "small" %>
+    </div>
+  </div>
+<% end %>
+
 <%# ── 直播準備雷達 ── %>
 <% radar = @snapshot[:radar] %>
 <% if radar && radar[:products].any? %>

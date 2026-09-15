@@ -50,6 +50,15 @@ Rails.application.routes.draw do
   end
   get '/livestream_overview', to: 'livestream_overview#index', as: :livestream_overview
   get '/livestream_reports', to: 'livestream_reports#index', as: :livestream_reports
+
+  get  '/weekly_briefings',                          to: 'weekly_briefings#index',      as: :weekly_briefings
+  get  '/weekly_briefings/:week_start',               to: 'weekly_briefings#show',       as: :weekly_briefing,
+                                                       constraints: { week_start: /current|\d{4}-\d{2}-\d{2}/ }
+  post '/weekly_briefings/:week_start/regenerate',    to: 'weekly_briefings#regenerate', as: :regenerate_weekly_briefing,
+                                                       constraints: { week_start: /current|\d{4}-\d{2}-\d{2}/ }
+  post  '/weekly_briefing_todos/:id/preview',         to: 'weekly_briefing_todos#preview',     as: :preview_weekly_briefing_todo
+  patch '/weekly_briefing_todos/:id/toggle',          to: 'weekly_briefing_todos#toggle',      as: :toggle_weekly_briefing_todo
+  post  '/weekly_briefing_todos/:id/create_task',     to: 'weekly_briefing_todos#create_task', as: :create_task_weekly_briefing_todo
   get '/new_customer_reports', to: 'new_customer_reports#index', as: :new_customer_reports
   get '/livestream_product_analysis',               to: 'livestream_product_analysis#index',         as: :livestream_product_analysis
   get '/livestream_product_analysis/export_missing', to: 'livestream_product_analysis#export_missing', as: :export_missing_livestream_product_analysis

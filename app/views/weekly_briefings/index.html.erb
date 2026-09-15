@@ -1,0 +1,74 @@
+<% content_for :page_title, "每週檢討報告" %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-calendar-week mr-2 text-info"></i> 每週檢討報告
+  </h1>
+  <div class="ml-auto">
+    <%= link_to weekly_briefing_path(week_start: "current"), class: "btn btn-info btn-sm" do %>
+      <i class="fal fa-star mr-1"></i>本週報告
+    <% end %>
+  </div>
+</div>
+
+<p class="text-muted small mb-4">
+  每週自動讀取 CRM 真實資料產出的營運檢討報告：新舊客比例、每兩週直播表現、會員卡別維護、商品回購狀況、
+  營收進度與年度目標缺口。所有結論皆可回溯到下方數據，AI 僅負責解讀與待辦文字化。
+</p>
+
+<% if @briefings.blank? %>
+  <div class="panel">
+    <div class="panel-content text-center py-5 text-muted">
+      <i class="fal fa-calendar-week fa-3x mb-3 d-block opacity-25"></i>
+      尚無任何週報，請按上方「本週報告」產生第一份。
+    </div>
+  </div>
+<% else %>
+  <div class="panel">
+    <div class="panel-hdr"><h2>歷史週報</h2></div>
+    <div class="panel-container show">
+      <div class="panel-content p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="thead-light">
+              <tr>
+                <th>週期</th>
+                <th>狀態</th>
+                <th>一句話結論</th>
+                <th>待辦</th>
+                <th style="width:60px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @briefings.each do |b| %>
+                <tr>
+                  <td class="text-nowrap"><%= b.week_start.strftime("%Y/%m/%d") %> ~ <%= b.week_end.strftime("%m/%d") %></td>
+                  <td>
+                    <% if b.status == "success" %>
+                      <span class="badge badge-success">完成</span>
+                    <% elsif b.status == "failed" %>
+                      <span class="badge badge-danger">失敗</span>
+                    <% else %>
+                      <span class="badge badge-secondary">待產生</span>
+                    <% end %>
+                  </td>
+                  <td class="small"><%= b.status == "success" ? b.one_liner : b.error_message %></td>
+                  <td class="small">
+                    <% if b.status == "success" %>
+                      <%= b.todos.pending.count %> 待處理 / <%= b.todos.count %> 總計
+                    <% end %>
+                  </td>
+                  <td class="text-center">
+                    <%= link_to weekly_briefing_path(week_start: b.week_start.to_s), class: "text-muted" do %>
+                      <i class="fal fa-chevron-right"></i>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

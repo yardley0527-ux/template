@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_09_085807) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_15_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1053,7 +1053,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_09_085807) do
     t.text "recommended_action"
     t.text "resolution_reason"
     t.integer "reopened_count", default: 0, null: false
-    t.index ["deduplication_key"], name: "idx_notifications_dedup_key_unique_active", unique: true, where: "((status)::text <> ALL ((ARRAY['resolved'::character varying, 'dismissed'::character varying])::text[]))"
+    t.index ["deduplication_key"], name: "idx_notifications_dedup_key_unique_active", unique: true, where: "((status)::text <> ALL (ARRAY[('resolved'::character varying)::text, ('dismissed'::character varying)::text]))"
     t.index ["due_at"], name: "index_notifications_on_due_at"
     t.index ["notification_key"], name: "index_notifications_on_notification_key"
     t.index ["owner_user_id"], name: "index_notifications_on_owner_user_id"
@@ -1640,6 +1640,44 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_09_085807) do
     t.index ["item_type", "item_id"], name: "index_versions_on_item_type_and_item_id"
   end
 
+  create_table "weekly_briefing_todos", force: :cascade do |t|
+    t.bigint "weekly_briefing_id", null: false
+    t.string "dedupe_key", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.string "priority", default: "medium", null: false
+    t.string "suggested_role"
+    t.date "due_date"
+    t.text "data_issue"
+    t.text "target_segment"
+    t.jsonb "target_query", default: {}, null: false
+    t.integer "target_count"
+    t.string "expected_kpi"
+    t.string "status", default: "pending", null: false
+    t.datetime "completed_at"
+    t.string "source", default: "weekly_briefing", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["weekly_briefing_id", "dedupe_key"], name: "idx_wb_todos_on_briefing_and_dedupe", unique: true
+    t.index ["weekly_briefing_id"], name: "index_weekly_briefing_todos_on_weekly_briefing_id"
+  end
+
+  create_table "weekly_briefings", force: :cascade do |t|
+    t.date "week_start", null: false
+    t.date "week_end", null: false
+    t.string "status", default: "pending", null: false
+    t.jsonb "metrics", default: {}, null: false
+    t.jsonb "ai_report", default: {}, null: false
+    t.text "error_message"
+    t.string "model"
+    t.string "prompt_version"
+    t.datetime "generated_at"
+    t.jsonb "meta", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["week_start"], name: "index_weekly_briefings_on_week_start", unique: true
+  end
+
   add_foreign_key "albums", "shopline_customers"
   add_foreign_key "crm_customer_product_cycles", "users", column: "assigned_to_user_id"
   add_foreign_key "crm_customer_product_follow_up_events", "crm_customer_product_cycles", column: "cycle_id"
@@ -1687,4 +1725,5 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_09_085807) do
   add_foreign_key "shopline_orders", "shopline_customers"
   add_foreign_key "tag_extraction_recipients", "tag_extraction_runs"
   add_foreign_key "users", "roles"
+  add_foreign_key "weekly_briefing_todos", "weekly_briefings"
 end

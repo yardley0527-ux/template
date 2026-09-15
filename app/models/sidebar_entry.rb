@@ -94,6 +94,7 @@ class SidebarEntry
         {
           group_title: "報告",
           children: [
+            { href: weekly_briefing_path(week_start: "current"), title: "每週檢討報告", icon: "fa-calendar-week" },
             { href: livestream_reports_path,    title: "分產品檢討報告", icon: "fa-file-alt" },
             { href: product_reports_path,       title: "產品報告",       icon: "fa-file-alt" },
             { href: new_customer_reports_path,  title: "新客月報",       icon: "fa-user-plus" },

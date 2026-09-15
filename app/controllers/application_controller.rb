@@ -10,7 +10,10 @@ class ApplicationController < ActionController::Base
   XHR_ENDPOINT_PAGES = {
     "daily_orders#toggle_customer_flag"  => %w[daily_orders high_value_orders customers],
     "daily_orders#update_customer_type"  => %w[daily_orders high_value_orders],
-    "order_gift_records#upsert"          => %w[daily_orders high_value_orders high_value_follow_ups]
+    "order_gift_records#upsert"          => %w[daily_orders high_value_orders high_value_follow_ups],
+    "weekly_briefing_todos#toggle"       => %w[weekly_briefings],
+    "weekly_briefing_todos#preview"      => %w[weekly_briefings],
+    "weekly_briefing_todos#create_task"  => %w[weekly_briefings]
   }.freeze
 
   private
