@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# 每週營運檢討報告的「數據層」——只做確定的計算（人數/營收/比例/成長率/
+# 每週經營決策報告的「數據層」——只做確定的計算（人數/營收/比例/成長率/
 # 客單價/回購率/升降級數量/年度營收缺口/年底營收預測基礎數據），不做任何
 # 判斷或建議。WeeklyBriefingService 把這裡輸出的結構化 hash 交給 Claude API
 # 做解讀，AI 不重算任何數字。
@@ -8,9 +8,19 @@
 # 只讀既有分析快取表（livestreams / crm_customer_product_cycles /
 # customer_purchase_summaries / membership_level_changes），不重新發明
 # 跟 CRM 既有 service 矛盾的邏輯——見各段落註解說明重用了哪一份既有資料。
+#
+# 2026-09-15 大修（見 weekly-briefing-fix 系列）：修正「商品回購全部為0」——
+# 根因是 crm_customer_product_cycles 沒有在產生報告前重新整理（見
+# WeeklyBriefingRunner），這裡新增「快取過期」與「矛盾偵測」兩層防呆，
+# 資料不可信時回傳 nil 讓畫面顯示「資料不足」而不是誤導性的 0。同時新增
+# 週型分類（直播週/活動週/自然週）、可比較基準營收成長、cohort 回購率、
+# 逾期名單分級距與可行動人數、會員卡別拆解與加總校驗、多期營收預測情境。
 class WeeklyMetricsService
-  ACTIVE_MEMBER_WINDOW_DAYS = 90 # 本報告口徑：trailing 90 天內有有效付款訂單 = 活躍會員（CRM 目前沒有現成的全站「沉睡會員」定義，見下方 build_membership 註解）
-  NEW_BUYER_COHORT_WEEKS = 4     # 「新客回購率」觀察窗：近 4 週內首購的新客，回頭看目前是否已有第二筆訂單
+  ACTIVE_MEMBER_WINDOW_DAYS = 90   # 本報告口徑：trailing 90 天內有有效付款訂單 = 活躍會員（CRM 沒有現成的全站「沉睡會員」定義）
+  CYCLE_STALE_HOURS         = 72   # crm_customer_product_cycles 距離上次 refreshed_at 超過此時數，視為過期、不可信任回購/逾期成長數字
+  GROWTH_TARGET_PCT         = 10.0 # 年度成長目標（相對去年全年營收）——CRM 沒有正式的年度目標設定來源，此為預設參數，非硬編金額，可依實際目標調整
+  SAFETY_BUFFER_PCT         = 10.0 # 經營安全線 = 最低警戒線 × (1 + 此緩衝)
+  COHORT_WINDOWS            = [7, 14, 30, 60, 90].freeze # 新客回購率觀察窗（天），只有已完整走完窗口的 cohort 才計入分母
 
   def self.call(week_start: Date.current)
     new(week_start).call
@@ -21,28 +31,35 @@ class WeeklyMetricsService
   end
 
   def call
+    new_vs_returning   = build_new_vs_returning
+    week_type          = WeeklyWeekTypeClassifier.call(@period)
+    product_repurchase = build_product_repurchase(new_vs_returning)
+    membership         = build_membership
+
     {
       "period"             => @period.as_json,
-      "new_vs_returning"   => build_new_vs_returning,
+      "week_type"          => week_type,
+      "new_vs_returning"   => new_vs_returning,
       "livestreams"        => build_livestreams,
-      "membership"         => build_membership,
-      "product_repurchase" => build_product_repurchase,
-      "revenue_progress"   => build_revenue_progress,
-      "order_quality"      => build_order_quality
+      "membership"         => membership,
+      "product_repurchase" => product_repurchase,
+      "revenue_progress"   => build_revenue_progress(week_type),
+      "order_quality"      => build_order_quality,
+      "data_quality"       => build_data_quality(product_repurchase, membership)
     }
   end
 
   private
 
   # ── 共用：訂單層級（不是商品行層級）金額 ──────────────────────────
-  # 同一張訂單常被拆成多個商品行，逐行加總金額會重複計算——用既有的
-  # ShoplineOrder::TOTAL_SQL（訂單層級 total_amount，缺值才退回加總
-  # checkout_amount）配合 GROUP BY order_number，跟 HighValueOrderScoping
-  # 用的是同一份定義。
   def order_level_rows(scope, time_range)
     scope.where(order_date: time_range)
          .group(:order_number)
          .pluck(Arel.sql("MAX(shopline_orders.email)"), Arel.sql("(#{ShoplineOrder::TOTAL_SQL})"))
+  end
+
+  def weekly_total(scope, time_range)
+    order_level_rows(scope, time_range).sum { |_, t| t.to_f }
   end
 
   def safe_div(num, den)
@@ -57,6 +74,12 @@ class WeeklyMetricsService
 
   def round2(n)
     n.to_f.round(2)
+  end
+
+  def growth_pct(current, previous)
+    return nil if previous.to_f.zero?
+
+    ((current.to_f - previous.to_f) / previous.to_f) * 100
   end
 
   # ── 1. 新客與舊客分析 ────────────────────────────────────────────
@@ -109,6 +132,7 @@ class WeeklyMetricsService
 
     this_week = customer_segment_stats(base, @period.time_range)
     prev_week = customer_segment_stats(base, @period.prev_week_time_range)
+    week_before_prev = customer_segment_stats(base, WeeklyPeriod.for_week_start(@period.week_start - 14).time_range)
     last_year_same_week = customer_segment_stats(base, @period.last_year_same_week_range.begin.beginning_of_day..@period.last_year_same_week_range.end.end_of_day)
 
     # trailing4 是「近 4 週合計」算出來的 distinct 客戶數／訂單數，人數欄位
@@ -130,36 +154,56 @@ class WeeklyMetricsService
     {
       "this_week"            => this_week,
       "prev_week"            => prev_week,
+      "week_before_prev"     => week_before_prev,
       "trailing4_weekly_avg" => trailing4_weekly_avg,
       "last_year_same_week"  => last_year_same_week,
-      "new_buyer_repurchase" => new_buyer_repurchase_rate
+      "cohort_repurchase"    => cohort_repurchase_rates
     }
   end
 
-  # 近 4 週內首購的新客，目前（報告產生當下）是否已經有第二筆訂單
-  # （customer_purchase_summaries.purchase_count >= 2）。這是一個提前信號，
-  # 不是完整生命週期回購率——cohort 平均只有 0~4 週可以回購，數字天然偏低，
-  # AI 產報告時要標明這個限制，不能直接跟長期回購率相提並論。
-  def new_buyer_repurchase_rate
-    cohort_start = @period.week_end - (NEW_BUYER_COHORT_WEEKS * 7) + 1
-    cohort = CustomerPurchaseSummary.where(first_date: cohort_start..@period.week_end)
-    total = cohort.count
-    repurchased = cohort.where("purchase_count >= 2").count
+  # 新客回購率改用「成熟 cohort」：只看首購週已經完整走完對應天數觀察窗的
+  # 那一週新客，未滿窗口的顧客不會被算進分母（例如算30天回購率時，首購未滿
+  # 30天的人整批排除，不是全部新客都塞進同一個分母）。
+  def cohort_repurchase_rates
+    COHORT_WINDOWS.map do |days|
+      cohort_end = @period.week_end - days
+      cohort_start = cohort_end - 6
+      cohort = CustomerPurchaseSummary.where(first_date: cohort_start..cohort_end)
+      total = cohort.count
+      repurchased = cohort.where("purchase_count >= 2").count
 
-    {
-      "cohort_window_start" => cohort_start,
-      "cohort_window_end"   => @period.week_end,
-      "cohort_size"         => total,
-      "repurchased_count"   => repurchased,
-      "repurchase_rate_pct" => round2(pct(repurchased, total))
-    }
+      prev_end = cohort_end - 7
+      prev_start = prev_end - 6
+      prev_cohort = CustomerPurchaseSummary.where(first_date: prev_start..prev_end)
+      prev_total = prev_cohort.count
+      prev_repurchased = prev_cohort.where("purchase_count >= 2").count
+
+      historical_rates = (2..8).filter_map do |n|
+        he = cohort_end - (7 * n)
+        hs = he - 6
+        h = CustomerPurchaseSummary.where(first_date: hs..he)
+        ht = h.count
+        next nil if ht < 10
+
+        pct(h.where("purchase_count >= 2").count, ht)
+      end
+
+      {
+        "window_days"            => days,
+        "cohort_start"           => cohort_start,
+        "cohort_end"             => cohort_end,
+        "sample_size"            => total,
+        "repurchased_count"      => repurchased,
+        "repurchase_rate_pct"    => total.positive? ? round2(pct(repurchased, total)) : nil,
+        "sample_sufficient"      => total >= 30,
+        "prev_cohort_rate_pct"   => prev_total.positive? ? round2(pct(prev_repurchased, prev_total)) : nil,
+        "historical_avg_rate_pct" => historical_rates.any? ? round2(historical_rates.sum / historical_rates.size) : nil,
+        "historical_sample_weeks" => historical_rates.size
+      }
+    end
   end
 
   # ── 2. 每兩週直播表現 ────────────────────────────────────────────
-  # 直接讀 livestreams 表既有的快取欄位（LivestreamStatsRefreshService 維護），
-  # 不重新從 shopline_orders 算一次——避免跟 /livestream_overview 等既有頁面
-  # 兜不起來。ops:weekly_briefing rake task 會在算這份報告前先呼叫
-  # LivestreamStatsRefreshService，確保這裡讀到的是最新快取。
   def build_livestreams
     window_start = @period.week_end - 13
     events = Livestream.where(date: window_start..@period.week_end).order(:date)
@@ -238,19 +282,7 @@ class WeeklyMetricsService
     }
   end
 
-  def growth_pct(current, previous)
-    return nil if previous.to_f.zero?
-
-    ((current.to_f - previous.to_f) / previous.to_f) * 100
-  end
-
   # ── 3. 會員卡別維護 ──────────────────────────────────────────────
-  # 會員數/卡別沿用 MembershipLevels::TARGET_MEMBERSHIPS（跟 MembershipLevelStatsService
-  # 同一份卡別清單）；升降級沿用 MembershipLevelChange（既有匯入時偵測寫入的表，
-  # 不重新推算）。「即將降級/接近升級門檻」需要 Shopline 官方的會員等級門檻規則，
-  # 這份 CRM 資料庫沒有落地這張表（customers_controller.rb 的
-  # MEMBERSHIP_MANUAL_REFERENCE 只是使用者手動貼的截圖數字，不是可查詢的門檻設定），
-  # 所以這兩項明確標記資料不足，不用猜的門檻公式假裝算得出來。
   def build_membership
     levels = MembershipLevels::TARGET_MEMBERSHIPS
     email_level = ShoplineCustomer.where(membership_level: levels).where.not(email: [nil, ""])
@@ -270,27 +302,39 @@ class WeeklyMetricsService
     level_stats = levels.map do |level|
       level_emails = email_level.select { |_, l| l == level }.keys
       active_count = level_emails.count { |e| last_order_by_email[e].present? && last_order_by_email[e].to_date >= active_cutoff }
+      total_members = member_counts[level].to_i
 
       {
-        "level"                => level,
-        "member_count"         => member_counts[level].to_i,
-        "active_count"         => active_count,
-        "dormant_count"        => member_counts[level].to_i - active_count,
-        "this_week"            => level_revenue_stats(week_rows, email_level, level),
-        "trailing4_weekly_avg" => trailing4_weekly_avg_level_stats(trailing4_rows, email_level, level),
-        "ytd"                  => level_revenue_stats(ytd_rows, email_level, level),
-        "last_year_same_period" => level_revenue_stats(last_year_same_rows, email_level, level)
+        "level"                 => level,
+        "member_count"          => total_members,
+        "active_count"          => active_count,
+        "dormant_count"         => total_members - active_count,
+        "active_rate_pct"       => round2(pct(active_count, total_members)),
+        "this_week"             => level_revenue_stats(week_rows, email_level, level),
+        "trailing4_weekly_avg"  => trailing4_weekly_avg_level_stats(trailing4_rows, email_level, level),
+        "ytd"                   => level_revenue_stats(ytd_rows, email_level, level),
+        "last_year_same_period" => level_revenue_stats(last_year_same_rows, email_level, level),
+        "ytd_concentration"     => concentration_stats(ytd_rows, email_level, level)
       }
     end
 
     total_week_revenue = week_rows.sum { |_, total| total.to_f }
     black_gold_revenue = week_rows.sum { |email, total| %w[黑卡 金卡].include?(email_level[email]) ? total.to_f : 0.0 }
+    classified_revenue = week_rows.sum { |email, total| email_level.key?(email) ? total.to_f : 0.0 }
+    unclassified_revenue = total_week_revenue - classified_revenue
 
     {
       "active_window_days"           => ACTIVE_MEMBER_WINDOW_DAYS,
       "levels"                       => level_stats,
       "changes"                      => membership_changes,
       "black_gold_revenue_share_pct" => round2(pct(black_gold_revenue, total_week_revenue)),
+      "reconciliation" => {
+        "total_week_revenue"    => round2(total_week_revenue),
+        "classified_revenue"    => round2(classified_revenue),
+        "unclassified_revenue"  => round2(unclassified_revenue),
+        "unclassified_pct"      => round2(pct(unclassified_revenue, total_week_revenue)),
+        "note" => "unclassified＝訂單 email 在 shopline_customers 找不到卡別（例如訪客結帳、資料未同步）"
+      },
       "near_threshold_data_available" => false,
       "near_threshold_note"           => "Shopline 會員等級升降門檻規則未落地在本站資料庫（僅有使用者手動提供的歷史截圖，非可查詢資料），無法計算「即將降級／接近升級門檻」人數，資料不足，需人工確認。"
     }
@@ -310,9 +354,8 @@ class WeeklyMetricsService
   end
 
   # 近4週週平均：revenue/buyers/order_count 是「量」，除以4取近似週平均合理；
-  # aov／orders_per_buyer 是比例（revenue/buyers、order_count/buyers），本身
-  # 不能再除以4（那樣會把數字砍成1/4，是明顯錯誤）——直接沿用4週合計期間
-  # 算出的比例即可。
+  # aov／orders_per_buyer 是比例，本身不能再除以4——直接沿用4週合計期間算出
+  # 的比例即可。
   def trailing4_weekly_avg_level_stats(rows, email_level, level)
     raw = level_revenue_stats(rows, email_level, level)
     {
@@ -321,6 +364,27 @@ class WeeklyMetricsService
       "order_count"      => round2(raw["order_count"] / 4.0),
       "aov"              => raw["aov"],
       "orders_per_buyer" => raw["orders_per_buyer"]
+    }
+  end
+
+  # 該卡別 YTD 營收集中度：前10名會員／前20%會員的營收佔比，用來判斷卡別
+  # 成長是「人數/活躍率/頻次/客單價普遍提升」還是「少數大額會員撐起來」。
+  def concentration_stats(rows, email_level, level)
+    revenue_by_email = Hash.new(0.0)
+    rows.each { |email, total| revenue_by_email[email] += total.to_f if email_level[email] == level }
+    return { "member_count_with_orders" => 0, "top10_revenue_share_pct" => nil, "top20pct_revenue_share_pct" => nil } if revenue_by_email.empty?
+
+    sorted = revenue_by_email.values.sort.reverse
+    total = sorted.sum
+    top10 = sorted.first(10).sum
+    top20pct_n = [(sorted.size * 0.2).ceil, 1].max
+    top20pct = sorted.first(top20pct_n).sum
+
+    {
+      "member_count_with_orders"   => sorted.size,
+      "top10_revenue_share_pct"    => round2(pct(top10, total)),
+      "top20pct_revenue_share_pct" => round2(pct(top20pct, total)),
+      "top20pct_member_count"      => top20pct_n
     }
   end
 
@@ -342,10 +406,98 @@ class WeeklyMetricsService
     }
   end
 
+  def revenue_for_emails(emails)
+    return 0.0 if emails.empty?
+
+    order_level_rows(ShoplineOrder.valid_paid.where(email: emails), @period.time_range).sum { |_, total| total.to_f }
+  end
+
+  # ── 4. 商品回購與沉睡狀況 ────────────────────────────────────────
+  EXCLUDED_PRODUCT_KEYS = defined?(CrmRepurchaseCycleConfigSeedService) ? CrmRepurchaseCycleConfigSeedService::EXCLUDED_PRODUCT_KEYS : [].freeze
+
+  # 2026-09-15 修正：先各自算出每個產品的 payload，再做「本週舊客購買人數>0
+  # 但所有產品回購人數都是0」的矛盾偵測——這是根因分析挖出的真實 bug（
+  # crm_customer_product_cycles 一個月沒有重新整理，見 WeeklyBriefingRunner），
+  # 這裡加防呆讓同一類問題以後不會再無聲產出誤導性的0，而是清楚標示資料不足。
+  def build_product_repurchase(new_vs_returning)
+    products = CrmProduct.confirmed.where.not(key: EXCLUDED_PRODUCT_KEYS).order(:id)
+    payloads = products.map { |crm| product_payload(crm) }
+
+    returning_customers_this_week = new_vs_returning.dig("this_week", "returning_customers").to_i
+    all_repurchased_zero = payloads.any? && payloads.all? { |p| p["repurchased_this_week"] == 0 }
+    contradiction = returning_customers_this_week.positive? && all_repurchased_zero
+
+    if contradiction
+      payloads.each do |p|
+        p["repurchased_this_week"] = nil
+        p["repurchased_this_week_note"] =
+          "資料不足／計算未完成：本週有 #{returning_customers_this_week} 位舊客購買，但本產品比對到的回購人數為0，" \
+          "研判 crm_customer_product_cycles 快取過期或比對失敗，此數字不可信任。"
+      end
+    end
+
+    {
+      "products"                      => payloads,
+      "contradiction_detected"        => contradiction,
+      "returning_customers_this_week" => returning_customers_this_week
+    }
+  end
+
+  def product_payload(crm)
+    scope = ShoplineOrder.valid_paid.where(crm.matching_sql_pattern)
+    week_stats = customer_segment_stats(scope, @period.time_range)
+
+    cycles_refreshed_at = CrmCustomerProductCycle.for_product(crm.key).maximum(:refreshed_at)
+    stale = cycles_refreshed_at.nil? || cycles_refreshed_at < CYCLE_STALE_HOURS.hours.ago
+
+    cycles = CrmCustomerProductCycle.active_as_of(@period.week_end).for_product(crm.key)
+    overdue   = CrmCustomerProductCycle.with_status_filter(cycles, "overdue", reference_date: @period.week_end).count
+    due_today = CrmCustomerProductCycle.with_status_filter(cycles, "due_today", reference_date: @period.week_end).count
+    due_soon  = CrmCustomerProductCycle.with_status_filter(cycles, "due_soon", reference_date: @period.week_end).count
+    tracking_total = cycles.count
+
+    prev_cycles = CrmCustomerProductCycle.active_as_of(@period.prev_week_end).for_product(crm.key)
+    overdue_prev_week = CrmCustomerProductCycle.with_status_filter(prev_cycles, "overdue", reference_date: @period.prev_week_end).count
+
+    # 快取過期時，「本週回購人數」與「逾期成長幅度」都建立在同一份沒有反映
+    # 最新訂單的靜態快照上，不能顯示成「這週的真實變化」——回傳 nil，畫面顯示
+    # 「資料不足／計算未完成」，不可以顯示誤導性的 0。
+    repurchased_this_week = stale ? nil : CrmCustomerProductCycle.for_product(crm.key).where(next_same_product_order_date: @period.range).count
+    overdue_growth_pct = stale ? nil : round2(growth_pct(overdue, overdue_prev_week) || 0)
+
+    all_cycles_for_product = CrmCustomerProductCycle.for_product(crm.key)
+    lifetime_total = all_cycles_for_product.count
+    lifetime_matched = all_cycles_for_product.matched.count
+
+    configs = CrmRepurchaseCycleConfig.where(product_key: crm.key)
+    weighted_days = configs.sum { |c| c.median_days.to_f * [c.sample_size, 1].max }
+    weighted_weight = configs.sum { |c| [c.sample_size, 1].max }
+
+    actionability = ProductRepurchaseActionabilityService.call(
+      product_key: crm.key, reference_date: @period.week_end, availability_status: crm.availability_status
+    )
+
+    {
+      "product_key"              => crm.key,
+      "label"                    => crm.label,
+      "availability_status"      => crm.availability_status,
+      "this_week"                => week_stats,
+      "cycles_refreshed_at"      => cycles_refreshed_at,
+      "cycles_stale"             => stale,
+      "repurchased_this_week"    => repurchased_this_week,
+      "overdue_count"            => overdue,
+      "overdue_count_prev_week"  => overdue_prev_week,
+      "overdue_growth_pct"       => overdue_growth_pct,
+      "due_today_count"          => due_today,
+      "due_soon_count"           => due_soon,
+      "tracking_total"           => tracking_total,
+      "lifetime_repurchase_rate_pct" => round2(pct(lifetime_matched, lifetime_total)),
+      "median_repurchase_days"   => configs.any? ? round2(weighted_days / weighted_weight) : nil,
+      "actionability"            => actionability
+    }
+  end
+
   # ── 訂單品質（退款/取消異常偵測用）──────────────────────────────
-  # shopline_orders.payment_status 只有三種值（已付款/付款失敗/未付款，
-  # order_status 全表皆為 NULL，見 ShoplineOrder.valid_paid 註解），沒有
-  # 獨立的退款欄位——用「付款失敗／未付款佔比」作為異常代理指標。
   def build_order_quality
     this_week_all = ShoplineOrder.where(order_date: @period.time_range)
     trailing4_all = ShoplineOrder.where(order_date: @period.trailing4_time_range)
@@ -356,118 +508,267 @@ class WeeklyMetricsService
       "this_week_failed_rate_pct"  => round2(pct(this_week_all.where(payment_status: "付款失敗").count, this_week_total)),
       "trailing4_failed_rate_pct"  => round2(pct(trailing4_all.where(payment_status: "付款失敗").count, trailing4_total)),
       "this_week_unpaid_rate_pct"  => round2(pct(this_week_all.where(payment_status: "未付款").count, this_week_total)),
-      "trailing4_unpaid_rate_pct"  => round2(pct(trailing4_all.where(payment_status: "未付款").count, trailing4_total))
+      "trailing4_unpaid_rate_pct"  => round2(pct(trailing4_all.where(payment_status: "未付款").count, trailing4_total)),
+      "funnel_data_available"      => false,
+      "funnel_data_note"           => "本站已建立訂單中未觀察到付款失敗率異常；由於 CRM 缺少前端流量、商品頁瀏覽、加購與結帳啟動等漏斗資料，" \
+                                       "無法排除訂單建立前的轉換流失，不能把「訂單失敗率低」直接推論為「需求端以外的流程都正常」。"
     }
   end
 
-  def revenue_for_emails(emails)
-    return 0.0 if emails.empty?
-
-    order_level_rows(ShoplineOrder.valid_paid.where(email: emails), @period.time_range).sum { |_, total| total.to_f }
-  end
-
-  # ── 4. 商品回購與沉睡狀況 ────────────────────────────────────────
-  # 逾期/即將到期沿用 CrmCustomerProductCycle（回購追蹤 Dashboard 同一份資料
-  # 與狀態定義，見 CrmRepurchaseDashboardQuery），回購週期中位數沿用
-  # CrmRepurchaseCycleConfig；不另訂一份平行的瓶數/天數計算。
-  EXCLUDED_PRODUCT_KEYS = defined?(CrmRepurchaseCycleConfigSeedService) ? CrmRepurchaseCycleConfigSeedService::EXCLUDED_PRODUCT_KEYS : [].freeze
-
-  def build_product_repurchase
-    products = CrmProduct.confirmed.where.not(key: EXCLUDED_PRODUCT_KEYS).order(:id)
-
-    {
-      "products" => products.map { |crm| product_payload(crm) }
-    }
-  end
-
-  def product_payload(crm)
-    scope = ShoplineOrder.valid_paid.where(crm.matching_sql_pattern)
-    week_stats = customer_segment_stats(scope, @period.time_range)
-
-    cycles = CrmCustomerProductCycle.active_as_of(@period.week_end).for_product(crm.key)
-    overdue   = CrmCustomerProductCycle.with_status_filter(cycles, "overdue", reference_date: @period.week_end).count
-    due_today = CrmCustomerProductCycle.with_status_filter(cycles, "due_today", reference_date: @period.week_end).count
-    due_soon  = CrmCustomerProductCycle.with_status_filter(cycles, "due_soon", reference_date: @period.week_end).count
-    tracking_total = cycles.count
-
-    # 逾期人數天生會隨產品追蹤時間累積成一個規模很大的常態庫存（例如全能/代謝錠
-    # 動輒兩三千人逾期未回購)，用絕對值判斷「異常」沒有意義——一定每週都超標。
-    # 風險偵測要看的是「這週逾期人數相較上週是不是明顯變多」，所以額外算上週同
-    # 一天基準的逾期人數，供 WeeklyRiskFlagDetector 用成長幅度判斷，不是用絕對值。
-    prev_cycles = CrmCustomerProductCycle.active_as_of(@period.prev_week_end).for_product(crm.key)
-    overdue_prev_week = CrmCustomerProductCycle.with_status_filter(prev_cycles, "overdue", reference_date: @period.prev_week_end).count
-
-    repurchased_this_week = CrmCustomerProductCycle.for_product(crm.key)
-                                                     .where(next_same_product_order_date: @period.range)
-                                                     .count
-
-    all_cycles_for_product = CrmCustomerProductCycle.for_product(crm.key)
-    lifetime_total = all_cycles_for_product.count
-    lifetime_matched = all_cycles_for_product.matched.count
-
-    configs = CrmRepurchaseCycleConfig.where(product_key: crm.key)
-    weighted_days = configs.sum { |c| c.median_days.to_f * [c.sample_size, 1].max }
-    weighted_weight = configs.sum { |c| [c.sample_size, 1].max }
-
-    {
-      "product_key"              => crm.key,
-      "label"                    => crm.label,
-      "availability_status"      => crm.availability_status,
-      "this_week"                => week_stats,
-      "repurchased_this_week"    => repurchased_this_week,
-      "overdue_count"            => overdue,
-      "overdue_count_prev_week"  => overdue_prev_week,
-      "overdue_growth_pct"       => round2(growth_pct(overdue, overdue_prev_week) || 0),
-      "due_today_count"          => due_today,
-      "due_soon_count"           => due_soon,
-      "tracking_total"           => tracking_total,
-      "lifetime_repurchase_rate_pct" => round2(pct(lifetime_matched, lifetime_total)),
-      "median_repurchase_days"   => configs.any? ? round2(weighted_days / weighted_weight) : nil
-    }
-  end
-
-  # ── 5. 營收進度 ──────────────────────────────────────────────────
-  def build_revenue_progress
+  # ── 5. 營收進度與年度預測 ──────────────────────────────────────────
+  def build_revenue_progress(week_type)
     base = ShoplineOrder.valid_paid
 
-    this_week = order_level_rows(base, @period.time_range).sum { |_, t| t.to_f }
-    prev_week = order_level_rows(base, @period.prev_week_time_range).sum { |_, t| t.to_f }
-    mtd = order_level_rows(base, @period.week_end.beginning_of_month.beginning_of_day..@period.week_end.end_of_day).sum { |_, t| t.to_f }
-    ytd = order_level_rows(base, @period.ytd_time_range).sum { |_, t| t.to_f }
-    last_year_same_ytd = order_level_rows(base, @period.last_year_same_period_time_range).sum { |_, t| t.to_f }
-    last_year_full = order_level_rows(base, @period.last_year_time_range).sum { |_, t| t.to_f }
-    trailing4_total = order_level_rows(base, @period.trailing4_time_range).sum { |_, t| t.to_f }
-    trailing4_weekly_avg = trailing4_total / 4.0
+    this_week = weekly_total(base, @period.time_range)
+    prev_week = weekly_total(base, @period.prev_week_time_range)
+    week_before_prev = weekly_total(base, WeeklyPeriod.for_week_start(@period.week_start - 14).time_range)
+    mtd = weekly_total(base, @period.week_end.beginning_of_month.beginning_of_day..@period.week_end.end_of_day)
+    ytd = weekly_total(base, @period.ytd_time_range)
+    last_year_same_ytd = weekly_total(base, @period.last_year_same_period_time_range)
+    last_year_full = weekly_total(base, @period.last_year_time_range)
+
+    trailing4_avg  = trailing_weekly_avg(base, 4)
+    trailing8_avg  = trailing_weekly_avg(base, 8)
+    trailing13_series = weekly_totals_series(base, 13)
+    trailing13_avg = trailing13_series.sum / [trailing13_series.size, 1].max.to_f
+    trimmed13_avg  = trimmed_average(trailing13_series)
+
+    week_type_avgs = historical_week_type_averages(base)
+    comparable = comparable_basis_stats(week_type, base)
+    concentration = revenue_concentration(base)
 
     weeks_remaining = @period.weeks_remaining_in_year
     gap = last_year_full - ytd
-    required_weekly_revenue = weeks_remaining.positive? ? gap / weeks_remaining : nil
+    required_weekly = weeks_remaining.positive? ? gap / weeks_remaining : nil
+    safety_line = required_weekly ? required_weekly * (1 + (SAFETY_BUFFER_PCT / 100.0)) : nil
+    growth_target_total = last_year_full * (1 + (GROWTH_TARGET_PCT / 100.0))
+    growth_target_weekly = weeks_remaining.positive? ? (growth_target_total - ytd) / weeks_remaining : nil
 
-    projected_base = ytd + (trailing4_weekly_avg * weeks_remaining)
-    projected_optimistic = ytd + (trailing4_weekly_avg * 1.15 * weeks_remaining)
-    projected_conservative = ytd + (trailing4_weekly_avg * 0.85 * weeks_remaining)
+    scenarios = revenue_scenarios(
+      ytd: ytd, weeks_remaining: weeks_remaining, last_year_full: last_year_full,
+      trimmed13_avg: trimmed13_avg, week_type_avgs: week_type_avgs
+    )
 
     {
       "this_week_revenue"          => round2(this_week),
       "prev_week_revenue"          => round2(prev_week),
+      "week_before_prev_revenue"   => round2(week_before_prev),
       "week_over_week_growth_pct"  => round2(growth_pct(this_week, prev_week) || 0),
       "mtd_revenue"                => round2(mtd),
       "ytd_revenue"                => round2(ytd),
       "last_year_same_period_ytd_revenue" => round2(last_year_same_ytd),
       "last_year_full_year_revenue"       => round2(last_year_full),
+      "last_year_same_week_data_present"  => last_year_same_ytd.positive?,
       "yoy_growth_pct"             => round2(growth_pct(ytd, last_year_same_ytd) || 0),
       "gap_to_beat_last_year"      => round2(gap),
       "already_beat_last_year"     => gap <= 0,
       "days_remaining_in_year"     => @period.days_remaining_in_year,
       "weeks_remaining_in_year"    => round2(weeks_remaining),
-      "required_weekly_revenue_to_beat_last_year" => required_weekly_revenue && round2(required_weekly_revenue),
-      "trailing4_weekly_avg_revenue" => round2(trailing4_weekly_avg),
-      "projected_year_end" => {
-        "conservative" => round2(projected_conservative),
-        "base"         => round2(projected_base),
-        "optimistic"   => round2(projected_optimistic)
+      "required_weekly_revenue_to_beat_last_year" => required_weekly && round2(required_weekly),
+      "trailing4_weekly_avg_revenue"  => round2(trailing4_avg),
+      "trailing8_weekly_avg_revenue"  => round2(trailing8_avg),
+      "trailing13_weekly_avg_revenue" => round2(trailing13_avg),
+      "trailing13_trimmed_weekly_avg_revenue" => round2(trimmed13_avg),
+      "week_type_historical_avg"   => week_type_avgs,
+      "comparable_basis"           => comparable,
+      "revenue_concentration"      => concentration,
+      "revenue_lines" => {
+        "minimum_required_weekly" => required_weekly && round2(required_weekly),
+        "safety_line_weekly"      => safety_line && round2(safety_line),
+        "growth_target_weekly"    => growth_target_weekly && round2(growth_target_weekly),
+        "growth_target_pct"       => GROWTH_TARGET_PCT,
+        "safety_buffer_pct"       => SAFETY_BUFFER_PCT,
+        "note" => "安全線＝最低警戒線×(1+#{SAFETY_BUFFER_PCT.to_i}%緩衝)；成長目標線基於「較去年全年成長#{GROWTH_TARGET_PCT.to_i}%」的預設參數（非硬編金額，CRM無正式年度目標可讀，可調整此參數）"
       },
-      "will_beat_last_year_base_case" => projected_base >= last_year_full
+      "scenarios" => scenarios,
+      "will_beat_last_year_base_case" => scenarios.dig("base", "projected_year_end").to_f >= last_year_full
+    }
+  end
+
+  def weekly_totals_series(scope, n_weeks)
+    (1..n_weeks).map { |n| weekly_total(scope, WeeklyPeriod.for_week_start(@period.week_start - (7 * n)).time_range) }
+  end
+
+  def trailing_weekly_avg(scope, n_weeks)
+    series = weekly_totals_series(scope, n_weeks)
+    series.sum / [series.size, 1].max.to_f
+  end
+
+  def trimmed_average(series)
+    return 0.0 if series.empty?
+    return series.sum / series.size.to_f if series.size <= 2
+
+    sorted = series.sort
+    trimmed = sorted[1..-2]
+    trimmed.sum / trimmed.size.to_f
+  end
+
+  # 分別算出「歷史直播週」與「歷史非直播/非活動自然週」的平均週營收，供樂觀/
+  # 保守情境使用——直接借用近26週的實際資料，不對「直播帶動多少」做假設。
+  def historical_week_type_averages(scope, lookback_weeks: 26)
+    range_start = @period.week_start - (7 * lookback_weeks)
+    livestream_dates = Livestream.where(date: range_start...@period.week_start).pluck(:date)
+    campaign_dates   = CalendarEvent.where(event_type: "campaign", event_date: range_start...@period.week_start).pluck(:event_date)
+
+    ls_totals = []
+    nls_totals = []
+    (1..lookback_weeks).each do |n|
+      ws = @period.week_start - (7 * n)
+      we = ws + 6
+      has_ls = livestream_dates.any? { |d| d.between?(ws, we) }
+      has_campaign = campaign_dates.any? { |d| d.between?(ws, we) }
+      total = weekly_total(scope, ws.beginning_of_day..we.end_of_day)
+
+      if has_ls
+        ls_totals << total
+      elsif !has_campaign
+        nls_totals << total
+      end
+    end
+
+    {
+      "livestream_weekly_avg"       => ls_totals.any? ? round2(ls_totals.sum / ls_totals.size) : 0.0,
+      "livestream_sample_weeks"     => ls_totals.size,
+      "non_livestream_weekly_avg"   => nls_totals.any? ? round2(nls_totals.sum / nls_totals.size) : 0.0,
+      "non_livestream_sample_weeks" => nls_totals.size
+    }
+  end
+
+  # 找近26週內「同類型」的週（直播週跟直播週比、自然週跟自然週比），算平均
+  # 成長率，這是「經營結論」該優先引用的比較基準，而不是無腦的本週vs上週。
+  def comparable_basis_stats(week_type, scope)
+    starts = WeeklyWeekTypeClassifier.comparable_week_starts(@period, count: 4)
+    this_week_total = weekly_total(scope, @period.time_range)
+
+    if starts.empty?
+      return {
+        "basis_label" => week_type["type_label"], "sample_size" => 0, "growth_pct" => nil,
+        "this_week" => round2(this_week_total),
+        "basis_note" => "近26週內找不到同類型（#{week_type['type_label']}）的歷史週可比較，目前只能確認本週對上週的原始差異，尚無法判斷是否為基本盤變化"
+      }
+    end
+
+    totals = starts.map { |ws| weekly_total(scope, WeeklyPeriod.for_week_start(ws).time_range) }
+    avg = totals.sum / totals.size.to_f
+
+    {
+      "basis_label"   => "近#{totals.size}個#{week_type['type_label']}平均",
+      "sample_size"   => totals.size,
+      "compare_weeks" => starts,
+      "compare_avg"   => round2(avg),
+      "this_week"     => round2(this_week_total),
+      "growth_pct"    => round2(growth_pct(this_week_total, avg)),
+      "basis_note"    => nil
+    }
+  end
+
+  def revenue_concentration(scope)
+    rows = order_level_rows(scope, @period.time_range)
+    total = rows.sum { |_, t| t.to_f }
+    return concentration_empty if total.zero?
+
+    by_email = Hash.new(0.0)
+    rows.each { |email, t| by_email[email] += t.to_f }
+    top_customer = by_email.values.max || 0.0
+
+    email_level = ShoplineCustomer.where(email: by_email.keys).pluck(:email, :membership_level).to_h
+    by_level = Hash.new(0.0)
+    by_email.each { |email, amt| by_level[email_level[email] || "未分類"] += amt }
+    top_level_name, top_level_amt = by_level.max_by { |_, v| v } || [nil, 0.0]
+
+    top_product_name, top_product_amt = product_weekly_revenues(scope).max_by { |_, v| v } || [nil, 0.0]
+    top_ls_amt = Livestream.where(date: @period.range).maximum(:total_revenue).to_f
+
+    {
+      "top_customer_share_pct"   => round2(pct(top_customer, total)),
+      "top_level_share_pct"      => round2(pct(top_level_amt, total)), "top_level_name" => top_level_name,
+      "top_product_share_pct"    => round2(pct(top_product_amt, total)), "top_product_name" => top_product_name,
+      "top_livestream_share_pct" => round2(pct(top_ls_amt, total))
+    }
+  end
+
+  def product_weekly_revenues(scope)
+    CrmProduct.confirmed.where.not(key: EXCLUDED_PRODUCT_KEYS).filter_map do |crm|
+      amt = weekly_total(scope.where(crm.matching_sql_pattern), @period.time_range)
+      [crm.label, amt] if amt.positive?
+    end.to_h
+  end
+
+  def concentration_empty
+    { "top_customer_share_pct" => nil, "top_level_share_pct" => nil, "top_level_name" => nil,
+      "top_product_share_pct" => nil, "top_product_name" => nil, "top_livestream_share_pct" => nil }
+  end
+
+  # 三種年底預測情境，各自標明採用公式/期間/週均與成立條件——不是統一套一個
+  # 固定倍率。樂觀情境如果查得到「已排定的未來直播場次」（Livestream 已有
+  # 未來日期的列），會用「已知場次數」實際估算，不是憑空假設。
+  def revenue_scenarios(ytd:, weeks_remaining:, last_year_full:, trimmed13_avg:, week_type_avgs:)
+    non_ls_avg = week_type_avgs["non_livestream_weekly_avg"]
+    ls_avg = week_type_avgs["livestream_weekly_avg"]
+
+    known_future_livestreams = Livestream.where(date: (@period.week_end + 1)..Date.new(@period.week_end.year, 12, 31)).count
+    known_ls_weeks = [known_future_livestreams, weeks_remaining.floor].min
+    known_nls_weeks = [weeks_remaining - known_ls_weeks, 0].max
+
+    conservative_projection = ytd + (non_ls_avg * weeks_remaining)
+    base_projection = ytd + (trimmed13_avg * weeks_remaining)
+    optimistic_projection =
+      if known_future_livestreams.positive?
+        ytd + (ls_avg * known_ls_weeks) + (non_ls_avg * known_nls_weeks)
+      else
+        ytd + (trimmed13_avg * 1.15 * weeks_remaining)
+      end
+
+    {
+      "conservative" => scenario_payload(
+        method: "非直播/非活動自然週歷史均速外推（近#{week_type_avgs['non_livestream_sample_weeks']}週樣本），排除直播/活動帶動效果",
+        weekly_rate: non_ls_avg, projection: conservative_projection, last_year_full: last_year_full,
+        condition: "剩餘週數都以「沒有直播/活動加持」的基本盤表現估算，若已知有缺貨中的主力商品会進一步壓低此情境"
+      ),
+      "base" => scenario_payload(
+        method: "近13週去極值平均外推（排除最高與最低各1週後取平均，降低單一直播/促銷高峰影響）",
+        weekly_rate: trimmed13_avg, projection: base_projection, last_year_full: last_year_full,
+        condition: "假設接下來的週次表現跟近13週的「去極值後」常態相近"
+      ),
+      "optimistic" => scenario_payload(
+        method: known_future_livestreams.positive? ? "已知剩餘#{known_future_livestreams}場排定直播用歷史直播週均速估算，其餘週用非直播週均速估算" :
+                                                       "近13週去極值平均 × 1.15（CRM 查無已排定的未來直播場次，只能用比例假設，非精算）",
+        weekly_rate: known_future_livestreams.positive? ? nil : round2(trimmed13_avg * 1.15),
+        projection: optimistic_projection, last_year_full: last_year_full,
+        condition: known_future_livestreams.positive? ? "已知未來直播場次#{known_future_livestreams}場如期舉行且表現貼近歷史直播週均值" : "剩餘週次表現能維持近期高點的1.15倍，屬於樂觀假設，成立條件不明確"
+      )
+    }
+  end
+
+  def scenario_payload(method:, weekly_rate:, projection:, last_year_full:, condition:)
+    gap = last_year_full - projection
+    {
+      "method"              => method,
+      "weekly_rate_used"    => weekly_rate && round2(weekly_rate),
+      "projected_year_end"  => round2(projection),
+      "vs_last_year"        => round2(-gap),
+      "beats_last_year"     => gap <= 0,
+      "success_condition"   => condition
+    }
+  end
+
+  # ── 資料品質彙總（給風險偵測跟附錄用）───────────────────────────
+  def build_data_quality(product_repurchase, membership)
+    stale_products = product_repurchase["products"].select { |p| p["cycles_stale"] }
+    last_year_same_week_orders = ShoplineOrder.valid_paid.where(
+      order_date: @period.last_year_same_week_range.begin.beginning_of_day..@period.last_year_same_week_range.end.end_of_day
+    ).count
+
+    stale_livestreams = Livestream.where(date: (@period.week_end - 13)..@period.week_end)
+                                   .select { |ls| ls.stats_refreshed_at.nil? || ls.stats_refreshed_at.to_date < ls.date }
+
+    {
+      "product_cycle_contradiction_detected" => product_repurchase["contradiction_detected"],
+      "stale_product_cycles" => stale_products.map { |p| { "product_key" => p["product_key"], "label" => p["label"], "refreshed_at" => p["cycles_refreshed_at"] } },
+      "membership_unclassified_revenue_pct"  => membership.dig("reconciliation", "unclassified_pct"),
+      "last_year_same_week_order_count"      => last_year_same_week_orders,
+      "last_year_same_week_data_incomplete"  => last_year_same_week_orders.zero?,
+      "stale_livestream_stats" => stale_livestreams.map { |ls| { "date" => ls.date, "title" => ls.title } }
     }
   end
 end

@@ -126,7 +126,7 @@
     </div>
     <div class="card-body py-2">
       <% if weekly.status == "success" %>
-        <div class="mb-2"><%= weekly.one_liner %></div>
+        <div class="mb-2"><%= wb_status_badge(weekly.business_status) %> <%= weekly.one_liner %></div>
       <% else %>
         <div class="text-danger"><i class="fal fa-exclamation-triangle mr-1"></i>本週報告生成失敗：<%= weekly.error_message %></div>
       <% end %>

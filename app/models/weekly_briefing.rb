@@ -22,27 +22,57 @@ class WeeklyBriefing < ApplicationRecord
     find_or_initialize_by(week_start: week_start)
   end
 
+  # ── 第一部分：老闆決策摘要 ─────────────────────────────────────
+  def executive_summary
+    ai_report["executive_summary"] || {}
+  end
+
+  # 注意：不能叫 `status`——那是本筆 AR row 自己的產生狀態欄位
+  # （pending/success/failed，見上面 validates :status），跟這裡「本週整體
+  # 經營狀態」（healthy_growth/high_risk/...）是完全不同的兩件事，撞名會
+  # 直接蓋掉 AttributeMethods 產生的欄位讀取方法（曾經真的因為這樣讓
+  # status= 寫得進去、status 卻永遠讀回 nil，導致 status inclusion 驗證
+  # 失敗）。
+  def business_status
+    executive_summary["status"]
+  end
+
+  def business_status_label
+    executive_summary["status_label"]
+  end
+
   def one_liner
-    ai_report["one_liner"]
+    executive_summary["one_liner"]
   end
 
-  def key_numbers
-    Array(ai_report["key_numbers"])
+  def top_findings
+    Array(executive_summary["top_findings"])
   end
 
-  def wins
-    Array(ai_report["wins"])
+  def decisions
+    Array(executive_summary["decisions"])
   end
 
-  def issues
-    Array(ai_report["issues"])
+  def biggest_risk
+    executive_summary["biggest_risk"]
   end
 
-  def risks
-    Array(ai_report["risks"])
+  def biggest_opportunity
+    executive_summary["biggest_opportunity"]
   end
 
-  def priorities
-    Array(ai_report["priorities"])
+  # ── 第二部分：經營分析（各段落是條列式重點，不是單一大段落）───────
+  def business_analysis
+    ai_report["business_analysis"] || {}
+  end
+
+  # ── 第三部分：決策後的執行方向 ───────────────────────────────────
+  def action_items
+    Array(ai_report["action_items"])
+  end
+
+  # ── 風險（含 severity，來自 WeeklyRiskFlagDetector，AI 只負責文字化）──
+  def risk_flags
+    Array(meta["risk_flags"]).map(&:with_indifferent_access)
   end
 end

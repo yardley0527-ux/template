@@ -27,9 +27,19 @@ class WeeklyBriefingsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "show renders the stored report for an existing week" do
-    briefing = WeeklyBriefing.create!(week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21),
-                                       status: "success", ai_report: { "one_liner" => "測試一句話" },
-                                       metrics: { "revenue_progress" => { "this_week_revenue" => 1000 } })
+    # 用真正的 WeeklyMetricsService 輸出（結構完整，即使資料是空的）取代手打的
+    # 半成品 metrics hash——半成品之前讓 show.html.erb 深層存取（scenarios/
+    # cohort_repurchase/actionability 等）直接 500，測試卻只斷言字串存在，
+    # 沒有真的驗證頁面渲染成功。
+    metrics = WeeklyMetricsService.call(week_start: Date.new(2026, 6, 15))
+    briefing = WeeklyBriefing.create!(
+      week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21), status: "success",
+      ai_report: {
+        "executive_summary" => { "status" => "flat", "status_label" => "大致持平", "one_liner" => "測試一句話", "status_basis" => "b", "confidence" => "medium", "reasons" => [] },
+        "business_analysis" => {}, "action_items" => []
+      },
+      metrics: metrics
+    )
     sign_in @admin
 
     get weekly_briefing_path(week_start: briefing.week_start.to_s)

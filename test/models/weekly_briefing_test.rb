@@ -26,13 +26,29 @@ class WeeklyBriefingTest < ActiveSupport::TestCase
     assert_equal [newer, old], WeeklyBriefing.history.to_a
   end
 
-  test "accessor methods read from ai_report sections and default to empty arrays" do
-    briefing = WeeklyBriefing.create!(week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21), status: "success",
-                                       ai_report: { "one_liner" => "測試結論", "wins" => [{ "point" => "x" }] })
+  test "accessor methods read from the new executive_summary/business_analysis sections and default to empty arrays" do
+    briefing = WeeklyBriefing.create!(
+      week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21), status: "success",
+      ai_report: {
+        "executive_summary" => { "status" => "flat", "status_label" => "大致持平", "one_liner" => "測試結論" },
+        "business_analysis" => { "revenue_and_forecast" => ["bullet"] },
+        "action_items" => [{ "action" => "x" }]
+      }
+    )
 
     assert_equal "測試結論", briefing.one_liner
-    assert_equal [{ "point" => "x" }], briefing.wins
-    assert_equal [], briefing.issues
-    assert_equal [], briefing.risks
+    assert_equal "flat", briefing.business_status
+    assert_equal "大致持平", briefing.business_status_label
+    assert_equal ["bullet"], briefing.business_analysis["revenue_and_forecast"]
+    assert_equal [{ "action" => "x" }], briefing.action_items
+    assert_equal [], briefing.top_findings
+    assert_equal [], briefing.decisions
+  end
+
+  test "the AR status column is not shadowed by the business_status accessor" do
+    briefing = WeeklyBriefing.create!(week_start: Date.new(2026, 7, 1), week_end: Date.new(2026, 7, 7), status: "failed")
+
+    assert_equal "failed", briefing.status
+    assert_nil briefing.business_status
   end
 end

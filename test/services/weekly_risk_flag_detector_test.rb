@@ -5,24 +5,43 @@ require "test_helper"
 class WeeklyRiskFlagDetectorTest < ActiveSupport::TestCase
   def base_metrics
     {
-      "new_vs_returning" => {
-        "this_week" => { "new_pct" => 20.0 }, "prev_week" => { "new_pct" => 20.0 },
-        "trailing4_weekly_avg" => { "new_pct" => 20.0 }
+      "revenue_progress" => {
+        "already_beat_last_year" => true,
+        "required_weekly_revenue_to_beat_last_year" => nil,
+        "this_week_revenue" => 100_000.0,
+        "prev_week_revenue" => 95_000.0,
+        "week_before_prev_revenue" => 90_000.0,
+        "comparable_basis" => { "growth_pct" => 5.0, "basis_label" => "近4個一般自然週平均", "sample_size" => 4 },
+        "revenue_concentration" => {
+          "top_customer_share_pct" => 2.0, "top_level_share_pct" => 20.0, "top_level_name" => "銀卡",
+          "top_product_share_pct" => 15.0, "top_product_name" => "代謝錠", "top_livestream_share_pct" => 0.0
+        }
       },
-      "membership" => {
-        "black_gold_revenue_share_pct" => 10.0,
-        "changes" => { "downgrade_count" => 1, "trailing4_weekly_avg_downgrade_count" => 1.0 }
+      "new_vs_returning" => {
+        "this_week"            => { "new_customers" => 20, "new_pct" => 20.0, "new_aov" => 5000.0, "returning_customers" => 80, "returning_aov" => 8000.0 },
+        "prev_week"            => { "new_customers" => 20, "new_aov" => 5000.0 },
+        "week_before_prev"     => { "new_customers" => 20 },
+        "trailing4_weekly_avg" => { "new_customers" => 20.0, "returning_customers" => 80.0, "returning_aov" => 8000.0 },
+        "cohort_repurchase"    => [
+          { "window_days" => 30, "repurchase_rate_pct" => 15.0, "prev_cohort_rate_pct" => 15.0, "sample_sufficient" => true }
+        ]
       },
       "product_repurchase" => { "products" => [] },
-      "livestreams" => { "events" => [] },
-      "revenue_progress" => {
-        "week_over_week_growth_pct" => 5.0,
-        "required_weekly_revenue_to_beat_last_year" => 100_000,
-        "trailing4_weekly_avg_revenue" => 200_000
+      "membership" => {
+        "black_gold_revenue_share_pct" => 10.0,
+        "changes" => { "downgrade_count" => 1, "upgrade_count" => 5, "trailing4_weekly_avg_downgrade_count" => 1.0 },
+        "levels" => [
+          { "level" => "銀卡", "active_rate_pct" => 70.0 }, { "level" => "金卡", "active_rate_pct" => 70.0 }, { "level" => "黑卡", "active_rate_pct" => 70.0 }
+        ]
       },
       "order_quality" => {
         "this_week_failed_rate_pct" => 1.0, "trailing4_failed_rate_pct" => 1.0,
         "this_week_unpaid_rate_pct" => 1.0, "trailing4_unpaid_rate_pct" => 1.0
+      },
+      "data_quality" => {
+        "product_cycle_contradiction_detected" => false, "stale_product_cycles" => [],
+        "membership_unclassified_revenue_pct" => 2.0, "last_year_same_week_data_incomplete" => false,
+        "stale_livestream_stats" => []
       }
     }
   end
@@ -31,20 +50,170 @@ class WeeklyRiskFlagDetectorTest < ActiveSupport::TestCase
     assert_equal [], WeeklyRiskFlagDetector.call(base_metrics)
   end
 
-  test "flags a new_pct decline only when it drops vs both prev_week and the trailing4 average" do
+  test "every flag carries a severity and category" do
     m = base_metrics
-    m["new_vs_returning"]["this_week"]["new_pct"] = 10.0 # 10pp below both prev(20) and avg4(20)
+    m["membership"]["black_gold_revenue_share_pct"] = 46.0
 
     flags = WeeklyRiskFlagDetector.call(m)
-    assert_includes flags.map { |f| f[:key] }, "new_pct_declining"
+    assert flags.all? { |f| f[:severity].present? && f[:category].present? }
   end
 
-  test "does not flag new_pct decline when only one comparison basis dropped" do
+  # ── 營收風險 ─────────────────────────────────────────────────
+  test "flags revenue below the required weekly pace, with high severity when the shortfall is severe" do
     m = base_metrics
-    m["new_vs_returning"]["prev_week"]["new_pct"] = 10.0 # dropped vs prev, but trailing4 avg still 20 (not both)
+    m["revenue_progress"]["already_beat_last_year"] = false
+    m["revenue_progress"]["required_weekly_revenue_to_beat_last_year"] = 200_000.0
+    m["revenue_progress"]["this_week_revenue"] = 100_000.0 # 50% short
 
     flags = WeeklyRiskFlagDetector.call(m)
-    assert_not_includes flags.map { |f| f[:key] }, "new_pct_declining"
+    f = flags.find { |x| x[:key] == "revenue_below_required_pace" }
+    assert f
+    assert_equal "high", f[:severity]
+  end
+
+  test "flags a comparable-basis revenue drop of 30% or more" do
+    m = base_metrics
+    m["revenue_progress"]["comparable_basis"]["growth_pct"] = -35.0
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "revenue_comparable_basis_drop"
+  end
+
+  test "flags consecutive two-week revenue decline" do
+    m = base_metrics
+    m["revenue_progress"]["this_week_revenue"] = 80_000.0
+    m["revenue_progress"]["prev_week_revenue"] = 90_000.0
+    m["revenue_progress"]["week_before_prev_revenue"] = 100_000.0
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "consecutive_revenue_decline"
+  end
+
+  test "flags revenue concentration in a single product above threshold" do
+    m = base_metrics
+    m["revenue_progress"]["revenue_concentration"]["top_product_share_pct"] = 55.0
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "revenue_concentration_product"
+  end
+
+  test "flags a payment failure/unpaid rate spike" do
+    m = base_metrics
+    m["order_quality"]["this_week_unpaid_rate_pct"] = 5.0
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "payment_failure_spike"
+  end
+
+  # ── 新客風險 ─────────────────────────────────────────────────
+  test "flags new customer count dropping 30%+ vs the trailing4 average" do
+    m = base_metrics
+    m["new_vs_returning"]["this_week"]["new_customers"] = 10 # 50% below avg4 of 20
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "new_customer_drop_vs_avg4"
+  end
+
+  test "flags new customer pct below the minimum" do
+    m = base_metrics
+    m["new_vs_returning"]["this_week"]["new_pct"] = 5.0
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "new_customer_pct_too_low"
+  end
+
+  test "flags two consecutive weeks of new customer decline" do
+    m = base_metrics
+    m["new_vs_returning"]["this_week"]["new_customers"] = 10
+    m["new_vs_returning"]["prev_week"]["new_customers"] = 15
+    m["new_vs_returning"]["week_before_prev"]["new_customers"] = 20
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "new_customer_two_week_decline"
+  end
+
+  test "flags new customer AOV rising while count drops significantly" do
+    m = base_metrics
+    m["new_vs_returning"]["this_week"]["new_aov"] = 6000.0
+    m["new_vs_returning"]["this_week"]["new_customers"] = 10
+    m["new_vs_returning"]["prev_week"]["new_aov"] = 5000.0
+    m["new_vs_returning"]["prev_week"]["new_customers"] = 20
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "new_customer_aov_up_but_count_down"
+  end
+
+  # ── 舊客風險 ─────────────────────────────────────────────────
+  test "flags returning customer count dropping 20%+ vs the trailing4 average" do
+    m = base_metrics
+    m["new_vs_returning"]["this_week"]["returning_customers"] = 60 # 25% below avg4 of 80
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "returning_customer_drop_vs_avg4"
+  end
+
+  test "flags returning AOV dropping 20%+ vs the trailing4 average" do
+    m = base_metrics
+    m["new_vs_returning"]["this_week"]["returning_aov"] = 6000.0 # 25% below avg4 of 8000
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "returning_aov_drop_vs_avg4"
+  end
+
+  test "flags a cohort repurchase rate drop only when the cohort sample is sufficient" do
+    m = base_metrics
+    m["new_vs_returning"]["cohort_repurchase"][0]["repurchase_rate_pct"] = 10.0
+    m["new_vs_returning"]["cohort_repurchase"][0]["prev_cohort_rate_pct"] = 15.0 # -33%
+    m["new_vs_returning"]["cohort_repurchase"][0]["sample_sufficient"] = false
+
+    assert_not_includes WeeklyRiskFlagDetector.call(m).map { |f| f[:key] }, "cohort_repurchase_rate_drop"
+
+    m["new_vs_returning"]["cohort_repurchase"][0]["sample_sufficient"] = true
+    assert_includes WeeklyRiskFlagDetector.call(m).map { |f| f[:key] }, "cohort_repurchase_rate_drop"
+  end
+
+  test "flags product overdue growth only when both the percentage and absolute increase clear their thresholds, and skips stale products" do
+    m = base_metrics
+    m["product_repurchase"]["products"] = [
+      { "product_key" => "p1", "label" => "P1", "overdue_count" => 100, "overdue_count_prev_week" => 95, "overdue_growth_pct" => 5.3 }, # too small
+      { "product_key" => "p2", "label" => "P2", "overdue_count" => 50, "overdue_count_prev_week" => 30, "overdue_growth_pct" => 66.7 },  # +20, +66.7%
+      { "product_key" => "p3", "label" => "P3", "overdue_count" => 50, "overdue_count_prev_week" => 10, "overdue_growth_pct" => nil }    # stale cache, must be skipped
+    ]
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    product_flags = flags.select { |f| f[:key] == "product_overdue_increasing" }
+    assert_equal 1, product_flags.size
+    assert_equal "p2", product_flags.first.dig(:evidence, :product_key)
+  end
+
+  # ── 會員風險 ─────────────────────────────────────────────────
+  test "flags downgrade exceeding upgrade, with high severity at 2x or more" do
+    m = base_metrics
+    m["membership"]["changes"] = { "downgrade_count" => 10, "upgrade_count" => 4, "trailing4_weekly_avg_downgrade_count" => 1.0 }
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    f = flags.find { |x| x[:key] == "downgrade_exceeds_upgrade" }
+    assert f
+    assert_equal "high", f[:severity]
+  end
+
+  test "flags a downgrade spike relative to the trailing4 weekly average" do
+    m = base_metrics
+    m["membership"]["changes"] = { "downgrade_count" => 10, "upgrade_count" => 20, "trailing4_weekly_avg_downgrade_count" => 2.0 }
+
+    flags = WeeklyRiskFlagDetector.call(m)
+    assert_includes flags.map { |f| f[:key] }, "downgrade_spike_vs_avg4"
+  end
+
+  test "flags low active rate for mid/high tiers only, not white/normal cards" do
+    m = base_metrics
+    m["membership"]["levels"] = [
+      { "level" => "銀卡", "active_rate_pct" => 30.0 }, { "level" => "白卡", "active_rate_pct" => 5.0 }
+    ]
+
+    flags = WeeklyRiskFlagDetector.call(m).select { |f| f[:key] == "mid_high_tier_low_active_rate" }
+    assert_equal 1, flags.size
+    assert_equal "銀卡", flags.first.dig(:evidence, :level)
   end
 
   test "flags black/gold revenue dependency above the threshold" do
@@ -55,42 +224,34 @@ class WeeklyRiskFlagDetectorTest < ActiveSupport::TestCase
     assert_includes flags.map { |f| f[:key] }, "black_gold_dependency"
   end
 
-  test "flags a downgrade spike relative to the trailing4 weekly average" do
+  # ── 資料品質風險 ─────────────────────────────────────────────
+  test "flags product repurchase data contradiction as a data_anomaly" do
     m = base_metrics
-    m["membership"]["changes"] = { "downgrade_count" => 10, "trailing4_weekly_avg_downgrade_count" => 2.0 }
+    m["data_quality"]["product_cycle_contradiction_detected"] = true
 
-    flags = WeeklyRiskFlagDetector.call(m)
-    assert_includes flags.map { |f| f[:key] }, "downgrade_spike"
+    f = WeeklyRiskFlagDetector.call(m).find { |x| x[:key] == "product_repurchase_data_contradiction" }
+    assert f
+    assert_equal "data_anomaly", f[:severity]
   end
 
-  test "flags product overdue growth only when both the percentage and absolute increase clear their thresholds" do
+  test "flags membership revenue reconciliation gap above threshold" do
     m = base_metrics
-    m["product_repurchase"]["products"] = [
-      { "product_key" => "p1", "label" => "P1", "overdue_count" => 100, "overdue_count_prev_week" => 95, "overdue_growth_pct" => 5.3 }, # small abs & pct increase
-      { "product_key" => "p2", "label" => "P2", "overdue_count" => 50, "overdue_count_prev_week" => 30, "overdue_growth_pct" => 66.7 }   # +20, +66.7%
-    ]
+    m["data_quality"]["membership_unclassified_revenue_pct"] = 15.0
 
-    flags = WeeklyRiskFlagDetector.call(m)
-    product_flags = flags.select { |f| f[:key] == "product_overdue" }
-    assert_equal 1, product_flags.size
-    assert_equal "p2", product_flags.first.dig(:evidence, :product_key)
+    assert_includes WeeklyRiskFlagDetector.call(m).map { |f| f[:key] }, "membership_revenue_reconciliation_gap"
   end
 
-  test "flags revenue pace behind schedule when growth is negative and required pace exceeds recent average" do
+  test "flags incomplete last-year same-week data" do
     m = base_metrics
-    m["revenue_progress"]["week_over_week_growth_pct"] = -5.0
-    m["revenue_progress"]["required_weekly_revenue_to_beat_last_year"] = 300_000
-    m["revenue_progress"]["trailing4_weekly_avg_revenue"] = 200_000
+    m["data_quality"]["last_year_same_week_data_incomplete"] = true
 
-    flags = WeeklyRiskFlagDetector.call(m)
-    assert_includes flags.map { |f| f[:key] }, "revenue_pace_behind"
+    assert_includes WeeklyRiskFlagDetector.call(m).map { |f| f[:key] }, "last_year_same_week_data_missing"
   end
 
-  test "flags a payment failure/unpaid rate spike" do
+  test "flags stale livestream stats" do
     m = base_metrics
-    m["order_quality"]["this_week_unpaid_rate_pct"] = 5.0
+    m["data_quality"]["stale_livestream_stats"] = [{ "date" => "2026-06-01", "title" => "x" }]
 
-    flags = WeeklyRiskFlagDetector.call(m)
-    assert_includes flags.map { |f| f[:key] }, "payment_failure_spike"
+    assert_includes WeeklyRiskFlagDetector.call(m).map { |f| f[:key] }, "livestream_stats_stale"
   end
 end

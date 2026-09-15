@@ -1,9 +1,23 @@
-<% content_for :page_title, "每週檢討報告" %>
+<% content_for :page_title, "每週經營決策報告" %>
+<% content_for :head_block do %>
+  <style>
+    @media print {
+      .no-print { display: none !important; }
+      .panel { break-inside: avoid; page-break-inside: avoid; }
+      table { break-inside: auto; }
+      tr { break-inside: avoid; }
+      body { font-size: 11px; }
+    }
+    .wb-option-card { border: 1px solid #e5e5e5; border-radius: 6px; padding: 12px; height: 100%; }
+    .wb-option-card.recommended { border-color: #28a745; background: #f4fbf6; }
+    .wb-finding-card { border-left: 4px solid #6f42c1; padding: 8px 12px; margin-bottom: 10px; }
+  </style>
+<% end %>
 <% m = @briefing&.metrics || {} %>
 
-<div class="subheader">
+<div class="subheader no-print">
   <h1 class="subheader-title">
-    <i class="fal fa-calendar-week mr-2 text-info"></i> 每週檢討報告
+    <i class="fal fa-calendar-week mr-2 text-info"></i> 每週經營決策報告
     <span class="text-muted small ml-2"><%= @period.week_start.strftime("%Y/%m/%d") %> ~ <%= @period.week_end.strftime("%m/%d") %></span>
   </h1>
   <div class="ml-auto">
@@ -16,9 +30,12 @@
     <%= link_to weekly_briefings_path, class: "btn btn-outline-secondary btn-sm mr-1" do %>
       <i class="fal fa-list mr-1"></i>歷史週報
     <% end %>
+    <button type="button" class="btn btn-outline-secondary btn-sm mr-1" onclick="window.print()">
+      <i class="fal fa-print mr-1"></i>列印／另存為PDF
+    </button>
     <% if current_user.admin? %>
       <%= button_to "重新產生本週報告", regenerate_weekly_briefing_path(week_start: @period.week_start.to_s),
-                    method: :post, class: "btn btn-info btn-sm", data: { confirm: "重新產生會覆蓋這一週目前的 AI 分析，確定嗎？" } %>
+                    method: :post, class: "btn btn-info btn-sm", data: { confirm: "重新產生會覆蓋這一週目前的分析，確定嗎？（若上游快取過期會自動一併刷新，可能需要一點時間）" } %>
     <% end %>
   </div>
 </div>
@@ -38,57 +55,142 @@
   </div>
 <% else %>
   <% briefing = @briefing %>
+  <% wt = m["week_type"] || {} %>
+
+  <div class="mb-2 no-print">
+    <span class="badge badge-light border">週型：<%= wt["type_label"] %></span>
+    <% if wt["campaign_size_note"] %><span class="badge badge-light border">⚠️ <%= wt["campaign_size_note"] %></span><% end %>
+  </div>
 
   <% if briefing.status == "failed" %>
     <div class="alert alert-danger">
       <i class="fal fa-exclamation-triangle mr-1"></i>
       AI 分析生成失敗：<%= briefing.error_message %>
-      <% if m.present? %>（下方數據仍為本次計算結果，可放心參考；只有 AI 解讀／待辦沒有產生）<% end %>
+      <% if m.present? %>（下方數據仍為本次計算結果，可放心參考；只有 AI 解讀／決策建議沒有產生）<% end %>
     </div>
   <% end %>
 
   <% if briefing.status == "success" %>
+    <%#================ 第一部分：老闆決策摘要 ================%>
     <div class="panel">
-      <div class="panel-hdr bg-info-600"><h2 class="text-white">本週一句話結論</h2></div>
-      <div class="panel-content">
-        <h4 class="mb-0"><%= briefing.one_liner %></h4>
+      <div class="panel-content d-flex align-items-start flex-wrap">
+        <div class="mr-3 mb-2"><%= wb_status_badge(briefing.business_status) %></div>
+        <div>
+          <h4 class="mb-1"><%= briefing.one_liner %></h4>
+          <div class="text-muted small">判斷依據：<%= briefing.executive_summary["status_basis"] %></div>
+          <div class="text-muted small">信心水準：<%= { "high" => "高", "medium" => "中", "low" => "低" }[briefing.executive_summary["confidence"]] %>
+            <% (briefing.executive_summary["reasons"] || []).each { |r| %> ・<%= r %><% } %>
+          </div>
+        </div>
       </div>
     </div>
 
-    <% if briefing.key_numbers.any? %>
-      <div class="row">
-        <% briefing.key_numbers.each do |kn| %>
-          <div class="col-md-3 col-6 mb-3">
-            <div class="card h-100">
-              <div class="card-body py-2">
-                <div class="text-muted small"><%= kn["label"] %></div>
-                <div class="h5 mb-0"><%= kn["value"] %></div>
-                <div class="small text-muted">
-                  vs <%= kn["compare_label"] %>：<%= kn["compare_value"] %>
-                  <%= wb_delta_badge(kn["delta_pct"]) if kn["delta_pct"] %>
-                </div>
+    <% if briefing.top_findings.any? %>
+      <div class="panel">
+        <div class="panel-hdr"><h2>本週最重要的三個發現</h2></div>
+        <div class="panel-content">
+          <% briefing.top_findings.each_with_index do |f, i| %>
+            <div class="wb-finding-card">
+              <div class="font-weight-bold"><%= i + 1 %>. <%= f["finding"] %>
+                <span class="badge badge-light border ml-1"><%= f["nature"] == "structural" ? "結構性" : "短期波動" %></span>
               </div>
+              <div class="small text-muted">數據證據：<%= f["data_evidence"] %></div>
+              <div class="small">為什麼重要：<%= f["why_it_matters"] %></div>
+              <div class="small text-primary">對未來營收的影響：<%= f["revenue_impact"] %></div>
             </div>
-          </div>
-        <% end %>
+          <% end %>
+        </div>
       </div>
     <% end %>
+
+    <% if briefing.decisions.any? %>
+      <div class="panel">
+        <div class="panel-hdr bg-primary-600"><h2 class="text-white">本週需要老闆決策的事項</h2></div>
+        <div class="panel-content">
+          <% briefing.decisions.each_with_index do |d, i| %>
+            <div class="mb-4 <%= 'border-bottom pb-4' if i < briefing.decisions.size - 1 %>">
+              <h5>決策 <%= i + 1 %>：<%= d["question"] %></h5>
+              <div class="small text-muted mb-1">目前狀況：<%= d["current_situation"] %></div>
+              <div class="small text-muted mb-2">數據證據：<%= d["data_evidence"] %></div>
+              <div class="row">
+                <% %w[option_a option_b option_c].each_with_index do |opt_key, idx| %>
+                  <% opt = d[opt_key] %>
+                  <% next if opt.blank? %>
+                  <% letter = %w[A B C][idx] %>
+                  <div class="col-md-4 mb-2">
+                    <div class="wb-option-card <%= 'recommended' if d['recommended_option'] == letter %>">
+                      <div class="font-weight-bold mb-1">
+                        方案<%= letter %>
+                        <% if d["recommended_option"] == letter %><span class="badge badge-success ml-1">系統建議</span><% end %>
+                      </div>
+                      <div class="small">做法：<%= opt["action"] %></div>
+                      <div class="small text-success">預期效益：<%= opt["benefit"] %></div>
+                      <div class="small text-danger">風險：<%= opt["risk"] %></div>
+                      <div class="small text-muted">適用條件：<%= opt["condition"] %></div>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+              <div class="small mt-2"><strong>建議原因：</strong><%= d["recommendation_reason"] %></div>
+              <div class="small text-danger"><strong>不決策的影響：</strong><%= d["impact_if_no_decision"] %></div>
+              <div class="small"><strong>下週驗證KPI：</strong><%= d["next_week_kpi"] %></div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="panel h-100">
+          <div class="panel-hdr bg-danger-600"><h2 class="text-white">本週最大風險</h2></div>
+          <div class="panel-content">
+            <% if briefing.biggest_risk %>
+              <div><%= briefing.biggest_risk["description"] %></div>
+              <div class="small text-muted mt-1">數據證據：<%= briefing.biggest_risk["data_evidence"] %></div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="panel h-100">
+          <div class="panel-hdr bg-success-600"><h2 class="text-white">本週最大機會</h2></div>
+          <div class="panel-content">
+            <% if briefing.biggest_opportunity %>
+              <div><%= briefing.biggest_opportunity["description"] %></div>
+              <div class="small text-muted mt-1">數據證據：<%= briefing.biggest_opportunity["data_evidence"] %></div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
   <% end %>
 
-  <%# ── 營收進度 ── %>
+  <%#================ 第二部分：經營分析 ================%>
+  <h4 class="mt-4 mb-2">經營分析</h4>
+
+  <%# ── 2.1 營收與年度預測 ── %>
   <% rp = m["revenue_progress"] %>
   <% if rp %>
     <div class="panel">
-      <div class="panel-hdr"><h2>營收進度</h2></div>
+      <div class="panel-hdr"><h2>營收與年度預測</h2></div>
       <div class="panel-content">
+        <% if briefing.status == "success" %>
+          <ul class="mb-3"><% Array(briefing.business_analysis["revenue_and_forecast"]).each { |b| %><li><%= b %></li><% } %></ul>
+        <% end %>
         <div class="row text-center mb-3">
           <div class="col"><div class="text-muted small">本週</div><div class="h6"><%= wb_money(rp["this_week_revenue"]) %></div></div>
           <div class="col"><div class="text-muted small">上週</div><div class="h6"><%= wb_money(rp["prev_week_revenue"]) %></div><%= wb_delta_badge(rp["week_over_week_growth_pct"]) %></div>
-          <div class="col"><div class="text-muted small">本月累計</div><div class="h6"><%= wb_money(rp["mtd_revenue"]) %></div></div>
+          <div class="col"><div class="text-muted small">可比較基準<br><span class="text-muted" style="font-size:10px;"><%= rp.dig("comparable_basis", "basis_label") %></span></div>
+            <div class="h6"><%= wb_money(rp.dig("comparable_basis", "compare_avg")) %></div><%= wb_delta_badge(rp.dig("comparable_basis", "growth_pct")) %></div>
           <div class="col"><div class="text-muted small">今年累計</div><div class="h6"><%= wb_money(rp["ytd_revenue"]) %></div></div>
           <div class="col"><div class="text-muted small">去年同期</div><div class="h6"><%= wb_money(rp["last_year_same_period_ytd_revenue"]) %></div><%= wb_delta_badge(rp["yoy_growth_pct"]) %></div>
           <div class="col"><div class="text-muted small">去年全年</div><div class="h6"><%= wb_money(rp["last_year_full_year_revenue"]) %></div></div>
         </div>
+        <% if rp.dig("comparable_basis", "basis_note") %>
+          <div class="alert alert-warning small py-2"><%= rp.dig("comparable_basis", "basis_note") %></div>
+        <% end %>
+
         <hr>
         <div class="row">
           <div class="col-md-6">
@@ -101,20 +203,32 @@
               <% end %>
             </p>
             <p class="mb-1 small text-muted">今年剩餘 <%= rp["days_remaining_in_year"] %> 天（約 <%= rp["weeks_remaining_in_year"] %> 週）</p>
-            <% if rp["required_weekly_revenue_to_beat_last_year"] %>
-              <p class="mb-1 small">若要超越去年，之後每週至少需要營收：<strong><%= wb_money(rp["required_weekly_revenue_to_beat_last_year"]) %></strong>
-                （近4週平均週營收：<%= wb_money(rp["trailing4_weekly_avg_revenue"]) %>）</p>
-            <% end %>
+            <table class="table table-sm mb-0">
+              <tr><td>最低警戒線（週）</td><td class="text-right"><%= wb_money(rp.dig("revenue_lines", "minimum_required_weekly")) %></td></tr>
+              <tr><td>經營安全線（週，+<%= rp.dig("revenue_lines","safety_buffer_pct")&.to_i %>%緩衝）</td><td class="text-right"><%= wb_money(rp.dig("revenue_lines", "safety_line_weekly")) %></td></tr>
+              <tr><td>成長目標線（週，較去年+<%= rp.dig("revenue_lines","growth_target_pct")&.to_i %>%）</td><td class="text-right"><%= wb_money(rp.dig("revenue_lines", "growth_target_weekly")) %></td></tr>
+            </table>
           </div>
           <div class="col-md-6">
-            <div class="text-muted small mb-1">年底營收預測（依近4週均速外推）</div>
+            <div class="text-muted small mb-1">年底營收三種情境預測</div>
             <table class="table table-sm mb-0">
-              <tr><td>保守（近4週均速×0.85）</td><td class="text-right"><%= wb_money(rp.dig("projected_year_end", "conservative")) %></td></tr>
-              <tr><td>基準（近4週均速）</td><td class="text-right"><%= wb_money(rp.dig("projected_year_end", "base")) %></td></tr>
-              <tr><td>樂觀（近4週均速×1.15）</td><td class="text-right"><%= wb_money(rp.dig("projected_year_end", "optimistic")) %></td></tr>
+              <thead class="thead-light"><tr><th>情境</th><th>採用週均</th><th>預估年底營收</th><th>vs去年</th></tr></thead>
+              <tbody>
+                <% %w[conservative base optimistic].each do |key| %>
+                  <% s = rp.dig("scenarios", key) || {} %>
+                  <tr>
+                    <td><%= { "conservative" => "保守", "base" => "基準", "optimistic" => "樂觀" }[key] %></td>
+                    <td><%= wb_money(s["weekly_rate_used"]) %></td>
+                    <td><%= wb_money(s["projected_year_end"]) %></td>
+                    <td><%= s["beats_last_year"] ? content_tag(:span, "超越", class: "badge badge-success") : content_tag(:span, "落後 #{wb_money(s['vs_last_year'] ? -s['vs_last_year'] : nil)}", class: "badge badge-warning") %></td>
+                  </tr>
+                <% end %>
+              </tbody>
             </table>
-            <div class="small mt-1">
-              基準情境<%= rp["will_beat_last_year_base_case"] ? content_tag(:span, "預估可超越去年", class: "text-success") : content_tag(:span, "預估無法超越去年", class: "text-danger") %>
+            <div class="small text-muted mt-1">
+              <% %w[conservative base optimistic].each do |key| %>
+                <div><strong><%= { "conservative" => "保守", "base" => "基準", "optimistic" => "樂觀" }[key] %>：</strong><%= rp.dig("scenarios", key, "method") %>；成立條件：<%= rp.dig("scenarios", key, "success_condition") %></div>
+              <% end %>
             </div>
           </div>
         </div>
@@ -122,24 +236,42 @@
     </div>
   <% end %>
 
-  <%# ── 新舊客分析 ── %>
+  <%# ── 2.2 營收變動原因拆解 ── %>
+  <% if briefing.status == "success" && Array(briefing.business_analysis["revenue_change_breakdown"]).any? %>
+    <div class="panel">
+      <div class="panel-hdr"><h2>營收變動原因拆解</h2></div>
+      <div class="panel-content">
+        <ul class="mb-2"><% briefing.business_analysis["revenue_change_breakdown"].each { |b| %><li><%= b %></li><% } %></ul>
+        <% rc = rp["revenue_concentration"] %>
+        <% if rc %>
+          <div class="small text-muted">
+            集中度：單一會員佔<%= wb_pct(rc["top_customer_share_pct"]) %>／單一卡別（<%= rc["top_level_name"] %>）佔<%= wb_pct(rc["top_level_share_pct"]) %>／
+            單一商品（<%= rc["top_product_name"] %>）佔<%= wb_pct(rc["top_product_share_pct"]) %>／單場直播佔<%= wb_pct(rc["top_livestream_share_pct"]) %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%# ── 2.3 新客與舊客 ── %>
   <% nvr = m["new_vs_returning"] %>
   <% if nvr %>
     <div class="panel">
       <div class="panel-hdr"><h2>新客與舊客分析</h2></div>
       <div class="panel-content p-0">
-        <div class="table-responsive">
+        <% if briefing.status == "success" %>
+          <div class="p-3 pb-0"><ul class="mb-0"><% Array(briefing.business_analysis["new_and_returning_customers"]).each { |b| %><li><%= b %></li><% } %></ul></div>
+        <% end %>
+        <div class="table-responsive p-3">
           <table class="table table-sm mb-0">
             <thead class="thead-light">
-              <tr><th></th><th>本週</th><th>上週</th><th>近4週平均</th><th>去年同週</th></tr>
+              <tr><th>指標</th><th>本週</th><th>上週</th><th>近4週平均</th><th>去年同週</th></tr>
             </thead>
             <tbody>
-              <% %w[new_customers returning_customers new_revenue returning_revenue new_aov returning_aov new_pct].each do |k| %>
+              <% [["new_customers","新客人數"],["returning_customers","舊客回購人數"],["new_revenue","新客營收"],
+                  ["returning_revenue","舊客營收"],["new_aov","新客客單價"],["returning_aov","舊客客單價"],["new_pct","新客佔比"]].each do |k, label| %>
                 <tr>
-                  <td class="text-muted small">
-                    <%= { "new_customers"=>"新客人數","returning_customers"=>"舊客回購人數","new_revenue"=>"新客營收",
-                          "returning_revenue"=>"舊客營收","new_aov"=>"新客客單價","returning_aov"=>"舊客客單價","new_pct"=>"新客佔比" }[k] %>
-                  </td>
+                  <td class="text-muted small"><%= label %></td>
                   <% %w[this_week prev_week trailing4_weekly_avg last_year_same_week].each do |period_key| %>
                     <td>
                       <% v = nvr.dig(period_key, k) %>
@@ -151,22 +283,39 @@
             </tbody>
           </table>
         </div>
-        <% nbr = nvr["new_buyer_repurchase"] %>
-        <% if nbr %>
-          <div class="p-3 small text-muted border-top">
-            近4週新客回購率（<%= nbr["cohort_window_start"] %> ~ <%= nbr["cohort_window_end"] %> 首購 cohort，早期信號，非完整生命週期回購率）：
-            <%= nbr["repurchased_count"] %> / <%= nbr["cohort_size"] %> = <strong><%= wb_pct(nbr["repurchase_rate_pct"]) %></strong>
+        <div class="p-3 border-top">
+          <div class="text-muted small mb-1">新客回購率（成熟cohort，只計入已完整走完觀察窗的首購週）</div>
+          <div class="table-responsive">
+            <table class="table table-sm mb-0">
+              <thead class="thead-light"><tr><th>觀察窗</th><th>Cohort期間</th><th>樣本數</th><th>回購人數</th><th>回購率</th><th>上一成熟cohort</th><th>歷史平均</th></tr></thead>
+              <tbody>
+                <% Array(nvr["cohort_repurchase"]).each do |c| %>
+                  <tr>
+                    <td><%= c["window_days"] %>天</td>
+                    <td class="small"><%= c["cohort_start"] %>~<%= c["cohort_end"] %></td>
+                    <td><%= c["sample_size"] %><% unless c["sample_sufficient"] %><span class="badge badge-light border ml-1">樣本不足</span><% end %></td>
+                    <td><%= c["repurchased_count"] %></td>
+                    <td><%= wb_pct(c["repurchase_rate_pct"]) %></td>
+                    <td><%= wb_pct(c["prev_cohort_rate_pct"]) %></td>
+                    <td><%= wb_pct(c["historical_avg_rate_pct"]) %>（<%= c["historical_sample_weeks"] %>週）</td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
           </div>
-        <% end %>
+        </div>
       </div>
     </div>
   <% end %>
 
-  <%# ── 直播表現 ── %>
+  <%# ── 2.4 直播表現 ── %>
   <% ls = m["livestreams"] %>
   <div class="panel">
     <div class="panel-hdr"><h2>直播表現（近 14 天）</h2></div>
     <div class="panel-content p-0">
+      <% if briefing.status == "success" && Array(briefing.business_analysis["livestream_performance"]).any? %>
+        <div class="p-3 pb-0"><ul class="mb-0"><% briefing.business_analysis["livestream_performance"].each { |b| %><li><%= b %></li><% } %></ul></div>
+      <% end %>
       <% if ls.blank? || ls["events"].blank? %>
         <div class="p-4 text-center text-muted">本期間無直播</div>
       <% else %>
@@ -181,7 +330,7 @@
             <tbody>
               <% ls["events"].each do |e| %>
                 <tr>
-                  <td class="text-nowrap"><%= e["date"] %><% if e["stale_stats"] %> <i class="fal fa-exclamation-circle text-warning" title="統計快取可能過期，建議重跑 livestreams:stats:refresh"></i><% end %></td>
+                  <td class="text-nowrap"><%= e["date"] %><% if e["stale_stats"] %> <i class="fal fa-exclamation-circle text-warning" title="統計快取可能過期"></i><% end %></td>
                   <td><%= e["title"] %></td>
                   <td><%= e["total_orders"] %></td>
                   <td><%= e["total_buyers"] %>（新<%= e["new_buyers"] %>／舊<%= e["returning_buyers"] %>）</td>
@@ -199,18 +348,20 @@
     </div>
   </div>
 
-  <%# ── 會員卡別維護 ── %>
+  <%# ── 2.5 會員卡別健康度 ── %>
   <% mem = m["membership"] %>
   <% if mem %>
     <div class="panel">
-      <div class="panel-hdr"><h2>會員卡別維護</h2></div>
+      <div class="panel-hdr"><h2>會員卡別健康度</h2></div>
       <div class="panel-content p-0">
+        <% if briefing.status == "success" && Array(briefing.business_analysis["membership_health"]).any? %>
+          <div class="p-3 pb-0"><ul class="mb-0"><% briefing.business_analysis["membership_health"].each { |b| %><li><%= b %></li><% } %></ul></div>
+        <% end %>
         <div class="table-responsive">
           <table class="table table-sm mb-0">
             <thead class="thead-light">
               <tr>
-                <th>卡別</th><th>會員數</th><th>活躍<%= "(#{mem['active_window_days']}天內)" %></th><th>沉睡</th>
-                <th>本週營收</th><th>本週客單價</th><th>今年累計營收</th>
+                <th>卡別</th><th>會員數</th><th>活躍率</th><th>本週營收</th><th>本週客單價</th><th>今年累計營收</th><th>YTD前10名佔比</th>
               </tr>
             </thead>
             <tbody>
@@ -218,11 +369,11 @@
                 <tr>
                   <td><%= lv["level"] %></td>
                   <td><%= lv["member_count"] %></td>
-                  <td><%= lv["active_count"] %></td>
-                  <td><%= lv["dormant_count"] %></td>
+                  <td><%= wb_pct(lv["active_rate_pct"]) %></td>
                   <td><%= wb_money(lv.dig("this_week", "revenue")) %></td>
                   <td><%= wb_money(lv.dig("this_week", "aov")) %></td>
                   <td><%= wb_money(lv.dig("ytd", "revenue")) %></td>
+                  <td><%= wb_pct(lv.dig("ytd_concentration", "top10_revenue_share_pct")) %></td>
                 </tr>
               <% end %>
             </tbody>
@@ -232,39 +383,50 @@
           <div>黑金卡營收依賴度（本週）：<strong><%= wb_pct(mem["black_gold_revenue_share_pct"]) %></strong></div>
           <div>升級 <%= mem.dig("changes","upgrade_count") %> 人（近4週平均 <%= mem.dig("changes","trailing4_weekly_avg_upgrade_count") %> 人）／
                降級 <%= mem.dig("changes","downgrade_count") %> 人（近4週平均 <%= mem.dig("changes","trailing4_weekly_avg_downgrade_count") %> 人）</div>
+          <div>卡別營收加總校驗：未分類營收 <%= wb_money(mem.dig("reconciliation","unclassified_revenue")) %>（<%= wb_pct(mem.dig("reconciliation","unclassified_pct")) %>）
+            <%= mem.dig("reconciliation","note") %></div>
           <div class="text-muted mt-1"><%= mem["near_threshold_note"] %></div>
         </div>
       </div>
     </div>
   <% end %>
 
-  <%# ── 商品回購與沉睡狀況 ── %>
+  <%# ── 2.6 商品與回購 ── %>
   <% pr = m["product_repurchase"] %>
   <% if pr %>
     <div class="panel">
-      <div class="panel-hdr"><h2>商品回購與沉睡狀況</h2></div>
+      <div class="panel-hdr">
+        <h2>商品與回購</h2>
+        <% if pr["contradiction_detected"] %>
+          <span class="badge badge-dark ml-2">⚠️ 商品回購資料可能異常，下方回購數字已標示為資料不足</span>
+        <% end %>
+      </div>
       <div class="panel-content p-0">
+        <% if briefing.status == "success" && Array(briefing.business_analysis["product_and_repurchase"]).any? %>
+          <div class="p-3 pb-0"><ul class="mb-0"><% briefing.business_analysis["product_and_repurchase"].each { |b| %><li><%= b %></li><% } %></ul></div>
+        <% end %>
         <div class="table-responsive">
           <table class="table table-sm table-hover mb-0">
             <thead class="thead-light">
               <tr>
-                <th>產品</th><th>庫存</th><th>本週買家</th><th>本週營收</th><th>本週回購人數</th>
-                <th>逾期未回購</th><th>今日待聯絡</th><th>即將用完</th><th>歷史回購率</th><th>平均回購週期</th>
+                <th>產品</th><th>庫存</th><th>本週買家</th><th>本週回購人數</th>
+                <th>逾期（本期可行動人數）</th><th>今日待聯絡</th><th>即將用完</th><th>歷史回購率</th>
               </tr>
             </thead>
             <tbody>
               <% pr["products"].each do |p| %>
-                <tr>
-                  <td><%= p["label"] %></td>
+                <tr class="<%= 'table-warning' if p['cycles_stale'] %>">
+                  <td><%= p["label"] %><% if p["cycles_stale"] %><br><span class="badge badge-light border" title="快取上次刷新：<%= p['cycles_refreshed_at'] %>">快取過期</span><% end %></td>
                   <td><%= CrmProduct::AVAILABILITY_STATUS_LABELS[p["availability_status"]] %></td>
                   <td><%= p.dig("this_week","total_customers") %></td>
-                  <td><%= wb_money(p.dig("this_week","total_revenue")) %></td>
-                  <td><%= p["repurchased_this_week"] %></td>
-                  <td><span class="badge <%= p['overdue_count'].to_i.positive? ? 'badge-danger' : 'badge-light' %>"><%= p["overdue_count"] %></span></td>
+                  <td><%= wb_num(p["repurchased_this_week"]) %></td>
+                  <td>
+                    <span class="badge <%= p['overdue_count'].to_i.positive? ? 'badge-danger' : 'badge-light' %>"><%= p["overdue_count"] %> 累積</span>
+                    <span class="badge badge-info">可行動 <%= p.dig("actionability","actionable_count") %></span>
+                  </td>
                   <td><%= p["due_today_count"] %></td>
                   <td><%= p["due_soon_count"] %></td>
                   <td><%= wb_pct(p["lifetime_repurchase_rate_pct"]) %></td>
-                  <td><%= p["median_repurchase_days"] ? "#{p['median_repurchase_days']} 天" : "—" %></td>
                 </tr>
               <% end %>
             </tbody>
@@ -274,80 +436,51 @@
     </div>
   <% end %>
 
-  <% if briefing.status == "success" %>
-    <div class="row">
-      <div class="col-md-6">
-        <div class="panel">
-          <div class="panel-hdr bg-success-600"><h2 class="text-white">做得好的地方</h2></div>
-          <div class="panel-content">
-            <% if briefing.wins.empty? %>
-              <div class="text-muted small">本週無特別亮點</div>
-            <% end %>
-            <% briefing.wins.each do |w| %>
-              <div class="mb-3 pb-2 border-bottom">
-                <div class="font-weight-bold">✅ <%= w["point"] %></div>
-                <div class="small text-muted">數據：<%= w["data"] %>｜比較對象：<%= w["compare"] %></div>
-                <div class="small">為什麼：<%= w["why"] %></div>
-                <div class="small text-success">建議：<%= w["recommendation"] %></div>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="panel">
-          <div class="panel-hdr bg-danger-600"><h2 class="text-white">做得不好的地方</h2></div>
-          <div class="panel-content">
-            <% if briefing.issues.empty? %>
-              <div class="text-muted small">本週無明顯問題</div>
-            <% end %>
-            <% briefing.issues.each do |i| %>
-              <div class="mb-3 pb-2 border-bottom">
-                <div class="font-weight-bold">⚠️ <%= i["point"] %></div>
-                <div class="small text-muted">數據：<%= i["data"] %>｜差距：<%= i["gap"] %></div>
-                <div class="small">可能原因：<%= i["possible_cause"] %></div>
-                <div class="small">影響程度：<%= i["impact"] %></div>
-                <div class="small text-danger">不處理的後果：<%= i["consequence"] %></div>
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </div>
-    </div>
-
+  <%# ── 2.7 未來四週展望 ── %>
+  <% if briefing.status == "success" && Array(briefing.business_analysis["next_4_week_outlook"]).any? %>
     <div class="panel">
-      <div class="panel-hdr bg-warning-600"><h2 class="text-white">下週需要注意的風險</h2></div>
+      <div class="panel-hdr"><h2>未來四週風險與機會</h2></div>
       <div class="panel-content">
-        <% if briefing.risks.empty? %>
-          <div class="text-muted small">本週未觸發任何風險旗標</div>
-        <% end %>
-        <% briefing.risks.each do |r| %>
-          <div class="mb-2">
-            <i class="fal fa-exclamation-triangle text-warning mr-1"></i>
-            <strong><%= r["risk"] %></strong>
-            <div class="small text-muted ml-3">觸發條件：<%= r["trigger_condition"] %>｜證據：<%= r["evidence"] %></div>
-          </div>
-        <% end %>
+        <ul class="mb-0"><% briefing.business_analysis["next_4_week_outlook"].each { |b| %><li><%= b %></li><% } %></ul>
       </div>
     </div>
+  <% end %>
 
+  <%# ── 風險清單（帶severity）── %>
+  <div class="panel">
+    <div class="panel-hdr bg-warning-600"><h2 class="text-white">下週需要注意的風險</h2></div>
+    <div class="panel-content">
+      <% if briefing.risk_flags.empty? %>
+        <div class="text-muted small">本週未觸發任何風險旗標（明確門檻式偵測，不代表沒有其他隱憂——請一併參考上方「本週最大風險」）</div>
+      <% else %>
+        <% briefing.risk_flags.sort_by { |f| -WeeklyRiskFlagDetector::SEVERITY_RANK.fetch(f["severity"], 0) }.each do |f| %>
+          <div class="mb-2 pb-2 border-bottom">
+            <%= wb_severity_badge(f["severity"]) %>
+            <span class="badge badge-light border"><%= WeeklyRiskFlagDetector::CATEGORY_LABELS[f["category"]] %></span>
+            <strong><%= wb_risk_label(f) %></strong>
+            <div class="small text-muted ml-1"><%= wb_evidence_text(f["evidence"]) %></div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <%#================ 第三部分：決策後的執行方向 ================%>
+  <% if briefing.action_items.any? %>
     <div class="panel">
-      <div class="panel-hdr"><h2>下週優先改善事項</h2></div>
+      <div class="panel-hdr"><h2>決策後的執行方向</h2></div>
       <div class="panel-content p-0">
         <div class="table-responsive">
           <table class="table table-sm mb-0">
-            <thead class="thead-light">
-              <tr><th>問題</th><th>數據證據</th><th>建議行動</th><th>目標客群</th><th>預期指標</th><th>驗收方式</th></tr>
-            </thead>
+            <thead class="thead-light"><tr><th>行動</th><th>對應決策</th><th>負責角色</th><th>建議期限</th><th>KPI</th></tr></thead>
             <tbody>
-              <% briefing.priorities.each do |p| %>
+              <% briefing.action_items.each do |a| %>
                 <tr>
-                  <td><%= p["problem"] %></td>
-                  <td class="small"><%= p["evidence"] %></td>
-                  <td class="small"><%= p["action"] %></td>
-                  <td class="small"><%= p["target_segment"] %></td>
-                  <td class="small"><%= p["expected_kpi"] %></td>
-                  <td class="small"><%= p["review_method"] %></td>
+                  <td><%= a["action"] %></td>
+                  <td class="small text-muted"><%= a["linked_decision"] %></td>
+                  <td><%= a["role"] %></td>
+                  <td class="text-nowrap"><%= a["deadline"] %></td>
+                  <td class="small"><%= a["kpi"] %></td>
                 </tr>
               <% end %>
             </tbody>
@@ -355,9 +488,11 @@
         </div>
       </div>
     </div>
+  <% end %>
 
-    <div class="panel">
-      <div class="panel-hdr"><h2>下週待辦事項</h2></div>
+  <details class="mb-3 no-print">
+    <summary class="btn btn-outline-secondary btn-sm">展開詳細待辦清單（<%= briefing.todos.count %>項）</summary>
+    <div class="panel mt-2">
       <div class="panel-content p-0">
         <% if briefing.todos.empty? %>
           <div class="p-4 text-center text-muted">本週沒有產生待辦事項</div>
@@ -409,5 +544,68 @@
         <% end %>
       </div>
     </div>
-  <% end %>
+  </details>
+
+  <%#================ 第四部分：數據附錄 ================%>
+  <details class="mb-3">
+    <summary class="btn btn-outline-secondary btn-sm">展開數據附錄（資料來源／完整明細／資料缺口）</summary>
+    <div class="panel mt-2">
+      <div class="panel-content">
+        <h6>資料來源與計算定義</h6>
+        <ul class="small">
+          <li>有效訂單＝<code>shopline_orders.payment_status = '已付款'</code>（<code>ShoplineOrder.valid_paid</code>），排除未付款/付款失敗。</li>
+          <li>新客／舊客＝以 <code>customer_purchase_summaries.first_date</code> 是否落在本期間判斷（<code>NewCustomerDefinition</code>），不是卡別。</li>
+          <li>商品回購／逾期＝重用回購追蹤 Dashboard 同一份資料（<code>crm_customer_product_cycles</code>），本週回購比對用 <code>next_same_product_order_date</code> 是否落在本期間。</li>
+          <li>營收金額一律取「訂單層級」金額（<code>MAX(total_amount)</code> 缺值才退回加總 <code>checkout_amount</code>），避免同一張訂單被拆成多個商品行重複計算。</li>
+          <li>週型判斷（直播週/活動週/自然週）＝<code>livestreams.date</code> 與 <code>calendar_events(event_type: campaign)</code> 是否落在本週。</li>
+        </ul>
+
+        <h6 class="mt-3">資料缺口</h6>
+        <ul class="small">
+          <li>Shopline 會員等級升降門檻規則未落地在本站資料庫，無法計算「即將降級/接近升級門檻」人數。</li>
+          <li>CRM 沒有前端流量／商品頁瀏覽／加購／結帳啟動等轉換漏斗資料，付款失敗率無法代表完整購買漏斗。</li>
+          <li>CRM 沒有活動規模分級欄位，活動週無法細分「大型檔期」與「一般促銷」。</li>
+          <% dq = m["data_quality"] || {} %>
+          <% if dq["last_year_same_week_data_incomplete"] %><li>去年同一週完全沒有訂單資料，YoY 比較可能不完整。</li><% end %>
+          <% Array(dq["stale_livestream_stats"]).each do |s| %><li>直播 <%= s["date"] %>「<%= s["title"] %>」統計快取可能過期。</li><% end %>
+        </ul>
+
+        <% if pr.present? %>
+          <h6 class="mt-3">產品逾期分級距與可行動人數（完整明細）</h6>
+          <div class="table-responsive">
+            <table class="table table-sm mb-3">
+              <thead class="thead-light">
+                <tr><th>產品</th><th>1-30天</th><th>31-60天</th><th>61-90天</th><th>91-120天</th><th>121-180天</th><th>181-365天</th><th>366天+</th>
+                  <th>可聯繫</th><th>已有任務</th><th>近30天已聯繫</th><th>完全沉睡</th><th>可行動人數</th></tr>
+              </thead>
+              <tbody>
+                <% pr["products"].each do |p| %>
+                  <% a = p["actionability"] || {} %>
+                  <tr>
+                    <td><%= p["label"] %></td>
+                    <% %w[1-30 31-60 61-90 91-120 121-180 181-365 366+].each do |bucket| %>
+                      <td><%= a.dig("age_buckets", bucket) %></td>
+                    <% end %>
+                    <td><%= a["reachable_count"] %></td>
+                    <td><%= a["already_has_task_count"] %></td>
+                    <td><%= a["contacted_last_30d_count"] %></td>
+                    <td><%= a["fully_dormant_count"] %></td>
+                    <td><strong><%= a["actionable_count"] %></strong></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
+
+        <h6>報告版本資訊</h6>
+        <ul class="small mb-0">
+          <li>產生時間：<%= briefing.generated_at %></li>
+          <li>模型：<%= briefing.model %></li>
+          <li>Prompt 版本：<%= briefing.prompt_version %></li>
+          <li>更新時間：<%= briefing.updated_at %></li>
+        </ul>
+      </div>
+    </div>
+  </details>
 <% end %>
