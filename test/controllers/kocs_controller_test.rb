@@ -58,6 +58,63 @@ class KocsControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
+  # ── 2026-09-16：checkbox/select/date 改成 local:false（AJAX）後，確認
+  # 「打勾還是會正確存進資料庫」——local:true/false只影響瀏覽器送出表單的
+  # 方式（整頁導航 vs. XHR），不影響PATCH本身的params/路由/controller邏輯，
+  # 但實際用XHR請求（含Referer header，模擬瀏覽器remote form送出時的行為）
+  # 跑一次，比純理論推論更可靠。
+  test "以 XHR 方式勾選 follows_chloe_ig（模擬 local:false 表單送出）會正確存進資料庫" do
+    sign_in @social
+    assert_not @koc.follows_chloe_ig?
+
+    patch koc_path(@koc), params: { koc: { follows_chloe_ig: "1" } },
+                           headers: { "Referer" => kocs_url }, xhr: true
+
+    assert_response :redirect
+    assert @koc.reload.follows_chloe_ig?
+  end
+
+  test "以 XHR 方式取消勾選 email_sent 會正確存進資料庫" do
+    @koc.update!(email_sent: true)
+    sign_in @social
+
+    patch koc_path(@koc), params: { koc: { email_sent: "0" } },
+                           headers: { "Referer" => kocs_url }, xhr: true
+
+    assert_response :redirect
+    assert_not @koc.reload.email_sent?
+  end
+
+  test "以 XHR 方式改變聯絡狀態下拉選單會正確存進資料庫" do
+    sign_in @social
+
+    patch koc_path(@koc), params: { koc: { status: "已接洽" } },
+                           headers: { "Referer" => kocs_url }, xhr: true
+
+    assert_response :redirect
+    assert_equal "已接洽", @koc.reload.status
+  end
+
+  test "以 XHR 方式改變拍影片狀態下拉選單會正確存進資料庫" do
+    sign_in @social
+
+    patch koc_path(@koc), params: { koc: { video_shoot_status: "已拍攝" } },
+                           headers: { "Referer" => kocs_url }, xhr: true
+
+    assert_response :redirect
+    assert_equal "已拍攝", @koc.reload.video_shoot_status
+  end
+
+  test "以 XHR 方式填公關品寄出日期會正確存進資料庫（物流欄位限admin/物流部，用admin測）" do
+    sign_in @admin
+
+    patch koc_path(@koc), params: { koc: { pr_gift_shipped_at: "2026-09-20" } },
+                           headers: { "Referer" => kocs_url }, xhr: true
+
+    assert_response :redirect
+    assert_equal Date.new(2026, 9, 20), @koc.reload.pr_gift_shipped_at
+  end
+
   # ── 2026-09-16：隱藏功能（跟刪除並存，不刪資料只是預設列表篩掉）──
   test "social 能隱藏 KOC，隱藏後不刪除資料、只是預設列表看不到" do
     sign_in @social
