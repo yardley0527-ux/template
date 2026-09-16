@@ -21,6 +21,7 @@ ACCOUNTS = [
     "shengting.glow",
     "shengting.light",
     "shengting.eyeprotect",
+    "shengting.pdrn",
 ]
 
 # chloechao0527 是個人帳號，session 失效時常常還是抓得到，不能拿來判斷登入是否有效。

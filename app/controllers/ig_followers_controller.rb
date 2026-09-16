@@ -15,6 +15,7 @@ class IgFollowersController < ApplicationController
     "shengting.glow"          => "穀胱甘肽",
     "shengting.light"         => "抗老",
     "shengting.eyeprotect"    => "蝦紅素",
+    "shengting.pdrn"          => "PDRN",
     "chloechao0527"           => "Chloe IG",
   }.freeze
 
