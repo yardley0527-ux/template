@@ -10,12 +10,15 @@ class KocsController < ApplicationController
     @sort = params[:sort]
     @kocs = @sort == "likes" ? Koc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : Koc.ordered_by_engagement
 
+    @show_hidden = params[:hidden] == "1"
+    @kocs = @show_hidden ? @kocs.hidden_only : @kocs.visible
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
     @kocs = @kocs.where("ig_username ILIKE ?", "%#{params[:ig_username].to_s.strip.delete_prefix('@')}%") if params[:ig_username].present?
 
     @total_count  = Koc.count
     @paid_count   = Koc.where(has_paid_partnership: true).count
+    @hidden_count = Koc.hidden_only.count
     @status_counts = Koc.group(:status).count
 
     @page = [params[:page].to_i, 1].max
@@ -47,14 +50,29 @@ class KocsController < ApplicationController
   end
 
   def destroy
-    return head :forbidden unless current_user.admin? || current_user.role&.key == "social"
+    return head :forbidden unless can_hide_or_delete?
 
     @koc = Koc.find(params[:id])
     @koc.destroy
     redirect_to kocs_path, notice: "已刪除 #{@koc.ig_username}"
   end
 
+  # 隱藏／取消隱藏：跟刪除同一組權限（admin 或社群部），但不刪資料，只是
+  # 預設列表篩掉——用途是「還不確定要不要留、但還不想真的刪掉」。
+  def toggle_hidden
+    return head :forbidden unless can_hide_or_delete?
+
+    @koc = Koc.find(params[:id])
+    @koc.update!(hidden: !@koc.hidden?)
+    redirect_back fallback_location: kocs_path, allow_other_host: false,
+                   notice: @koc.hidden? ? "已隱藏 #{@koc.ig_username}" : "已取消隱藏 #{@koc.ig_username}"
+  end
+
   private
+
+  def can_hide_or_delete?
+    current_user.admin? || current_user.role&.key == "social"
+  end
 
   # 物流部備註／公關品寄出日期只有 crmdata 帳號（物流部）能編輯，admin 維持全權限。
   def can_edit_logistics_fields?
