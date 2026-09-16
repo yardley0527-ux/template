@@ -100,27 +100,21 @@ Rails.application.routes.draw do
   get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
   resources :kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
-    patch :toggle_hidden, on: :member
   end
   resources :relove_kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
-    patch :toggle_hidden, on: :member
   end
   resources :body_goals_kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
-    patch :toggle_hidden, on: :member
   end
   resources :betterbio_kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
-    patch :toggle_hidden, on: :member
   end
   resources :dianbopopo_kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
-    patch :toggle_hidden, on: :member
   end
   resources :akimia_kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
-    patch :toggle_hidden, on: :member
   end
   get  '/koc_search', to: 'koc_search#index', as: :koc_search
   get  '/replied_contacts', to: 'replied_contacts#index', as: :replied_contacts

@@ -37,12 +37,8 @@ class PodcastContactsController < ApplicationController
 
   def update
     @contact = PodcastContact.find(params[:id])
-
-    if @contact.update(contact_params)
-      redirect_back fallback_location: podcast_contacts_path, allow_other_host: false, notice: "已更新 #{@contact.ig_username}"
-    else
-      render plain: @contact.errors.full_messages.join("、"), status: :unprocessable_entity
-    end
+    @contact.update(contact_params)
+    redirect_back fallback_location: podcast_contacts_path, allow_other_host: false, notice: "已更新 #{@contact.ig_username}"
   end
 
   def destroy

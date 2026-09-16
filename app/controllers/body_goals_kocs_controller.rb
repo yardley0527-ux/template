@@ -9,15 +9,12 @@ class BodyGoalsKocsController < ApplicationController
 
     @sort = params[:sort]
     @kocs = @sort == "likes" ? BodyGoalsKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : BodyGoalsKoc.ordered_by_engagement
-    @show_hidden = params[:hidden] == "1"
-    @kocs = @show_hidden ? @kocs.hidden_only : @kocs.visible
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
     @kocs = @kocs.where("ig_username ILIKE ?", "%#{params[:ig_username].to_s.strip.delete_prefix('@')}%") if params[:ig_username].present?
 
     @total_count = BodyGoalsKoc.count
     @paid_count  = BodyGoalsKoc.where(has_paid_partnership: true).count
-    @hidden_count = BodyGoalsKoc.hidden_only.count
     @status_counts = BodyGoalsKoc.group(:status).count
 
     @page = [params[:page].to_i, 1].max
@@ -44,36 +41,19 @@ class BodyGoalsKocsController < ApplicationController
 
   def update
     @koc = BodyGoalsKoc.find(params[:id])
-
-    if @koc.update(koc_params)
-      redirect_back fallback_location: body_goals_kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
-    else
-      render plain: @koc.errors.full_messages.join("、"), status: :unprocessable_entity
-    end
+    @koc.update(koc_params)
+    redirect_back fallback_location: body_goals_kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
   end
 
   def destroy
-    return head :forbidden unless can_hide_or_delete?
+    return head :forbidden unless current_user.admin? || current_user.role&.key == "social"
 
     @koc = BodyGoalsKoc.find(params[:id])
     @koc.destroy
     redirect_to body_goals_kocs_path, notice: "已刪除 #{@koc.ig_username}"
   end
 
-  def toggle_hidden
-    return head :forbidden unless can_hide_or_delete?
-
-    @koc = BodyGoalsKoc.find(params[:id])
-    @koc.update!(hidden: !@koc.hidden?)
-    redirect_back fallback_location: body_goals_kocs_path, allow_other_host: false,
-                   notice: @koc.hidden? ? "已隱藏 #{@koc.ig_username}" : "已取消隱藏 #{@koc.ig_username}"
-  end
-
   private
-
-  def can_hide_or_delete?
-    current_user.admin? || current_user.role&.key == "social"
-  end
 
   # 物流部備註／公關品寄出日期只有 crmdata 帳號（物流部）能編輯，admin 維持全權限。
   def can_edit_logistics_fields?

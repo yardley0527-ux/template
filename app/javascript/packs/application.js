@@ -7,7 +7,6 @@ import Rails from "@rails/ujs";
 import * as ActiveStorage from "@rails/activestorage";
 import Chart from "chart.js/auto";
 import "../nav_menu";
-import "../pending_remote_form_guard";
 
 Rails.start();
 require("turbolinks").start();

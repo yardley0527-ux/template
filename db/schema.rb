@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_16_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -52,7 +52,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
     t.date "pr_gift_shipped_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "hidden", default: false, null: false
     t.index ["ig_username"], name: "index_akimia_kocs_on_ig_username", unique: true
   end
 
@@ -95,7 +94,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
     t.date "pr_gift_shipped_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "hidden", default: false, null: false
     t.index ["ig_username"], name: "index_betterbio_kocs_on_ig_username", unique: true
   end
 
@@ -129,7 +127,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
     t.date "pr_gift_shipped_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "hidden", default: false, null: false
     t.index ["ig_username"], name: "index_body_goals_kocs_on_ig_username", unique: true
   end
 
@@ -549,7 +546,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
     t.date "pr_gift_shipped_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "hidden", default: false, null: false
     t.index ["ig_username"], name: "index_dianbopopo_kocs_on_ig_username", unique: true
   end
 
@@ -711,7 +707,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
     t.boolean "email_sent", default: false, null: false
     t.date "pr_gift_shipped_at"
     t.text "logistics_notes"
-    t.boolean "hidden", default: false, null: false
     t.index ["ig_username"], name: "index_kocs_on_ig_username", unique: true
   end
 
@@ -1264,7 +1259,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
     t.boolean "email_sent", default: false, null: false
     t.text "logistics_notes"
     t.date "pr_gift_shipped_at"
-    t.boolean "hidden", default: false, null: false
     t.index ["ig_username"], name: "index_relove_kocs_on_ig_username", unique: true
   end
 

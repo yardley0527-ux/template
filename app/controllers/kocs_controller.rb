@@ -10,15 +10,12 @@ class KocsController < ApplicationController
     @sort = params[:sort]
     @kocs = @sort == "likes" ? Koc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : Koc.ordered_by_engagement
 
-    @show_hidden = params[:hidden] == "1"
-    @kocs = @show_hidden ? @kocs.hidden_only : @kocs.visible
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
     @kocs = @kocs.where("ig_username ILIKE ?", "%#{params[:ig_username].to_s.strip.delete_prefix('@')}%") if params[:ig_username].present?
 
     @total_count  = Koc.count
     @paid_count   = Koc.where(has_paid_partnership: true).count
-    @hidden_count = Koc.hidden_only.count
     @status_counts = Koc.group(:status).count
 
     @page = [params[:page].to_i, 1].max
@@ -45,41 +42,19 @@ class KocsController < ApplicationController
 
   def update
     @koc = Koc.find(params[:id])
-
-    if @koc.update(koc_params)
-      redirect_back fallback_location: kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
-    else
-      # 存檔失敗（例如驗證沒過）要回非2xx，前端checkbox/select/date欄位的
-      # ajax:error處理器才會知道要復原畫面並提示使用者，不能悄悄redirect_back
-      # 假裝成功——那會讓使用者以為存到了，其實資料庫沒變。
-      render plain: @koc.errors.full_messages.join("、"), status: :unprocessable_entity
-    end
+    @koc.update(koc_params)
+    redirect_back fallback_location: kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
   end
 
   def destroy
-    return head :forbidden unless can_hide_or_delete?
+    return head :forbidden unless current_user.admin? || current_user.role&.key == "social"
 
     @koc = Koc.find(params[:id])
     @koc.destroy
     redirect_to kocs_path, notice: "已刪除 #{@koc.ig_username}"
   end
 
-  # 隱藏／取消隱藏：跟刪除同一組權限（admin 或社群部），但不刪資料，只是
-  # 預設列表篩掉——用途是「還不確定要不要留、但還不想真的刪掉」。
-  def toggle_hidden
-    return head :forbidden unless can_hide_or_delete?
-
-    @koc = Koc.find(params[:id])
-    @koc.update!(hidden: !@koc.hidden?)
-    redirect_back fallback_location: kocs_path, allow_other_host: false,
-                   notice: @koc.hidden? ? "已隱藏 #{@koc.ig_username}" : "已取消隱藏 #{@koc.ig_username}"
-  end
-
   private
-
-  def can_hide_or_delete?
-    current_user.admin? || current_user.role&.key == "social"
-  end
 
   # 物流部備註／公關品寄出日期只有 crmdata 帳號（物流部）能編輯，admin 維持全權限。
   def can_edit_logistics_fields?
