@@ -197,7 +197,7 @@
               </td>
               <td>
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: false, class: "mb-0" do |f| %>
                     <%= f.select :status, BetterbioKoc::STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                   <% end %>
                 <% else %>
@@ -206,7 +206,7 @@
               </td>
               <td>
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: false, class: "mb-0" do |f| %>
                     <%= f.select :video_shoot_status, BetterbioKoc::VIDEO_SHOOT_STATUSES, {}, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                   <% end %>
                 <% else %>
@@ -235,7 +235,7 @@
               </td>
               <td>
                 <% if can_edit_logistics_fields? %>
-                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: false, class: "mb-0" do |f| %>
                     <%= f.date_field :pr_gift_shipped_at, value: koc.pr_gift_shipped_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                   <% end %>
                 <% else %>
