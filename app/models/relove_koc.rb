@@ -8,6 +8,8 @@ class ReloveKoc < ApplicationRecord
   before_validation { self.video_shoot_status = "未拍攝" if video_shoot_status.blank? }
 
   scope :ordered_by_engagement, -> { order(Arel.sql("COALESCE(max_video_views, 0) DESC, COALESCE(max_likes, 0) DESC")) }
+  scope :visible, -> { where(hidden: false) }
+  scope :hidden_only, -> { where(hidden: true) }
 
   def profile_link
     profile_url.presence || "https://www.instagram.com/#{ig_username}"

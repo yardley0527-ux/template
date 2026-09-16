@@ -57,4 +57,57 @@ class KocsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_response :forbidden
   end
+
+  # ── 2026-09-16：隱藏功能（跟刪除並存，不刪資料只是預設列表篩掉）──
+  test "social 能隱藏 KOC，隱藏後不刪除資料、只是預設列表看不到" do
+    sign_in @social
+    assert_no_difference "Koc.count" do
+      patch toggle_hidden_koc_path(@koc)
+    end
+    assert @koc.reload.hidden?
+    assert_redirected_to kocs_path
+  end
+
+  test "admin 也能隱藏 KOC" do
+    sign_in @admin
+    patch toggle_hidden_koc_path(@koc)
+    assert @koc.reload.hidden?
+  end
+
+  test "再次呼叫 toggle_hidden 會取消隱藏" do
+    sign_in @social
+    @koc.update!(hidden: true)
+
+    patch toggle_hidden_koc_path(@koc)
+
+    assert_not @koc.reload.hidden?
+  end
+
+  test "非 admin 非 social 不能隱藏 KOC" do
+    other_role = Role.find_or_create_by!(key: "data") { |r| r.name = "數據部" }
+    PagePermission.find_or_create_by!(role: other_role, controller_name: "kocs")
+    other = User.create!(email: "koc_other_hide@test.com", username: "koc_other_hide", password: "password123", role: other_role)
+
+    sign_in other
+    patch toggle_hidden_koc_path(@koc)
+
+    assert_response :forbidden
+    assert_not @koc.reload.hidden?
+  end
+
+  test "index 預設不顯示已隱藏的 KOC，但加上 hidden=1 篩選時只顯示已隱藏的" do
+    @koc.update!(hidden: true)
+    visible_koc = Koc.create!(ig_username: "koc_visible_#{SecureRandom.hex(4)}", source: "手動新增")
+    sign_in @admin
+
+    get kocs_path
+    assert_response :success
+    assert_includes response.body, visible_koc.ig_username
+    assert_not_includes response.body, @koc.ig_username
+
+    get kocs_path(hidden: "1")
+    assert_response :success
+    assert_includes response.body, @koc.ig_username
+    assert_not_includes response.body, visible_koc.ig_username
+  end
 end

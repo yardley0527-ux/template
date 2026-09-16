@@ -85,11 +85,12 @@
 
 <%# ── 篩選列 ── %>
 <div class="d-flex flex-wrap gap-2 mb-3">
-  <%= link_to "全部", dianbopopo_kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank?} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank?}" %>
+  <%= link_to "全部", dianbopopo_kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank? && !@show_hidden} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank? && !@show_hidden}" %>
   <%= link_to "只看已業配", dianbopopo_kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1'} #{'btn-outline-secondary' unless params[:paid] == '1'}" %>
   <% DianbopopoKoc::STATUSES.each do |s| %>
     <%= link_to s, dianbopopo_kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
   <% end %>
+  <%= link_to "已隱藏 (#{@hidden_count})", dianbopopo_kocs_path(hidden: "1", sort: @sort), class: "btn btn-sm ml-auto #{'btn-dark' if @show_hidden} #{'btn-outline-secondary' unless @show_hidden}" %>
 </div>
 
 <%# ── KOC 列表 ── %>
@@ -241,8 +242,11 @@
                   <span class="small"><%= koc.pr_gift_shipped_at&.strftime("%Y-%m-%d") || "—" %></span>
                 <% end %>
               </td>
-              <td>
+              <td class="text-nowrap">
                 <% if current_user.admin? || current_user.role&.key == "social" %>
+                  <%= link_to toggle_hidden_dianbopopo_koc_path(koc), method: :patch, class: "btn btn-sm btn-outline-secondary", title: koc.hidden? ? "取消隱藏" : "隱藏" do %>
+                    <i class="fal <%= koc.hidden? ? "fa-eye" : "fa-eye-slash" %>"></i>
+                  <% end %>
                   <%= link_to dianbopopo_koc_path(koc), method: :delete, data: { confirm: "確定刪除 #{koc.ig_username}？" }, class: "btn btn-sm btn-outline-danger" do %>
                     <i class="fal fa-trash-alt"></i>
                   <% end %>

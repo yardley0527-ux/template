@@ -9,12 +9,15 @@ class DianbopopoKocsController < ApplicationController
 
     @sort = params[:sort]
     @kocs = @sort == "likes" ? DianbopopoKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : DianbopopoKoc.ordered_by_engagement
+    @show_hidden = params[:hidden] == "1"
+    @kocs = @show_hidden ? @kocs.hidden_only : @kocs.visible
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
     @kocs = @kocs.where("ig_username ILIKE ?", "%#{params[:ig_username].to_s.strip.delete_prefix('@')}%") if params[:ig_username].present?
 
     @total_count = DianbopopoKoc.count
     @paid_count  = DianbopopoKoc.where(has_paid_partnership: true).count
+    @hidden_count = DianbopopoKoc.hidden_only.count
     @status_counts = DianbopopoKoc.group(:status).count
 
     @page = [params[:page].to_i, 1].max
@@ -46,14 +49,27 @@ class DianbopopoKocsController < ApplicationController
   end
 
   def destroy
-    return head :forbidden unless current_user.admin? || current_user.role&.key == "social"
+    return head :forbidden unless can_hide_or_delete?
 
     @koc = DianbopopoKoc.find(params[:id])
     @koc.destroy
     redirect_to dianbopopo_kocs_path, notice: "已刪除 #{@koc.ig_username}"
   end
 
+  def toggle_hidden
+    return head :forbidden unless can_hide_or_delete?
+
+    @koc = DianbopopoKoc.find(params[:id])
+    @koc.update!(hidden: !@koc.hidden?)
+    redirect_back fallback_location: dianbopopo_kocs_path, allow_other_host: false,
+                   notice: @koc.hidden? ? "已隱藏 #{@koc.ig_username}" : "已取消隱藏 #{@koc.ig_username}"
+  end
+
   private
+
+  def can_hide_or_delete?
+    current_user.admin? || current_user.role&.key == "social"
+  end
 
   # 物流部備註／公關品寄出日期只有 crmdata 帳號（物流部）能編輯，admin 維持全權限。
   def can_edit_logistics_fields?
