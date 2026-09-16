@@ -170,7 +170,7 @@
               </td>
               <td class="text-center">
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: false, class: "mb-0" do |f| %>
                     <%= f.check_box :follows_chloe_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                   <% end %>
                 <% else %>
@@ -179,7 +179,7 @@
               </td>
               <td class="text-center">
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: false, class: "mb-0" do |f| %>
                     <%= f.check_box :follows_official_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                   <% end %>
                 <% else %>
@@ -188,7 +188,7 @@
               </td>
               <td class="text-center">
                 <% if can_edit_social_fields? %>
-                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: false, class: "mb-0" do |f| %>
                     <%= f.check_box :email_sent, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                   <% end %>
                 <% else %>
