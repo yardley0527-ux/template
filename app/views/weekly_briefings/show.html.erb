@@ -37,11 +37,25 @@
       <i class="fal fa-print mr-1"></i>列印／另存為PDF
     </button>
     <% if current_user.admin? %>
-      <%= button_to "重新產生最新完整週報", regenerate_weekly_briefing_path(week_start: @period.week_start.to_s),
-                    method: :post, class: "btn btn-info btn-sm", data: { confirm: "重新產生會覆蓋這一週目前的分析，確定嗎？（若上游快取過期會自動一併刷新，可能需要一點時間）" } %>
+      <% if @briefing&.regenerating? %>
+        <button type="button" class="btn btn-info btn-sm" disabled id="wb-regenerate-btn">
+          <i class="fal fa-spinner fa-spin mr-1"></i>產生中…
+        </button>
+      <% else %>
+        <%= button_to "重新產生最新完整週報", regenerate_weekly_briefing_path(week_start: @period.week_start.to_s),
+                      method: :post, class: "btn btn-info btn-sm", id: "wb-regenerate-btn",
+                      data: { confirm: "重新產生會覆蓋這一週目前的分析，確定嗎？（若上游快取過期會自動一併刷新，可能需要幾分鐘，離開這頁不影響背景處理）" } %>
+      <% end %>
     <% end %>
   </div>
 </div>
+
+<% if @briefing&.regenerating? %>
+  <div class="alert alert-info no-print" id="wb-regenerating-banner">
+    <i class="fal fa-spinner fa-spin mr-1"></i>
+    報告正在背景重新產生中（重算商品回購週期＋呼叫AI，通常需要幾分鐘），這裡會自動偵測完成並重新整理，離開這頁不影響處理進度。
+  </div>
+<% end %>
 
 <% if @briefing.nil? %>
   <div class="panel">
@@ -814,4 +828,34 @@
       </div>
     </div>
   </details>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+(function() {
+  // 只有頁面載入時就是「產生中」才需要輪詢；沒有背景任務在跑就不用打API。
+  var banner = document.getElementById("wb-regenerating-banner");
+  if (!banner) return;
+
+  var statusUrl = "<%= status_weekly_briefing_path(week_start: @period.week_start.to_s) %>";
+  var pollCount = 0;
+  var maxPolls = 90; // 7.5 分鐘（90 次 * 5 秒），避免分頁開著無限輪詢
+
+  var timer = setInterval(function() {
+    pollCount++;
+    fetch(statusUrl, { headers: { "Accept": "application/json" } })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data) return;
+        if (!data.regenerating) {
+          clearInterval(timer);
+          window.location.reload();
+        }
+      })
+      .catch(function() {});
+
+    if (pollCount >= maxPolls) clearInterval(timer);
+  }, 5000);
+})();
+</script>
 <% end %>

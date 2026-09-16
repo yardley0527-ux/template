@@ -3,6 +3,25 @@
 require "test_helper"
 
 class WeeklyBriefingTest < ActiveSupport::TestCase
+  test "regenerating? is true right after regeneration_started_at is set" do
+    briefing = WeeklyBriefing.create!(week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21),
+                                       status: "success", regeneration_started_at: Time.current)
+    assert briefing.regenerating?
+  end
+
+  test "regenerating? is false once regeneration_started_at is cleared" do
+    briefing = WeeklyBriefing.create!(week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21),
+                                       status: "success", regeneration_started_at: nil)
+    assert_not briefing.regenerating?
+  end
+
+  test "regenerating? treats a regeneration_started_at older than REGENERATION_TIMEOUT as stale, not stuck forever" do
+    briefing = WeeklyBriefing.create!(week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21),
+                                       status: "success",
+                                       regeneration_started_at: WeeklyBriefing::REGENERATION_TIMEOUT.ago - 1.minute)
+    assert_not briefing.regenerating?, "a job that started over #{WeeklyBriefing::REGENERATION_TIMEOUT.inspect} ago is presumed dead (crashed/restarted), not still running"
+  end
+
   test "week_start must be unique" do
     WeeklyBriefing.create!(week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21), status: "pending")
     dup = WeeklyBriefing.new(week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21), status: "pending")

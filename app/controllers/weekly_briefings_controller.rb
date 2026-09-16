@@ -15,8 +15,13 @@
 # 進度，改走 #in_progress（不呼叫AI、不產生正式決策報告，只給有時區意識
 # 的部分期間比較數字）。regenerate 也擋下對未結束週期的請求，從源頭避免
 # 同類問題再發生一次。
+#
+# 2026-09-16：regenerate 改成背景 job（WeeklyBriefingRegenerationJob）+
+# 前端輪詢——上游13個商品回購週期重算＋最多3次Opus API往返實測要好幾分鐘，
+# 原本同步執行會讓管理員的瀏覽器請求卡住直到超時。#status 給輪詢用。
 class WeeklyBriefingsController < ApplicationController
-  before_action :set_briefing, only: [:show, :regenerate]
+  before_action :set_briefing, only: [:show]
+  before_action :set_briefing_for_write, only: [:regenerate, :status]
 
   def index
     @briefings = WeeklyBriefing.history.limit(53)
@@ -44,10 +49,25 @@ class WeeklyBriefingsController < ApplicationController
       return
     end
 
-    _briefing, refresh_log = WeeklyBriefingRunner.call(week_start: @week_start)
-    refreshed = refresh_log.select { |_, v| v == "refreshed" || v.to_s.start_with?("refreshed") }.keys
-    notice = refreshed.any? ? "已重新產生最新完整週報（順便刷新了：#{refreshed.join('、')}）" : "已重新產生最新完整週報"
-    redirect_to weekly_briefing_path(week_start: @week_start.to_s), notice: notice
+    if @briefing.regenerating?
+      redirect_to weekly_briefing_path(week_start: @week_start.to_s), alert: "上一次重新產生還在背景處理中，請稍候"
+      return
+    end
+
+    @briefing.update!(regeneration_started_at: Time.current)
+    WeeklyBriefingRegenerationJob.perform_later(@week_start.to_s)
+    redirect_to weekly_briefing_path(week_start: @week_start.to_s),
+                notice: "已加入背景處理，通常需要幾分鐘（要重算商品回購週期＋呼叫AI），這頁會自動偵測完成，離開也不影響"
+  end
+
+  # 前端輪詢用：跟 imports 頁的 #status 同一種模式。
+  def status
+    render json: {
+      regenerating: @briefing.regenerating?,
+      status: @briefing.status,
+      generated_at: @briefing.generated_at,
+      needs_review: @briefing.needs_review_banner?
+    }
   end
 
   private
@@ -57,6 +77,17 @@ class WeeklyBriefingsController < ApplicationController
     @period = WeeklyPeriod.new(@week_start)
     @week_start = @period.week_start
     @briefing = WeeklyBriefing.find_by(week_start: @week_start)
+  end
+
+  # regenerate／status 需要一筆可以讀寫 regeneration_started_at 的 row，
+  # 跟 #show 故意保留「這週從沒產生過」時 @briefing 是 nil（畫面顯示空狀態）
+  # 的行為不同，所以分開一個 before_action，不共用 set_briefing。
+  def set_briefing_for_write
+    @week_start = parse_week_start(params[:week_start])
+    @period = WeeklyPeriod.new(@week_start)
+    @week_start = @period.week_start
+    @briefing = WeeklyBriefing.for_week(@week_start)
+    @briefing.week_end ||= @period.week_end
   end
 
   def parse_week_start(value)

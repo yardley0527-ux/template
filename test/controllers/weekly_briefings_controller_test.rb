@@ -4,6 +4,7 @@ require "test_helper"
 
 class WeeklyBriefingsControllerTest < ActionDispatch::IntegrationTest
   include Devise::Test::IntegrationHelpers
+  include ActiveJob::TestHelper
 
   setup do
     admin_role = Role.create!(key: "admin", name: "Admin")
@@ -226,6 +227,81 @@ class WeeklyBriefingsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, ">nil<"
     assert_not_includes response.body, "<h2></h2>"
     assert_not_includes response.body, "<h1></h1>"
+  end
+
+  test "show renders a regenerating banner and disables the button while a background regeneration is in progress" do
+    metrics = WeeklyMetricsService.call(week_start: Date.new(2026, 6, 15))
+    WeeklyBriefing.create!(
+      week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21), status: "success",
+      regeneration_started_at: Time.current,
+      ai_report: {
+        "executive_summary" => { "status" => "flat", "status_label" => "大致持平", "one_liner" => "舊版內容", "status_basis" => "b", "confidence" => "medium", "reasons" => [] },
+        "business_analysis" => {}, "action_items" => []
+      },
+      metrics: metrics
+    )
+    sign_in @admin
+
+    get weekly_briefing_path(week_start: "2026-06-15")
+
+    assert_response :success
+    assert_includes response.body, "報告正在背景重新產生中"
+    assert_includes response.body, "舊版內容" # 背景處理中仍顯示舊內容，不是清空畫面
+    assert_includes response.body, "產生中"
+  end
+
+  # ── 2026-09-16：regenerate 改成背景 job，不再同步呼叫 WeeklyBriefingRunner ──
+  test "regenerate for a completed week enqueues the background job and marks the briefing as regenerating, instead of running synchronously" do
+    sign_in @admin
+
+    assert_enqueued_with(job: WeeklyBriefingRegenerationJob, args: ["2026-06-15"]) do
+      post regenerate_weekly_briefing_path(week_start: "2026-06-15")
+    end
+
+    briefing = WeeklyBriefing.find_by(week_start: Date.new(2026, 6, 15))
+    assert briefing, "expected a WeeklyBriefing row to be created/found so regeneration_started_at can be tracked"
+    assert briefing.regenerating?
+    assert_redirected_to weekly_briefing_path(week_start: "2026-06-15")
+    follow_redirect!
+    assert_includes flash[:notice].to_s, "背景處理"
+  end
+
+  test "regenerate refuses to enqueue a second job while one is already regenerating" do
+    sign_in @admin
+    briefing = WeeklyBriefing.create!(week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21),
+                                       status: "success", regeneration_started_at: Time.current)
+
+    assert_no_enqueued_jobs only: WeeklyBriefingRegenerationJob do
+      post regenerate_weekly_briefing_path(week_start: "2026-06-15")
+    end
+
+    assert_redirected_to weekly_briefing_path(week_start: "2026-06-15")
+    follow_redirect!
+    assert_includes flash[:alert].to_s, "還在背景處理中"
+    assert briefing.reload.regenerating?
+  end
+
+  test "status endpoint reports regenerating state for polling" do
+    sign_in @admin
+    WeeklyBriefing.create!(week_start: Date.new(2026, 6, 15), week_end: Date.new(2026, 6, 21),
+                            status: "success", regeneration_started_at: Time.current)
+
+    get status_weekly_briefing_path(week_start: "2026-06-15"), headers: { "Accept" => "application/json" }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal true, body["regenerating"]
+    assert_equal "success", body["status"]
+  end
+
+  test "status endpoint works even for a week that has never been generated (no row yet)" do
+    sign_in @admin
+
+    get status_weekly_briefing_path(week_start: "2026-06-15"), headers: { "Accept" => "application/json" }
+
+    assert_response :success
+    body = JSON.parse(response.body)
+    assert_equal false, body["regenerating"]
   end
 
   test "in_progress shows same-elapsed-day comparisons for the still-running week, not a full week vs full week comparison" do

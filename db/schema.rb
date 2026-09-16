@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_15_100001) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_16_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1675,6 +1675,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_15_100001) do
     t.jsonb "meta", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "regeneration_started_at"
     t.index ["week_start"], name: "index_weekly_briefings_on_week_start", unique: true
   end
 

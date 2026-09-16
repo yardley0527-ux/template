@@ -9,6 +9,11 @@ class WeeklyBriefing < ApplicationRecord
   # 失敗/JSON語法錯誤/沒有金鑰）是不同的失敗模式，故意分開，畫面文案也不同。
   STATUSES = %w[pending success failed invalid_response].freeze
 
+  # 背景重新產生逾期還沒清掉 regeneration_started_at（job 卡死/process 被
+  # 重啟）視為過期，不再顯示「產生中」卡住畫面——上游快取刷新＋最多3次
+  # Opus API往返，正常情況下不會超過這個時間。
+  REGENERATION_TIMEOUT = 15.minutes
+
   has_many :todos, class_name: "WeeklyBriefingTodo", dependent: :destroy, inverse_of: :weekly_briefing
 
   validates :week_start, presence: true, uniqueness: true
@@ -151,5 +156,10 @@ class WeeklyBriefing < ApplicationRecord
   # 顯示醒目警示。
   def needs_review_banner?
     status == "invalid_response" || quality_needs_review?
+  end
+
+  # ── 背景重新產生（見 WeeklyBriefingRegenerationJob）────────────────
+  def regenerating?
+    regeneration_started_at.present? && regeneration_started_at > REGENERATION_TIMEOUT.ago
   end
 end

@@ -57,6 +57,8 @@ Rails.application.routes.draw do
                                                        constraints: { week_start: /current|\d{4}-\d{2}-\d{2}/ }
   post '/weekly_briefings/:week_start/regenerate',    to: 'weekly_briefings#regenerate', as: :regenerate_weekly_briefing,
                                                        constraints: { week_start: /current|\d{4}-\d{2}-\d{2}/ }
+  get  '/weekly_briefings/:week_start/status',        to: 'weekly_briefings#status',     as: :status_weekly_briefing,
+                                                       constraints: { week_start: /current|\d{4}-\d{2}-\d{2}/ }
   post  '/weekly_briefing_todos/:id/preview',         to: 'weekly_briefing_todos#preview',     as: :preview_weekly_briefing_todo
   patch '/weekly_briefing_todos/:id/toggle',          to: 'weekly_briefing_todos#toggle',      as: :toggle_weekly_briefing_todo
   post  '/weekly_briefing_todos/:id/create_task',     to: 'weekly_briefing_todos#create_task', as: :create_task_weekly_briefing_todo
