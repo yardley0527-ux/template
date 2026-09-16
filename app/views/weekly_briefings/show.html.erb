@@ -108,6 +108,10 @@
           <div><%= wb_pct(briefing.data_completeness_score) %></div>
         </div>
         <div class="col-6 col-md-2 mb-2">
+          <div class="text-muted small">決策可信度</div>
+          <div><span class="badge <%= {'高'=>'badge-success','中'=>'badge-warning','低'=>'badge-danger'}.fetch(briefing.decision_confidence_label, 'badge-secondary') %>"><%= briefing.decision_confidence_label || "—" %></span></div>
+        </div>
+        <div class="col-6 col-md-2 mb-2">
           <div class="text-muted small">使用模型／Prompt版本</div>
           <div class="small"><%= briefing.model || "—" %> / <%= briefing.prompt_version || "—" %></div>
         </div>
@@ -116,6 +120,22 @@
           <div class="small"><%= briefing.generated_at&.strftime("%m/%d %H:%M") || briefing.updated_at.strftime("%m/%d %H:%M") %></div>
         </div>
       </div>
+      <% if briefing.signals_can_be_used_for.any? || briefing.signals_cannot_be_used_for.any? %>
+        <div class="row mt-2">
+          <div class="col-md-6 small">
+            <strong class="text-success">本報告可以用來判斷：</strong>
+            <ul class="mb-0"><% briefing.signals_can_be_used_for.each do |t| %><li><%= t %></li><% end %></ul>
+          </div>
+          <div class="col-md-6 small">
+            <strong class="text-danger">本報告暫時不能用來判斷：</strong>
+            <% if briefing.signals_cannot_be_used_for.any? %>
+              <ul class="mb-0"><% briefing.signals_cannot_be_used_for.each do |t| %><li><%= t %></li><% end %></ul>
+            <% else %>
+              <div class="text-muted">（本週四大面向皆有可比較資料）</div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
       <% if briefing.status == "failed" %>
         <div class="alert alert-danger small mb-0 mt-2"><strong>錯誤摘要：</strong><%= briefing.error_message %></div>
       <% end %>
@@ -137,8 +157,32 @@
   </div>
 
   <div class="mb-2 no-print">
-    <span class="badge badge-light border">週型：<%= wt["type_label"] %></span>
+    <span class="badge badge-primary p-2">週型：<%= briefing.headline_display || wt["type_label"] %></span>
     <% if wt["campaign_size_note"] %><span class="badge badge-light border">⚠️ <%= wt["campaign_size_note"] %></span><% end %>
+  </div>
+
+  <%#================ 四大經營燈號（程式規則算出，不是AI判斷） ================%>
+  <div class="panel">
+    <div class="panel-hdr"><h2>四大經營燈號</h2></div>
+    <div class="panel-content p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="thead-light"><tr><th>面向</th><th>燈號</th><th>核心結果</th><th>判斷原因</th><th>建議方向</th></tr></thead>
+          <tbody>
+            <% briefing.business_signals.each do |s| %>
+              <% cls = { "green" => "badge-success", "yellow" => "badge-warning", "red" => "badge-danger", "gray" => "badge-secondary" }.fetch(s["status"], "badge-secondary") %>
+              <tr>
+                <td><%= s["area_label"] %></td>
+                <td><span class="badge <%= cls %> p-2"><%= s["status_label"] %></span></td>
+                <td class="small"><%= s["result"] %></td>
+                <td class="small text-muted"><%= s["reason"] %></td>
+                <td class="small"><%= s["recommended_direction"] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <% if briefing.status != "success" && m.present? %>
@@ -507,24 +551,42 @@
           <table class="table table-sm table-hover mb-0">
             <thead class="thead-light">
               <tr>
-                <th>產品</th><th>庫存</th><th>本週買家</th><th>本週回購人數</th>
-                <th>逾期（本期可行動人數）</th><th>今日待聯絡</th><th>即將用完</th><th>歷史回購率</th>
+                <th>產品</th><th>庫存</th><th>預計到貨日</th><th>本週買家</th><th>本週回購人數</th>
+                <th>A/B/C/沉睡</th><th>今日待聯絡</th><th>即將用完</th><th>歷史回購率</th><th>建議行動</th>
               </tr>
             </thead>
             <tbody>
               <% pr["products"].each do |p| %>
-                <tr class="<%= 'table-warning' if p['cycles_stale'] %>">
+                <% tiers = p.dig("actionability", "tiers") || {} %>
+                <% stockout = briefing.risk_flags.find { |f| f["key"] == "product_stockout_risk" && f.dig("evidence", "product_key") == p["product_key"] } %>
+                <tr class="<%= 'table-warning' if p['cycles_stale'] %> <%= 'table-danger' if stockout %>">
                   <td><%= p["label"] %><% if p["cycles_stale"] %><br><span class="badge badge-light border" title="快取上次刷新：<%= p['cycles_refreshed_at'] %>">快取過期</span><% end %></td>
-                  <td><%= CrmProduct::AVAILABILITY_STATUS_LABELS[p["availability_status"]] %></td>
+                  <td>
+                    <%= CrmProduct::AVAILABILITY_STATUS_LABELS[p["availability_status"]] %>
+                    <% if stockout %><br><span class="badge badge-danger" title="<%= Array(stockout.dig('evidence','reasons')).join('；') %>">缺貨風險</span><% end %>
+                  </td>
+                  <td class="small"><%= p["expected_restock_date"] || "未定" %></td>
                   <td><%= p.dig("this_week","total_customers") %></td>
                   <td><%= wb_num(p["repurchased_this_week"]) %></td>
-                  <td>
-                    <span class="badge <%= p['overdue_count'].to_i.positive? ? 'badge-danger' : 'badge-light' %>"><%= p["overdue_count"] %> 累積</span>
+                  <td class="small text-nowrap">
+                    A<%= tiers["a_tier_count"] %>／B<%= tiers["b_tier_count"] %>／C<%= tiers["c_tier_count"] %>／沉睡<%= tiers["dormant_tier_count"] %>
+                    <% if tiers["unclassified_count"].to_i.positive? %>
+                      <span class="badge badge-warning" title="<%= tiers['unclassified_note'] %>">未分類<%= tiers["unclassified_count"] %>（資料異常）</span>
+                    <% end %>
                     <span class="badge badge-info">可行動 <%= p.dig("actionability","actionable_count") %></span>
                   </td>
                   <td><%= p["due_today_count"] %></td>
                   <td><%= p["due_soon_count"] %></td>
                   <td><%= wb_pct(p["lifetime_repurchase_rate_pct"]) %></td>
+                  <td class="small">
+                    <% if stockout %>
+                      確認到貨日／評估預購或替代商品導購
+                    <% elsif p.dig("actionability","actionable_count").to_i.positive? %>
+                      優先聯繫A/B級可行動名單
+                    <% else %>
+                      維持既有節奏
+                    <% end %>
+                  </td>
                 </tr>
               <% end %>
             </tbody>
@@ -563,7 +625,38 @@
     </div>
   </div>
 
-  <%#================ 第三部分：決策後的執行方向 ================%>
+  <%#================ 下週行動清單（程式規則算出，保證涵蓋所有紅燈，不依賴AI） ================%>
+  <div class="panel">
+    <div class="panel-hdr bg-dark"><h2 class="text-white">下週行動清單</h2></div>
+    <div class="panel-content p-0">
+      <% if briefing.program_action_items.empty? %>
+        <div class="p-4 text-center text-muted">本週沒有觸發任何風險旗標，暫無強制行動項目</div>
+      <% else %>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="thead-light">
+              <tr><th>優先級</th><th>問題</th><th>建議檢查方向</th><th>具體行動</th><th>建議負責角色</th><th>完成期限</th><th>驗收KPI</th></tr>
+            </thead>
+            <tbody>
+              <% briefing.program_action_items.each do |a| %>
+                <tr>
+                  <td><%= content_tag(:span, a["priority"], class: "badge #{ {'P0'=>'badge-danger','P1'=>'badge-warning','P2'=>'badge-secondary'}.fetch(a['priority'], 'badge-secondary') } p-2") %></td>
+                  <td class="small"><%= a["problem"] %></td>
+                  <td class="small text-muted"><%= Array(a["investigation_directions"]).join("、") %></td>
+                  <td class="small"><%= a["action"] %></td>
+                  <td class="small"><%= a["suggested_owner_role"] %></td>
+                  <td class="text-nowrap small"><%= a["due_date"] %></td>
+                  <td class="small"><%= a["success_metric"] %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%#================ 第三部分：決策後的執行方向（對應AI提出的老闆決策，跟上面的強制行動清單是不同表） ================%>
   <% if briefing.action_items.any? %>
     <div class="panel">
       <div class="panel-hdr"><h2>決策後的執行方向</h2></div>

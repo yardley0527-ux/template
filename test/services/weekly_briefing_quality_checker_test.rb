@@ -138,4 +138,69 @@ class WeeklyBriefingQualityCheckerTest < ActiveSupport::TestCase
     assert_not result["passed"]
     assert result["failed_items"].any? { |f| f.include?("healthy_growth") }
   end
+
+  # ── AI敘述 vs 程式算好的四大經營燈號矛盾（prompt v6 規則19）──────
+  def business_signals(statuses)
+    { "signals" => statuses.map { |area, status| { "area" => area, "status" => status } } }
+  end
+
+  test "no business_signals context (e.g. a v5 report) skips the contradiction check entirely" do
+    result = WeeklyBriefingQualityChecker.call(ai_report: good_report, metrics: good_metrics, risk_flags: [], business_signals: nil)
+    assert result["passed"]
+    assert_nil result["consistency"]["ai_vs_business_signal_consistent"]
+  end
+
+  test "fails when a red business signal exists but the AI narrative uses reassuring language" do
+    report = good_report
+    report["business_analysis"]["revenue_and_forecast"] = ["本週表現正常，營收符合預期"]
+    signals = business_signals(revenue: "red", new_customer: "green", old_customer: "green", product_inventory: "green")
+
+    result = WeeklyBriefingQualityChecker.call(ai_report: report, metrics: good_metrics, risk_flags: [], business_signals: signals)
+
+    assert_not result["passed"]
+    assert result["failed_items"].any? { |f| f.include?("安心話術") }
+    assert_not result["consistency"]["ai_vs_business_signal_consistent"]
+  end
+
+  test "fails when a yellow business signal exists but the AI narrative uses reassuring language" do
+    report = good_report
+    report["business_analysis"]["revenue_and_forecast"] = ["營運穩健，無需擔心"]
+    signals = business_signals(revenue: "yellow", new_customer: "green", old_customer: "green", product_inventory: "green")
+
+    result = WeeklyBriefingQualityChecker.call(ai_report: report, metrics: good_metrics, risk_flags: [], business_signals: signals)
+
+    assert_not result["passed"]
+    assert result["failed_items"].any? { |f| f.include?("安心話術") }
+  end
+
+  test "fails when no business signal is red but the AI narrative uses red-alert language" do
+    report = good_report
+    report["business_analysis"]["revenue_and_forecast"] = ["新客明顯轉弱，屬於紅燈警訊"]
+    signals = business_signals(revenue: "green", new_customer: "yellow", old_customer: "green", product_inventory: "green")
+
+    result = WeeklyBriefingQualityChecker.call(ai_report: report, metrics: good_metrics, risk_flags: [], business_signals: signals)
+
+    assert_not result["passed"]
+    assert result["failed_items"].any? { |f| f.include?("紅燈警語") }
+  end
+
+  test "passes when a red business signal exists and the AI narrative matches (no reassuring language)" do
+    report = good_report
+    report["business_analysis"]["revenue_and_forecast"] = ["本週新客明顯不足，屬於紅燈項目，建議優先處理"]
+    signals = business_signals(revenue: "green", new_customer: "red", old_customer: "green", product_inventory: "green")
+
+    result = WeeklyBriefingQualityChecker.call(ai_report: report, metrics: good_metrics, risk_flags: [], business_signals: signals)
+
+    assert result["passed"], result["failed_items"].inspect
+    assert result["consistency"]["ai_vs_business_signal_consistent"]
+  end
+
+  test "passes when all business signals are green and the AI narrative is neutral" do
+    report = good_report
+    signals = business_signals(revenue: "green", new_customer: "green", old_customer: "green", product_inventory: "green")
+
+    result = WeeklyBriefingQualityChecker.call(ai_report: report, metrics: good_metrics, risk_flags: [], business_signals: signals)
+
+    assert result["passed"], result["failed_items"].inspect
+  end
 end

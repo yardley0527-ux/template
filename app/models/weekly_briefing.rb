@@ -79,6 +79,42 @@ class WeeklyBriefing < ApplicationRecord
     Array(meta["risk_flags"]).map(&:with_indifferent_access)
   end
 
+  # ── 四大經營燈號／週型標題／下週行動清單：全部由程式規則算出（見
+  # WeeklyBusinessSignalClassifier／WeeklyHeadlineClassifier／
+  # WeeklyActionItemBuilder），跟 AI 是否成功產生報告無關——failed／
+  # invalid_response 狀態下這幾個欄位一樣有值，畫面可以照常顯示。──
+  def business_signals
+    Array(meta.dig("business_signals", "signals")).map { |s| s.with_indifferent_access }
+  end
+
+  def signals_can_be_used_for
+    Array(meta.dig("business_signals", "can_be_used_for"))
+  end
+
+  def signals_cannot_be_used_for
+    Array(meta.dig("business_signals", "cannot_be_used_for"))
+  end
+
+  def headline
+    (meta["headline"] || {}).with_indifferent_access
+  end
+
+  def headline_display
+    headline["display"]
+  end
+
+  def program_action_items
+    Array(meta["program_action_items"]).map { |i| i.with_indifferent_access }
+  end
+
+  def decision_confidence
+    meta.dig("status_classification", "confidence")
+  end
+
+  def decision_confidence_label
+    { "high" => "高", "medium" => "中", "low" => "低" }[decision_confidence]
+  end
+
   # ── 驗收/監控用中繼資料（管理頁不用查資料庫就能看到）──────────────
   def ai_api_success?
     meta.key?("ai_api_success") ? meta["ai_api_success"] : status == "success"

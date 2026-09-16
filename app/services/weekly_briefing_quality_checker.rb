@@ -14,21 +14,32 @@ class WeeklyBriefingQualityChecker
   ].freeze
   MAX_UNCLASSIFIED_REVENUE_PCT = 15.0
 
-  def self.call(ai_report:, metrics:, risk_flags:)
-    new(ai_report, metrics, risk_flags).call
+  # v6新增：AI敘述不能跟程式算好的四大經營燈號矛盾（見 prompt v6 規則19）。
+  # 用「有紅/黃燈時AI卻寫安心話術」「沒有任何紅燈時AI卻寫紅燈警語」兩個方向
+  # 抓明顯衝突，不做逐句NLP比對——這是防呆，不是要精準抓出每一種措辭矛盾。
+  REASSURING_PHRASES = ["表現正常", "一切正常", "數據穩定成長", "無需擔心", "沒有風險", "本週表現良好", "營運穩健"].freeze
+  RED_ALERT_PHRASES  = ["紅燈", "需要立即處理", "重大風險", "嚴重惡化"].freeze
+
+  def self.call(ai_report:, metrics:, risk_flags:, business_signals: nil, metric_registry: nil, mandatory_risk_coverage: nil)
+    new(ai_report, metrics, risk_flags, business_signals, metric_registry, mandatory_risk_coverage).call
   end
 
-  def initialize(ai_report, metrics, risk_flags)
+  def initialize(ai_report, metrics, risk_flags, business_signals = nil, metric_registry = nil, mandatory_risk_coverage = nil)
     @report = ai_report || {}
     @metrics = metrics || {}
     @risk_flags = Array(risk_flags)
+    @business_signals = Array(business_signals && business_signals["signals"])
+    @metric_registry = metric_registry
+    @mandatory_risk_coverage = mandatory_risk_coverage
   end
 
   def call
     content = content_checks
     consistency = consistency_checks
     decisions = decision_checks
-    failed_items = content[:failures] + consistency[:failures] + decisions[:failures]
+    fact_check = ai_fact_check
+    mandatory_risk = mandatory_risk_check
+    failed_items = content[:failures] + consistency[:failures] + decisions[:failures] + fact_check[:failures] + mandatory_risk[:failures]
 
     {
       "passed"      => failed_items.empty?,
@@ -36,6 +47,8 @@ class WeeklyBriefingQualityChecker
       "content"     => content[:summary],
       "consistency" => consistency[:summary],
       "decisions"   => decisions[:summary],
+      "ai_fact_check" => fact_check[:summary],
+      "mandatory_risk_coverage" => mandatory_risk[:summary],
       "failed_items" => failed_items
     }
   end
@@ -145,6 +158,9 @@ class WeeklyBriefingQualityChecker
 
     failures << "資料完整度分數尚未產生（data_gaps.completeness_score 缺失）" if @metrics.dig("data_gaps", "completeness_score").nil?
 
+    signal_contradiction = signal_contradiction_failure
+    failures << signal_contradiction if signal_contradiction
+
     {
       failures: failures,
       summary: {
@@ -155,9 +171,36 @@ class WeeklyBriefingQualityChecker
         "product_repurchase_contradiction_guard_ok" => !(returning.positive? && all_zero && !pr["contradiction_detected"]),
         "revenue_gap_calculation_ok"         => (gap_expected - rp["gap_to_beat_last_year"].to_f).abs <= 1.0,
         "days_weeks_remaining_consistent"    => (days / 7.0 - weeks).abs <= 0.15,
-        "risk_vs_status_consistent"          => !(high_risk_flags.positive? && business_status == "healthy_growth")
+        "risk_vs_status_consistent"          => !(high_risk_flags.positive? && business_status == "healthy_growth"),
+        # nil＝沒有business_signals context可比對（例如v5舊報告），不是「已比對過沒問題」；
+        # true/false 才代表真的比對過。
+        "ai_vs_business_signal_consistent"   => @business_signals.blank? ? nil : signal_contradiction.nil?
       }
     }
+  end
+
+  # AI敘述 vs 程式算好的四大經營燈號矛盾偵測（prompt v6 規則19）。不逐句
+  # NLP比對，只抓兩個方向的明顯衝突：有紅/黃燈時卻寫安心話術、沒有任何
+  # 紅燈時卻寫紅燈警語。@business_signals 沒有值時（例如v5舊報告沒有這段
+  # context）視為無法比對，不觸發這項檢查——不能拿v5沒有的資料強行要求v5。
+  def signal_contradiction_failure
+    return nil if @business_signals.blank?
+
+    text = flattened_text
+    has_non_green = @business_signals.any? { |s| %w[red yellow].include?(s["status"]) }
+    has_red = @business_signals.any? { |s| s["status"] == "red" }
+
+    if has_non_green
+      hit = REASSURING_PHRASES.find { |p| text.include?(p) }
+      return "AI敘述出現安心話術「#{hit}」，但程式算出的四大經營燈號已有紅/黃燈，內容矛盾" if hit
+    end
+
+    unless has_red
+      hit = RED_ALERT_PHRASES.find { |p| text.include?(p) }
+      return "AI敘述出現紅燈警語「#{hit}」，但程式算出的四大經營燈號沒有任何紅燈，內容矛盾" if hit
+    end
+
+    nil
   end
 
   # ── 決策品質驗收 ─────────────────────────────────────────────
@@ -171,6 +214,38 @@ class WeeklyBriefingQualityChecker
     end
 
     { failures: failures, summary: { "total" => decisions.size, "incomplete" => incomplete.size } }
+  end
+
+  # ── AI數字幻覺防護（見 weekly_ai_fact_validator.rb）─────────────
+  # metric_registry 沒有傳入時（例如v5舊呼叫路徑、或未來某處還沒接上）視為
+  # 無法比對，不觸發也不算失敗——不能拿沒有registry context的呼叫者強行
+  # 要求這項檢查，等同上面business_signals矛盾檢查的處理方式。
+  def ai_fact_check
+    return { failures: [], summary: nil } if @metric_registry.blank?
+
+    result = WeeklyAiFactValidator.call(ai_report: @report, registry: @metric_registry)
+    failures = result["issues"].map do |issue|
+      "AI事實查核：欄位「#{issue['field']}」#{issue['message']}"
+    end
+
+    { failures: failures, summary: result }
+  end
+
+  # 「一、最大風險不能只依賴Prompt」——weekly_briefing_service.rb在存檔前已經
+  # 對mandatory topics做過重試＋（必要時）程式覆寫，這裡只負責把最終結果
+  # 記錄進品質驗收：如果重試後仍然需要覆寫，代表AI原始輸出真的漏了重點，
+  # 即使畫面上最終顯示的biggest_risk已經是程式版本、老闆看到的內容是對的，
+  # 品質驗收仍要誠實標「需要檢查」，讓人知道AI這次的表現需要留意。
+  def mandatory_risk_check
+    return { failures: [], summary: nil } if @mandatory_risk_coverage.blank?
+
+    failures = []
+    if @mandatory_risk_coverage["fallback_applied"]
+      topics = Array(@mandatory_risk_coverage.dig("uncovered_topics")).map { |t| t["label"] }.join("、")
+      failures << "最大風險保底：AI兩次回應皆未點名最高優先級風險主題（#{topics}），已改用程式生成版本覆寫biggest_risk"
+    end
+
+    { failures: failures, summary: @mandatory_risk_coverage }
   end
 
   def flattened_text

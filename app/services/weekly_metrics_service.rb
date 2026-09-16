@@ -21,6 +21,7 @@ class WeeklyMetricsService
   GROWTH_TARGET_PCT         = 10.0 # 年度成長目標（相對去年全年營收）——CRM 沒有正式的年度目標設定來源，此為預設參數，非硬編金額，可依實際目標調整
   SAFETY_BUFFER_PCT         = 10.0 # 經營安全線 = 最低警戒線 × (1 + 此緩衝)
   COHORT_WINDOWS            = [7, 14, 30, 60, 90].freeze # 新客回購率觀察窗（天），只有已完整走完窗口的 cohort 才計入分母
+  DECOMPOSITION_DECLINE_THRESHOLD_PCT = 5.0 # 判斷「購買人數／客單價是否下降」的最小顯著門檻，避免把誤差雜訊當成下降
 
   def self.call(week_start: Date.current)
     new(week_start).call
@@ -161,7 +162,73 @@ class WeeklyMetricsService
       "week_before_prev"     => week_before_prev,
       "trailing4_weekly_avg" => trailing4_weekly_avg,
       "last_year_same_week"  => last_year_same_week,
-      "cohort_repurchase"    => cohort_repurchase_rates
+      "cohort_repurchase"    => cohort_repurchase_rates,
+      "decomposition"        => build_revenue_decomposition(this_week, trailing4_weekly_avg, last_year_same_week)
+    }
+  end
+
+  # 營收拆解（規格三）：總購買人數＝新客＋舊客，整體客單價＝總營收／總購買
+  # 人數，再分別跟近四週平均、去年同週比較，判斷本週下降主要來自「人數」
+  # 「客單價」還是「兩者同時」——這裡只做純數學拆解，不下經營結論，經營
+  # 結論交給 WeeklyBusinessSignalClassifier／AI 使用這些數字來寫。
+  def build_revenue_decomposition(this_week, trailing4_avg, last_year)
+    this_aov       = round2(safe_div(this_week["total_revenue"], this_week["total_customers"]))
+    trailing4_aov  = round2(safe_div(trailing4_avg["total_revenue"], trailing4_avg["total_customers"]))
+    last_year_aov  = round2(safe_div(last_year["total_revenue"], last_year["total_customers"]))
+
+    customers_vs_trailing4 = growth_pct(this_week["total_customers"], trailing4_avg["total_customers"])
+    aov_vs_trailing4       = growth_pct(this_aov, trailing4_aov)
+    revenue_vs_trailing4   = growth_pct(this_week["total_revenue"], trailing4_avg["total_revenue"])
+    revenue_vs_last_year   = growth_pct(this_week["total_revenue"], last_year["total_revenue"])
+    customers_vs_last_year = growth_pct(this_week["total_customers"], last_year["total_customers"])
+    new_customers_vs_trailing4 = growth_pct(this_week["new_customers"], trailing4_avg["new_customers"])
+    new_customers_vs_last_year = growth_pct(this_week["new_customers"], last_year["new_customers"])
+    returning_revenue_vs_last_year = growth_pct(this_week["returning_revenue"], last_year["returning_revenue"])
+    returning_aov_vs_last_year     = growth_pct(this_week["returning_aov"], last_year["returning_aov"])
+    returning_aov_vs_trailing4     = growth_pct(this_week["returning_aov"], trailing4_avg["returning_aov"])
+
+    people_down = customers_vs_trailing4 && customers_vs_trailing4 <= -DECOMPOSITION_DECLINE_THRESHOLD_PCT
+    aov_down    = aov_vs_trailing4 && aov_vs_trailing4 <= -DECOMPOSITION_DECLINE_THRESHOLD_PCT
+
+    driver =
+      if people_down && aov_down
+        "both"
+      elsif people_down
+        "customer_count"
+      elsif aov_down
+        "aov"
+      else
+        "neither"
+      end
+
+    driver_label = {
+      "both"           => "購買人數與客單價同時下降（雙重衰退）",
+      "customer_count" => "購買人數下降、客單價大致正常——主要是流量或轉換問題",
+      "aov"             => "購買人數大致正常、客單價下降——主要是商品組合或促銷結構問題",
+      "neither"         => "購買人數與客單價皆無明顯下降"
+    }.fetch(driver)
+
+    yoy_caveat = driver != "neither" && revenue_vs_last_year && revenue_vs_last_year.positive?
+
+    {
+      "this_week_overall_aov"                     => this_aov,
+      "trailing4_weekly_avg_overall_aov"           => trailing4_aov,
+      "last_year_same_week_overall_aov"            => last_year_aov,
+      "customers_growth_vs_trailing4_pct"          => customers_vs_trailing4 && round2(customers_vs_trailing4),
+      "overall_aov_growth_vs_trailing4_pct"        => aov_vs_trailing4 && round2(aov_vs_trailing4),
+      "revenue_growth_vs_trailing4_pct"            => revenue_vs_trailing4 && round2(revenue_vs_trailing4),
+      "revenue_growth_vs_last_year_pct"            => revenue_vs_last_year && round2(revenue_vs_last_year),
+      "customers_growth_vs_last_year_pct"          => customers_vs_last_year && round2(customers_vs_last_year),
+      "new_customers_growth_vs_trailing4_pct"      => new_customers_vs_trailing4 && round2(new_customers_vs_trailing4),
+      "new_customers_growth_vs_last_year_pct"      => new_customers_vs_last_year && round2(new_customers_vs_last_year),
+      "returning_revenue_growth_vs_last_year_pct"  => returning_revenue_vs_last_year && round2(returning_revenue_vs_last_year),
+      "returning_aov_growth_vs_last_year_pct"      => returning_aov_vs_last_year && round2(returning_aov_vs_last_year),
+      "returning_aov_growth_vs_trailing4_pct"      => returning_aov_vs_trailing4 && round2(returning_aov_vs_trailing4),
+      "decline_driver"        => driver,
+      "decline_driver_label"  => driver_label,
+      "decline_threshold_pct" => DECOMPOSITION_DECLINE_THRESHOLD_PCT,
+      "yoy_still_positive_caveat" => yoy_caveat,
+      "yoy_caveat_note" => yoy_caveat ? "本週營收較去年同週仍為成長（#{round2(revenue_vs_last_year)}%），不宜僅因近四週/上週為活動高基期就判斷為全面衰退" : nil
     }
   end
 
@@ -396,6 +463,9 @@ class WeeklyMetricsService
     upgrade_emails = week_changes.upgrades.pluck(:email).compact.uniq
     downgrade_emails = week_changes.downgrades.pluck(:email).compact.uniq
 
+    prev_week_changes = MembershipLevelChange.where(changed_at: @period.prev_week_time_range)
+    prev_week_net = prev_week_changes.upgrades.count - prev_week_changes.downgrades.count
+
     {
       "upgrade_count"   => week_changes.upgrades.count,
       "downgrade_count" => week_changes.downgrades.count,
@@ -405,6 +475,9 @@ class WeeklyMetricsService
       "downgrade_revenue_this_week" => round2(revenue_for_emails(downgrade_emails)),
       "trailing4_weekly_avg_downgrade_count" => round2(MembershipLevelChange.where(changed_at: @period.trailing4_time_range).downgrades.count / 4.0),
       "trailing4_weekly_avg_upgrade_count"   => round2(MembershipLevelChange.where(changed_at: @period.trailing4_time_range).upgrades.count / 4.0),
+      "prev_week_upgrade_count"   => prev_week_changes.upgrades.count,
+      "prev_week_downgrade_count" => prev_week_changes.downgrades.count,
+      "prev_week_net"             => prev_week_net,
       "revenue_note" => "升降級金額＝該群客戶本週下單總額（近似值，不是導致升降等的單一訂單金額，membership_level_changes 沒有記錄金額欄位）"
     }
   end
@@ -424,6 +497,7 @@ class WeeklyMetricsService
   # 這裡加防呆讓同一類問題以後不會再無聲產出誤導性的0，而是清楚標示資料不足。
   def build_product_repurchase(new_vs_returning)
     products = CrmProduct.confirmed.where.not(key: EXCLUDED_PRODUCT_KEYS).order(:id)
+    @trailing4_all_products_revenue ||= weekly_total(ShoplineOrder.valid_paid, @period.trailing4_time_range)
     payloads = products.map { |crm| product_payload(crm) }
 
     returning_customers_this_week = new_vs_returning.dig("this_week", "returning_customers").to_i
@@ -480,11 +554,16 @@ class WeeklyMetricsService
       product_key: crm.key, reference_date: @period.week_end, availability_status: crm.availability_status
     )
 
+    trailing4_product_revenue = weekly_total(scope, @period.trailing4_time_range)
+
     {
       "product_key"              => crm.key,
       "label"                    => crm.label,
       "availability_status"      => crm.availability_status,
+      "expected_restock_date"    => crm.expected_restock_date,
       "this_week"                => week_stats,
+      "trailing4_revenue"           => round2(trailing4_product_revenue),
+      "trailing4_revenue_share_pct" => round2(pct(trailing4_product_revenue, @trailing4_all_products_revenue)),
       "cycles_refreshed_at"      => cycles_refreshed_at,
       "cycles_stale"             => stale,
       "repurchased_this_week"    => repurchased_this_week,

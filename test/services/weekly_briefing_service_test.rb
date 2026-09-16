@@ -89,7 +89,7 @@ class WeeklyBriefingServiceTest < ActiveSupport::TestCase
     assert_equal "任務甲", briefing.todos.first.title
     assert briefing.generated_at.present?
     assert_equal WeeklyBriefingService::MODEL, briefing.model
-    assert_equal WeeklyBriefingService::PROMPT_VERSION, briefing.prompt_version
+    assert_equal WeeklyBriefingService::DEFAULT_PROMPT_VERSION, briefing.prompt_version
   end
 
   test "decision_type and test_design details round-trip through to the stored ai_report" do
@@ -286,5 +286,154 @@ class WeeklyBriefingServiceTest < ActiveSupport::TestCase
 
     assert_includes service.sent_prompt, "附錄由程式"
     assert_includes service.sent_prompt, "本週已知的critical等級資料缺口"
+  end
+
+  # ── Prompt v5/v6 版本切換 ────────────────────────────────────────
+  test "prompt_version defaults to v6 when WEEKLY_BRIEFING_PROMPT_VERSION is unset" do
+    ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
+    briefing = build_service.call
+
+    assert_equal "v6", briefing.prompt_version
+  end
+
+  test "v6 prompt includes the four business-area signals and headline as read-only AI context" do
+    ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
+    service = build_service
+    service.call
+
+    assert_includes service.sent_prompt, "四大經營燈號"
+    assert_includes service.sent_prompt, "本週週型標題"
+    assert_includes service.sent_prompt, "你的敘述不能跟這裡的顏色矛盾"
+  end
+
+  test "v6 prompt includes rules 18-20 that v5 does not have" do
+    ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
+    service = build_service
+    service.call
+
+    assert_includes service.sent_prompt, "revenue_change_breakdown必須明確指出"
+  end
+
+  test "setting WEEKLY_BRIEFING_PROMPT_VERSION=v5 rolls back to the frozen v5 prompt (no signals/headline context, no rules 18-20)" do
+    ENV["WEEKLY_BRIEFING_PROMPT_VERSION"] = "v5"
+    service = build_service
+    briefing = service.call
+
+    assert_equal "v5", briefing.prompt_version
+    assert_not_includes service.sent_prompt, "四大經營燈號"
+    assert_not_includes service.sent_prompt, "本週週型標題"
+    assert_not_includes service.sent_prompt, "revenue_change_breakdown必須明確指出"
+    # v5 仍然是同一套schema/三級證據制度，不是砍掉重練的舊prompt
+    assert_includes service.sent_prompt, "三級證據制度"
+  ensure
+    ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
+  end
+
+  test "an unsupported WEEKLY_BRIEFING_PROMPT_VERSION value silently falls back to v6, not a typo'd dead branch" do
+    ENV["WEEKLY_BRIEFING_PROMPT_VERSION"] = "v99_typo"
+    briefing = build_service.call
+
+    assert_equal "v6", briefing.prompt_version
+  ensure
+    ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
+  end
+
+  # ── 「一、最大風險不能只依賴Prompt（程式保底）」整合測試 ──────────
+  # 用 with_stubbed_risk_flags 固定住risk_flags，不依賴本機DB是否剛好
+  # 有觸發到high旗標，讓這幾個測試在任何環境下都是deterministic的。
+  def mandatory_flags
+    [{ key: "new_customer_drop_vs_avg4", category: "new_customer", severity: "high", evidence: {} },
+     { key: "product_stockout_risk", category: "product_inventory", severity: "high", evidence: { label: "全能" } }]
+  end
+
+  # minitest 6 拿掉了 minitest/mock，這個專案也沒有另外裝 minitest-mock gem，
+  # 用 define_singleton_method 暫時換掉class method、跑完再換回來，不需要
+  # 額外依賴。
+  def with_stubbed_risk_flags(flags)
+    original = WeeklyRiskFlagDetector.method(:call)
+    WeeklyRiskFlagDetector.define_singleton_method(:call) { |*_args, **_kwargs| flags }
+    yield
+  ensure
+    WeeklyRiskFlagDetector.define_singleton_method(:call, original)
+  end
+
+  test "when the AI's first response already covers both mandatory topics, no extra retry call happens and biggest_risk is not overridden" do
+    covering = JSON.parse(good_json)
+    covering["executive_summary"]["biggest_risk"] = { "description" => "新客人數明顯不足，且全能缺貨", "data_evidence" => "e" }
+
+    service = nil
+    with_stubbed_risk_flags(mandatory_flags) do
+      service = build_service(response: covering.to_json)
+      service.call
+    end
+
+    assert_equal 1, service.call_count
+    briefing = WeeklyBriefing.find_by(week_start: @week_start)
+    assert_equal "新客人數明顯不足，且全能缺貨", briefing.ai_report.dig("executive_summary", "biggest_risk", "description")
+    assert_not briefing.meta.dig("quality_check", "mandatory_risk_coverage", "fallback_applied")
+  end
+
+  test "when the first response misses both mandatory topics but the retry response covers them, the retried version is used and no override happens" do
+    missing = JSON.parse(good_json)
+    missing["executive_summary"]["biggest_risk"] = { "description" => "客單價下滑", "data_evidence" => "e" }
+    covering = JSON.parse(good_json(one_liner: "second"))
+    covering["executive_summary"]["biggest_risk"] = { "description" => "新客不足與全能缺貨同時發生", "data_evidence" => "e" }
+
+    service = nil
+    with_stubbed_risk_flags(mandatory_flags) do
+      service = build_service(response: [missing.to_json, covering.to_json])
+      service.call
+    end
+
+    assert_equal 2, service.call_count
+    assert_includes service.sent_prompts.last, "重試提示（風險涵蓋）"
+    briefing = WeeklyBriefing.find_by(week_start: @week_start)
+    assert_equal "second", briefing.one_liner
+    assert_equal "新客不足與全能缺貨同時發生", briefing.ai_report.dig("executive_summary", "biggest_risk", "description")
+    assert_not briefing.meta.dig("quality_check", "mandatory_risk_coverage", "fallback_applied")
+  end
+
+  test "when neither the first response nor the retry covers the mandatory topics, biggest_risk is programmatically overridden and quality_check records the reason" do
+    missing = JSON.parse(good_json)
+    missing["executive_summary"]["biggest_risk"] = { "description" => "客單價下滑", "data_evidence" => "e" }
+
+    service = nil
+    with_stubbed_risk_flags(mandatory_flags) do
+      service = build_service(response: missing.to_json) # every call returns the same non-covering response
+      service.call
+    end
+
+    assert_equal 2, service.call_count
+    briefing = WeeklyBriefing.find_by(week_start: @week_start)
+    override = briefing.ai_report.dig("executive_summary", "biggest_risk")
+    assert override["program_generated"]
+    assert_includes override["description"], "同時發生"
+    assert briefing.meta.dig("quality_check", "mandatory_risk_coverage", "fallback_applied")
+    assert briefing.meta.dig("quality_check", "failed_items").any? { |f| f.include?("最大風險保底") }
+    assert_not briefing.quality_passed?
+  end
+
+  test "when there are no high-severity flags, mandatory_topics is empty and no retry or override ever fires" do
+    service = nil
+    with_stubbed_risk_flags([]) do
+      service = build_service
+      service.call
+    end
+
+    assert_equal 1, service.call_count
+  end
+
+  # ── View不依賴AI自行產生燈號：業務燈號只能來自程式算的 business_signals ──
+  test "business_signals stored in meta come from WeeklyBusinessSignalClassifier regardless of what the AI returns, and AI JSON has no signal-color field" do
+    ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
+    briefing = build_service.call
+
+    signals = briefing.meta["business_signals"]["signals"]
+    assert_equal 4, signals.size
+    assert_equal %w[revenue new_customer old_customer product_inventory], signals.map { |s| s["area"] }
+    assert(signals.all? { |s| %w[green yellow red gray].include?(s["status"]) })
+    # ai_report（存起來的AI輸出）本身沒有business_signals或status顏色欄位可讀，
+    # 證明畫面只能從程式算的meta讀燈號，不是從AI JSON讀
+    assert_not briefing.ai_report.key?("business_signals")
   end
 end

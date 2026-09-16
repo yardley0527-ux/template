@@ -20,19 +20,28 @@ class WeeklyRiskFlagDetector
   CONCENTRATION_TOP_PRODUCT_PCT     = 50
   CONCENTRATION_TOP_LIVESTREAM_PCT  = 60
 
-  NEW_CUSTOMER_DROP_VS_AVG_PCT      = 30
-  NEW_CUSTOMER_MIN_PCT              = 10
-  NEW_CUSTOMER_AOV_UP_DROP_PCT      = 20
+  NEW_CUSTOMER_DROP_WARN_PCT         = 20   # 較近4週平均下降超過此百分比 → 黃燈
+  NEW_CUSTOMER_DROP_CRITICAL_PCT     = 30   # 下降超過此百分比 → 紅燈
+  NEW_CUSTOMER_MIN_PCT               = 10
+  NEW_CUSTOMER_AOV_UP_DROP_PCT       = 20
 
-  RETURNING_CUSTOMER_DROP_VS_AVG_PCT = 20
+  RETURNING_CUSTOMER_DROP_WARN_PCT     = 20  # 較近4週平均下降超過此百分比 → 黃燈
+  RETURNING_CUSTOMER_DROP_CRITICAL_PCT = 30  # 下降超過此百分比 → 紅燈
   RETURNING_AOV_DROP_VS_AVG_PCT      = 20
   COHORT_REPURCHASE_DROP_PCT         = 20   # 相對前一個成熟cohort的回購率下降幅度
+
+  OVERALL_AOV_DROP_WARN_PCT          = 10   # 整體客單價較近4週平均下降超過此百分比 → 黃燈
+  OVERALL_AOV_DROP_CRITICAL_PCT      = 20   # 下降超過此百分比 → 紅燈
 
   DOWNGRADE_SPIKE_RATIO             = 2.0   # 本週降級人數 / 近4週平均降級人數
   PRODUCT_OVERDUE_GROWTH_PCT        = 15    # 逾期人數週增幅超過此百分比
   PRODUCT_OVERDUE_MIN_INCREASE      = 10    # 且增加的絕對人數至少達到此值
   MID_HIGH_TIER_LOW_ACTIVE_RATE_PCT = 50    # 銀/金/黑卡活躍率低於此百分比（無歷史趨勢資料，暫用絕對值代理）
   BLACK_GOLD_DEPENDENCY_PCT         = 45
+
+  STOCKOUT_HIGH_REPURCHASE_RATE_PCT  = 40   # 缺貨商品規則①：歷史回購率≥此百分比
+  STOCKOUT_HIGH_ACTIONABLE_COUNT     = 100  # 缺貨商品規則②：可行動回購人數≥此人數
+  STOCKOUT_REVENUE_SHARE_PCT         = 10   # 缺貨商品規則③：占近4週營收≥此百分比
 
   MEMBERSHIP_UNCLASSIFIED_REVENUE_PCT = 10  # 卡別營收加總跟總營收差距超過此百分比 → 視為資料品質異常
   PAYMENT_FAILURE_SPIKE_POINTS        = 3
@@ -41,7 +50,7 @@ class WeeklyRiskFlagDetector
   SEVERITY_LABELS = { "high" => "高", "medium" => "中", "low" => "低", "data_anomaly" => "資料異常" }.freeze
   CATEGORY_LABELS = {
     "revenue" => "營收", "new_customer" => "新客", "old_customer" => "舊客",
-    "membership" => "會員", "data_quality" => "資料品質"
+    "membership" => "會員", "product_inventory" => "商品與庫存", "data_quality" => "資料品質"
   }.freeze
   KEY_LABELS = {
     "revenue_below_required_pace"          => "本週營收低於達標所需週均",
@@ -51,16 +60,20 @@ class WeeklyRiskFlagDetector
     "revenue_concentration_level"          => "營收過度集中單一卡別",
     "revenue_concentration_product"        => "營收過度集中單一商品",
     "revenue_concentration_livestream"     => "營收過度集中單場直播",
+    "overall_aov_drop_vs_avg4"             => "整體客單價低於近4週平均",
     "new_customer_drop_vs_avg4"            => "新客人數低於近4週平均",
     "new_customer_pct_too_low"             => "新客佔比過低",
     "new_customer_two_week_decline"        => "新客人數連續兩週下降",
+    "new_customer_two_consecutive_red"     => "新客人數連續兩週達紅燈門檻",
     "new_customer_aov_up_but_count_down"   => "新客客單價上升但人數下滑",
     "returning_customer_drop_vs_avg4"      => "舊客購買人數低於近4週平均",
     "returning_aov_drop_vs_avg4"           => "舊客客單價低於近4週平均",
     "cohort_repurchase_rate_drop"          => "商品回購率下降",
     "product_overdue_increasing"           => "商品逾期未回購人數增加",
+    "product_stockout_risk"                => "缺貨商品風險",
     "downgrade_exceeds_upgrade"            => "降級人數高於升級人數",
     "downgrade_spike_vs_avg4"              => "降級人數異常增加",
+    "membership_consecutive_net_downgrade" => "會員淨降級連續兩週為負值",
     "mid_high_tier_low_active_rate"        => "中高卡活躍率偏低",
     "black_gold_dependency"                => "黑金卡營收依賴度過高",
     "product_repurchase_data_contradiction" => "商品回購資料矛盾",
@@ -71,18 +84,19 @@ class WeeklyRiskFlagDetector
     "payment_failure_spike"                => "付款失敗/未付款率異常升高"
   }.freeze
 
-  def self.call(metrics)
-    new(metrics).call
+  def self.call(metrics, previous_week_flags: [])
+    new(metrics, previous_week_flags: previous_week_flags).call
   end
 
-  def initialize(metrics)
+  def initialize(metrics, previous_week_flags: [])
     @m = metrics
+    @previous_week_flags = Array(previous_week_flags).map { |f| f.is_a?(Hash) ? f.with_indifferent_access : f }
   end
 
   def call
     [
       *revenue_flags, *new_customer_flags, *returning_customer_flags,
-      *membership_flags, *data_quality_flags
+      *product_inventory_flags, *membership_flags, *data_quality_flags
     ].compact
   end
 
@@ -99,8 +113,33 @@ class WeeklyRiskFlagDetector
       below_required_pace_flag(rp),
       comparable_drop_flag(rp),
       consecutive_decline_flag(rp),
+      overall_aov_drop_flag,
       *concentration_flags(rp)
     ].compact
+  end
+
+  # 整體客單價（新客+舊客合併）較近4週平均下降——用 WeeklyMetricsService
+  # 已經算好的 decomposition，不在這裡重算。
+  def overall_aov_drop_flag
+    two_tier_drop_flag(
+      @m.dig("new_vs_returning", "decomposition", "overall_aov_growth_vs_trailing4_pct"),
+      OVERALL_AOV_DROP_WARN_PCT, OVERALL_AOV_DROP_CRITICAL_PCT,
+      "overall_aov_drop_vs_avg4", "revenue",
+      extra_evidence: {
+        this_week_overall_aov: @m.dig("new_vs_returning", "decomposition", "this_week_overall_aov"),
+        trailing4_weekly_avg_overall_aov: @m.dig("new_vs_returning", "decomposition", "trailing4_weekly_avg_overall_aov")
+      }
+    )
+  end
+
+  # 通用「較近4週平均下降 X%」二段式門檻（黃燈/紅燈）——growth_pct 已經是
+  # 「(當期-基準)/基準*100」，所以下降時是負值，直接跟負門檻比較。
+  def two_tier_drop_flag(growth_pct_value, warn_pct, critical_pct, key, category, extra_evidence: {})
+    return nil if growth_pct_value.nil?
+    return nil if growth_pct_value > -warn_pct
+
+    severity = growth_pct_value <= -critical_pct ? "high" : "medium"
+    flag(key, category, severity, extra_evidence.merge(drop_pct: -growth_pct_value.round(1), warn_threshold_pct: warn_pct, critical_threshold_pct: critical_pct))
   end
 
   def below_required_pace_flag(rp)
@@ -163,21 +202,57 @@ class WeeklyRiskFlagDetector
     before_prev = nvr["week_before_prev"]
     avg4 = nvr["trailing4_weekly_avg"]
 
+    drop_flag = drop_vs_avg_flag(this["new_customers"], avg4["new_customers"],
+                                  NEW_CUSTOMER_DROP_WARN_PCT, NEW_CUSTOMER_DROP_CRITICAL_PCT,
+                                  "new_customer_drop_vs_avg4", "new_customer")
+
     [
-      drop_vs_avg_flag(this["new_customers"], avg4["new_customers"], NEW_CUSTOMER_DROP_VS_AVG_PCT, "new_customer_drop_vs_avg4", "new_customer"),
+      drop_flag,
       new_pct_below_min_flag(this),
       two_week_decline_flag(this["new_customers"], prev["new_customers"], before_prev["new_customers"], "new_customer_two_week_decline", "new_customer"),
-      new_aov_up_count_down_flag(this, prev)
+      new_aov_up_count_down_flag(this, prev),
+      consecutive_red_flag(drop_flag, "new_customer_drop_vs_avg4", "new_customer_two_consecutive_red", "new_customer")
     ].compact
   end
 
-  def drop_vs_avg_flag(current, avg, threshold_pct, key, category, severity: "medium")
+  # 「較近4週平均下降」的二段式門檻（黃燈/紅燈）版本——drop_pct 用「(基準-當期)/基準*100」
+  # 表示，正值代表下降，跟 two_tier_drop_flag（吃 growth_pct，負值代表下降）方向相反，
+  # 保留這個既有寫法是因為既有 evidence 欄位（current/trailing4_weekly_avg/drop_pct）
+  # 已經被 WeeklyBriefingService 的 prompt 與既有測試引用，不更動語意。
+  def drop_vs_avg_flag(current, avg, warn_pct, critical_pct, key, category)
+    return nil if avg.to_f.zero?
+
+    drop_pct = ((avg.to_f - current.to_f) / avg.to_f) * 100
+    return nil if drop_pct < warn_pct
+
+    severity = drop_pct >= critical_pct ? "high" : "medium"
+    flag(key, category, severity, { current: current, trailing4_weekly_avg: avg, drop_pct: drop_pct.round(1),
+                                      warn_threshold_pct: warn_pct, critical_threshold_pct: critical_pct })
+  end
+
+  # 「連續兩週都觸發紅燈」——上一週的旗標來自上一份已落地的 WeeklyBriefing
+  # （由 WeeklyBriefingService 傳入 previous_week_flags，不在這裡重新查詢
+  # 上一週的原始資料，避免重算一整份 WeeklyMetricsService）。找不到上一週
+  # 報告時 previous_week_flags 是空陣列，這裡自然不會誤報。
+  # 單一門檻、固定 medium severity 的舊版寫法——沒有規格明確要求的二段式
+  # 門檻的旗標（例如舊客客單價本身，規格只對「整體客單價」給了二段式門檻）
+  # 沿用這個較保守的單一嚴重度判斷。
+  def single_tier_drop_flag(current, avg, threshold_pct, key, category)
     return nil if avg.to_f.zero?
 
     drop_pct = ((avg.to_f - current.to_f) / avg.to_f) * 100
     return nil if drop_pct < threshold_pct
 
-    flag(key, category, severity, { current: current, trailing4_weekly_avg: avg, drop_pct: drop_pct.round(1) })
+    flag(key, category, "medium", { current: current, trailing4_weekly_avg: avg, drop_pct: drop_pct.round(1) })
+  end
+
+  def consecutive_red_flag(this_week_flag, source_key, new_key, category)
+    return nil if this_week_flag.nil? || this_week_flag[:severity] != "high"
+
+    was_red_last_week = @previous_week_flags.any? { |f| f[:key] == source_key && f[:severity] == "high" }
+    return nil unless was_red_last_week
+
+    flag(new_key, category, "high", { source_key: source_key, note: "本週與上週皆已達紅燈門檻，應優先列入最大風險候選" })
   end
 
   def new_pct_below_min_flag(this)
@@ -209,8 +284,11 @@ class WeeklyRiskFlagDetector
     avg4 = nvr["trailing4_weekly_avg"]
 
     [
-      drop_vs_avg_flag(this["returning_customers"], avg4["returning_customers"], RETURNING_CUSTOMER_DROP_VS_AVG_PCT, "returning_customer_drop_vs_avg4", "old_customer"),
-      drop_vs_avg_flag(this["returning_aov"], avg4["returning_aov"], RETURNING_AOV_DROP_VS_AVG_PCT, "returning_aov_drop_vs_avg4", "old_customer"),
+      drop_vs_avg_flag(this["returning_customers"], avg4["returning_customers"],
+                        RETURNING_CUSTOMER_DROP_WARN_PCT, RETURNING_CUSTOMER_DROP_CRITICAL_PCT,
+                        "returning_customer_drop_vs_avg4", "old_customer"),
+      single_tier_drop_flag(this["returning_aov"], avg4["returning_aov"], RETURNING_AOV_DROP_VS_AVG_PCT,
+                             "returning_aov_drop_vs_avg4", "old_customer"),
       cohort_repurchase_drop_flag(nvr),
       *product_overdue_flags
     ].compact
@@ -246,6 +324,31 @@ class WeeklyRiskFlagDetector
     end
   end
 
+  # ── 商品與庫存風險（缺貨風險規則）─────────────────────────────────
+  # 符合任一條件即列紅燈：①缺貨且歷史回購率≥40% ②缺貨且可行動回購人數≥100
+  # ③缺貨商品占近4週營收≥10% ④缺貨商品沒有預計到貨日。四條件共用同一顆
+  # 旗標（reasons 陣列列出實際命中哪幾條），不是四顆獨立旗標——同一個商品
+  # 缺貨只需要老闆看一次「為什麼是紅燈」，不需要看四次同一個商品。
+  def product_inventory_flags
+    Array(@m.dig("product_repurchase", "products")).filter_map do |p|
+      next unless p["availability_status"] == "out_of_stock"
+
+      reasons = []
+      reasons << "歷史回購率#{p['lifetime_repurchase_rate_pct']}%（≥#{STOCKOUT_HIGH_REPURCHASE_RATE_PCT}%）" if p["lifetime_repurchase_rate_pct"].to_f >= STOCKOUT_HIGH_REPURCHASE_RATE_PCT
+      actionable = p.dig("actionability", "actionable_count").to_i
+      reasons << "可行動回購人數#{actionable}人（≥#{STOCKOUT_HIGH_ACTIONABLE_COUNT}人）" if actionable >= STOCKOUT_HIGH_ACTIONABLE_COUNT
+      share = p["trailing4_revenue_share_pct"].to_f
+      reasons << "占近4週營收#{share}%（≥#{STOCKOUT_REVENUE_SHARE_PCT}%）" if share >= STOCKOUT_REVENUE_SHARE_PCT
+      reasons << "沒有預計到貨日" if p["expected_restock_date"].nil?
+      next if reasons.empty?
+
+      flag("product_stockout_risk", "product_inventory", "high",
+           { product_key: p["product_key"], label: p["label"], reasons: reasons,
+             lifetime_repurchase_rate_pct: p["lifetime_repurchase_rate_pct"], actionable_count: actionable,
+             trailing4_revenue_share_pct: share, expected_restock_date: p["expected_restock_date"] })
+    end
+  end
+
   # ── 會員風險 ───────────────────────────────────────────────────
   def membership_flags
     mem = @m["membership"]
@@ -254,9 +357,23 @@ class WeeklyRiskFlagDetector
     [
       downgrade_exceeds_upgrade_flag(changes),
       downgrade_spike_flag(changes),
+      consecutive_net_downgrade_flag(changes),
       *low_active_rate_flags(mem),
       black_gold_dependency_flag(mem)
     ].compact
+  end
+
+  # 「連續兩週淨降級（降級>升級）為負值」→ 紅燈。本週淨值由這裡當場算，
+  # 上一週淨值看 WeeklyMetricsService 算好放在 changes["prev_week_net"]
+  # 裡（直接查上一週的 membership_level_changes，不是近4週平均）。
+  def consecutive_net_downgrade_flag(changes)
+    this_net = changes["upgrade_count"].to_i - changes["downgrade_count"].to_i
+    prev_net = changes["prev_week_net"]
+    return nil if prev_net.nil?
+    return nil unless this_net.negative? && prev_net.negative?
+
+    flag("membership_consecutive_net_downgrade", "membership", "high",
+         { this_week_net: this_net, prev_week_net: prev_net })
   end
 
   def downgrade_exceeds_upgrade_flag(changes)

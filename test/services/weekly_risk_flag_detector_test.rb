@@ -254,4 +254,122 @@ class WeeklyRiskFlagDetectorTest < ActiveSupport::TestCase
 
     assert_includes WeeklyRiskFlagDetector.call(m).map { |f| f[:key] }, "livestream_stats_stale"
   end
+
+  # ── 新客/舊客二段式門檻（黃20%/紅30%）───────────────────────────
+  test "new customer drop is yellow (medium) between 20% and 30%, and red (high) at 30%+" do
+    m = base_metrics
+    m["new_vs_returning"]["this_week"]["new_customers"] = 16 # 20% below avg4 of 20
+    yellow = WeeklyRiskFlagDetector.call(m).find { |f| f[:key] == "new_customer_drop_vs_avg4" }
+    assert_equal "medium", yellow[:severity]
+
+    m["new_vs_returning"]["this_week"]["new_customers"] = 5 # 75% below avg4 of 20 (fixture-style drop)
+    red = WeeklyRiskFlagDetector.call(m).find { |f| f[:key] == "new_customer_drop_vs_avg4" }
+    assert_equal "high", red[:severity]
+  end
+
+  test "returning customer drop is yellow at 20% and red at 30%+" do
+    m = base_metrics
+    m["new_vs_returning"]["this_week"]["returning_customers"] = 64 # 20% below avg4 of 80
+    yellow = WeeklyRiskFlagDetector.call(m).find { |f| f[:key] == "returning_customer_drop_vs_avg4" }
+    assert_equal "medium", yellow[:severity]
+
+    m["new_vs_returning"]["this_week"]["returning_customers"] = 50 # 37.5% below avg4 of 80
+    red = WeeklyRiskFlagDetector.call(m).find { |f| f[:key] == "returning_customer_drop_vs_avg4" }
+    assert_equal "high", red[:severity]
+  end
+
+  # ── 整體客單價二段式門檻（黃10%/紅20%）───────────────────────────
+  test "overall AOV drop is yellow at 10% and red at 20%+, reading from decomposition" do
+    m = base_metrics
+    m["new_vs_returning"]["decomposition"] = { "overall_aov_growth_vs_trailing4_pct" => -12.0 }
+    yellow = WeeklyRiskFlagDetector.call(m).find { |f| f[:key] == "overall_aov_drop_vs_avg4" }
+    assert_equal "medium", yellow[:severity]
+
+    m["new_vs_returning"]["decomposition"] = { "overall_aov_growth_vs_trailing4_pct" => -40.0 }
+    red = WeeklyRiskFlagDetector.call(m).find { |f| f[:key] == "overall_aov_drop_vs_avg4" }
+    assert_equal "high", red[:severity]
+  end
+
+  test "no overall AOV flag when decomposition is absent or within threshold" do
+    m = base_metrics
+    assert_nil WeeklyRiskFlagDetector.call(m).find { |f| f[:key] == "overall_aov_drop_vs_avg4" }
+
+    m["new_vs_returning"]["decomposition"] = { "overall_aov_growth_vs_trailing4_pct" => -3.0 }
+    assert_nil WeeklyRiskFlagDetector.call(m).find { |f| f[:key] == "overall_aov_drop_vs_avg4" }
+  end
+
+  # ── 缺貨風險規則（四條件任一命中即紅燈）───────────────────────────
+  def stockout_product(overrides = {})
+    {
+      "product_key" => "metabolism", "label" => "代謝錠", "availability_status" => "out_of_stock",
+      "lifetime_repurchase_rate_pct" => 10.0, "actionability" => { "actionable_count" => 5 },
+      "trailing4_revenue_share_pct" => 1.0, "expected_restock_date" => Date.current + 10
+    }.merge(overrides)
+  end
+
+  test "flags stockout risk when the historical repurchase rate is 40%+" do
+    m = base_metrics
+    m["product_repurchase"]["products"] = [stockout_product("lifetime_repurchase_rate_pct" => 56.9)]
+
+    f = WeeklyRiskFlagDetector.call(m).find { |x| x[:key] == "product_stockout_risk" }
+    assert f
+    assert_equal "high", f[:severity]
+    assert_includes f[:evidence][:reasons].join, "歷史回購率"
+  end
+
+  test "flags stockout risk when actionable repurchase count is 100+" do
+    m = base_metrics
+    m["product_repurchase"]["products"] = [stockout_product("actionability" => { "actionable_count" => 120 })]
+
+    assert WeeklyRiskFlagDetector.call(m).any? { |f| f[:key] == "product_stockout_risk" }
+  end
+
+  test "flags stockout risk when the product is 10%+ of trailing4 revenue" do
+    m = base_metrics
+    m["product_repurchase"]["products"] = [stockout_product("trailing4_revenue_share_pct" => 11.0)]
+
+    assert WeeklyRiskFlagDetector.call(m).any? { |f| f[:key] == "product_stockout_risk" }
+  end
+
+  test "flags stockout risk when there is no expected restock date" do
+    m = base_metrics
+    m["product_repurchase"]["products"] = [stockout_product("expected_restock_date" => nil)]
+
+    assert WeeklyRiskFlagDetector.call(m).any? { |f| f[:key] == "product_stockout_risk" }
+  end
+
+  test "does not flag stockout risk for in-stock products even if repurchase rate is high" do
+    m = base_metrics
+    m["product_repurchase"]["products"] = [stockout_product("availability_status" => "in_stock", "lifetime_repurchase_rate_pct" => 90.0)]
+
+    assert_nil WeeklyRiskFlagDetector.call(m).find { |f| f[:key] == "product_stockout_risk" }
+  end
+
+  # ── 連續兩週紅燈（新客）／連續兩週淨降級 ──────────────────────────
+  test "flags new_customer_two_consecutive_red only when this week and last week were both red" do
+    m = base_metrics
+    m["new_vs_returning"]["this_week"]["new_customers"] = 5 # red this week (75% below avg4)
+
+    no_history = WeeklyRiskFlagDetector.call(m, previous_week_flags: [])
+    assert_nil no_history.find { |f| f[:key] == "new_customer_two_consecutive_red" }
+
+    last_week_not_red = WeeklyRiskFlagDetector.call(m, previous_week_flags: [{ key: "new_customer_drop_vs_avg4", severity: "medium" }])
+    assert_nil last_week_not_red.find { |f| f[:key] == "new_customer_two_consecutive_red" }
+
+    last_week_red = WeeklyRiskFlagDetector.call(m, previous_week_flags: [{ key: "new_customer_drop_vs_avg4", severity: "high" }])
+    assert_includes last_week_red.map { |f| f[:key] }, "new_customer_two_consecutive_red"
+  end
+
+  test "flags membership_consecutive_net_downgrade only when both weeks have a negative net" do
+    m = base_metrics
+    m["membership"]["changes"] = { "upgrade_count" => 1, "downgrade_count" => 3, "prev_week_net" => -2,
+                                    "trailing4_weekly_avg_downgrade_count" => 1.0 }
+
+    f = WeeklyRiskFlagDetector.call(m).find { |x| x[:key] == "membership_consecutive_net_downgrade" }
+    assert f
+    assert_equal "high", f[:severity]
+
+    m["membership"]["changes"]["prev_week_net"] = 1 # last week was positive
+    assert_nil WeeklyRiskFlagDetector.call(m).find { |x| x[:key] == "membership_consecutive_net_downgrade" }
+  end
 end
