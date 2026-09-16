@@ -44,8 +44,12 @@ class BetterbioKocsController < ApplicationController
 
   def update
     @koc = BetterbioKoc.find(params[:id])
-    @koc.update(koc_params)
-    redirect_back fallback_location: betterbio_kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
+
+    if @koc.update(koc_params)
+      redirect_back fallback_location: betterbio_kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
+    else
+      render plain: @koc.errors.full_messages.join("、"), status: :unprocessable_entity
+    end
   end
 
   def destroy

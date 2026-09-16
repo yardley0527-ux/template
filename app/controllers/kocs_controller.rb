@@ -45,8 +45,15 @@ class KocsController < ApplicationController
 
   def update
     @koc = Koc.find(params[:id])
-    @koc.update(koc_params)
-    redirect_back fallback_location: kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
+
+    if @koc.update(koc_params)
+      redirect_back fallback_location: kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
+    else
+      # 存檔失敗（例如驗證沒過）要回非2xx，前端checkbox/select/date欄位的
+      # ajax:error處理器才會知道要復原畫面並提示使用者，不能悄悄redirect_back
+      # 假裝成功——那會讓使用者以為存到了，其實資料庫沒變。
+      render plain: @koc.errors.full_messages.join("、"), status: :unprocessable_entity
+    end
   end
 
   def destroy

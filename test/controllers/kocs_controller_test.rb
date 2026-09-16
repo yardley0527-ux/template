@@ -46,6 +46,50 @@ class KocsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "updated_by_social@example.com", @koc.reload.email
   end
 
+  # ── 2026-09-16：確認「所有欄位」都能正確儲存，不是只有前一輪改過
+  # local:false的3個checkbox/select/date——文字欄位(email/notes/
+  # logistics_notes，用Save按鈕送出，沒有改過local設定)跟follows_official_ig
+  # 也一併覆蓋，避免有漏測的欄位。──
+
+  test "social 能編輯既有 KOC 的社群聯絡備註" do
+    sign_in @social
+    patch koc_path(@koc), params: { koc: { notes: "社群備註測試內容" } }
+    assert_equal "社群備註測試內容", @koc.reload.notes
+  end
+
+  test "social 不能編輯物流部備註（權限限admin/物流部）" do
+    sign_in @social
+    patch koc_path(@koc), params: { koc: { logistics_notes: "social不該存進去" } }
+    assert_nil @koc.reload.logistics_notes
+  end
+
+  test "admin 能編輯物流部備註" do
+    sign_in @admin
+    patch koc_path(@koc), params: { koc: { logistics_notes: "admin填的物流備註" } }
+    assert_equal "admin填的物流備註", @koc.reload.logistics_notes
+  end
+
+  test "crmdata（物流部帳號）能編輯物流部備註" do
+    logistics_role = Role.find_or_create_by!(key: "logistics") { |r| r.name = "物流部" }
+    PagePermission.find_or_create_by!(role: logistics_role, controller_name: "kocs")
+    logistics_user = User.create!(email: "koc_logistics@test.com", username: "crmdata", password: "password123", role: logistics_role)
+
+    sign_in logistics_user
+    patch koc_path(@koc), params: { koc: { logistics_notes: "物流部自己填的備註" } }
+    assert_equal "物流部自己填的備註", @koc.reload.logistics_notes
+  end
+
+  test "以 XHR 方式勾選 follows_official_ig 會正確存進資料庫" do
+    sign_in @social
+    assert_not @koc.follows_official_ig?
+
+    patch koc_path(@koc), params: { koc: { follows_official_ig: "1" } },
+                           headers: { "Referer" => kocs_url }, xhr: true
+
+    assert_response :redirect
+    assert @koc.reload.follows_official_ig?
+  end
+
   test "非 admin 非 social 不能刪除 KOC" do
     other_role = Role.find_or_create_by!(key: "data") { |r| r.name = "數據部" }
     PagePermission.find_or_create_by!(role: other_role, controller_name: "kocs")
@@ -56,6 +100,19 @@ class KocsControllerTest < ActionDispatch::IntegrationTest
       delete koc_path(@koc)
     end
     assert_response :forbidden
+  end
+
+  # ── 2026-09-16：使用者實際回報「打勾但沒存到」——追查發現 update action
+  # 完全沒檢查 @koc.update 的回傳值，驗證失敗時仍然無條件 redirect_back 並
+  # 顯示「已更新」成功訊息，導致真正的存檔失敗會被悄悄吃掉、使用者無從
+  # 得知。修正為：失敗要回422，前端AJAX才能偵測到並提示使用者。──
+  test "update 驗證失敗時回傳422，不能悄悄redirect_back假裝成功" do
+    sign_in @social
+
+    patch koc_path(@koc), params: { koc: { ig_username: "" } }
+
+    assert_response :unprocessable_entity
+    assert_not_equal "", @koc.reload.ig_username
   end
 
   # ── 2026-09-16：checkbox/select/date 改成 local:false（AJAX）後，確認
