@@ -21,6 +21,7 @@ class UpgradedMembersController < ApplicationController
 
     all_lists = MessageList.daily_snapshot.where(target_product: TARGET_LEVELS).to_a
     @period_counts = build_period_counts(all_lists)
+    @maintenance_period_counts = build_maintenance_period_counts(all_lists)
 
     # 第一層：月份分頁（"2026-09" 這種 key，畫面上顯示成「2026年9月」）。
     @available_months = all_lists.map { |l| l.sent_on.strftime("%Y-%m") }.uniq.sort.reverse
@@ -50,6 +51,21 @@ class UpgradedMembersController < ApplicationController
       out[label] = TARGET_LEVELS.index_with do |level|
         ids = (lists_by_level[level] || []).select { |l| range.cover?(l.sent_on) }.map(&:id)
         ids.empty? ? 0 : MessageListRecipient.where(message_list_id: ids).count
+      end
+    end
+  end
+
+  # 跟 build_period_counts 不同：這裡看的是「維護日期」（本次維護什麼時候填的），
+  # 不是名單傳送日，所以同一批名單裡的人可能分散在不同期間才被算到已維護。
+  def build_maintenance_period_counts(lists)
+    today = Date.current
+    lists_by_level = lists.group_by(&:target_product)
+
+    PERIODS.each_with_object({}) do |(label, range_for), out|
+      range = range_for.call(today)
+      out[label] = TARGET_LEVELS.index_with do |level|
+        ids = (lists_by_level[level] || []).map(&:id)
+        ids.empty? ? 0 : MessageListRecipient.where(message_list_id: ids, maintenance_date: range).count
       end
     end
   end
