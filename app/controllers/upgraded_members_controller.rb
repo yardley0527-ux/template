@@ -24,6 +24,9 @@ class UpgradedMembersController < ApplicationController
     @maintenance_period_counts = build_maintenance_period_counts(all_lists)
     @period_range_labels = build_period_range_labels
 
+    @content_window = PERIODS.key?(params[:content_window].to_s) ? params[:content_window].to_s : "本月"
+    @content_stats = build_content_stats(@content_window)
+
     # 第一層：月份分頁（"2026-09" 這種 key，畫面上顯示成「2026年9月」）。
     @available_months = all_lists.map { |l| l.sent_on.strftime("%Y-%m") }.uniq.sort.reverse
     @selected_month = @available_months.include?(params[:month].to_s) ? params[:month].to_s : @available_months.first
@@ -79,5 +82,48 @@ class UpgradedMembersController < ApplicationController
         ids.empty? ? 0 : MessageListRecipient.where(message_list_id: ids, maintenance_date: range).count
       end
     end
+  end
+
+  # 「員工什麼時候維護、維護後有沒有回來買」——依維護日期落在哪個 window（今天/本週/本月/本年，
+  # 累計到今天）篩出那批人，再拆成 5 個維護內容勾選項各自的回購率。回購定義：維護日期之後
+  # 有任何一筆已付款訂單（不限定商品，因為升級名單本來就不是針對單一商品）。
+  # 同一人可能同時勾多個項目，所以 by_field 的人數各自獨立、加總會超過 total。
+  def build_content_stats(window_label)
+    range = PERIODS.fetch(window_label).call(Date.current)
+    rows = maintenance_rows_with_repurchase.select { |r| range.cover?(r["maintenance_date"].to_date) }
+
+    by_field = MessageListRecipient::MAINTENANCE_CONTENT_FIELDS.map do |field, label|
+      marked = rows.select { |r| r[field] }
+      repurchased = marked.count { |r| r["repurchased"] }
+      rate = marked.empty? ? 0.0 : (repurchased * 100.0 / marked.size)
+      { field: field, label: label, total: marked.size, repurchased: repurchased, rate: rate }
+    end.sort_by { |h| -h[:rate] }
+
+    total = rows.size
+    repurchased_total = rows.count { |r| r["repurchased"] }
+    rate_total = total.zero? ? 0.0 : (repurchased_total * 100.0 / total)
+
+    { total: total, repurchased: repurchased_total, rate: rate_total, by_field: by_field }
+  end
+
+  # 只查一次，5 個 window 共用（比對日期用 Ruby 篩，不必為每個 window 各查一次 DB）。
+  def maintenance_rows_with_repurchase
+    content_columns = MessageListRecipient::MAINTENANCE_CONTENT_FIELDS.keys.join(", ")
+
+    sql = <<~SQL
+      SELECT r.email, r.maintenance_date, #{content_columns},
+             EXISTS (
+               SELECT 1 FROM shopline_orders o
+               WHERE LOWER(TRIM(o.email)) = r.email
+                 AND o.payment_status = '已付款'
+                 AND o.order_date >= r.maintenance_date
+             ) AS repurchased
+      FROM message_list_recipients r
+      JOIN message_lists ml ON ml.id = r.message_list_id
+      WHERE ml.source = 'daily_snapshot' AND ml.name LIKE '%升級%名單'
+        AND r.maintenance_date IS NOT NULL
+    SQL
+
+    ActiveRecord::Base.connection.select_all(sql).to_a
   end
 end

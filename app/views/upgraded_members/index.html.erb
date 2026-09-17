@@ -77,6 +77,52 @@
             </table>
           </div>
 
+          <%# 維護內容成效：員工在「本次維護」勾了什麼、什麼時候維護的、維護後有沒有回購。
+              時間篩選跟上面「已維護人數」同一套 PERIODS（累計到今天），選哪個區間下面就只算那個區間內維護的人。 %>
+          <div class="um-table-title">維護內容成效（依維護日期，可切換時間區間）</div>
+          <div class="um-content-card mb-4">
+            <div class="um-period-tabs mb-3">
+              <% UpgradedMembersController::PERIODS.each_key do |label| %>
+                <a href="<%= upgraded_members_path(content_window: label, level: @selected_level, month: @selected_month, day: @selected_day&.iso8601) %>"
+                   class="um-period-tab <%= @content_window == label ? 'is-active' : '' %>">
+                  <%= label %> (<%= @period_range_labels[label] %>)
+                </a>
+              <% end %>
+            </div>
+
+            <div class="um-kpi-row mb-3">
+              <div class="um-kpi-card">
+                <div class="um-kpi-label">已維護人數（<%= @content_window %>，不重複）</div>
+                <div class="um-kpi-value"><%= number_with_delimiter(@content_stats[:total]) %></div>
+              </div>
+              <div class="um-kpi-card">
+                <div class="um-kpi-label">維護後回購人數</div>
+                <div class="um-kpi-value"><%= number_with_delimiter(@content_stats[:repurchased]) %></div>
+              </div>
+              <div class="um-kpi-card">
+                <div class="um-kpi-label">整體回購率</div>
+                <div class="um-kpi-value um-kpi-accent"><%= @content_stats[:total].zero? ? "—" : "#{@content_stats[:rate].round}%" %></div>
+              </div>
+            </div>
+
+            <% if @content_stats[:total].zero? %>
+              <div class="um-empty-hint">這個時間區間還沒有人被填過維護紀錄。</div>
+            <% else %>
+              <% max_rate = [@content_stats[:by_field].map { |h| h[:rate] }.max.to_f, 1.0].max %>
+              <div class="um-bar-list">
+                <% @content_stats[:by_field].each do |stat| %>
+                  <div class="um-bar-row">
+                    <div class="um-bar-label"><%= stat[:label] %></div>
+                    <div class="um-bar-track"><div class="um-bar-fill" style="width: <%= (stat[:rate] / max_rate * 100).round(1) %>%;"></div></div>
+                    <div class="um-bar-pct"><%= stat[:rate].round %>%</div>
+                    <div class="um-bar-sub">已標記 <%= stat[:total] %>人・回購 <%= stat[:repurchased] %>人</div>
+                  </div>
+                <% end %>
+              </div>
+              <div class="um-bar-note">＊同一位客人可能同時被勾選多個項目，5 列人數各自獨立，加總會超過上面的已維護總人數，不是切一塊餅圖的概念</div>
+            <% end %>
+          </div>
+
           <% if @available_months.any? %>
             <div class="um-month-tabs mb-3">
               <% @available_months.each do |month| %>
@@ -200,6 +246,27 @@
 .um-btn-link:hover { color: #1f2937; text-decoration: underline; }
 
 .um-empty-hint { text-align: center; color: #9ca3af; padding: 60px 20px; font-size: 14px; background: #fafafa; border: 1px dashed #e5e7eb; border-radius: 10px; }
+
+.um-content-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px 24px; }
+.um-period-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.um-period-tab { font-size: 12px; font-weight: 600; color: #6b7280; padding: 6px 14px; border-radius: 99px; text-decoration: none; background: #f3f4f6; white-space: nowrap; }
+.um-period-tab:hover { background: #e5e7eb; color: #374151; }
+.um-period-tab.is-active { background: #8f6340; color: #fff; }
+
+.um-kpi-row { display: flex; gap: 12px; }
+.um-kpi-card { flex: 1; background: #faf9f5; border: 1px solid #f0e9dc; border-radius: 8px; padding: 12px 16px; }
+.um-kpi-label { font-size: 11px; color: #9ca3af; font-weight: 600; }
+.um-kpi-value { font-size: 22px; font-weight: 800; color: #111827; margin-top: 2px; }
+.um-kpi-accent { color: #8f6340; }
+
+.um-bar-list { display: flex; flex-direction: column; gap: 12px; }
+.um-bar-row { display: flex; align-items: center; gap: 12px; }
+.um-bar-label { width: 84px; flex-shrink: 0; text-align: right; font-size: 13px; font-weight: 700; color: #374151; }
+.um-bar-track { flex-grow: 1; height: 22px; background: #f3f4f6; border-radius: 6px; overflow: hidden; }
+.um-bar-fill { height: 100%; background: #8f6340; border-radius: 6px; }
+.um-bar-pct { width: 42px; flex-shrink: 0; font-size: 13px; font-weight: 800; color: #8f6340; }
+.um-bar-sub { width: 160px; flex-shrink: 0; font-size: 11px; color: #9ca3af; }
+.um-bar-note { font-size: 11px; color: #9ca3af; margin-top: 12px; }
 
 @media (max-width: 768px) {
   .um-level-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
