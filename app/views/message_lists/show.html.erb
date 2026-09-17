@@ -281,7 +281,13 @@ end %>
         <% end %>
 
         <div class="ml-maintenance">
-          <div class="ml-maintenance-title">本次維護</div>
+          <div class="ml-maintenance-header">
+            <div class="ml-maintenance-title">本次維護</div>
+            <div class="ml-maintenance-save-wrap">
+              <span class="ml-save-feedback"></span>
+              <button type="button" class="ml-maintenance-save-btn">儲存</button>
+            </div>
+          </div>
 
           <div class="ml-maintenance-dates">
             <label>
@@ -399,27 +405,63 @@ end %>
   <script>
     (function () {
       var CSRF = document.querySelector('meta[name="csrf-token"]')?.content;
+
+      function fieldValue(el) {
+        return el.type === "checkbox" ? el.checked : el.value;
+      }
+
+      function saveField(el) {
+        return fetch("<%= update_message_list_recipient_field_path %>", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
+          body: JSON.stringify({ recipient_id: el.dataset.recipientId, field: el.dataset.field, value: fieldValue(el) })
+        }).then(function (r) { return r.ok; });
+      }
+
       document.querySelectorAll(".recipient-field-input").forEach(function (el) {
         var isCheckbox = el.type === "checkbox";
         var eventName = isCheckbox || el.tagName === "SELECT" ? "change" : "blur";
-        var previousValue = isCheckbox ? el.checked : el.value;
+        var previousValue = fieldValue(el);
         var pill = el.closest(".ml-check-pill");
 
         el.addEventListener(eventName, function () {
-          var value = isCheckbox ? el.checked : el.value;
+          var value = fieldValue(el);
           if (pill) { pill.classList.toggle("is-checked", el.checked); }
 
-          fetch("<%= update_message_list_recipient_field_path %>", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
-            body: JSON.stringify({ recipient_id: el.dataset.recipientId, field: el.dataset.field, value: value })
-          }).then(function (r) {
-            if (!r.ok) {
+          saveField(el).then(function (ok) {
+            if (!ok) {
               if (isCheckbox) { el.checked = previousValue; if (pill) { pill.classList.toggle("is-checked", previousValue); } }
               else { el.value = previousValue; }
               alert("更新失敗，請重新整理頁面再試一次");
             } else {
               previousValue = value;
+            }
+          });
+        });
+      });
+
+      document.querySelectorAll(".ml-maintenance-save-btn").forEach(function (btn) {
+        var card = btn.closest(".ml-maintenance");
+        var inputs = card.querySelectorAll(".recipient-field-input");
+        var feedback = card.querySelector(".ml-save-feedback");
+        var originalText = btn.textContent;
+
+        btn.addEventListener("click", function () {
+          btn.disabled = true;
+          btn.textContent = "儲存中…";
+
+          Promise.all(Array.from(inputs).map(saveField)).then(function (results) {
+            btn.disabled = false;
+            if (results.every(Boolean)) {
+              btn.textContent = "已儲存 ✓";
+              if (feedback) { feedback.textContent = "已儲存"; feedback.classList.add("is-visible"); }
+              setTimeout(function () {
+                btn.textContent = originalText;
+                if (feedback) { feedback.classList.remove("is-visible"); }
+              }, 2000);
+            } else {
+              btn.textContent = originalText;
+              alert("更新失敗，請重新整理頁面再試一次");
             }
           });
         });
@@ -452,6 +494,15 @@ end %>
 
 .ml-maintenance { border-top: 1px dashed #e9e2d8; padding-top: 12px; }
 .ml-maintenance-title { font-size: 0.72rem; font-weight: 700; color: #8f6340; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+
+.ml-maintenance-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ml-maintenance-header .ml-maintenance-title { margin-bottom: 0; }
+.ml-maintenance-save-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.ml-save-feedback { font-size: 0.75rem; font-weight: 600; color: #188038; opacity: 0; transition: opacity .2s; }
+.ml-save-feedback.is-visible { opacity: 1; }
+.ml-maintenance-save-btn { font-size: 0.78rem; font-weight: 600; color: #fff; background: #8f6340; border: none; border-radius: 6px; padding: 5px 14px; cursor: pointer; transition: background .12s; }
+.ml-maintenance-save-btn:hover { background: #6e4a2e; }
+.ml-maintenance-save-btn:disabled { opacity: .65; cursor: default; }
 
 .ml-maintenance-dates { display: flex; flex-wrap: wrap; gap: 14px 20px; margin-bottom: 10px; }
 .ml-maintenance-dates label { display: flex; flex-direction: column; gap: 4px; font-size: 0.72rem; color: #6c757d; font-weight: 600; }
