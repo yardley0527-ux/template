@@ -13,7 +13,9 @@ class ApplicationController < ActionController::Base
     "order_gift_records#upsert"          => %w[daily_orders high_value_orders high_value_follow_ups],
     "weekly_briefing_todos#toggle"       => %w[weekly_briefings],
     "weekly_briefing_todos#preview"      => %w[weekly_briefings],
-    "weekly_briefing_todos#create_task"  => %w[weekly_briefings]
+    "weekly_briefing_todos#create_task"  => %w[weekly_briefings],
+    "group_buy_detections#edit"          => %w[group_buy_posts],
+    "group_buy_detections#update"        => %w[group_buy_posts]
   }.freeze
 
   private

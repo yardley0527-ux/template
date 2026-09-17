@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_17_100227) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -596,6 +596,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
     t.index ["status"], name: "index_group_buy_contacts_on_status"
   end
 
+  create_table "group_buy_detections", force: :cascade do |t|
+    t.bigint "ig_post_id", null: false
+    t.boolean "is_group_buy", default: false, null: false
+    t.integer "confidence", default: 0, null: false
+    t.text "matched_keywords", default: [], null: false, array: true
+    t.string "detected_brand"
+    t.string "detected_product_name"
+    t.string "status", default: "待確認", null: false
+    t.text "note"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_post_id"], name: "index_group_buy_detections_on_ig_post_id", unique: true
+    t.index ["status"], name: "index_group_buy_detections_on_status"
+  end
+
   create_table "health_assessment_products", force: :cascade do |t|
     t.bigint "shopline_customer_health_assessment_id", null: false
     t.bigint "product_id", null: false
@@ -632,6 +647,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
     t.datetime "posted_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "url"
+    t.text "hashtags", default: [], null: false, array: true
+    t.text "mentions", default: [], null: false, array: true
+    t.text "tagged_users", default: [], null: false, array: true
+    t.string "product_type"
     t.index ["ig_profile_id"], name: "index_ig_posts_on_ig_profile_id"
     t.index ["shortcode"], name: "index_ig_posts_on_shortcode", unique: true
   end
@@ -1058,7 +1078,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
     t.text "recommended_action"
     t.text "resolution_reason"
     t.integer "reopened_count", default: 0, null: false
-    t.index ["deduplication_key"], name: "idx_notifications_dedup_key_unique_active", unique: true, where: "((status)::text <> ALL (ARRAY[('resolved'::character varying)::text, ('dismissed'::character varying)::text]))"
+    t.index ["deduplication_key"], name: "idx_notifications_dedup_key_unique_active", unique: true, where: "((status)::text <> ALL ((ARRAY['resolved'::character varying, 'dismissed'::character varying])::text[]))"
     t.index ["due_at"], name: "index_notifications_on_due_at"
     t.index ["notification_key"], name: "index_notifications_on_notification_key"
     t.index ["owner_user_id"], name: "index_notifications_on_owner_user_id"
@@ -1699,6 +1719,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_16_130000) do
   add_foreign_key "crm_products", "users", column: "reviewed_by_user_id"
   add_foreign_key "faq_images", "faqs"
   add_foreign_key "faqs", "faq_categories"
+  add_foreign_key "group_buy_detections", "ig_posts"
   add_foreign_key "health_assessment_products", "products"
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"
   add_foreign_key "ig_posts", "ig_profiles"

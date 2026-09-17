@@ -2,11 +2,17 @@ require 'net/http'
 require 'json'
 
 class IgScraperService
-  ACTOR_ID    = "apify~instagram-profile-scraper"
-  APIFY_TOKEN = ENV['APIFY_TOKEN']
+  ACTOR_ID = "apify~instagram-profile-scraper"
 
   def self.scrape(username)
     new(username).call
+  end
+
+  # 跟 KolIgMetricsFetcher / ig_tagged.rake 一樣兩個環境變數名稱都吃——
+  # 正式站環境變數叫 APIFY_API_KEY，這裡舊的只認 APIFY_TOKEN，導致這個 service
+  # 在正式站其實一直拿不到 token（呼叫 Apify 會失敗）。
+  def self.apify_token
+    ENV["APIFY_API_KEY"].presence || ENV["APIFY_TOKEN"].presence
   end
 
   def initialize(username)
@@ -31,7 +37,7 @@ class IgScraperService
 
   def fetch_from_apify
     uri = URI("https://api.apify.com/v2/acts/#{ACTOR_ID}/run-sync-get-dataset-items")
-    uri.query = URI.encode_www_form(token: APIFY_TOKEN, timeout: 120)
+    uri.query = URI.encode_www_form(token: self.class.apify_token, timeout: 120)
 
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
@@ -82,14 +88,27 @@ class IgScraperService
         nil
       end
 
-      IgPost.find_or_initialize_by(shortcode: shortcode).tap do |p|
-        p.ig_profile = profile
-        p.caption    = post["caption"].to_s.slice(0, 500)
-        p.likes      = post["likesCount"].to_i
-        p.comments   = post["commentsCount"].to_i
-        p.posted_at  = posted_at
+      ig_post = IgPost.find_or_initialize_by(shortcode: shortcode).tap do |p|
+        p.ig_profile   = profile
+        p.caption      = post["caption"].to_s.slice(0, 2200) # IG 貼文字數上限，避免關鍵字比對漏看結尾
+        p.likes        = post["likesCount"].to_i
+        p.comments     = post["commentsCount"].to_i
+        p.posted_at    = posted_at
+        p.url          = post["url"]
+        p.hashtags     = Array(post["hashtags"])
+        p.mentions     = Array(post["mentions"])
+        p.tagged_users = extract_tagged_usernames(post["taggedUsers"])
+        p.product_type = post["productType"].presence || post["type"]
         p.save!
       end
+
+      GroupBuyDetector.upsert_for(ig_post)
+    end
+  end
+
+  def extract_tagged_usernames(tagged_users)
+    Array(tagged_users).filter_map do |t|
+      t.is_a?(Hash) ? (t["username"] || t["full_name"]) : t
     end
   end
 end

@@ -1,0 +1,79 @@
+<% content_for :page_title, "確認團購貼文" %>
+<% post = @detection.ig_post %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-shopping-bag mr-2 text-danger"></i> 確認團購貼文
+  </h1>
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+      <div>
+        <div class="font-weight-bold">@<%= post.ig_profile.username %></div>
+        <div class="text-muted small">
+          <%= post.reel? ? "Reel" : "貼文" %>・<%= post.posted_at&.strftime("%Y/%m/%d %H:%M") || "—" %>・
+          <i class="fal fa-heart mr-1"></i><%= number_with_delimiter(post.likes) %>
+          <i class="fal fa-comment ml-2 mr-1"></i><%= number_with_delimiter(post.comments) %>・
+          規則判斷信心 <%= @detection.confidence %>
+        </div>
+      </div>
+      <%= link_to post.ig_url, target: "_blank", rel: "noreferrer", class: "btn btn-sm btn-outline-secondary" do %>
+        <i class="fal fa-external-link mr-1"></i> 查看原始貼文
+      <% end %>
+    </div>
+
+    <div class="border rounded p-2 mb-2 small" style="max-height:160px; overflow-y:auto; white-space:pre-wrap; background:#f8f9fa;">
+      <%= post.caption.presence || "（沒有文字內容）" %>
+    </div>
+
+    <% if @detection.matched_keywords.present? %>
+      <div class="mb-0">
+        <% @detection.matched_keywords.each do |k| %>
+          <span class="badge badge-light border mr-1"><%= k %></span>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <%= form_with model: @detection, url: group_buy_detection_path(@detection), local: true do |f| %>
+      <%= hidden_field_tag :redirect_status, params[:redirect_status] %>
+
+      <% if @detection.errors.any? %>
+        <div class="alert alert-danger">
+          <ul class="mb-0">
+            <% @detection.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <%= f.label :detected_brand, "品牌／廠商" %>
+          <%= f.text_field :detected_brand, class: "form-control", placeholder: "規則猜測，可修改" %>
+        </div>
+        <div class="form-group col-md-6">
+          <%= f.label :detected_product_name, "商品名稱" %>
+          <%= f.text_field :detected_product_name, class: "form-control", placeholder: "規則猜測，可修改" %>
+        </div>
+      </div>
+      <div class="form-group">
+        <%= f.label :note, "備註" %>
+        <%= f.text_area :note, class: "form-control", rows: 3 %>
+      </div>
+
+      <div class="d-flex flex-wrap" style="gap:8px;">
+        <button type="submit" name="group_buy_detection[status]" value="已確認團購" class="btn btn-success">確認為團購商品</button>
+        <button type="submit" name="group_buy_detection[status]" value="待確認" class="btn btn-outline-secondary">先存草稿</button>
+        <button type="submit" name="group_buy_detection[status]" value="已排除" class="btn btn-outline-danger">不是團購，排除</button>
+        <%= link_to "取消", group_buy_posts_path(status: params[:redirect_status]), class: "btn btn-link" %>
+      </div>
+    <% end %>
+  </div>
+</div>

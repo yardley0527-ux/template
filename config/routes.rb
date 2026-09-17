@@ -39,6 +39,10 @@ Rails.application.routes.draw do
   resources :manychat_checks, only: [:index, :update]
   resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]
 
+  get  '/group_buy_posts',              to: 'group_buy_posts#index',       as: :group_buy_posts
+  post '/group_buy_posts/sync_account', to: 'group_buy_posts#sync_account', as: :sync_account_group_buy_posts
+  resources :group_buy_detections, only: [:edit, :update]
+
   resources :livestreams, only: [:index, :show, :new, :create, :edit, :update, :destroy] do
     resources :livestream_images, only: [:create, :destroy]
     resources :livestream_products, only: [:create, :update, :destroy]

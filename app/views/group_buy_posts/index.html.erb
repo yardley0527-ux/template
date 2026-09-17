@@ -1,0 +1,164 @@
+<% content_for :page_title, "網紅團購商品追蹤" %>
+
+<%
+  def group_buy_status_badge_class(status)
+    { "已確認團購" => "badge-success", "已排除" => "badge-secondary" }[status] || "badge-warning"
+  end
+%>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-shopping-bag mr-2 text-danger"></i> 網紅團購商品追蹤
+  </h1>
+</div>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  彙整重點網紅在 IG 貼文/Reel 上的團購、業配商品。抓下來的貼文都先進「待確認」，規則只是用關鍵字比對輔助排序，
+  真正算不算團購要人工確認或排除。
+</div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <div class="fw-bold small">追蹤帳號（點「同步」抓最新貼文，一次一個帳號）</div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <% GroupBuyPostsController::TRACKED_USERNAMES.each do |username| %>
+        <% account = @accounts.find { |a| a.username == username } %>
+        <div class="border rounded px-3 py-2 d-flex align-items-center gap-2" style="font-size:0.85rem;">
+          <div>
+            <a href="https://www.instagram.com/<%= username %>/" target="_blank" rel="noreferrer" class="font-weight-bold">
+              @<%= username %>
+            </a>
+            <div class="text-muted">
+              <% if account %>
+                <%= number_with_delimiter(account.follower_count) %> 粉絲・
+                <%= account.last_scraped_at.present? ? "上次同步 #{time_ago_in_words(account.last_scraped_at)}前" : "還沒同步過" %>
+              <% else %>
+                還沒同步過
+              <% end %>
+            </div>
+          </div>
+          <%= button_to "同步", sync_account_group_buy_posts_path(username: username), method: :post, class: "btn btn-xs btn-outline-primary ml-2" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-container show">
+    <div class="panel-content">
+
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <ul class="nav nav-pills mb-0">
+          <% (GroupBuyDetection::STATUSES + ["全部"]).each do |status| %>
+            <% count = status == "全部" ? @counts.values.sum : @counts[status].to_i %>
+            <li class="nav-item">
+              <%= link_to "#{status} (#{count})", group_buy_posts_path(status: status, username: @selected_username),
+                    class: "nav-link #{'active' if @selected_status == status}" %>
+            </li>
+          <% end %>
+        </ul>
+
+        <div class="d-flex flex-wrap gap-2">
+          <%= link_to "全部帳號", group_buy_posts_path(status: @selected_status),
+                class: "btn btn-sm #{@selected_username.blank? ? 'btn-dark' : 'btn-outline-secondary'}" %>
+          <% GroupBuyPostsController::TRACKED_USERNAMES.each do |username| %>
+            <%= link_to "@#{username}", group_buy_posts_path(status: @selected_status, username: username),
+                  class: "btn btn-sm #{@selected_username == username ? 'btn-dark' : 'btn-outline-secondary'}" %>
+          <% end %>
+        </div>
+      </div>
+
+      <% if @detections.empty? %>
+        <div class="text-center py-5 text-muted">
+          <i class="fal fa-shopping-bag fa-3x mb-3 d-block opacity-25"></i>
+          這個篩選條件下還沒有貼文。先按上面的「同步」抓一次資料，或換個篩選條件看看。
+        </div>
+      <% else %>
+
+        <%# ── 桌機：表格 ── %>
+        <div class="d-none d-lg-block" style="overflow-x:auto;">
+          <table class="table table-bordered table-hover align-middle small">
+            <thead class="thead-light">
+              <tr>
+                <th>帳號</th>
+                <th>類型</th>
+                <th>發文時間</th>
+                <th>互動</th>
+                <th>信心</th>
+                <th>品牌／商品</th>
+                <th>貼文內容</th>
+                <th>狀態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @detections.each do |d| %>
+                <% post = d.ig_post %>
+                <tr>
+                  <td class="text-nowrap">@<%= post.ig_profile.username %></td>
+                  <td><%= post.reel? ? "Reel" : "貼文" %></td>
+                  <td class="text-nowrap"><%= post.posted_at&.strftime("%Y/%m/%d") || "—" %></td>
+                  <td class="text-nowrap">
+                    <i class="fal fa-heart mr-1"></i><%= number_with_delimiter(post.likes) %>
+                    <i class="fal fa-comment ml-2 mr-1"></i><%= number_with_delimiter(post.comments) %>
+                  </td>
+                  <td class="text-nowrap">
+                    <span class="badge <%= d.confidence >= 30 ? 'badge-warning' : 'badge-light' %>"><%= d.confidence %></span>
+                  </td>
+                  <td style="max-width:180px;">
+                    <div class="font-weight-bold"><%= d.detected_brand.presence || "—" %></div>
+                    <div class="text-muted"><%= d.detected_product_name.presence || "—" %></div>
+                  </td>
+                  <td class="text-muted" style="max-width:260px;"><%= truncate(post.caption.to_s, length: 80) %></td>
+                  <td><span class="badge <%= group_buy_status_badge_class(d.status) %>"><%= d.status %></span></td>
+                  <td class="text-nowrap">
+                    <%= link_to edit_group_buy_detection_path(d, redirect_status: @selected_status), class: "btn btn-xs btn-outline-secondary mr-1" do %>
+                      <i class="fal fa-edit"></i>
+                    <% end %>
+                    <%= link_to post.ig_url, target: "_blank", rel: "noreferrer", class: "btn btn-xs btn-outline-secondary" do %>
+                      <i class="fal fa-external-link"></i>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+
+        <%# ── 手機：卡片 ── %>
+        <div class="d-lg-none">
+          <% @detections.each do |d| %>
+            <% post = d.ig_post %>
+            <div class="card mb-3">
+              <div class="card-header d-flex align-items-center py-2" style="background:#f5ede8;">
+                <span class="font-weight-bold">@<%= post.ig_profile.username %></span>
+                <span class="badge <%= group_buy_status_badge_class(d.status) %> ml-2"><%= d.status %></span>
+                <div class="ml-auto" style="white-space:nowrap;">
+                  <%= link_to edit_group_buy_detection_path(d, redirect_status: @selected_status), class: "btn btn-xs btn-outline-secondary mr-1" do %>
+                    <i class="fal fa-edit"></i>
+                  <% end %>
+                  <%= link_to post.ig_url, target: "_blank", rel: "noreferrer", class: "btn btn-xs btn-outline-secondary" do %>
+                    <i class="fal fa-external-link"></i>
+                  <% end %>
+                </div>
+              </div>
+              <div class="card-body py-2 px-3 small">
+                <div class="mb-1 font-weight-bold"><%= d.detected_brand.presence || "（未偵測到品牌）" %>／<%= d.detected_product_name.presence || "（未偵測到商品）" %></div>
+                <div class="text-muted mb-1"><%= truncate(post.caption.to_s, length: 100) %></div>
+                <div class="d-flex justify-content-between border-top pt-1">
+                  <span class="text-muted"><%= post.reel? ? "Reel" : "貼文" %>・<%= post.posted_at&.strftime("%m/%d") || "—" %></span>
+                  <span class="badge <%= d.confidence >= 30 ? 'badge-warning' : 'badge-light' %>">信心 <%= d.confidence %></span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+      <% end %>
+    </div>
+  </div>
+</div>
