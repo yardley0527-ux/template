@@ -22,6 +22,7 @@ class UpgradedMembersController < ApplicationController
     all_lists = MessageList.daily_snapshot.where(target_product: TARGET_LEVELS).to_a
     @period_counts = build_period_counts(all_lists)
     @maintenance_period_counts = build_maintenance_period_counts(all_lists)
+    @period_range_labels = build_period_range_labels
 
     # 第一層：月份分頁（"2026-09" 這種 key，畫面上顯示成「2026年9月」）。
     @available_months = all_lists.map { |l| l.sent_on.strftime("%Y-%m") }.uniq.sort.reverse
@@ -40,6 +41,16 @@ class UpgradedMembersController < ApplicationController
   end
 
   private
+
+  # 表頭旁邊要顯示「本週/本月/本年」實際對應到哪個區間，不然使用者猜不到基準日。
+  # { "今天" => "9/17", "本週" => "9/15~9/17", "本月" => "9/1~9/17", "本年" => "1/1~9/17" }
+  def build_period_range_labels
+    today = Date.current
+    PERIODS.each_with_object({}) do |(label, range_for), out|
+      range = range_for.call(today)
+      out[label] = range.first == range.last ? range.first.strftime("%-m/%-d") : "#{range.first.strftime('%-m/%-d')}~#{range.last.strftime('%-m/%-d')}"
+    end
+  end
 
   # { "今天" => { "白卡" => 3, "銀卡" => 0, ... }, "本週" => {...}, ... }
   def build_period_counts(lists)
