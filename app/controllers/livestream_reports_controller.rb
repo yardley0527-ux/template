@@ -78,6 +78,22 @@ class LivestreamReportsController < ApplicationController
         desc: "老闆決策版：買家數3場最低但客單價$15,094創新高、定價階梯實際銷售嚴重偏向頂格(69.5%)、2,000盒庫存預估僅消化到995盒(49.8%)、三種庫存去化方案、執行建議",
       },
     ],
+    "PDRN" => [
+      {
+        title: "PDRN 回購活動報表・9/18場",
+        date: Date.new(2026, 9, 18),
+        type: :post,
+        url: "https://claude.ai/artifact/1spXcrL1spNGm62bEZNSsE",
+        desc: "買家名單版（新品首場）：90位買家（新客僅2）、營收$1,491,600／付費711瓶＋滿額贈約47瓶。近5場獨立主打D0–D1比較、①新客大單2 ②鐵粉流失178（36位未被導購名單觸及）③快要吃完5（每瓶10–15天，含回購提醒排程）④買更多33 ⑤買很少4",
+      },
+      {
+        title: "PDRN 直播決策報告",
+        date: Date.new(2026, 9, 18),
+        type: :post,
+        url: "https://claude.ai/artifact/Ju7JmvKXwESVwqYZuSVdKN",
+        desc: "老闆決策版：近5場獨立主打D0–D1同口徑比較（買家/營收排第5、客單價$15,320排第3、新客占比1.9%最低）、逐時賣速、滿$2萬送1瓶的效果（85%的10瓶客加購過門檻）、用量週期（每瓶10–15天）與回購時程、執行建議",
+      },
+    ],
   }.freeze
 
   def index
