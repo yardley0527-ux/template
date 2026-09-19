@@ -309,6 +309,9 @@ GEM
       sprockets (>= 2.8, < 4.0)
       sprockets-rails (>= 2.0, < 4.0)
       tilt (>= 1.1, < 3)
+    scenic (1.9.0)
+      activerecord (>= 4.0.0)
+      railties (>= 4.0.0)
     securerandom (0.4.1)
     selenium-webdriver (4.1.0)
       childprocess (>= 0.5, < 5.0)
@@ -386,6 +389,7 @@ DEPENDENCIES
   roo
   roo-xls
   sass-rails (~> 5)
+  scenic (~> 1.9)
   selenium-webdriver
   tzinfo-data
   web-console (>= 3.3.0)
@@ -513,6 +517,7 @@ CHECKSUMS
   sass (3.7.4) sha256=808b0d39053aa69068df939e24671fe84fd5a9d3314486e1a1457d0934a4255d
   sass-listen (4.0.0) sha256=ae9dcb76dd3e234329e5ba6e213f48e532c5a3e7b0b4d8a87f13aaca0cc18377
   sass-rails (5.1.0) sha256=9728ac86ec91d5d1c2e2b4bbfe06d1f1459f21ac9cc5f7614760d8cf1b777493
+  scenic (1.9.0) sha256=6eec3aa049ba2a137e7eb0b4c4f0200b77f7765fc82e08ad44c01da7905563d9
   securerandom (0.4.1) sha256=cc5193d414a4341b6e225f0cb4446aceca8e50d5e1888743fac16987638ea0b1
   selenium-webdriver (4.1.0) sha256=076f13aa6317fb77a27409754b58c26387d5160b9d713311c147324054a7119e
   spreadsheet (1.3.4) sha256=0aefd6f3dfdc8b43528109f7fbd54db54f85ce5920429413d48305906bc59253

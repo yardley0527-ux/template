@@ -10,7 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_17_100227) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_19_110000) do
+  create_schema "group_buy_crm"
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1754,4 +1756,230 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_17_100227) do
   add_foreign_key "tag_extraction_recipients", "tag_extraction_runs"
   add_foreign_key "users", "roles"
   add_foreign_key "weekly_briefing_todos", "weekly_briefings"
+
+  create_view "group_buy_crm.member_order_lines", sql_definition: <<-SQL
+      WITH norm_members AS (
+           SELECT c.id,
+              lower(btrim(regexp_replace((c.email)::text, '[\\u200B-\\u200D\\u2060\\uFEFF]'::text, ''::text, 'g'::text), ((((' '::text || chr(9)) || chr(10)) || chr(13)) || chr(12288)))) AS ne
+             FROM shopline_customers c
+            WHERE (NULLIF(btrim((c.email)::text), ''::text) IS NOT NULL)
+          ), src AS (
+           SELECT b.id,
+              b.order_number,
+              b.order_date,
+              b.product_name,
+              b.quantity,
+              b.import_run_id,
+              b.shopline_customer_id,
+              b.ne
+             FROM ( SELECT o.id,
+                      o.order_number,
+                      o.order_date,
+                      o.product_name,
+                      o.quantity,
+                      o.import_run_id,
+                      o.shopline_customer_id,
+                      o.payment_status,
+                      o.email,
+                      lower(btrim(regexp_replace((o.email)::text, '[\\u200B-\\u200D\\u2060\\uFEFF]'::text, ''::text, 'g'::text), ((((' '::text || chr(9)) || chr(10)) || chr(13)) || chr(12288)))) AS ne,
+                      min((o.product_name)::text) OVER w AS min_name,
+                      max((o.product_name)::text) OVER w AS max_name,
+                      max(o.import_run_id) OVER w AS max_run
+                     FROM shopline_orders o
+                    WHERE ((o.quantity IS NOT NULL) AND (o.checkout_amount IS NOT NULL) AND (o.order_number IS NOT NULL))
+                    WINDOW w AS (PARTITION BY o.order_number, o.quantity, o.checkout_amount)) b
+            WHERE (((b.min_name = b.max_name) OR (b.import_run_id = b.max_run)) AND ((b.payment_status)::text = '已付款'::text) AND (NULLIF((b.order_number)::text, ''::text) IS NOT NULL) AND (NULLIF((b.email)::text, ''::text) IS NOT NULL) AND (b.order_date IS NOT NULL))
+          ), latest AS (
+           SELECT s.id,
+              s.order_number,
+              s.order_date,
+              s.product_name,
+              s.quantity,
+              s.import_run_id,
+              s.shopline_customer_id,
+              s.ne,
+              dense_rank() OVER (PARTITION BY s.order_number, s.product_name ORDER BY COALESCE(s.import_run_id, ('-1'::integer)::bigint) DESC) AS run_rank
+             FROM src s
+          ), canon AS (
+           SELECT l.order_number,
+              l.product_name,
+              max(l.order_date) AS order_date,
+              (sum(l.quantity))::integer AS line_quantity,
+              (count(*))::integer AS source_line_count,
+              count(DISTINCT l.shopline_customer_id) AS n_customer_ids,
+              min(l.shopline_customer_id) AS customer_id,
+              count(DISTINCT l.ne) AS n_emails,
+              min(l.ne) AS ne
+             FROM latest l
+            WHERE (l.run_rank = 1)
+            GROUP BY l.order_number, l.product_name
+          ), pool AS (
+           SELECT false AS is_member,
+              c.order_number,
+              c.product_name,
+              c.order_date,
+              c.line_quantity,
+              c.source_line_count,
+              c.n_customer_ids,
+              c.customer_id,
+              c.n_emails,
+              c.ne,
+              NULL::bigint AS member_id
+             FROM canon c
+          UNION ALL
+           SELECT true AS bool,
+              NULL::character varying AS "varchar",
+              NULL::character varying AS "varchar",
+              NULL::timestamp without time zone AS "timestamp",
+              NULL::integer AS int4,
+              NULL::integer AS int4,
+              NULL::bigint AS int8,
+              NULL::bigint AS int8,
+              NULL::bigint AS int8,
+              m.ne,
+              m.id
+             FROM norm_members m
+            WHERE (m.ne <> ''::text)
+          ), resolved AS (
+           SELECT p.is_member,
+              p.order_number,
+              p.product_name,
+              p.order_date,
+              p.line_quantity,
+              p.source_line_count,
+              p.n_customer_ids,
+              p.customer_id,
+              p.n_emails,
+              p.ne,
+              p.member_id,
+              count(*) FILTER (WHERE p.is_member) OVER (PARTITION BY p.ne) AS n_members,
+              min(p.member_id) OVER (PARTITION BY p.ne) AS only_member_id
+             FROM pool p
+          ), mapping AS (
+           SELECT m.raw_name,
+              (count(*))::integer AS candidate_count,
+                  CASE
+                      WHEN (count(*) = 1) THEN min(m.id)
+                      ELSE NULL::bigint
+                  END AS mapping_id,
+                  CASE
+                      WHEN (count(*) = 1) THEN min(m.crm_product_id)
+                      ELSE NULL::bigint
+                  END AS crm_product_id
+             FROM product_name_mappings m
+            WHERE ((m.mapping_status)::text = 'confirmed_alias'::text)
+            GROUP BY m.raw_name
+          ), comp AS (
+           SELECT pmc.product_name_mapping_id,
+              array_agg(DISTINCT cp_1.key ORDER BY cp_1.key) AS keys
+             FROM (product_mapping_components pmc
+               JOIN crm_products cp_1 ON ((cp_1.id = pmc.crm_product_id)))
+            GROUP BY pmc.product_name_mapping_id
+          )
+   SELECT (jsonb_build_array(r.order_number, r.product_name))::text AS order_line_key,
+          CASE
+              WHEN ((r.n_customer_ids = 1) AND (mem.id IS NOT NULL)) THEN mem.id
+              WHEN ((r.n_customer_ids = 0) AND (r.n_emails = 1) AND (r.n_members = 1)) THEN r.only_member_id
+              ELSE NULL::bigint
+          END AS shopline_customer_id,
+          CASE
+              WHEN ((r.n_customer_ids = 1) AND (mem.id IS NOT NULL)) THEN 'order_customer_id'::text
+              WHEN ((r.n_customer_ids = 0) AND (r.n_emails = 1) AND (r.n_members = 1)) THEN 'unique_email'::text
+              ELSE NULL::text
+          END AS customer_link_source,
+          CASE
+              WHEN ((r.n_customer_ids = 1) AND (mem.id IS NOT NULL)) THEN COALESCE((lower(btrim(regexp_replace((mem.email)::text, '[\\u200B-\\u200D\\u2060\\uFEFF]'::text, ''::text, 'g'::text), ((((' '::text || chr(9)) || chr(10)) || chr(13)) || chr(12288)))) = r.ne), false)
+              ELSE true
+          END AS email_consistent,
+      r.order_number,
+      r.order_date,
+      r.product_name AS raw_product_name,
+          CASE
+              WHEN (COALESCE(mp.candidate_count, 0) > 1) THEN 'conflict'::text
+              WHEN (mp.crm_product_id IS NOT NULL) THEN 'mapped'::text
+              ELSE 'unmapped'::text
+          END AS mapping_status,
+      COALESCE(mp.candidate_count, 0) AS mapping_candidate_count,
+      cp.key AS product_key,
+      cp.label AS product_label,
+      comp.keys AS bundle_component_keys,
+      r.line_quantity,
+      r.source_line_count
+     FROM ((((resolved r
+       LEFT JOIN shopline_customers mem ON (((mem.id = r.customer_id) AND (r.n_customer_ids = 1))))
+       LEFT JOIN mapping mp ON (((mp.raw_name)::text = (r.product_name)::text)))
+       LEFT JOIN crm_products cp ON ((cp.id = mp.crm_product_id)))
+       LEFT JOIN comp ON ((comp.product_name_mapping_id = mp.mapping_id)))
+    WHERE (NOT r.is_member);
+  SQL
+  create_view "group_buy_crm.member_product_summaries", sql_definition: <<-SQL
+      WITH lines AS (
+           SELECT l.shopline_customer_id,
+              l.order_number,
+              l.order_date,
+              l.raw_product_name,
+              l.mapping_status,
+              l.product_key,
+              l.bundle_component_keys
+             FROM member_order_lines l
+            WHERE (l.shopline_customer_id IS NOT NULL)
+          ), hits AS (
+           SELECT lines.shopline_customer_id,
+              lines.order_number,
+              lines.order_date,
+              lines.product_key AS pkey,
+              'mapped'::text AS mstatus
+             FROM lines
+            WHERE (lines.mapping_status = 'mapped'::text)
+          UNION ALL
+           SELECT l.shopline_customer_id,
+              l.order_number,
+              l.order_date,
+              k.pkey,
+              'mapped'::text AS text
+             FROM (lines l
+               CROSS JOIN LATERAL unnest(l.bundle_component_keys) k(pkey))
+          UNION ALL
+           SELECT lines.shopline_customer_id,
+              lines.order_number,
+              lines.order_date,
+              ('raw:'::text || (COALESCE(lines.raw_product_name, ''::character varying))::text),
+              lines.mapping_status
+             FROM lines
+            WHERE (lines.mapping_status <> 'mapped'::text)
+          )
+   SELECT h.shopline_customer_id,
+      h.pkey AS product_key,
+      COALESCE(cp.label, (substr((h.pkey)::text, 5))::character varying) AS product_label,
+      h.mstatus AS mapping_status,
+      (count(DISTINCT h.order_number))::integer AS order_count,
+      min(h.order_date) AS first_order_date,
+      max(h.order_date) AS last_order_date
+     FROM (hits h
+       LEFT JOIN crm_products cp ON (((cp.key)::text = (h.pkey)::text)))
+    GROUP BY h.shopline_customer_id, h.pkey, cp.label, h.mstatus;
+  SQL
+  create_view "group_buy_crm.members", sql_definition: <<-SQL
+      SELECT c.id AS shopline_customer_id,
+      c.shopline_id,
+      c.full_name AS name,
+      c.email,
+      NULLIF(lower(btrim(regexp_replace((c.email)::text, '[\\u200B-\\u200D\\u2060\\uFEFF]'::text, ''::text, 'g'::text), ((((' '::text || chr(9)) || chr(10)) || chr(13)) || chr(12288)))), ''::text) AS normalized_email,
+      c.membership_level,
+      c.total_amount,
+      (COALESCE(c.blacklisted, false) OR (EXISTS ( SELECT 1
+             FROM customer_profiles p
+            WHERE ((p.shopline_customer_id = c.id) AND COALESCE(p.blacklisted, false))))) AS blacklisted,
+      c.membership_expiry_date,
+      c.joined_at,
+      c.current_shopping_credits AS credits,
+      c.current_points AS points,
+      lo.last_order_date
+     FROM (shopline_customers c
+       LEFT JOIN ( SELECT l.shopline_customer_id,
+              max(l.order_date) AS last_order_date
+             FROM member_order_lines l
+            WHERE (l.shopline_customer_id IS NOT NULL)
+            GROUP BY l.shopline_customer_id) lo ON ((lo.shopline_customer_id = c.id)));
+  SQL
 end

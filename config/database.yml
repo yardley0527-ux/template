@@ -45,6 +45,12 @@ development:
   # Schema search path. The server defaults to $user,public
   #schema_search_path: myapp,sharedapp,public
 
+  # group_buy_crm holds the read-only views for the group-buy-crm app (see docs/group_buy_crm_views.md).
+  # Scenic only dumps views from schemas on the search path, and the dumped view SQL omits the
+  # schema prefix for objects on the path, so BOTH dumping and loading db/schema.rb need this.
+  # (production never loads schema.rb, so it is deliberately not set there.)
+  schema_search_path: "public,group_buy_crm"
+
   # Minimum log levels, in increasing order:
   #   debug5, debug4, debug3, debug2, debug1,
   #   log, notice, warning, error, fatal, and panic
@@ -57,6 +63,8 @@ development:
 test:
   <<: *default
   database: smartadmin_rails_full_test
+  # Needed to load the group_buy_crm views from db/schema.rb (see the note under development)
+  schema_search_path: "public,group_buy_crm"
 
 production:
   adapter: postgresql

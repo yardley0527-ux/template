@@ -20,6 +20,8 @@ gem 'jbuilder', '~> 2.7'
 gem 'bootsnap', '>= 1.4.2', require: false
 gem 'cloudinary'
 gem 'paper_trail', '~> 15.1'
+# Manages the group_buy_crm read-only SQL views (db/views) and dumps them into db/schema.rb
+gem 'scenic', '~> 1.9'
 
 group :development, :test do
   gem 'byebug', platforms: [:mri, :mingw, :x64_mingw]
