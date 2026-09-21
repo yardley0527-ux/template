@@ -6,6 +6,7 @@ class PodcastContact < ApplicationRecord
   before_validation { self.status = "待接洽" if status.blank? }
 
   scope :ordered, -> { order(:ig_username) }
+  scope :pr_gift_shipped, -> { where.not(pr_gift_shipped_at: nil) }
 
   def profile_link
     profile_url.presence || "https://www.instagram.com/#{ig_username}"

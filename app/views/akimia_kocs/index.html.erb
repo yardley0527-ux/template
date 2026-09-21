@@ -50,7 +50,7 @@
 
 <%# ── 摘要卡 ── %>
 <div class="row g-3 mb-4">
-  <div class="col-md-3 col-6">
+  <div class="col-md-2 col-6">
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <div class="text-muted small mb-1">總 KOC 數</div>
@@ -67,7 +67,21 @@
       </div>
     </div>
   </div>
-  <div class="col-md-6">
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small mb-1">已寄公關品（人數）</div>
+        <%= link_to akimia_kocs_path(shipped: "1"), class: "text-decoration-none" do %>
+          <div class="fw-bold text-primary" style="font-size:1.8rem;line-height:1"><%= @shipped_count %></div>
+        <% end %>
+        <div class="text-muted small mt-1">
+          <% shipped_parts = AkimiaKoc::STATUSES.select { |s| @shipped_by_status[s].to_i.positive? }.map { |s| "#{s} #{@shipped_by_status[s]}" } %>
+          <%= shipped_parts.any? ? shipped_parts.join("・") : "尚未有人填寄出日期" %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
         <div class="text-muted small mb-2">聯絡狀態分布</div>
@@ -85,8 +99,9 @@
 
 <%# ── 篩選列 ── %>
 <div class="d-flex flex-wrap gap-2 mb-3">
-  <%= link_to "全部", akimia_kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank? && !@show_hidden} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank? && !@show_hidden}" %>
+  <%= link_to "全部", akimia_kocs_path(sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:paid].blank? && params[:shipped].blank? && !@show_hidden} #{'btn-outline-secondary' unless params[:status].blank? && params[:paid].blank? && params[:shipped].blank? && !@show_hidden}" %>
   <%= link_to "只看已業配", akimia_kocs_path(paid: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:paid] == '1'} #{'btn-outline-secondary' unless params[:paid] == '1'}" %>
+  <%= link_to "已寄公關品 (#{@shipped_count})", akimia_kocs_path(shipped: "1", sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:shipped] == '1'} #{'btn-outline-secondary' unless params[:shipped] == '1'}" %>
   <% AkimiaKoc::STATUSES.each do |s| %>
     <%= link_to s, akimia_kocs_path(status: s, sort: @sort), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
   <% end %>
@@ -106,12 +121,12 @@
             <th>業配</th>
             <th class="text-end">貼文數</th>
             <th class="text-end">
-              <%= link_to akimia_kocs_path(status: params[:status], paid: params[:paid], sort: "views"), class: "text-decoration-none #{@sort == 'likes' ? 'text-muted' : 'text-dark fw-bold'}", style: "cursor:pointer" do %>
+              <%= link_to akimia_kocs_path(status: params[:status], paid: params[:paid], shipped: params[:shipped], sort: "views"), class: "text-decoration-none #{@sort == 'likes' ? 'text-muted' : 'text-dark fw-bold'}", style: "cursor:pointer" do %>
                 最高觀看<%= @sort != "likes" ? " ▾" : "" %>
               <% end %>
             </th>
             <th class="text-end">
-              <%= link_to akimia_kocs_path(status: params[:status], paid: params[:paid], sort: "likes"), class: "text-decoration-none #{@sort == 'likes' ? 'text-dark fw-bold' : 'text-muted'}", style: "cursor:pointer" do %>
+              <%= link_to akimia_kocs_path(status: params[:status], paid: params[:paid], shipped: params[:shipped], sort: "likes"), class: "text-decoration-none #{@sort == 'likes' ? 'text-dark fw-bold' : 'text-muted'}", style: "cursor:pointer" do %>
                 最高讚數<%= @sort == "likes" ? " ▾" : "" %>
               <% end %>
             </th>
