@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_17_100227) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_21_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1002,6 +1002,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_17_100227) do
     t.boolean "content_upgrade_reminder", default: false, null: false
     t.string "customer_status"
     t.date "next_follow_up_date"
+    t.string "line_id"
     t.index ["message_list_id", "email"], name: "index_message_list_recipients_on_message_list_id_and_email", unique: true
     t.index ["message_list_id"], name: "index_message_list_recipients_on_message_list_id"
   end

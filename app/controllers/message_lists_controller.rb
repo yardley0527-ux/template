@@ -39,6 +39,7 @@ class MessageListsController < ApplicationController
     @stats = build_stats(@list, @repurchases)
 
     recipients = sorted_recipients(@list)
+    @show_line_id = recipients.any? { |r| r.line_id.present? }
     @repurchased_rows, @pending_rows = recipients.partition { |r| @repurchases.key?(r.email) }
     @rows = @tab == "repurchased" ? @repurchased_rows : @pending_rows
 
@@ -88,12 +89,13 @@ class MessageListsController < ApplicationController
     require "csv"
 
     csv = CSV.generate(encoding: "UTF-8") do |rows|
-      rows << ["姓名", "IG", "Email", "會員等級", "分類", "回購狀態", "回購日期", "回購商品", "回購金額"]
+      rows << ["姓名", "IG", "LINE ID", "Email", "會員等級", "分類", "回購狀態", "回購日期", "回購商品", "回購金額"]
       sorted_recipients(list).each do |r|
         rep = repurchases[r.email]
         rows << [
           r.full_name,
           r.instagram_account,
+          r.line_id,
           r.email,
           r.membership_level,
           r.segment,

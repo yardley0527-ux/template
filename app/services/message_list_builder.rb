@@ -13,7 +13,7 @@
 #     segments: { "a@x.com" => "回購鐵粉" }   # 選填：email → 分類標籤
 #   )
 class MessageListBuilder
-  def self.create!(name:, sent_on:, target_product:, emails:, source_note: nil, segments: {}, source: "manual")
+  def self.create!(name:, sent_on:, target_product:, emails:, source_note: nil, segments: {}, source: "manual", with_line_id: false)
     normalized = emails.filter_map { |e| e.to_s.strip.downcase.presence }.uniq
     raise ArgumentError, "emails 不可為空" if normalized.empty?
 
@@ -32,6 +32,7 @@ class MessageListBuilder
           email: email,
           full_name: c["full_name"],
           instagram_account: igs[email],
+          line_id: (c["line_id"].presence if with_line_id),
           membership_level: c["membership_level"],
           segment: segments[email],
           shopline_customer_id: c["id"],
@@ -47,8 +48,8 @@ class MessageListBuilder
   def self.customer_snapshots(emails)
     ShoplineCustomer
       .where("LOWER(TRIM(email)) IN (?)", emails)
-      .pluck(Arel.sql("LOWER(TRIM(email))"), :id, :full_name, :membership_level)
-      .to_h { |email, id, name, level| [email, { "id" => id, "full_name" => name, "membership_level" => level }] }
+      .pluck(Arel.sql("LOWER(TRIM(email))"), :id, :full_name, :membership_level, :line_id)
+      .to_h { |email, id, name, level, line_id| [email, { "id" => id, "full_name" => name, "membership_level" => level, "line_id" => line_id }] }
   end
   private_class_method :customer_snapshots
 
