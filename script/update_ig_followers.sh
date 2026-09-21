@@ -13,8 +13,9 @@ python3 script/fetch_ig_followers.py
 git add data/ig_followers_data.json
 if ! git diff --staged --quiet; then
   git commit -m "📊 更新 IG 粉絲數 $(date +%Y-%m-%d)"
-  git push origin main
-  echo "Pushed to GitHub."
+  CURRENT_BRANCH="$(git branch --show-current)"
+  git push origin "$CURRENT_BRANCH"
+  echo "Pushed to GitHub ($CURRENT_BRANCH)."
 else
   echo "No changes to push."
 fi
