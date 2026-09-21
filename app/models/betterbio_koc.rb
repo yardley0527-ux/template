@@ -10,6 +10,7 @@ class BetterbioKoc < ApplicationRecord
   scope :ordered_by_engagement, -> { order(Arel.sql("COALESCE(max_video_views, 0) DESC, COALESCE(max_likes, 0) DESC")) }
   scope :visible, -> { where(hidden: false) }
   scope :hidden_only, -> { where(hidden: true) }
+  scope :pr_gift_shipped, -> { where.not(pr_gift_shipped_at: nil) }
 
   def profile_link
     profile_url.presence || "https://www.instagram.com/#{ig_username}"

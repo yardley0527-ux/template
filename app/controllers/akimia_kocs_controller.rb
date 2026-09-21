@@ -13,12 +13,15 @@ class AkimiaKocsController < ApplicationController
     @kocs = @show_hidden ? @kocs.hidden_only : @kocs.visible
     @kocs = @kocs.where(status: params[:status]) if params[:status].present?
     @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
+    @kocs = @kocs.pr_gift_shipped if params[:shipped] == "1"
     @kocs = @kocs.where("ig_username ILIKE ?", "%#{params[:ig_username].to_s.strip.delete_prefix('@')}%") if params[:ig_username].present?
 
     @total_count = AkimiaKoc.count
     @paid_count  = AkimiaKoc.where(has_paid_partnership: true).count
     @hidden_count = AkimiaKoc.hidden_only.count
     @status_counts = AkimiaKoc.group(:status).count
+    @shipped_by_status = AkimiaKoc.pr_gift_shipped.group(:status).count
+    @shipped_count = @shipped_by_status.values.sum
 
     @page = [params[:page].to_i, 1].max
     @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max

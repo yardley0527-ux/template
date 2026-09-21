@@ -56,7 +56,21 @@
       </div>
     </div>
   </div>
-  <div class="col-md-9">
+  <div class="col-md-3 col-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small mb-1">已寄公關品（人數）</div>
+        <%= link_to kol_contacts_path(shipped: "1"), class: "text-decoration-none" do %>
+          <div class="fw-bold text-primary" style="font-size:1.8rem;line-height:1"><%= @shipped_count %></div>
+        <% end %>
+        <div class="text-muted small mt-1">
+          <% shipped_parts = KolContact::STATUSES.select { |s| @shipped_by_status[s].to_i.positive? }.map { |s| "#{s} #{@shipped_by_status[s]}" } %>
+          <%= shipped_parts.any? ? shipped_parts.join("・") : "尚未有人填寄出日期" %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-6">
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
         <div class="text-muted small mb-2">聯絡狀態分布</div>
@@ -74,7 +88,8 @@
 
 <%# ── 篩選列 ── %>
 <div class="d-flex flex-wrap gap-2 mb-3">
-  <%= link_to "全部", kol_contacts_path, class: "btn btn-sm #{'btn-dark' if params[:status].blank?} #{'btn-outline-secondary' unless params[:status].blank?}" %>
+  <%= link_to "全部", kol_contacts_path, class: "btn btn-sm #{'btn-dark' if params[:status].blank? && params[:shipped].blank?} #{'btn-outline-secondary' unless params[:status].blank? && params[:shipped].blank?}" %>
+  <%= link_to "已寄公關品 (#{@shipped_count})", kol_contacts_path(shipped: "1"), class: "btn btn-sm #{'btn-dark' if params[:shipped] == '1'} #{'btn-outline-secondary' unless params[:shipped] == '1'}" %>
   <% KolContact::STATUSES.each do |s| %>
     <%= link_to s, kol_contacts_path(status: s), class: "btn btn-sm #{'btn-dark' if params[:status] == s} #{'btn-outline-secondary' unless params[:status] == s}" %>
   <% end %>

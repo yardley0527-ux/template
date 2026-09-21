@@ -9,9 +9,12 @@ class KolContactsController < ApplicationController
 
     @contacts = KolContact.ordered
     @contacts = @contacts.where(status: params[:status]) if params[:status].present?
+    @contacts = @contacts.pr_gift_shipped if params[:shipped] == "1"
 
     @total_count = KolContact.count
     @status_counts = KolContact.group(:status).count
+    @shipped_by_status = KolContact.pr_gift_shipped.group(:status).count
+    @shipped_count = @shipped_by_status.values.sum
 
     @page = [params[:page].to_i, 1].max
     @total_pages = [(@contacts.count.to_f / PER_PAGE).ceil, 1].max
