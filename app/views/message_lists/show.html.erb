@@ -341,7 +341,7 @@ end %>
             <thead style="background-color:#6c757d; color:white;">
               <tr>
                 <th class="ps-3" style="width:130px;">姓名</th>
-                <th style="width:160px;">IG</th>
+                <th style="width:160px;"><%= @show_line_id ? "LINE ID" : "IG" %></th>
                 <th style="width:110px;">分類</th>
                 <th>回購狀態</th>
               </tr>
@@ -359,7 +359,13 @@ end %>
                     <% end %>
                   </td>
                   <td>
-                    <% if url %>
+                    <% if @show_line_id %>
+                      <% if r.line_id.present? %>
+                        <span style="font-size:0.8rem;"><%= r.line_id %></span>
+                      <% else %>
+                        <span class="text-muted small">—</span>
+                      <% end %>
+                    <% elsif url %>
                       <%= link_to url, target: "_blank", class: "text-decoration-none d-flex align-items-center gap-1" do %>
                         <i class="fal fa-at text-danger"></i>
                         <span style="font-size:0.8rem; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
