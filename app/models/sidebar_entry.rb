@@ -132,6 +132,13 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "財務",
+          group_icon: "fa-file-contract",
+          children: [
+            { href: koc_contracts_path, title: "合約狀態", icon: "fa-file-contract" },
+          ]
+        },
+        {
           group_title: "Omnichat 加 tag 名單",
           children: [
             { href: tag_extractions_path, title: "Omnichat 加 tag 名單", icon: "fa-tag" },
