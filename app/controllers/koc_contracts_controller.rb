@@ -14,6 +14,6 @@ class KocContractsController < ApplicationController
   private
 
   def koc_contract_params
-    params.require(:koc).permit(:contract_sent_at, :contract_received_at)
+    params.require(:koc).permit(:contract_sent_at, :contract_received_at, :video_posted_at, :ad_start_at, :ad_end_at)
   end
 end

@@ -32,6 +32,16 @@ class KocContractsControllerTest < ActionDispatch::IntegrationTest
     assert_equal Date.parse("2026-09-22"), @koc.reload.contract_sent_at
   end
 
+  test "finance 能更新影片上架時間與廣告區間" do
+    sign_in @finance
+    patch koc_contract_path(@koc), params: { koc: { video_posted_at: "2026-09-20", ad_start_at: "2026-09-21", ad_end_at: "2026-09-28" } }
+    assert_redirected_to koc_contracts_path
+    @koc.reload
+    assert_equal Date.parse("2026-09-20"), @koc.video_posted_at
+    assert_equal Date.parse("2026-09-21"), @koc.ad_start_at
+    assert_equal Date.parse("2026-09-28"), @koc.ad_end_at
+  end
+
   test "沒有權限的社群帳號不能進合約狀態頁" do
     sign_in @social
     get koc_contracts_path

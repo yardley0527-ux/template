@@ -120,6 +120,12 @@ class SidebarEntry
               ]
             },
             { href: replied_contacts_path, title: "已回覆待追蹤", icon: "fa-reply" },
+          ]
+        },
+        {
+          group_title: "團購",
+          group_icon: "fa-handshake",
+          children: [
             { href: group_buy_contacts_path, title: "團購合作聯繫", icon: "fa-handshake" },
             { href: group_buy_posts_path, title: "網紅團購商品追蹤", icon: "fa-shopping-bag" },
           ]

@@ -17,6 +17,8 @@
             <th>IG 帳號</th>
             <th style="min-width:150px">已寄合約</th>
             <th style="min-width:150px">已收合約</th>
+            <th style="min-width:150px">影片上架時間</th>
+            <th style="min-width:280px">廣告區間</th>
           </tr>
         </thead>
         <tbody>
@@ -37,11 +39,27 @@
                   <%= f.date_field :contract_received_at, value: koc.contract_received_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
                 <% end %>
               </td>
+              <td>
+                <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= f.date_field :video_posted_at, value: koc.video_posted_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                <% end %>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-1">
+                  <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.date_field :ad_start_at, value: koc.ad_start_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <% end %>
+                  <span class="text-muted">～</span>
+                  <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                    <%= f.date_field :ad_end_at, value: koc.ad_end_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <% end %>
+                </div>
+              </td>
             </tr>
           <% end %>
           <% if @kocs.empty? %>
             <tr>
-              <td colspan="3" class="text-center text-muted py-4">目前沒有「合作中」的 KOC</td>
+              <td colspan="5" class="text-center text-muted py-4">目前沒有「合作中」的 KOC</td>
             </tr>
           <% end %>
         </tbody>
