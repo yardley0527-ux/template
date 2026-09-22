@@ -15,7 +15,6 @@
         <thead class="bg-light">
           <tr>
             <th>IG 帳號</th>
-            <th>別稱</th>
             <th style="min-width:150px">已寄合約</th>
             <th style="min-width:150px">已收合約</th>
           </tr>
@@ -28,7 +27,6 @@
                   @<%= koc.ig_username %>
                 </a>
               </td>
-              <td><%= koc.alias %></td>
               <td>
                 <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
                   <%= f.date_field :contract_sent_at, value: koc.contract_sent_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
@@ -43,7 +41,7 @@
           <% end %>
           <% if @kocs.empty? %>
             <tr>
-              <td colspan="4" class="text-center text-muted py-4">目前沒有「合作中」的 KOC</td>
+              <td colspan="3" class="text-center text-muted py-4">目前沒有「合作中」的 KOC</td>
             </tr>
           <% end %>
         </tbody>
