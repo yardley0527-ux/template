@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_19_110000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_22_020000) do
   create_schema "group_buy_crm"
 
   # These are extensions that must be enabled in order to support this database
@@ -734,6 +734,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_19_110000) do
     t.date "pr_gift_shipped_at"
     t.text "logistics_notes"
     t.boolean "hidden", default: false, null: false
+    t.date "contract_sent_at"
+    t.date "contract_received_at"
+    t.date "video_posted_at"
+    t.date "ad_start_at"
+    t.date "ad_end_at"
     t.index ["ig_username"], name: "index_kocs_on_ig_username", unique: true
   end
 
