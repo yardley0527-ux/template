@@ -1,10 +1,12 @@
 <%# app/views/koc_contracts/index.html.erb %>
 <% content_for :page_title, "合約狀態" %>
+<% can_edit_contract  = current_user.admin? || current_user.role&.key == "finance" %>
+<% can_edit_video_ad  = current_user.admin? || current_user.role&.key == "social" %>
 
 <div class="row g-3 mb-3">
   <div class="col-12">
     <h4 class="fw-bold mb-0">合約狀態</h4>
-    <p class="text-muted small mb-0">合作中的 KOC，財務部登記合約寄出／收到日期</p>
+    <p class="text-muted small mb-0">合作中的 KOC，財務部登記合約寄出／收到日期，社群部登記影片上架時間／廣告區間</p>
   </div>
 </div>
 
@@ -31,27 +33,27 @@
               </td>
               <td>
                 <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= f.date_field :contract_sent_at, value: koc.contract_sent_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <%= f.date_field :contract_sent_at, value: koc.contract_sent_at, class: "form-control form-control-sm", disabled: !can_edit_contract, onchange: "this.form.requestSubmit()" %>
                 <% end %>
               </td>
               <td>
                 <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= f.date_field :contract_received_at, value: koc.contract_received_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <%= f.date_field :contract_received_at, value: koc.contract_received_at, class: "form-control form-control-sm", disabled: !can_edit_contract, onchange: "this.form.requestSubmit()" %>
                 <% end %>
               </td>
               <td>
                 <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                  <%= f.date_field :video_posted_at, value: koc.video_posted_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <%= f.date_field :video_posted_at, value: koc.video_posted_at, class: "form-control form-control-sm", disabled: !can_edit_video_ad, onchange: "this.form.requestSubmit()" %>
                 <% end %>
               </td>
               <td>
                 <div class="d-flex align-items-center gap-1">
                   <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.date_field :ad_start_at, value: koc.ad_start_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                    <%= f.date_field :ad_start_at, value: koc.ad_start_at, class: "form-control form-control-sm", disabled: !can_edit_video_ad, onchange: "this.form.requestSubmit()" %>
                   <% end %>
                   <span class="text-muted">～</span>
                   <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.date_field :ad_end_at, value: koc.ad_end_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                    <%= f.date_field :ad_end_at, value: koc.ad_end_at, class: "form-control form-control-sm", disabled: !can_edit_video_ad, onchange: "this.form.requestSubmit()" %>
                   <% end %>
                 </div>
               </td>

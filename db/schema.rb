@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_22_020000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_22_030000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1084,7 +1084,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_22_020000) do
     t.text "recommended_action"
     t.text "resolution_reason"
     t.integer "reopened_count", default: 0, null: false
-    t.index ["deduplication_key"], name: "idx_notifications_dedup_key_unique_active", unique: true, where: "((status)::text <> ALL ((ARRAY['resolved'::character varying, 'dismissed'::character varying])::text[]))"
+    t.index ["deduplication_key"], name: "idx_notifications_dedup_key_unique_active", unique: true, where: "((status)::text <> ALL (ARRAY[('resolved'::character varying)::text, ('dismissed'::character varying)::text]))"
     t.index ["due_at"], name: "index_notifications_on_due_at"
     t.index ["notification_key"], name: "index_notifications_on_notification_key"
     t.index ["owner_user_id"], name: "index_notifications_on_owner_user_id"
