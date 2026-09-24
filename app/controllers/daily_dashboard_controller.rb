@@ -20,18 +20,39 @@ class DailyDashboardController < ApplicationController
       @end_date   = parse_date(params[:end_date])   || @start_date
       @end_date   = @start_date if @end_date < @start_date
     end
-    @order_insights       = build_order_insights(@start_date, @end_date)
-    @summary              = build_summary(@start_date, @end_date)
-    @product_stats        = build_product_stats(@start_date, @end_date)
+    # 「這批 email 在區間開始前有沒有買過」——原本下面 4 個 build_* 方法各自查一次，
+    # 等於同一次頁面請求對 shopline_orders 重複做近 10 次全表 join/掃描，
+    # 併發多人同時開這頁時會把資料庫連線池塞爆（見 2026-09-24 事故）。改成算一次共用。
+    prior_emails = compute_prior_emails(@start_date, @end_date)
+
+    @order_insights       = build_order_insights(@start_date, @end_date, prior_emails)
+    @summary              = build_summary(@start_date, @end_date, prior_emails)
+    @product_stats        = build_product_stats(@start_date, @end_date, prior_emails)
     @daily_stats          = build_daily_stats(@start_date, @end_date)
-    @daily_customer_stats = build_daily_customer_stats(@start_date, @end_date)
+    @daily_customer_stats = build_daily_customer_stats(@start_date, @end_date, prior_emails)
   end
 
   private
 
+  def compute_prior_emails(start_date, end_date)
+    range_start = start_date.beginning_of_day
+    range_end   = end_date.end_of_day
+
+    emails = ShoplineOrder.where(payment_status: "已付款")
+      .where(order_date: range_start..range_end)
+      .where.not(email: [nil, ""])
+      .distinct.pluck(:email)
+
+    return Set.new if emails.empty?
+
+    ShoplineOrder.where(email: emails)
+      .where("order_date < ?", range_start)
+      .distinct.pluck(:email).to_set
+  end
+
   # ── 訂單洞察（跟隨查詢區間）──────────────────────────────────────────────
 
-  def build_order_insights(start_date, end_date)
+  def build_order_insights(start_date, end_date, prior_emails)
     rs = start_date.beginning_of_day
     re = end_date.end_of_day
     label = start_date == end_date && start_date == Time.zone.yesterday ? "昨日" : "期間"
@@ -55,9 +76,6 @@ class DailyDashboardController < ApplicationController
     total_revenue = raw.sum { |o| o.order_total.to_f }
 
     emails = raw.map(&:email_val).compact.reject(&:blank?).uniq
-    prior_emails = emails.any? ? ShoplineOrder.where(email: emails)
-      .where("order_date < ?", rs)
-      .distinct.pluck(:email).to_set : Set.new
 
     # A. 期間主力商品 Top 5（依銷售數量排序）
     product_rows = ShoplineOrder
@@ -238,7 +256,7 @@ class DailyDashboardController < ApplicationController
     nil
   end
 
-  def build_summary(start_date, end_date)
+  def build_summary(start_date, end_date, prior_emails)
     range_start = start_date.beginning_of_day
     range_end   = end_date.end_of_day
 
@@ -254,11 +272,6 @@ class DailyDashboardController < ApplicationController
       .where("o.order_date >= ? AND o.order_date <= ?", range_start, range_end)
       .group("o.order_number")
       .to_a
-
-    emails = raw.map(&:email_val).compact.uniq
-    prior_emails = ShoplineOrder.where(email: emails)
-      .where("order_date < ?", range_start)
-      .distinct.pluck(:email).to_set
 
     new_orders = []
     old_orders = []
@@ -293,7 +306,7 @@ class DailyDashboardController < ApplicationController
     }
   end
 
-  def build_product_stats(start_date, end_date)
+  def build_product_stats(start_date, end_date, prior_emails)
     range_start = start_date.beginning_of_day
     range_end   = end_date.end_of_day
 
@@ -318,11 +331,6 @@ class DailyDashboardController < ApplicationController
       .to_a
 
     return [] if raw.empty?
-
-    emails = raw.map(&:email_val).compact.uniq
-    prior_emails = ShoplineOrder.where(email: emails)
-      .where("order_date < ?", range_start)
-      .distinct.pluck(:email).to_set
 
     order_type = {}
     raw.each do |r|
@@ -373,7 +381,7 @@ class DailyDashboardController < ApplicationController
       .each_with_index.map { |p, i| p.merge(rank: i + 1) }
   end
 
-  def build_daily_customer_stats(start_date, end_date)
+  def build_daily_customer_stats(start_date, end_date, prior_emails)
     range_start = start_date.beginning_of_day
     range_end   = end_date.end_of_day
 
@@ -390,11 +398,6 @@ class DailyDashboardController < ApplicationController
       .to_a
 
     return (start_date..end_date).map { |d| empty_day(d) } if raw.empty?
-
-    emails       = raw.map(&:email_val).reject(&:blank?).uniq
-    prior_emails = ShoplineOrder.where(email: emails)
-      .where("order_date < ?", range_start)
-      .distinct.pluck(:email).to_set
 
     by_day = {}
     raw.each do |o|
