@@ -20,6 +20,21 @@ class WeeklyBriefingsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "show renders the manual report even when the AI briefing has not been generated" do
+    sign_in @admin
+    get weekly_briefing_path(week_start: "2026-09-21")
+    assert_response :success
+    assert_includes response.body, "9 月第 4 週人工分析"
+    assert_includes response.body, "還沒有產生報告"
+  end
+
+  test "index links to manual reports" do
+    sign_in @admin
+    get weekly_briefings_path
+    assert_response :success
+    assert_includes response.body, "人工補充分析"
+  end
+
   test "show renders an empty-state prompt when the week has no briefing yet" do
     sign_in @admin
     get weekly_briefing_path(week_start: "2026-06-15")

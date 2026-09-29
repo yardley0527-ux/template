@@ -16,6 +16,27 @@
   營收進度與年度目標缺口。所有結論皆可回溯到下方數據，AI 僅負責解讀與待辦文字化。
 </p>
 
+<% if @manual_reports.present? %>
+  <div class="panel">
+    <div class="panel-hdr"><h2>人工補充分析</h2></div>
+    <div class="panel-container show">
+      <div class="panel-content p-0">
+        <table class="table table-hover mb-0">
+          <tbody>
+            <% @manual_reports.each do |week_start, title| %>
+              <tr>
+                <td class="text-nowrap"><%= week_start.strftime("%Y/%m/%d") %> ~ <%= (week_start + 6).strftime("%m/%d") %></td>
+                <td><%= title %></td>
+                <td class="text-right"><%= link_to "查看", weekly_briefing_path(week_start: week_start.to_s), class: "btn btn-outline-info btn-sm" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>
+
 <% if @briefings.blank? %>
   <div class="panel">
     <div class="panel-content text-center py-5 text-muted">
