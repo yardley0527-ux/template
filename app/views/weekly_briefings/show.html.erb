@@ -57,6 +57,9 @@
   </div>
 <% end %>
 
+<%# 人工撰寫的補充分析（config/weekly_manual_reports），與 AI 週報是否已產生無關，永遠顯示在最上方 %>
+<%= render "weekly_briefings/manual_report", report: @manual_report if @manual_report.present? %>
+
 <% if @briefing.nil? %>
   <div class="panel">
     <div class="panel-content text-center py-5 text-muted">

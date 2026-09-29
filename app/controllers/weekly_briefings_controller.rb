@@ -25,10 +25,12 @@ class WeeklyBriefingsController < ApplicationController
 
   def index
     @briefings = WeeklyBriefing.history.limit(53)
+    @manual_reports = WeeklyManualReport.all
   end
 
   def show
     @history = WeeklyBriefing.history.limit(53)
+    @manual_report = WeeklyManualReport.for(@week_start)
   end
 
   def in_progress
