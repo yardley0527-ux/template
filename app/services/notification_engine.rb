@@ -36,7 +36,8 @@ class NotificationEngine
     "inventory_attention"    => "NotificationRules::InventoryAttention",
     "customer_runout"        => "NotificationRules::CustomerRunout",
     "customer_overdue"       => "NotificationRules::CustomerOverdue",
-    "black_overdue"          => "NotificationRules::BlackOverdue",
+    # black_overdue 不以通知卡片呈現（9/30 老闆要直接維護的名單，不是卡片）——改由
+    # 「客戶商機」分頁的黑卡名單直接查，規則類別保留給名單重用查詢條件，這裡不註冊。
     "high_spender_no_second" => "NotificationRules::HighSpenderNoSecond",
     "vip_silent"             => "NotificationRules::VipSilent",
     "product_attention"      => "NotificationRules::ProductAttention",
