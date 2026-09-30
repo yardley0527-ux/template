@@ -50,6 +50,7 @@ class SidebarEntry
             ]},
             { href: product_high_value_customers_path,       title: "產品高破萬次數客人", icon: "fa-badge" },
             { href: spending_rankings_path,                  title: "消費排行榜",         icon: "fa-trophy-alt" },
+            { href: monthly_spending_rankings_path,          title: "月消費排行榜",       icon: "fa-calendar-alt" },
             { href: stickiness_follow_ups_path,       title: "黏著度分析",     icon: "fa-magnet", children: [
               { href: stickiness_results_path, title: "黏著度成效", icon: "fa-chart-line" },
             ]},
