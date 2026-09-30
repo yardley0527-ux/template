@@ -102,6 +102,65 @@ module JourneyProducts
       medians:      { 1=>46 }, # 無瓶數級距資料，暫用歷史平均回購週期
       in_stock:     true,
       restock_date: nil
+    },
+    # ── 9/30 老闆要求加入的 4 個產品（key 跟 crm_products 同名，不需要 ProductKeyMapping 轉換）──
+    # 魚油／蝦紅素 medians 直接取自 crm_repurchase_cycle_configs 的 historical_median
+    # （魚油樣本 173/70/90/24/42、蝦紅素 287/133/110/80/36），數字要跟那張表一致，
+    # CrmRepurchaseCycleConfigSeedService 才不會把它改掉。
+    "fish_oil" => {
+      key:          "fish_oil",
+      label:        "魚油",
+      short:        "魚油",
+      icon:         "🐟",
+      color:        "#0369a1",
+      sql:          "product_name LIKE '%魚油%'",
+      regex:        /魚油\s?(\d+)/,
+      medians:      { 1=>45, 2=>45, 3=>114, 6=>119, 10=>157 },
+      in_stock:     true,
+      restock_date: nil
+    },
+    "astaxanthin" => {
+      key:          "astaxanthin",
+      label:        "蝦紅素",
+      short:        "蝦紅素",
+      icon:         "🦐",
+      color:        "#ea580c",
+      sql:          "product_name LIKE '%蝦紅素%'",
+      regex:        /蝦紅素\s?(\d+)/,
+      medians:      { 1=>44, 2=>49, 3=>112, 6=>145, 10=>153 },
+      in_stock:     true,
+      restock_date: nil
+    },
+    # PDRN 9/18 才首賣，沒有回購歷史：用使用者提供的用量（每瓶 60 顆、可吃 10–15 天），
+    # 取中間值 12.5 天／瓶。買 10 瓶另有滿 2 萬送 1 瓶的贈品不在訂單資料裡，瓶數會低估。
+    "pdrn" => {
+      key:          "pdrn",
+      label:        "PDRN",
+      short:        "PDRN",
+      icon:         "💉",
+      color:        "#7c3aed",
+      sql:          "product_name LIKE '%PDRN%'",
+      regex:        /PDRN\s?(\d+)/,
+      medians:      { 1=>13, 3=>38, 5=>63, 10=>125 },
+      in_stock:     true,
+      restock_date: nil
+    },
+    # 冰晶蕃茄 7/24 才上市，沒有回購歷史：沿用同一條白藜蘆醇美白膠囊線「美白」
+    # （crm_repurchase_cycle_configs.whitening，2,087 位買家）的歷史中位數，這是推斷不是確定值。
+    # 訂單裡同時有「番茄」「蕃茄」兩種寫法，還有「預購-」前綴，SQL 要兩種都抓。
+    "iced_tomato" => {
+      key:          "iced_tomato",
+      label:        "冰晶蕃茄",
+      short:        "冰晶",
+      icon:         "🍅",
+      color:        "#e11d48",
+      sql:          "(product_name LIKE '%冰晶番茄%' OR product_name LIKE '%冰晶蕃茄%')",
+      regex:        /冰晶[番蕃]茄\s?(\d+)/,
+      medians:      { 1=>45, 2=>37, 3=>54, 4=>50, 6=>89, 10=>87 },
+      in_stock:     true,
+      restock_date: nil,
+      # 「預購」訂單 9/25 才到貨（隱藏頁面「預購商品9/25到貨」），回購天數從到貨日起算。
+      preorder_arrival: Date.new(2026, 9, 25)
     }
   }.freeze
 

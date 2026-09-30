@@ -99,6 +99,7 @@ class CrmCustomerProductTrackingRefreshService
     since_date = Date.current - ELIGIBILITY_WINDOW_DAYS
 
     last_order_by_email = {}
+    arrival = @product[:preorder_arrival]
     ShoplineOrder
       .where(@product[:sql])
       .where("order_date >= ?", since_date.beginning_of_day)
@@ -106,7 +107,12 @@ class CrmCustomerProductTrackingRefreshService
       .order(:email, order_date: :desc)
       .pluck(:email, :product_name, :order_date)
       .each do |email, product_name, order_date|
-        last_order_by_email[email] ||= { product_name: product_name, order_date: order_date.to_date }
+        date = order_date.to_date
+        # 預購單的回購天數要從到貨日起算：客人下單時還沒拿到貨，不能從下單日開始數，
+        # 否則剛收到貨的預購客人會被當成逾期未回購。
+        date = arrival if arrival && product_name.to_s.include?("預購") && date < arrival
+        current = last_order_by_email[email]
+        last_order_by_email[email] = { product_name: product_name, order_date: date } if current.nil? || date > current[:order_date]
       end
     last_order_by_email
   end
