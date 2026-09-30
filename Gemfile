@@ -3,6 +3,7 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 ruby '3.2.0'
 gem 'devise', '~> 5.0'
+gem 'rack-attack'
 gem "roo"
 gem "roo-xls"
 gem 'rails', '~> 7.1.0'
