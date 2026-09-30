@@ -50,6 +50,9 @@
             <span class="stat-value">NT$ <%= number_with_delimiter(@customer.total_amount.to_i) %></span>
           </div>
         </div>
+        <% if (address = @customer.full_address).present? %>
+          <div class="customer-address">📍 收件地址：<%= address %></div>
+        <% end %>
       </div>
     </div>
   </div>
@@ -418,6 +421,12 @@
     display: flex;
     flex-wrap: wrap;
     gap: 16px;
+  }
+
+  .customer-address {
+    margin-top: 14px;
+    font-size: 13px;
+    color: #374151;
   }
 
   .stat { display: flex; flex-direction: column; gap: 2px; }
