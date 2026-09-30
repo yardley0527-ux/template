@@ -46,9 +46,32 @@ class NotificationBoardController < ApplicationController
     else
       @notifications = Notification.active.by_category(SECTION_CATEGORIES.fetch(@section)).includes(:owner).recent_first
       @system_status = system_status_lights if @section == "system_health"
+      if @section == "customer_opportunity"
+        @black_overdue_groups = BlackOverdueList.call
+        @black_overdue_active = params[:bo_product].to_s
+      end
     end
 
     @summary = board_summary
+  end
+
+  # 客戶商機分頁黑卡名單的維護：記聯絡狀態／備註。沿用回購追蹤的跟進服務，寫進同一份
+  # cycle 與歷史事件，回購追蹤 Dashboard 看得到同樣的紀錄。
+  def black_overdue_follow_up
+    back = notification_board_path(section: "customer_opportunity", bo_product: params[:product_key])
+    action = params[:follow_up_action].to_s
+    note = params[:note].to_s.strip.presence
+
+    unless BlackOverdueList::ACTIONS.key?(action)
+      return redirect_to back, alert: "請選擇要記錄的狀態"
+    end
+    return redirect_to back, alert: "只寫備註時請填寫備註內容" if action == "note_only" && note.nil?
+
+    cycle = CrmCustomerProductCycle.find(params[:cycle_id])
+    CrmCustomerProductCycleFollowUpService.call(cycle: cycle, actor: current_user, action: action, note: note)
+    redirect_to back, notice: "已記錄：#{BlackOverdueList::ACTIONS[action]}"
+  rescue CrmCustomerProductCycleFollowUpService::InvalidActionError => e
+    redirect_to back, alert: e.message
   end
 
   def mark_read

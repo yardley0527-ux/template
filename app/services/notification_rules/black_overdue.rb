@@ -21,16 +21,28 @@ module NotificationRules
       new.call
     end
 
+    # 哪些產品要看黑卡逾期名單（排除穀胱甘肽與缺貨／停售產品）；名單頁（BlackOverdueList）共用。
+    def self.eligible_product_keys
+      (JourneyProducts::PRODUCTS.keys - EXCLUDED_PRODUCTS).reject do |key|
+        crm_product = NotificationRules::ProductKeyMapping.crm_product_for(key)
+        crm_product && %w[out_of_stock discontinued].include?(crm_product.availability_status)
+      end
+    end
+
+    # NotificationCustomerListService 展開名單用的查詢條件。
+    def self.query_for(product_key)
+      { table: "crm_customer_product_trackings", product_key: product_key,
+        overdue_days_from: RANGE.begin, overdue_days_to: RANGE.end,
+        membership_level_in: MEMBERSHIP_LEVELS }
+    end
+
     def call
-      (JourneyProducts::PRODUCTS.keys - EXCLUDED_PRODUCTS).filter_map { |key| build_for_product(key) }
+      self.class.eligible_product_keys.filter_map { |key| build_for_product(key) }
     end
 
     private
 
     def build_for_product(product_key)
-      crm_product = NotificationRules::ProductKeyMapping.crm_product_for(product_key)
-      return nil if crm_product && %w[out_of_stock discontinued].include?(crm_product.availability_status)
-
       rows = overdue_black_customers(product_key)
       return nil if rows.empty?
 
@@ -50,9 +62,7 @@ module NotificationRules
           product_key: product_key, total_count: total, band: "#{RANGE.begin}_#{RANGE.end}",
           estimated_cycle: ESTIMATED_CYCLE_PRODUCTS.include?(product_key),
           sample_shopline_customer_ids: rows.first(METADATA_SAMPLE_SIZE),
-          query: { table: "crm_customer_product_trackings", product_key: product_key,
-                   overdue_days_from: RANGE.begin, overdue_days_to: RANGE.end,
-                   membership_level_in: MEMBERSHIP_LEVELS }
+          query: self.class.query_for(product_key)
         },
         deduplication_key: "black_overdue:journey_product:#{product_key}"
       }

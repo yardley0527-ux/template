@@ -1,0 +1,107 @@
+<%# 客戶商機分頁：黑卡逾期未回購名單。依產品切分頁，一人一列，直接在列上記聯絡狀態／備註。
+    locals: groups (BlackOverdueList::Group[]), active (產品 key 或空字串) %>
+<% active_key = groups.map(&:product_key).include?(active) ? active : groups.first&.product_key %>
+<% status_label = ->(s) { CrmCustomerProductCycle::STATUS_LABELS[s] || "待聯絡" } %>
+<% status_class = ->(s) { { "waiting_reply" => "badge-info", "rescheduled" => "badge-info", "paused" => "badge-secondary", "repurchased" => "badge-success" }[s] || "badge-warning" } %>
+<% total_people = groups.flat_map { |g| g.rows.map { |r| r[:email] } }.uniq.size %>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center flex-wrap mb-2" style="gap:8px;">
+      <h5 class="mb-0">黑卡逾期未回購名單</h5>
+      <span class="badge badge-dark"><%= total_people %> 位</span>
+      <span class="text-muted small">黑卡客人該回購但還沒回來（逾期 1–60 天），累積消費高的排前面；客人一回購就會自動從名單消失</span>
+    </div>
+
+    <% if groups.blank? %>
+      <div class="text-center text-muted py-4">
+        <i class="fal fa-check-circle fa-2x mb-2 d-block"></i>目前沒有黑卡逾期未回購的客人
+      </div>
+    <% else %>
+      <ul class="nav nav-pills mb-3" role="tablist">
+        <% groups.each do |g| %>
+          <li class="nav-item">
+            <a class="nav-link <%= 'active' if g.product_key == active_key %>" data-toggle="pill" href="#bo-<%= g.product_key %>" role="tab">
+              <%= g.label %> <span class="badge badge-light"><%= g.rows.size %></span>
+            </a>
+          </li>
+        <% end %>
+      </ul>
+
+      <div class="tab-content">
+        <% groups.each do |g| %>
+          <div class="tab-pane fade <%= 'show active' if g.product_key == active_key %>" id="bo-<%= g.product_key %>" role="tabpanel">
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.85rem;">
+                <thead class="table-light">
+                  <tr>
+                    <th>姓名</th><th>IG</th><th class="text-right">累積消費</th><th>逾期</th>
+                    <th>聯絡狀態</th><th>最近備註</th><th style="width:90px;"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% g.rows.each_with_index do |r, i| %>
+                    <% cycle = r[:cycle] %>
+                    <% done = BlackOverdueList::DONE_STATUSES.include?(cycle&.follow_up_status) %>
+                    <% collapse_id = "bo-form-#{g.product_key}-#{i}" %>
+                    <tr class="<%= 'text-muted' if done %>">
+                      <td>
+                        <% if r[:customer_id] %>
+                          <%= link_to (r[:full_name].presence || "（無名）"), customer_path(r[:customer_id]), target: "_blank", class: "fw-semibold text-decoration-none" %>
+                        <% else %>
+                          <span class="text-muted">（查無會員資料）</span>
+                        <% end %>
+                      </td>
+                      <td>
+                        <% if r[:instagram_account].present? %>
+                          <%= link_to "📷 #{r[:instagram_account].to_s.delete_prefix('@')}", "https://instagram.com/#{r[:instagram_account].to_s.delete_prefix('@')}", target: "_blank", class: "text-decoration-none" %>
+                        <% end %>
+                      </td>
+                      <td class="text-right">NT$<%= number_with_delimiter(r[:total_amount]) %></td>
+                      <td><%= r[:overdue_days] %> 天</td>
+                      <td>
+                        <span class="badge <%= status_class.call(cycle&.follow_up_status) %>"><%= status_label.call(cycle&.follow_up_status) %></span>
+                        <% if cycle&.last_contacted_at %>
+                          <div class="text-muted" style="font-size:0.75rem;"><%= cycle.last_contacted_at.strftime("%m/%d") %> 聯絡</div>
+                        <% end %>
+                      </td>
+                      <td style="max-width:260px;">
+                        <% if r[:last_note] %>
+                          <div><%= r[:last_note].note %></div>
+                          <div class="text-muted" style="font-size:0.75rem;">
+                            <%= r[:last_note].performed_at.strftime("%m/%d") %> <%= r[:last_note].performed_by&.username %>
+                          </div>
+                        <% end %>
+                      </td>
+                      <td class="text-right">
+                        <% if cycle %>
+                          <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="collapse" data-target="#<%= collapse_id %>">維護</button>
+                        <% else %>
+                          <span class="text-muted small">無週期資料</span>
+                        <% end %>
+                      </td>
+                    </tr>
+                    <% if cycle %>
+                      <tr class="collapse" id="<%= collapse_id %>">
+                        <td colspan="7" class="bg-light">
+                          <%= form_tag notification_board_black_overdue_follow_up_path, method: :post, class: "form-inline", style: "gap:8px;" do %>
+                            <%= hidden_field_tag :cycle_id, cycle.id %>
+                            <%= hidden_field_tag :product_key, g.product_key %>
+                            <%= select_tag :follow_up_action, options_for_select(BlackOverdueList::ACTIONS.map { |k, v| [v, k] }),
+                                           class: "form-control form-control-sm" %>
+                            <%= text_field_tag :note, nil, placeholder: "備註（例如：客人說月底再買）", class: "form-control form-control-sm", style: "min-width:280px;" %>
+                            <button type="submit" class="btn btn-sm btn-primary">儲存</button>
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

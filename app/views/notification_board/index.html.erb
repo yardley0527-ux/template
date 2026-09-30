@@ -75,6 +75,10 @@
               <% end %>
             <% end %>
           <% else %>
+            <% if @section == "customer_opportunity" %>
+              <%= render "black_overdue_list", groups: @black_overdue_groups, active: @black_overdue_active %>
+              <div class="text-muted small fw-bold mb-2">其他客戶商機提醒</div>
+            <% end %>
             <% if @notifications.blank? %>
               <div class="text-center text-muted py-5">
                 <i class="fal fa-check-circle fa-2x mb-2 d-block"></i>
