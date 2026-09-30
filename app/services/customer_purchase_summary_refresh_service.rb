@@ -2,8 +2,14 @@
 
 class CustomerPurchaseSummaryRefreshService
   SERIES_OPTIONS = %w[
-    代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣
+    代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣 冰晶蕃茄 PDRN
   ].freeze
+
+  # 系列 → 商品名稱比對關鍵字。沒列的系列就用系列名本身。
+  # 冰晶蕃茄的訂單有「蕃茄」「番茄」兩種寫法（蕃茄占大多數），兩種都要抓。
+  SERIES_KEYWORDS = {
+    "冰晶蕃茄" => %w[冰晶蕃茄 冰晶番茄]
+  }.freeze
 
   SERIES_SILENT_DAYS_MAP = {
     "代謝錠"   => 56,
@@ -17,7 +23,9 @@ class CustomerPurchaseSummaryRefreshService
     "私密粉"   => 53,
     "益生菌"   => 60,
     "穀胱甘肽"  => 60,
-    "維DK鈣"  => 28
+    "維DK鈣"  => 28,
+    "冰晶蕃茄" => 30, # 每瓶約 30 天（9/30 使用者指定，見 JourneyProducts）
+    "PDRN"    => 20  # 每瓶可吃 15–20 天，取上限
   }.freeze
 
   DEFAULT_SILENT_DAYS_THRESHOLD = 45
@@ -275,11 +283,16 @@ class CustomerPurchaseSummaryRefreshService
     ActiveRecord::Base.connection.execute(sql)
   end
 
+  # 某系列的 LIKE 條件（可能有多種寫法）。
+  def series_like_sql(column_name, series)
+    patterns = SERIES_KEYWORDS.fetch(series, [series]).map { |k| ActiveRecord::Base.connection.quote("%#{k}%") }
+    "#{column_name} LIKE ANY (ARRAY[#{patterns.join(', ')}])"
+  end
+
   def series_match_case_sql(column_name)
     case_sql = SERIES_OPTIONS.map do |series|
-      pattern = ActiveRecord::Base.connection.quote("%#{series}%")
       result  = ActiveRecord::Base.connection.quote(series)
-      "WHEN #{column_name} LIKE #{pattern} THEN #{result}"
+      "WHEN #{series_like_sql(column_name, series)} THEN #{result}"
     end.join("\n")
 
     <<~SQL.squish
@@ -292,8 +305,7 @@ class CustomerPurchaseSummaryRefreshService
 
   def series_priority_case_sql(column_name)
     SERIES_OPTIONS.each_with_index.map do |series, idx|
-      pattern = ActiveRecord::Base.connection.quote("%#{series}%")
-      "WHEN #{column_name} LIKE #{pattern} THEN #{idx + 1}"
+      "WHEN #{series_like_sql(column_name, series)} THEN #{idx + 1}"
     end.join("\n")
   end
 

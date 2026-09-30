@@ -30,6 +30,9 @@ class BundleComponentParser
     "膠原蛋白"   => "collagen",
     "代謝錠錠"   => "metabolism",     # double-錠 typo
     "維DK鈣"    => "vitamin_dk_calcium",
+    # 4-char — 冰晶蕃茄／番茄兩種寫法都有
+    "冰晶蕃茄"   => "iced_tomato",
+    "冰晶番茄"   => "iced_tomato",
     # 3-char
     "蝦紅素"    => "astaxanthin",
     "益生菌"    => "probiotic",
@@ -49,6 +52,7 @@ class BundleComponentParser
     "私密"      => "intimate_powder",
     "DK鈣"     => "vitamin_dk_calcium",
     "B群"       => "omnipotent",
+    "PDRN"      => "pdrn",
   }.freeze
 
   # Aliases sorted by key length descending (longest first), computed once.

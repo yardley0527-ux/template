@@ -3,8 +3,11 @@
 
 class CustomerSeriesLoyaltyRefreshService
   SERIES_OPTIONS = %w[
-    代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣
+    代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣 冰晶蕃茄 PDRN
   ].freeze
+
+  # 商品名稱比對關鍵字（冰晶蕃茄有兩種寫法），跟購買彙總共用同一份。
+  SERIES_KEYWORDS = CustomerPurchaseSummaryRefreshService::SERIES_KEYWORDS
 
   IRON_FAN_THRESHOLD  = 5  # 鐵粉
   LOYAL_THRESHOLD     = 3  # 忠實客
@@ -26,9 +29,11 @@ class CustomerSeriesLoyaltyRefreshService
   private
 
   def rebuild!
-    series_array_sql = SERIES_OPTIONS
-      .map { |s| ActiveRecord::Base.connection.quote(s) }
-      .join(", ")
+    conn = ActiveRecord::Base.connection
+    series_values_sql = SERIES_OPTIONS.map do |s|
+      patterns = SERIES_KEYWORDS.fetch(s, [s]).map { |k| conn.quote("%#{k}%") }.join(", ")
+      "(#{conn.quote(s)}, ARRAY[#{patterns}]::text[])"
+    end.join(", ")
 
     sql = <<~SQL
       WITH raw_matches AS (
@@ -43,8 +48,8 @@ class CustomerSeriesLoyaltyRefreshService
             PARTITION BY so.email, so.order_number, so.product_name
           ) AS matched_series_count
         FROM shopline_orders so
-        JOIN (SELECT unnest(ARRAY[#{series_array_sql}]) AS series) sa
-          ON so.product_name LIKE '%' || sa.series || '%'
+        JOIN (VALUES #{series_values_sql}) AS sa(series, patterns)
+          ON so.product_name LIKE ANY (sa.patterns)
         WHERE so.email IS NOT NULL
           AND so.email <> ''
           AND so.order_number IS NOT NULL

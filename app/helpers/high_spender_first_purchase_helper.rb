@@ -11,6 +11,8 @@ module HighSpenderFirstPurchaseHelper
     "私密粉" => "#F97316",
     "益生菌" => "#84CC16",
     "穀胱甘肽"=> "#6366F1",
+    "冰晶蕃茄"=> "#e11d48",
+    "PDRN"   => "#7c3aed",
   }.freeze
 
   # 每個系列的預估回購週期（天）
@@ -27,6 +29,8 @@ module HighSpenderFirstPurchaseHelper
     "益生菌"  => 30,
     "穀胱甘肽" => 90,
     "維DK鈣"  => 90,
+    "冰晶蕃茄" => 30,
+    "PDRN"    => 20,
   }.freeze
 
   def hs_series_color(series)
