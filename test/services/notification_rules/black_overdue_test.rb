@@ -45,6 +45,18 @@ module NotificationRules
       assert_nil card_for("metabolism")
     end
 
+    test "fish oil is not capped at 60 days (the April–August stock drought left long-overdue black-card customers)" do
+      customer(email: "drought@example.com")
+      track(product_key: "fish_oil", email: "drought@example.com", overdue_days: 150)
+      customer(email: "drought2@example.com")
+      track(product_key: "metabolism", email: "drought2@example.com", overdue_days: 150)
+
+      assert_equal 1, card_for("fish_oil")[:metadata][:total_count]
+      assert_nil card_for("metabolism"), "other products keep the 60-day cap"
+      assert_equal 400, BlackOverdue.query_for("fish_oil")[:overdue_days_to]
+      assert_equal 60, BlackOverdue.query_for("metabolism")[:overdue_days_to]
+    end
+
     test "glutathione is excluded entirely (wave-restock product)" do
       customer(email: "black@example.com")
       track(product_key: "glutathione", email: "black@example.com", overdue_days: 10)

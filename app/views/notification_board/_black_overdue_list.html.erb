@@ -31,6 +31,11 @@
       <div class="tab-content">
         <% groups.each do |g| %>
           <div class="tab-pane fade <%= 'show active' if g.product_key == active_key %>" id="bo-<%= g.product_key %>" role="tabpanel">
+            <% if NotificationRules::Thresholds::BLACK_OVERDUE_DAYS_OVERRIDES.key?(g.product_key) %>
+              <div class="alert alert-light border small py-2">
+                <%= g.label %>4–8 月缺貨、幾乎沒有訂單，斷檔前買的客人現在逾期都很久，所以這個產品不限 60 天，逾期多久都列出來（看「逾期」欄）。
+              </div>
+            <% end %>
             <div class="table-responsive">
               <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.85rem;">
                 <thead class="table-light">

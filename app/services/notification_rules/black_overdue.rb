@@ -29,10 +29,16 @@ module NotificationRules
       end
     end
 
+    # 這個產品要看逾期幾天到幾天（預設 1–60，個別產品見 Thresholds::BLACK_OVERDUE_DAYS_OVERRIDES）。
+    def self.range_for(product_key)
+      NotificationRules::Thresholds::BLACK_OVERDUE_DAYS_OVERRIDES.fetch(product_key, RANGE)
+    end
+
     # NotificationCustomerListService 展開名單用的查詢條件。
     def self.query_for(product_key)
+      range = range_for(product_key)
       { table: "crm_customer_product_trackings", product_key: product_key,
-        overdue_days_from: RANGE.begin, overdue_days_to: RANGE.end,
+        overdue_days_from: range.begin, overdue_days_to: range.end,
         membership_level_in: MEMBERSHIP_LEVELS }
     end
 
@@ -46,6 +52,7 @@ module NotificationRules
       rows = overdue_black_customers(product_key)
       return nil if rows.empty?
 
+      range = self.class.range_for(product_key)
       label = JourneyProducts::PRODUCTS.fetch(product_key)[:label]
       estimate_tag = ESTIMATED_CYCLE_PRODUCTS.include?(product_key) ? "（週期為估計值）" : ""
       total = rows.size
@@ -54,12 +61,12 @@ module NotificationRules
         notification_key: "black_overdue_#{product_key}", kind: "opportunity", severity: "warning",
         priority: "P2",
         title: "#{label}#{estimate_tag}黑卡逾期未回購：#{total} 位",
-        message: "黑卡客人已逾期 #{RANGE.begin}–#{RANGE.end} 天還沒回購#{label}，名單依累積消費由高到低排序",
+        message: "黑卡客人已逾期 #{range.begin}–#{range.end} 天還沒回購#{label}，名單依累積消費由高到低排序",
         impact_summary: "#{total} 位黑卡客人該回購#{label}卻還沒回來，逾期越久轉換率通常越低。",
         recommended_action: "從累積消費最高的開始聯繫，處理完可直接建立客服任務。",
         subject_type: "journey_product", subject_id: product_key,
         metadata: {
-          product_key: product_key, total_count: total, band: "#{RANGE.begin}_#{RANGE.end}",
+          product_key: product_key, total_count: total, band: "#{range.begin}_#{range.end}",
           estimated_cycle: ESTIMATED_CYCLE_PRODUCTS.include?(product_key),
           sample_shopline_customer_ids: rows.first(METADATA_SAMPLE_SIZE),
           query: self.class.query_for(product_key)
@@ -73,6 +80,7 @@ module NotificationRules
     def overdue_black_customers(product_key)
       conn = ActiveRecord::Base.connection
       today = Date.current
+      range = self.class.range_for(product_key)
       levels = MEMBERSHIP_LEVELS.map { |l| conn.quote(l) }.join(",")
 
       sql = <<~SQL
@@ -81,7 +89,7 @@ module NotificationRules
         JOIN shopline_customers sc ON lower(trim(sc.email)) = lower(trim(t.email))
         WHERE t.product_key = #{conn.quote(product_key)}
           AND sc.membership_level IN (#{levels})
-          AND t.expected_return_date BETWEEN #{conn.quote(today - RANGE.end)} AND #{conn.quote(today - RANGE.begin)}
+          AND t.expected_return_date BETWEEN #{conn.quote(today - range.end)} AND #{conn.quote(today - range.begin)}
         ORDER BY lower(trim(t.email)), sc.total_amount DESC NULLS LAST
       SQL
       conn.select_all(sql).to_a.sort_by { |r| -r["total_amount"].to_f }.map { |r| r["customer_id"] }
