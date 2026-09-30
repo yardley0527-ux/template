@@ -21,6 +21,14 @@ class ImportPaidOrdersJob < ApplicationJob
     CustomerSeriesLoyaltyRefreshService.call
     Rails.logger.info "[ImportPaidOrdersJob] series loyalty refreshed"
 
+    # 依新訂單自動補「購買過苼莛的產品」標籤（PDRN／冰晶番茄）。失敗只記 log，不影響匯入結果。
+    begin
+      CustomerProductTagSync.call
+      Rails.logger.info "[ImportPaidOrdersJob] product tags synced"
+    rescue => e
+      Rails.logger.warn "[ImportPaidOrdersJob] product tag sync failed: #{e.class} - #{e.message}"
+    end
+
     # perform_now（非 perform_later）：匯入已完全成功並落地之後才呼叫，刷新
     # 失敗只記 log、不 raise，不影響已成功寫入的訂單匯入結果（同
     # lib/tasks/import_paid_orders.rake 與 ImportCustomersJob 的作法）。
