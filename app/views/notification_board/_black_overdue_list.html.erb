@@ -1,8 +1,10 @@
 <%# 客戶商機分頁：黑卡逾期未回購名單。依產品切分頁，一人一列，直接在列上記聯絡狀態／備註。
     locals: groups (BlackOverdueList::Group[]), active (產品 key 或空字串) %>
 <% active_key = groups.map(&:product_key).include?(active) ? active : groups.first&.product_key %>
+<%# 沒有名單的產品也放上去，分頁上標「尚未有名單」 %>
 <% status_label = ->(s) { CrmCustomerProductCycle::STATUS_LABELS[s] || "待聯絡" } %>
-<% status_class = ->(s) { { "waiting_reply" => "badge-info", "rescheduled" => "badge-info", "paused" => "badge-secondary", "repurchased" => "badge-success" }[s] || "badge-warning" } %>
+<%# 顏色只分兩種：還沒處理（待聯絡）用深色，其他狀態一律淡灰 %>
+<% status_class = ->(s) { s.nil? ? "badge-dark" : "badge-light text-muted border" } %>
 <% total_people = groups.flat_map { |g| g.rows.map { |r| r[:email] } }.uniq.size %>
 
 <div class="card mb-4">
@@ -13,16 +15,22 @@
       <span class="text-muted small">黑卡客人該回購但還沒回來（逾期 1–60 天），累積消費高的排前面；客人一回購就會自動從名單消失</span>
     </div>
 
-    <% if groups.blank? %>
+    <% if total_people.zero? %>
       <div class="text-center text-muted py-4">
         <i class="fal fa-check-circle fa-2x mb-2 d-block"></i>目前沒有黑卡逾期未回購的客人
       </div>
-    <% else %>
+    <% end %>
+    <% if groups.present? %>
       <ul class="nav nav-pills mb-3" role="tablist">
         <% groups.each do |g| %>
           <li class="nav-item">
-            <a class="nav-link <%= 'active' if g.product_key == active_key %>" data-toggle="pill" href="#bo-<%= g.product_key %>" role="tab">
-              <%= g.label %> <span class="badge badge-light"><%= g.rows.size %></span>
+            <a class="nav-link <%= 'active' if g.product_key == active_key %> <%= 'text-muted' if g.rows.empty? %>" data-toggle="pill" href="#bo-<%= g.product_key %>" role="tab">
+              <%= g.label %>
+              <% if g.rows.any? %>
+                <span class="badge badge-light"><%= g.rows.size %></span>
+              <% else %>
+                <span class="small">尚未有名單</span>
+              <% end %>
             </a>
           </li>
         <% end %>
@@ -36,6 +44,12 @@
                 <%= g.label %>4–8 月缺貨、幾乎沒有訂單，斷檔前買的客人現在逾期都很久，所以這個產品不限 60 天，逾期多久都列出來（看「逾期」欄）。
               </div>
             <% end %>
+            <% if g.rows.empty? %>
+              <div class="text-center text-muted py-4">
+                尚未有名單
+                <% if g.note.present? %><div class="small mt-1"><%= g.note %></div><% end %>
+              </div>
+            <% else %>
             <div class="table-responsive">
               <table class="table table-sm table-hover align-middle mb-0" style="font-size:0.85rem;">
                 <thead class="table-light">
@@ -104,6 +118,7 @@
                 </tbody>
               </table>
             </div>
+            <% end %>
           </div>
         <% end %>
       </div>

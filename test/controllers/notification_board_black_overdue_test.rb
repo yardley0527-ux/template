@@ -51,6 +51,19 @@ class NotificationBoardBlackOverdueTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "其他客戶商機提醒"
   end
 
+  test "products without a list still get a tab marked 尚未有名單, listed after the products that have one" do
+    groups = BlackOverdueList.call
+
+    assert_equal JourneyProducts::PRODUCTS.keys.sort, groups.map(&:product_key).sort, "every tracked product has a tab"
+    assert_equal "metabolism", groups.first.product_key, "products with a list come first"
+    assert groups.last.rows.empty?
+
+    get notification_board_path(section: "customer_opportunity")
+    assert_select "a.nav-link", text: /魚油.*尚未有名單/m
+    assert_select "a.nav-link", text: /穀胱甘肽.*尚未有名單/m
+    assert_includes response.body, "穀胱甘肽屬波段補貨"
+  end
+
   test "non-black customers never appear in the list" do
     ShoplineCustomer.create!(email: "gold@example.com", full_name: "金卡阿姨", membership_level: "金卡", total_amount: 900_000)
     CrmCustomerProductTracking.create!(
@@ -123,7 +136,7 @@ class NotificationBoardBlackOverdueTest < ActionDispatch::IntegrationTest
     )
     CrmCustomerProductCycleFollowUpService.call(cycle: @cycle, actor: @user, action: "paused")
 
-    rows = BlackOverdueList.call.first.rows
+    rows = BlackOverdueList.call.find { |g| g.product_key == "metabolism" }.rows
 
     assert_equal %w[poor@example.com vip@example.com], rows.map { |r| r[:email] }, "paused customer goes last even with higher spend"
   end

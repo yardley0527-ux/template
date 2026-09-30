@@ -11,12 +11,12 @@
 
 <div class="row mb-3">
   <% [
-       ["今日需處理", @summary[:today_todo], "primary"],
+       ["今日需處理", @summary[:today_todo], "dark"],
        ["已逾期", @summary[:overdue], "danger"],
-       ["待分派", @summary[:pending_assignment], "warning"],
-       ["處理中", @summary[:in_progress], "info"],
-       ["待系統確認", @summary[:pending_verification], "secondary"],
-       ["今日已完成", @summary[:resolved_today], "success"],
+       ["待分派", @summary[:pending_assignment], "dark"],
+       ["處理中", @summary[:in_progress], "dark"],
+       ["待系統確認", @summary[:pending_verification], "dark"],
+       ["今日已完成", @summary[:resolved_today], "dark"],
        ["涉及客戶數(估)", @summary[:affected_customers], "dark"],
        ["預估機會營收(估)", number_to_currency(@summary[:estimated_opportunity_revenue], unit: "NT$", precision: 0), "dark"]
      ].each do |label, value, color| %>
@@ -45,7 +45,7 @@
                     class: "nav-link #{'active' if @section == key}" do %>
                   <%= label %>
                   <% if @tab_counts&.key?(key) && @tab_counts[key].to_i.positive? %>
-                    <span class="badge badge-pill badge-danger ml-1"><%= @tab_counts[key] %></span>
+                    <span class="badge badge-pill badge-secondary ml-1"><%= @tab_counts[key] %></span>
                   <% end %>
                 <% end %>
               </li>

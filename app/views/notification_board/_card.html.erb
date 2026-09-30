@@ -7,7 +7,7 @@
         <span class="badge <%= notification_status_badge_class(notification.status) %>"><%= notification_status_label(notification.status) %></span>
         <span class="badge badge-light text-muted border"><%= notification_category_label(notification.category) %></span>
         <% if notification.overdue? %><span class="badge badge-danger">已逾期</span><% end %>
-        <% if notification.metadata["recurred_after_resolution"] %><span class="badge badge-warning">再次發生</span><% end %>
+        <% if notification.metadata["recurred_after_resolution"] %><span class="badge badge-dark">再次發生</span><% end %>
         <% unless notification.read? %><span class="badge badge-secondary">未讀</span><% end %>
         <%= new_entrant_count_badge(notification_new_entrant_count(notification)) %>
 
@@ -19,7 +19,7 @@
           <p class="small mb-1"><strong>為什麼要處理：</strong><%= notification.impact_summary %></p>
         <% end %>
         <% if notification.recommended_action.present? %>
-          <p class="small mb-1 text-primary"><strong>建議行動：</strong><%= notification.recommended_action %></p>
+          <p class="small mb-1"><strong>建議行動：</strong><%= notification.recommended_action %></p>
         <% end %>
 
         <div class="text-muted d-flex flex-wrap" style="font-size:0.75rem; gap:10px;">
@@ -41,10 +41,10 @@
         <% end %>
 
         <% if notification.category == "livestream_review_due" && notification.metadata["livestream_date"] %>
-          <%= link_to "查看直播數據", livestreams_path(year: Date.parse(notification.metadata["livestream_date"]).year), class: "btn btn-sm btn-outline-info mt-2" %>
+          <%= link_to "查看直播數據", livestreams_path(year: Date.parse(notification.metadata["livestream_date"]).year), class: "btn btn-sm btn-outline-secondary mt-2" %>
           <% if notification.subject_id.present? %>
             <%= button_to "標記已完成檢討", complete_review_livestream_path(notification.subject_id),
-                  method: :post, class: "btn btn-sm btn-outline-success mt-2", form: { style: "display:inline-block;" } %>
+                  method: :post, class: "btn btn-sm btn-outline-secondary mt-2", form: { style: "display:inline-block;" } %>
           <% end %>
         <% end %>
       </div>
@@ -53,12 +53,12 @@
         <div class="d-flex flex-column align-items-end" style="gap:4px; min-width:150px;">
           <% unless notification.read? %>
             <%= button_to "標為已讀", notification_board_mark_read_path(notification, section: section),
-                  method: :post, class: "btn btn-sm btn-outline-primary", form: { style: "width:100%;" } %>
+                  method: :post, class: "btn btn-sm btn-outline-secondary", form: { style: "width:100%;" } %>
           <% end %>
 
           <% if %w[detected pending_assignment].include?(notification.status) %>
             <%= button_to "開始處理", notification_board_start_path(notification, section: section),
-                  method: :post, class: "btn btn-sm btn-outline-primary", form: { style: "width:100%;" } %>
+                  method: :post, class: "btn btn-sm btn-dark", form: { style: "width:100%;" } %>
           <% end %>
 
           <button type="button" class="btn btn-sm btn-outline-secondary js-assign" style="width:100%;"
@@ -67,18 +67,18 @@
           </button>
 
           <% if %w[in_progress pending_assignment detected].include?(notification.status) %>
-            <button type="button" class="btn btn-sm btn-outline-success js-request-verification" style="width:100%;"
+            <button type="button" class="btn btn-sm btn-outline-secondary js-request-verification" style="width:100%;"
                     data-url="<%= notification_board_request_verification_path(notification, section: section) %>">
               已處理
             </button>
           <% end %>
 
-          <button type="button" class="btn btn-sm btn-outline-warning js-snooze" style="width:100%;"
+          <button type="button" class="btn btn-sm btn-outline-secondary js-snooze" style="width:100%;"
                   data-url="<%= notification_board_snooze_path(notification, section: section) %>">
             延後
           </button>
 
-          <button type="button" class="btn btn-sm btn-outline-danger js-dismiss" style="width:100%;"
+          <button type="button" class="btn btn-sm btn-outline-secondary js-dismiss" style="width:100%;"
                   data-url="<%= notification_board_dismiss_path(notification, section: section) %>"
                   data-high-priority="<%= notification.high_priority? %>">
             忽略

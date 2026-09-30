@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 module NotificationBoardHelper
+  # 9/30 老闆覺得頁面顏色太多：徽章統一成灰階，紅色只留給真的緊急的（P0、已逾期、critical）。
   SEVERITY_BADGE_CLASS = {
-    "critical" => "badge-danger", "warning" => "badge-warning",
-    "opportunity" => "badge-info", "info" => "badge-secondary"
+    "critical" => "badge-danger", "warning" => "badge-secondary",
+    "opportunity" => "badge-secondary", "info" => "badge-light text-muted border"
   }.freeze
 
   SEVERITY_LABEL = {
@@ -11,7 +12,7 @@ module NotificationBoardHelper
   }.freeze
 
   PRIORITY_BADGE_CLASS = {
-    "P0" => "badge-danger", "P1" => "badge-warning", "P2" => "badge-info", "P3" => "badge-light text-muted border"
+    "P0" => "badge-danger", "P1" => "badge-dark", "P2" => "badge-secondary", "P3" => "badge-light text-muted border"
   }.freeze
 
   PRIORITY_LABEL = {
@@ -19,9 +20,10 @@ module NotificationBoardHelper
   }.freeze
 
   STATUS_BADGE_CLASS = {
-    "detected" => "badge-light text-muted border", "pending_assignment" => "badge-warning",
-    "in_progress" => "badge-primary", "pending_verification" => "badge-info",
-    "resolved" => "badge-success", "snoozed" => "badge-secondary", "dismissed" => "badge-light text-muted border"
+    "detected" => "badge-light text-muted border", "pending_assignment" => "badge-light text-muted border",
+    "in_progress" => "badge-dark", "pending_verification" => "badge-light text-muted border",
+    "resolved" => "badge-light text-muted border", "snoozed" => "badge-light text-muted border",
+    "dismissed" => "badge-light text-muted border"
   }.freeze
 
   STATUS_LABEL = {
@@ -105,14 +107,14 @@ module NotificationBoardHelper
   def customer_roster_badge(customer_id, previous_ids)
     return nil if previous_ids.blank? || customer_id.blank? || previous_ids.include?(customer_id)
 
-    content_tag(:span, "🆕 新進榜", class: "badge badge-danger", style: "font-size:0.8rem;")
+    content_tag(:span, "🆕 新進榜", class: "badge badge-dark", style: "font-size:0.8rem;")
   end
 
   # 給表格列用：新進榜的整列都上色，不用逐格看小徽章才發現。
   def new_entrant_row_class(customer_id, previous_ids)
     return nil if previous_ids.blank? || customer_id.blank? || previous_ids.include?(customer_id)
 
-    "table-danger"
+    "table-active"
   end
 
   # 卡片／分組標題旁用：不用點開「查看名單」也能一眼看出這張卡今天有沒有新客人，
@@ -129,7 +131,7 @@ module NotificationBoardHelper
   def new_entrant_count_badge(count)
     return nil if count.blank? || count.zero?
 
-    content_tag(:span, "🆕 新增 #{count} 位", class: "badge badge-danger ms-1")
+    content_tag(:span, "🆕 新增 #{count} 位", class: "badge badge-dark ms-1")
   end
 
   EMPTY_STATE_MESSAGE = {

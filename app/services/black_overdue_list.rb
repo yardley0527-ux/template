@@ -7,7 +7,8 @@
 # 累積消費高的排前面）；維護狀態沿用回購追蹤的 CrmCustomerProductCycle／
 # CrmCustomerProductFollowUpEvent，跟回購追蹤 Dashboard 是同一份資料，不另開一套。
 class BlackOverdueList
-  Group = Struct.new(:product_key, :label, :rows, keyword_init: true)
+  # note：這個產品沒有名單時的補充說明（例如波段補貨不列逾期、缺貨中）。
+  Group = Struct.new(:product_key, :label, :rows, :note, keyword_init: true)
 
   # 名單頁能做的動作（值是 CrmCustomerProductFollowUpEvent 的 action）。
   ACTIONS = {
@@ -26,16 +27,30 @@ class BlackOverdueList
     new.call
   end
 
+  # 每個追蹤中的產品都回傳一組；目前沒有黑卡逾期的產品 rows 是空的（畫面寫「尚未有名單」），
+  # 有名單的排前面、沒名單的排後面。
   def call
-    NotificationRules::BlackOverdue.eligible_product_keys.filter_map do |key|
-      rows = rows_for(key)
-      next if rows.empty?
-
-      Group.new(product_key: key, label: JourneyProducts::PRODUCTS.dig(key, :label) || key, rows: rows)
+    eligible = NotificationRules::BlackOverdue.eligible_product_keys
+    groups = JourneyProducts::PRODUCTS.keys.map do |key|
+      label = JourneyProducts::PRODUCTS.dig(key, :label) || key
+      if eligible.include?(key)
+        Group.new(product_key: key, label: label, rows: rows_for(key))
+      else
+        Group.new(product_key: key, label: label, rows: [], note: unavailable_note(key, label))
+      end
     end
+    groups.partition { |g| g.rows.any? }.flatten(1)
   end
 
   private
+
+  def unavailable_note(product_key, label)
+    if NotificationRules::BlackOverdue::EXCLUDED_PRODUCTS.include?(product_key)
+      "#{label}屬波段補貨，固定天數的逾期判斷不成立，所以不列逾期名單"
+    else
+      "#{label}目前缺貨或停售，暫不列名單"
+    end
+  end
 
   def rows_for(product_key)
     query = NotificationRules::BlackOverdue.query_for(product_key).deep_stringify_keys
