@@ -9,7 +9,7 @@
 class NotificationBoardController < ApplicationController
   SECTIONS = %w[today customer_opportunity product_revenue inventory livestream_event system_health completed].freeze
   SECTION_CATEGORIES = {
-    "customer_opportunity" => %w[customer_runout customer_overdue high_spender_no_second vip_silent promotion_opportunity],
+    "customer_opportunity" => %w[customer_runout customer_overdue black_overdue high_spender_no_second vip_silent promotion_opportunity],
     "product_revenue"      => %w[product_attention],
     "inventory"            => %w[inventory_attention],
     "livestream_event"     => %w[livestream_schedule_gap livestream_preparation livestream_day_attention

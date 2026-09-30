@@ -20,6 +20,11 @@ module NotificationRules
       { key: "1_14", range: (1..14) }
     ].freeze
 
+    # ── black_overdue（黑卡逾期未回購）──
+    # 9/30 老闆要看「黑卡該回來但沒回來」的完整名單：只看黑卡，範圍放寬到逾期 1–60 天
+    # （逾期超過 60 天的多半已流失，不再主動出卡）。
+    BLACK_OVERDUE_DAYS = (1..60).freeze
+
     # ── 高價值客判定（黑/金卡 或 末單金額門檻 或 末單為大組數）──
     # 8/24 使用者要求：customer_overdue 的「待維護名單」只留高價值客，
     # 一般客不再排進待處理名單（但仍算在 general_count 供觀察）。

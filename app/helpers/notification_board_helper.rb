@@ -32,7 +32,7 @@ module NotificationBoardHelper
   CATEGORY_LABEL = {
     "system_health" => "系統健康", "inventory_attention" => "庫存到貨", "event_attention" => "直播活動（已停用，見直播營運）",
     "customer_runout_p1" => "即將用完", "customer_runout_p2" => "即將用完", "customer_runout" => "即將用完",
-    "customer_overdue" => "逾期未回購",
+    "customer_overdue" => "逾期未回購", "black_overdue" => "黑卡逾期未回購",
     "high_spender_no_second" => "破萬未二購", "vip_silent" => "VIP 沉睡", "product_attention" => "商品營收",
     "promotion_opportunity" => "官網優惠商機",
     "livestream_schedule_gap" => "直播週期缺口", "livestream_preparation" => "直播前準備",
@@ -56,7 +56,7 @@ module NotificationBoardHelper
   # this helper via ActionController::Helpers, and this constant would in turn
   # trigger loading the controller mid-load).
   EXPANDABLE_CATEGORIES = %w[customer_runout customer_runout_p1 customer_runout_p2 customer_overdue
-                             high_spender_no_second vip_silent promotion_opportunity].freeze
+                             black_overdue high_spender_no_second vip_silent promotion_opportunity].freeze
 
   def notification_severity_badge_class(severity)
     SEVERITY_BADGE_CLASS.fetch(severity, "badge-secondary")

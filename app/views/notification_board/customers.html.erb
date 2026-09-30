@@ -1,5 +1,5 @@
 <%# app/views/notification_board/customers.html.erb — rendered layout:false, fetched via JS %>
-<% task_creatable = %w[customer_runout customer_overdue promotion_opportunity].include?(@notification.category) %>
+<% task_creatable = %w[customer_runout customer_overdue black_overdue promotion_opportunity].include?(@notification.category) %>
 <% if @rows.blank? %>
   <div class="text-muted small py-2">目前沒有符合條件的客人（可能都已回購或資料已更新）</div>
 <% else %>
@@ -11,6 +11,8 @@
           <% if task_creatable %><th style="width:24px;"><input type="checkbox" class="js-check-all"></th><% end %>
           <th>姓名</th><th>卡別</th><th>電話</th><th>IG</th>
           <% if @rows.first.key?(:expected_return_date) %><th>預計用完</th><% end %>
+          <% if @rows.first.key?(:overdue_days) %><th>逾期天數</th><% end %>
+          <% if @rows.first.key?(:total_amount) %><th class="text-end">累積消費</th><% end %>
           <% if @rows.first.key?(:first_amount) %><th>首購金額</th><% end %>
           <th>名單狀態</th>
         </tr>
@@ -45,6 +47,12 @@
             </td>
             <% if r.key?(:expected_return_date) %>
               <td><%= r[:expected_return_date]&.strftime("%m/%d") %></td>
+            <% end %>
+            <% if r.key?(:overdue_days) %>
+              <td><%= r[:overdue_days] %> 天</td>
+            <% end %>
+            <% if r.key?(:total_amount) %>
+              <td class="text-end">NT$<%= number_with_delimiter(r[:total_amount]) %></td>
             <% end %>
             <% if r.key?(:first_amount) %>
               <td>NT$<%= number_with_delimiter(r[:first_amount]) %></td>

@@ -36,6 +36,7 @@ class NotificationEngine
     "inventory_attention"    => "NotificationRules::InventoryAttention",
     "customer_runout"        => "NotificationRules::CustomerRunout",
     "customer_overdue"       => "NotificationRules::CustomerOverdue",
+    "black_overdue"          => "NotificationRules::BlackOverdue",
     "high_spender_no_second" => "NotificationRules::HighSpenderNoSecond",
     "vip_silent"             => "NotificationRules::VipSilent",
     "product_attention"      => "NotificationRules::ProductAttention",

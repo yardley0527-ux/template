@@ -20,7 +20,7 @@ class NotificationCustomerListService
 
   def call
     case notification.category
-    when "customer_runout", "customer_overdue", "promotion_opportunity" then product_tracking_rows
+    when "customer_runout", "customer_overdue", "promotion_opportunity", "black_overdue" then product_tracking_rows
     when "high_spender_no_second"                then high_spender_rows
     when "vip_silent"                            then vip_silent_rows
     else []
@@ -46,19 +46,34 @@ class NotificationCustomerListService
         scope.none
       end
 
+    levels = Array(query["membership_level_in"])
+    # 指定卡別時要在 SQL 端先篩，不能取完前 RESULT_LIMIT 筆再篩——否則逾期日較晚的
+    # 指定卡別客人會被前面的一般客人擠出名單，展開人數就會少於卡片上的人數。
+    if levels.any?
+      scope = scope.joins("JOIN shopline_customers sc ON lower(trim(sc.email)) = lower(trim(crm_customer_product_trackings.email))")
+                   .where("sc.membership_level IN (?)", levels).distinct
+    end
+
     sql_pattern = tracking_sql_pattern(product_key)
     rows = scope.order(:expected_return_date).limit(RESULT_LIMIT).to_a
     customers = customers_by_email(rows.map(&:email))
 
-    rows.filter_map do |row|
+    result = rows.filter_map do |row|
+      next if levels.any? && !levels.include?(customers[row.email]&.membership_level)
       next if repurchased_since?(email: row.email, sql_pattern: sql_pattern, since: row.last_order_date)
       next if query["high_value_only"] && !high_value_customer?(customer: customers[row.email], email: row.email,
                                                                   last_order_date: row.last_order_date,
                                                                   last_order_bottles: row.last_order_bottles)
 
+      extra = {}
+      if levels.any? # 指定卡別的名單（黑卡逾期未回購）：多給累積消費／逾期天數，讓處理的人排優先順序
+        extra = { total_amount: (customers[row.email]&.total_amount || 0).to_i,
+                  overdue_days: (Date.current - row.expected_return_date).to_i }
+      end
       row_hash(email: row.email, customer: customers[row.email], last_order_date: row.last_order_date,
-               expected_return_date: row.expected_return_date)
+               expected_return_date: row.expected_return_date, **extra)
     end
+    levels.any? ? result.sort_by { |r| -r[:total_amount] } : result
   end
 
   def high_spender_rows

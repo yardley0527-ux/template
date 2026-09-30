@@ -21,7 +21,7 @@
 class Notification < ApplicationRecord
   KINDS       = %w[alert opportunity].freeze
   CATEGORIES  = %w[system_health inventory_attention event_attention customer_runout
-                   customer_overdue high_spender_no_second vip_silent product_attention
+                   customer_overdue black_overdue high_spender_no_second vip_silent product_attention
                    promotion_opportunity livestream_schedule_gap livestream_preparation
                    livestream_day_attention livestream_performance_drop livestream_review_due].freeze
   SEVERITIES  = %w[critical warning opportunity info].freeze
@@ -39,6 +39,7 @@ class Notification < ApplicationRecord
   BROAD_CATEGORY = {
     "customer_runout"             => "customer_opportunity",
     "customer_overdue"            => "customer_opportunity",
+    "black_overdue"               => "customer_opportunity",
     "high_spender_no_second"      => "customer_opportunity",
     "vip_silent"                  => "customer_opportunity",
     "promotion_opportunity"       => "customer_opportunity",
