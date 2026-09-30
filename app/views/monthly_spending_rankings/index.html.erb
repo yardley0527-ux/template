@@ -1,0 +1,112 @@
+<%# app/views/monthly_spending_rankings/index.html.erb %>
+<% content_for :page_title, "月消費排行榜" %>
+
+<div class="row g-3 mb-3">
+  <div class="col-12">
+    <h4 class="fw-bold mb-0">月消費排行榜</h4>
+    <p class="text-muted small mb-0">
+      只計「已付款」訂單，依會員（email）彙總單月消費金額，取前 <%= MonthlySpendingRankingsController::LIMIT %> 名。
+      新客＝第一筆已付款訂單落在該月；舊客＝該月以前就買過。
+      <%= link_to "年度消費排行榜 →", spending_rankings_path, class: "ms-2" %>
+    </p>
+  </div>
+</div>
+
+<%# 月份切換 %>
+<div class="d-flex align-items-center mb-3" style="gap:8px;">
+  <% if @prev_month %>
+    <%= link_to "‹ 上個月", monthly_spending_rankings_path(month: @prev_month.strftime("%Y-%m"), type: @type), class: "btn btn-sm btn-outline-secondary" %>
+  <% end %>
+  <%= form_with url: monthly_spending_rankings_path, method: :get, local: true, class: "d-inline-block mb-0" do %>
+    <%= hidden_field_tag :type, @type %>
+    <%= select_tag :month,
+          options_for_select(@month_options.map { |d| [d.strftime("%Y 年 %-m 月"), d.strftime("%Y-%m")] }, @month.strftime("%Y-%m")),
+          class: "custom-select custom-select-sm", style: "width:auto;", onchange: "this.form.submit()" %>
+  <% end %>
+  <% if @next_month %>
+    <%= link_to "下個月 ›", monthly_spending_rankings_path(month: @next_month.strftime("%Y-%m"), type: @type), class: "btn btn-sm btn-outline-secondary" %>
+  <% end %>
+</div>
+
+<%# 摘要卡 %>
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #1a5da6 !important;">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">當月總消費</div>
+        <div class="fw-bold" style="font-size:1.5rem; color:#1a5da6;"><%= nt(@summary[:total_amount]) %></div>
+        <div class="text-muted" style="font-size:0.75rem;"><%= @summary[:buyer_count] %> 人・<%= @summary[:order_count] %> 張訂單</div>
+      </div>
+    </div>
+  </div>
+  <% [["新客", @summary[:new_count], @summary[:new_amount], "#1e7e34"], ["舊客", @summary[:old_count], @summary[:old_amount], "#6e4a2e"]].each do |label, count, amount, color| %>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100" style="border-left:4px solid <%= color %> !important;">
+        <div class="card-body py-3">
+          <div class="text-muted small mb-1"><%= label %></div>
+          <div class="fw-bold" style="font-size:1.5rem; color:<%= color %>;"><%= nt(amount) %></div>
+          <div class="text-muted" style="font-size:0.75rem;">
+            <%= count %> 人・占當月 <%= @summary[:total_amount].positive? ? (amount * 100.0 / @summary[:total_amount]).round(1) : 0 %>%
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<ul class="nav nav-tabs mb-3" style="font-size:0.9rem;">
+  <% MonthlySpendingRankingsController::TYPES.each do |key, label| %>
+    <li class="nav-item">
+      <%= link_to label, monthly_spending_rankings_path(month: @month.strftime("%Y-%m"), type: key),
+            class: "nav-link #{@type == key ? 'active fw-bold' : 'text-muted'}" %>
+    </li>
+  <% end %>
+</ul>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0 table-responsive">
+    <table class="table align-middle mb-0" style="font-size:0.82rem;">
+      <thead style="background-color:#4a4a4a; color:white;">
+        <tr>
+          <th class="ps-3" style="width:60px;">排名</th>
+          <th>姓名</th>
+          <th style="width:75px;">卡別</th>
+          <th style="width:70px;">客別</th>
+          <th class="text-end" style="width:120px;">當月消費</th>
+          <th class="text-end" style="width:80px;">訂單數</th>
+          <th class="text-end" style="width:110px;">最近消費</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @rows.each do |r| %>
+          <% c = r[:snapshot] %>
+          <tr>
+            <td class="ps-3 fw-bold"><%= r[:rank] %></td>
+            <td>
+              <% if c["id"] %>
+                <%= link_to (c["full_name"].presence || r[:email]), customer_path(c["id"]), target: "_blank" %>
+              <% else %>
+                <%= c["full_name"].presence || r[:email] %>
+              <% end %>
+              <% if c["instagram_account"].present? %><div class="text-muted" style="font-size:0.72rem;">@<%= c["instagram_account"].to_s.delete_prefix("@") %></div><% end %>
+            </td>
+            <td><%= c["membership_level"].presence || "—" %></td>
+            <td>
+              <% if r[:new_customer] %>
+                <span class="badge" style="background:#e6f4ea; color:#1e7e34;">新客</span>
+              <% else %>
+                <span class="badge" style="background:#f0e8e0; color:#6e4a2e;">舊客</span>
+              <% end %>
+            </td>
+            <td class="text-end fw-semibold"><%= nt(r[:amount]) %></td>
+            <td class="text-end"><%= r[:orders] %></td>
+            <td class="text-end"><%= r[:last_at]&.strftime("%Y/%m/%d") || "—" %></td>
+          </tr>
+        <% end %>
+        <% if @rows.empty? %>
+          <tr><td colspan="7" class="text-center text-muted py-4">這個月沒有符合的消費紀錄</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -8,6 +8,7 @@
     <p class="text-muted small mb-0">
       只計「已付款」訂單，依會員彙總 2025 / 2026 消費金額。
       2025 同期＝2025/01/01–<%= @same_period_end.strftime('%Y/%m/%d') %>（去年的今天）。
+      <%= link_to "月消費排行榜 →", monthly_spending_rankings_path, class: "ms-2" %>
     </p>
   </div>
 </div>

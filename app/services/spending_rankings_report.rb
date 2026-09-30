@@ -143,6 +143,45 @@ class SpendingRankingsReport
     end
   end
 
+  # ── 月排行榜 ─────────────────────────────────────────────
+
+  # 新客＝第一筆已付款訂單（以 email 判定）落在該月；舊客＝該月以前就買過。
+  # month_start：該月 1 號（Date）。回傳 { rows:, all_rows:, buyer_count:, order_count:, total_amount:, top_amount: }
+  # rows 為前 limit 名（已標 :rank），tie-breaker 同年度榜：金額 DESC → 該月最近消費日 DESC → customer id ASC → email。
+  def monthly_ranking(month_start, limit: 100)
+    from = Time.zone.local(month_start.year, month_start.month, 1)
+    to   = from.next_month
+    sql = ActiveRecord::Base.sanitize_sql_array([<<~SQL, { from: from, to: to }])
+      #{order_totals_cte},
+      firsts AS (
+        SELECT email_key, MIN(order_date) AS first_at FROM order_totals GROUP BY email_key
+      )
+      SELECT ot.email_key, SUM(ot.amount) AS amount, COUNT(*) AS orders, MAX(ot.order_date) AS last_at,
+             MIN(f.first_at) AS first_at,
+             (SELECT id FROM shopline_customers WHERE LOWER(TRIM(email)) = ot.email_key ORDER BY id LIMIT 1) AS customer_id
+      FROM order_totals ot
+      JOIN firsts f ON f.email_key = ot.email_key
+      WHERE ot.order_date >= :from AND ot.order_date < :to
+      GROUP BY ot.email_key
+    SQL
+    all = ActiveRecord::Base.connection.select_all(sql).to_a.map do |r|
+      { email: r["email_key"], customer_id: r["customer_id"], amount: r["amount"].to_f.round,
+        orders: r["orders"].to_i, last_at: parse_time(r["last_at"]),
+        new_customer: parse_time(r["first_at"]) >= from }
+    end.select { |t| t[:amount].positive? }
+    ranked = all.sort_by { |t| [-t[:amount], stable_tail(t, :last_at)].flatten }
+                .each_with_index.map { |t, i| t.merge(rank: i + 1) }
+    top = ranked.first(limit)
+    {
+      rows: top,
+      all_rows: ranked,
+      buyer_count: ranked.size,
+      order_count: ranked.sum { |t| t[:orders] },
+      total_amount: ranked.sum { |t| t[:amount] },
+      top_amount: top.sum { |t| t[:amount] }
+    }
+  end
+
   # ── 名單客戶快照（姓名/IG/卡別）───────────────────────────────
 
   def customer_snapshots(emails)
@@ -250,20 +289,27 @@ class SpendingRankingsReport
     [-(t[last_key]&.to_i || 0), t[:customer_id] ? 0 : 1, t[:customer_id].to_i, t[:email]]
   end
 
+  # 已付款訂單彙總成「每會員每張訂單」一列（金額口徑見檔頭）
+  def order_totals_cte
+    <<~SQL
+        WITH order_totals AS (
+          SELECT LOWER(TRIM(email)) AS email_key,
+                 order_number,
+                 MIN(order_date) AS order_date,
+                 COALESCE(MAX(NULLIF(total_amount, 0)), SUM(COALESCE(checkout_amount, 0))) AS amount
+          FROM shopline_orders
+          WHERE payment_status = '已付款'
+            AND order_number IS NOT NULL AND order_number <> ''
+            AND email IS NOT NULL AND email <> ''
+            AND order_date IS NOT NULL
+          GROUP BY LOWER(TRIM(email)), order_number
+        )
+    SQL
+  end
+
   def totals_sql
     ActiveRecord::Base.sanitize_sql_array([<<~SQL, { y25: y2025_start, y26: y2026_start, y27: y2027_start, same_end: same_period_end_exclusive }])
-      WITH order_totals AS (
-        SELECT LOWER(TRIM(email)) AS email_key,
-               order_number,
-               MIN(order_date) AS order_date,
-               COALESCE(MAX(NULLIF(total_amount, 0)), SUM(COALESCE(checkout_amount, 0))) AS amount
-        FROM shopline_orders
-        WHERE payment_status = '已付款'
-          AND order_number IS NOT NULL AND order_number <> ''
-          AND email IS NOT NULL AND email <> ''
-          AND order_date IS NOT NULL
-        GROUP BY LOWER(TRIM(email)), order_number
-      ),
+      #{order_totals_cte},
       agg AS (
         SELECT email_key,
                MIN(order_date) AS first_paid_order_at,
