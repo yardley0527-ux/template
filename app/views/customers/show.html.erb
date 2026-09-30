@@ -106,6 +106,8 @@
         <% end %>
       </div>
 
+      <%= render "customers/pr_gifts", customer: @customer %>
+
       <div>
         <%= link_to "✏️ 編輯備註", edit_customer_path(@customer, section: "notes"), class: "btn btn-outline-secondary btn-sm" %>
       </div>

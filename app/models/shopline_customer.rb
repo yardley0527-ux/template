@@ -4,6 +4,7 @@ class ShoplineCustomer < ApplicationRecord
 
   has_many :shopline_orders, foreign_key: :shopline_customer_id, dependent: :nullify
   has_many :albums, dependent: :destroy
+  has_many :pr_gifts, dependent: :destroy
 
   has_one :customer_profile
 

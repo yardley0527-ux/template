@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_22_040000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_30_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1186,6 +1186,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_22_040000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "pr_gifts", force: :cascade do |t|
+    t.bigint "shopline_customer_id", null: false
+    t.string "product_name", null: false
+    t.integer "quantity", default: 1, null: false
+    t.string "unit", default: "瓶", null: false
+    t.date "given_on", null: false
+    t.string "note"
+    t.string "created_by"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["shopline_customer_id", "given_on"], name: "index_pr_gifts_on_shopline_customer_id_and_given_on"
+    t.index ["shopline_customer_id"], name: "index_pr_gifts_on_shopline_customer_id"
+  end
+
   create_table "product_mapping_components", force: :cascade do |t|
     t.bigint "product_name_mapping_id", null: false
     t.bigint "crm_product_id", null: false
@@ -1745,6 +1759,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_22_040000) do
   add_foreign_key "notifications", "users", column: "owner_user_id"
   add_foreign_key "page_permissions", "roles"
   add_foreign_key "photos", "albums"
+  add_foreign_key "pr_gifts", "shopline_customers"
   add_foreign_key "product_mapping_components", "crm_products"
   add_foreign_key "product_mapping_components", "product_name_mappings"
   add_foreign_key "product_name_mapping_logs", "crm_products", column: "new_crm_product_id"
