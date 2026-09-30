@@ -50,9 +50,7 @@
             <span class="stat-value">NT$ <%= number_with_delimiter(@customer.total_amount.to_i) %></span>
           </div>
         </div>
-        <% if (address = @customer.full_address).present? %>
-          <div class="customer-address">📍 收件地址：<%= address %></div>
-        <% end %>
+        <div class="customer-address">📍 收件地址：<%= @customer.full_address.presence || "尚無資料" %></div>
       </div>
     </div>
   </div>
