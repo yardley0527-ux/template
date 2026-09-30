@@ -32,6 +32,7 @@ module NotificationRules
 
       today = Date.current
       base = CrmCustomerProductTracking.where(product_key: product_key)
+                                       .where("total_bottles >= ?", NotificationRules::Thresholds::MIN_HISTORY_BOTTLES)
       preview_count = base.where(expected_return_date: (today + PREVIEW_WINDOW.begin)..(today + PREVIEW_WINDOW.end)).count
 
       BANDS.filter_map { |band| build_band(product_key, crm_product, base, today, band, preview_count) }
@@ -49,7 +50,7 @@ module NotificationRules
         notification_key: "customer_runout_#{band[:key]}", kind: "opportunity", severity: "opportunity",
         priority: band[:priority],
         title: "#{label}#{preorder_tag}：#{rows.count} 位客人剩餘 #{band[:label]} 即將用完",
-        message: "8–14 天內還有 #{preview_count} 位將進入提醒窗",
+        message: "僅列歷史買過 ≥#{NotificationRules::Thresholds::MIN_HISTORY_BOTTLES} 瓶的客人；8–14 天內還有 #{preview_count} 位將進入提醒窗",
         impact_summary: "#{rows.count} 位客人即將沒有#{label}可用，是回購訊息時效性最高的一批。",
         recommended_action: "發送回購提醒訊息或建立客服任務主動聯繫。",
         subject_type: "journey_product", subject_id: product_key,
@@ -59,7 +60,8 @@ module NotificationRules
           sample_shopline_customer_ids: sample_customer_ids,
           query: { table: "crm_customer_product_trackings", product_key: product_key,
                    expected_return_date_from: (today + band[:range].begin).to_s,
-                   expected_return_date_to: (today + band[:range].end).to_s }
+                   expected_return_date_to: (today + band[:range].end).to_s,
+                   min_total_bottles: NotificationRules::Thresholds::MIN_HISTORY_BOTTLES }
         },
         deduplication_key: "customer_runout_#{band[:key]}:journey_product:#{product_key}"
       }

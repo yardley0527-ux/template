@@ -8,6 +8,11 @@ module NotificationRules
     # 8/27 使用者要求：不再拆 0–3(P1)／4–7(P2) 兩級，合併成單一 0–7 天(P1)。
     RUNOUT_DAYS = (0..7).freeze
 
+    # ── 回購提醒名單的「歷史購買量」門檻（即將用完／逾期未回購共用）──
+    # 訊息公版寫「一直都是老客人、過去都以比較大的組數補貨」，名單要對得上：
+    # 該產品歷史累計買過 >= 6 瓶（crm_customer_product_trackings.total_bottles）才列入。
+    MIN_HISTORY_BOTTLES = 6
+
     # ── customer_overdue（逾期未回購）分段 ──
     # 8/25 使用者要求：待處理清單只留最新鮮的 0-14 天級距，逾期越久的名單轉換率
     # 越低、優先度也低，不用一直佔待處理清單版面；15 天以上的追蹤資料本身還在

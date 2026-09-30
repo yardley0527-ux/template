@@ -54,6 +54,8 @@ class NotificationCustomerListService
                    .where("sc.membership_level IN (?)", levels).distinct
     end
 
+    scope = scope.where("total_bottles >= ?", query["min_total_bottles"].to_i) if query["min_total_bottles"]
+
     sql_pattern = tracking_sql_pattern(product_key)
     rows = scope.order(:expected_return_date).limit(RESULT_LIMIT).to_a
     customers = customers_by_email(rows.map(&:email))

@@ -16,7 +16,7 @@ class NotificationBoardBlackOverdueTest < ActionDispatch::IntegrationTest
     CrmCustomerProductTracking.create!(
       email: "vip@example.com", product_key: "metabolism", last_order_date: 90.days.ago.to_date, last_order_bottles: 1,
       expected_return_date: Date.current - 12, suggested_reminder_date: Date.current - 19,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     @cycle = CrmCustomerProductCycle.create!(
       identity_key: "vip@example.com", email: "vip@example.com", product_key: "metabolism",
@@ -69,7 +69,7 @@ class NotificationBoardBlackOverdueTest < ActionDispatch::IntegrationTest
     CrmCustomerProductTracking.create!(
       email: "gold@example.com", product_key: "metabolism", last_order_date: 90.days.ago.to_date, last_order_bottles: 1,
       expected_return_date: Date.current - 12, suggested_reminder_date: Date.current - 19,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
 
     get notification_board_path(section: "customer_opportunity")
@@ -113,7 +113,7 @@ class NotificationBoardBlackOverdueTest < ActionDispatch::IntegrationTest
     CrmCustomerProductTracking.create!(
       email: "vip@example.com", product_key: "qingxian", last_order_date: 90.days.ago.to_date, last_order_bottles: 1,
       expected_return_date: Date.current - 8, suggested_reminder_date: Date.current - 15,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     cycle = CrmCustomerProductCycle.create!(
       identity_key: "vip@example.com", email: "vip@example.com", product_key: "cleanse_powder",
@@ -132,7 +132,7 @@ class NotificationBoardBlackOverdueTest < ActionDispatch::IntegrationTest
     CrmCustomerProductTracking.create!(
       email: "poor@example.com", product_key: "metabolism", last_order_date: 90.days.ago.to_date, last_order_bottles: 1,
       expected_return_date: Date.current - 10, suggested_reminder_date: Date.current - 17,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     CrmCustomerProductCycleFollowUpService.call(cycle: @cycle, actor: @user, action: "paused")
 

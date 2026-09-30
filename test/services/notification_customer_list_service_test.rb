@@ -30,7 +30,7 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
     CrmCustomerProductTracking.create!(
       email: "a@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
       last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     n = build_notification(category: "customer_runout", metadata: {
       "query" => { "product_key" => "metabolism", "expected_return_date_from" => (Date.current).to_s,
@@ -42,13 +42,31 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
     assert_equal "a@example.com", rows.first[:email]
   end
 
+  test "customer_runout: min_total_bottles in the query excludes customers with fewer historical bottles" do
+    CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
+    { "big@example.com" => 6, "small@example.com" => 5 }.each do |email, bottles|
+      customer(email: email)
+      CrmCustomerProductTracking.create!(
+        email: email, product_key: "metabolism", last_order_date: 20.days.ago.to_date,
+        last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
+        order_count: 1, total_bottles: bottles, refreshed_at: Time.current
+      )
+    end
+    n = build_notification(category: "customer_runout", metadata: {
+      "query" => { "product_key" => "metabolism", "expected_return_date_from" => Date.current.to_s,
+                   "expected_return_date_to" => (Date.current + 7).to_s, "min_total_bottles" => 6 }
+    })
+
+    assert_equal ["big@example.com"], NotificationCustomerListService.call(n).map { |r| r[:email] }
+  end
+
   test "customer_runout: a live-recheck excludes a candidate who already repurchased the same product" do
     CrmProduct.create!(key: "metabolism", label: "代謝錠", status: "confirmed", availability_status: "in_stock")
     customer(email: "a@example.com")
     CrmCustomerProductTracking.create!(
       email: "a@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
       last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     # A fresh order the nightly rollup hasn't picked up yet — this is what "live recheck" must catch.
     ShoplineOrder.create!(product_name: "代謝錠2瓶", email: "a@example.com", order_date: 1.hour.ago, checkout_amount: 1000)
@@ -67,7 +85,7 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
     CrmCustomerProductTracking.create!(
       email: "a@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
       last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     ShoplineOrder.create!(product_name: "薑黃粉", email: "a@example.com", order_date: 1.hour.ago, checkout_amount: 1000)
 
@@ -87,7 +105,7 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
     CrmCustomerProductTracking.create!(
       email: "a@example.com", product_key: "metabolism", last_order_date: 40.days.ago.to_date,
       last_order_bottles: 1, expected_return_date: Date.current - 10, suggested_reminder_date: Date.current - 17,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     n = build_notification(category: "customer_overdue", metadata: {
       "query" => { "product_key" => "metabolism", "overdue_days_from" => 1, "overdue_days_to" => 60 }
@@ -104,7 +122,7 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
       CrmCustomerProductTracking.create!(
         email: email, product_key: "metabolism", last_order_date: 40.days.ago.to_date,
         last_order_bottles: 1, expected_return_date: Date.current - 10, suggested_reminder_date: Date.current - 17,
-        order_count: 1, total_bottles: 1, refreshed_at: Time.current
+        order_count: 1, total_bottles: 6, refreshed_at: Time.current
       )
     end
     n = build_notification(category: "customer_overdue", metadata: {
@@ -125,7 +143,7 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
     CrmCustomerProductTracking.create!(
       email: "bigspender@example.com", product_key: "metabolism", last_order_date: last_order_date,
       last_order_bottles: 1, expected_return_date: Date.current - 10, suggested_reminder_date: Date.current - 17,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     n = build_notification(category: "customer_overdue", metadata: {
       "query" => { "product_key" => "metabolism", "overdue_days_from" => 1, "overdue_days_to" => 60,
@@ -228,7 +246,7 @@ class NotificationCustomerListServiceTest < ActiveSupport::TestCase
       CrmCustomerProductTracking.create!(
         email: "runout#{i}@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
         last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
-        order_count: 1, total_bottles: 1, refreshed_at: Time.current
+        order_count: 1, total_bottles: 6, refreshed_at: Time.current
       )
     end
     n = build_notification(category: "customer_runout", metadata: {

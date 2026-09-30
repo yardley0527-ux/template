@@ -22,7 +22,7 @@ class NotificationProductCustomersServiceTest < ActiveSupport::TestCase
     CrmCustomerProductTracking.create!(
       email: "a@example.com", product_key: "metabolism", last_order_date: 30.days.ago.to_date,
       last_order_bottles: 1, expected_return_date: Date.current - 10, suggested_reminder_date: Date.current - 12,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     n1 = build_notification(title: "代謝錠逾期未回購（1-14天）", metadata: {
       "query" => { "product_key" => "metabolism", "overdue_days_from" => 1, "overdue_days_to" => 14 }

@@ -4,12 +4,12 @@ require "test_helper"
 
 module NotificationRules
   class CustomerRunoutTest < ActiveSupport::TestCase
-    def track(product_key:, email:, days_until_runout:)
+    def track(product_key:, email:, days_until_runout:, total_bottles: 6)
       CrmCustomerProductTracking.create!(
         email: email, product_key: product_key, last_order_date: 30.days.ago.to_date,
         last_order_bottles: 1, expected_return_date: Date.current + days_until_runout,
         suggested_reminder_date: Date.current + days_until_runout - 7,
-        order_count: 1, total_bottles: 1, refreshed_at: Time.current
+        order_count: 1, total_bottles: total_bottles, refreshed_at: Time.current
       )
     end
 
@@ -22,6 +22,22 @@ module NotificationRules
       assert metabolism.present?
       assert_equal 1, results.count { |r| r[:subject_id] == "metabolism" }, "must be exactly one card, not 3"
       assert_equal 3, metabolism[:metadata][:count]
+    end
+
+    test "customers with fewer than 6 historical bottles are excluded from the count and the card" do
+      track(product_key: "metabolism", email: "big@example.com", days_until_runout: 3, total_bottles: 6)
+      track(product_key: "metabolism", email: "small@example.com", days_until_runout: 3, total_bottles: 5)
+
+      metabolism = CustomerRunout.call.find { |r| r[:subject_id] == "metabolism" }
+
+      assert_equal 1, metabolism[:metadata][:count]
+      assert_equal 6, metabolism[:metadata][:query][:min_total_bottles]
+    end
+
+    test "no card when every runout customer has fewer than 6 historical bottles" do
+      track(product_key: "metabolism", email: "small@example.com", days_until_runout: 3, total_bottles: 5)
+
+      assert_nil CustomerRunout.call.find { |r| r[:subject_id] == "metabolism" }
     end
 
     test "0-3 and 4-7 day customers are merged into a single 0-7 day card, not split into two" do

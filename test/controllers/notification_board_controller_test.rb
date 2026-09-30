@@ -209,7 +209,7 @@ class NotificationBoardControllerTest < ActionDispatch::IntegrationTest
     CrmCustomerProductTracking.create!(
       email: "a@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
       last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     n = build_notification(category: "customer_runout", metadata: {
       "query" => { "product_key" => "metabolism", "expected_return_date_from" => Date.current.to_s,
@@ -227,7 +227,7 @@ class NotificationBoardControllerTest < ActionDispatch::IntegrationTest
     CrmCustomerProductTracking.create!(
       email: "a@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
       last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     n = build_notification(category: "customer_runout", notification_key: "customer_runout_p1", metadata: {
       "query" => { "product_key" => "metabolism", "expected_return_date_from" => Date.current.to_s,
@@ -278,7 +278,7 @@ class NotificationBoardControllerTest < ActionDispatch::IntegrationTest
     CrmCustomerProductTracking.create!(
       email: "a@example.com", product_key: "metabolism", last_order_date: 20.days.ago.to_date,
       last_order_bottles: 1, expected_return_date: Date.current + 3, suggested_reminder_date: Date.current - 4,
-      order_count: 1, total_bottles: 1, refreshed_at: Time.current
+      order_count: 1, total_bottles: 6, refreshed_at: Time.current
     )
     build_notification(category: "customer_runout", status: "pending_assignment", priority: "P1",
                        title: "代謝錠即將用完", metadata: {

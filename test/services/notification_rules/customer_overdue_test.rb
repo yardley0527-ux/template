@@ -8,13 +8,25 @@ module NotificationRules
       ShoplineCustomer.create!(email: email, membership_level: membership_level)
     end
 
-    def track(product_key:, email:, overdue_days:, bottles: 1)
+    def track(product_key:, email:, overdue_days:, bottles: 1, total_bottles: 6)
       CrmCustomerProductTracking.create!(
         email: email, product_key: product_key, last_order_date: 60.days.ago.to_date,
         last_order_bottles: bottles, expected_return_date: Date.current - overdue_days,
         suggested_reminder_date: Date.current - overdue_days - 7,
-        order_count: 1, total_bottles: bottles, refreshed_at: Time.current
+        order_count: 1, total_bottles: total_bottles, refreshed_at: Time.current
       )
+    end
+
+    test "high-value customers with fewer than 6 historical bottles are excluded" do
+      customer(email: "gold6@example.com", membership_level: "金卡")
+      customer(email: "gold2@example.com", membership_level: "金卡")
+      track(product_key: "metabolism", email: "gold6@example.com", overdue_days: 10, total_bottles: 6)
+      track(product_key: "metabolism", email: "gold2@example.com", overdue_days: 10, total_bottles: 2)
+
+      result = CustomerOverdue.call.find { |r| r[:subject_id] == "metabolism" }
+
+      assert_equal 1, result[:metadata][:total_count]
+      assert_equal 6, result[:metadata][:query][:min_total_bottles]
     end
 
     test "aggregates only high-value overdue customers into the card; general customers are excluded" do

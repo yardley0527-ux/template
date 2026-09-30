@@ -13,7 +13,7 @@ module NotificationRules
         email: email, product_key: product_key, last_order_date: 90.days.ago.to_date,
         last_order_bottles: 1, expected_return_date: Date.current - overdue_days,
         suggested_reminder_date: Date.current - overdue_days - 7,
-        order_count: 1, total_bottles: 1, refreshed_at: Time.current
+        order_count: 1, total_bottles: 6, refreshed_at: Time.current
       )
     end
 

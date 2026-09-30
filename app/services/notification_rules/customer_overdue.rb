@@ -64,7 +64,7 @@ module NotificationRules
         notification_key: "customer_overdue_#{band[:key]}", kind: "opportunity", severity: "warning",
         priority: priority,
         title: "#{label}#{estimate_tag}逾期#{band_label}：#{total} 位高價值客人未回購",
-        message: "逾期#{band_label}，僅列高價值客（黑/金卡、末單≥NT$#{HIGH_VALUE_AMOUNT}，或末單為#{HIGH_VALUE_BOTTLES}+大組數）待維護名單",
+        message: "逾期#{band_label}，僅列高價值客（黑/金卡、末單≥NT$#{HIGH_VALUE_AMOUNT}，或末單為#{HIGH_VALUE_BOTTLES}+大組數）且歷史買過 ≥#{NotificationRules::Thresholds::MIN_HISTORY_BOTTLES} 瓶的待維護名單",
         impact_summary: last_chance ? "#{total} 位高價值客人今天剛好逾期滿 14 天，明天就會滾出「今日待處理」的範圍，是聯繫他們的最後機會。" : "#{total} 位高價值客人逾期未回購（另有 #{rows[:general_count]} 位一般客人未列入待處理名單），逾期越久轉換率通常越低。",
         recommended_action: "依歷史消費排序，優先聯繫。",
         subject_type: "journey_product", subject_id: product_key,
@@ -77,7 +77,8 @@ module NotificationRules
           query: { table: "crm_customer_product_trackings", product_key: product_key,
                    overdue_days_from: band[:range].begin,
                    overdue_days_to: band[:range].end.infinite? ? 3650 : band[:range].end,
-                   high_value_only: true }
+                   high_value_only: true,
+                   min_total_bottles: NotificationRules::Thresholds::MIN_HISTORY_BOTTLES }
         },
         deduplication_key: "customer_overdue_#{band[:key]}:journey_product:#{product_key}"
       }
@@ -105,6 +106,7 @@ module NotificationRules
         FROM crm_customer_product_trackings t
         LEFT JOIN shopline_customers sc ON lower(trim(sc.email)) = lower(trim(t.email))
         WHERE t.product_key = #{ActiveRecord::Base.connection.quote(product_key)}
+          AND t.total_bottles >= #{NotificationRules::Thresholds::MIN_HISTORY_BOTTLES}
           AND t.expected_return_date BETWEEN #{ActiveRecord::Base.connection.quote(from_date)}
                                           AND #{ActiveRecord::Base.connection.quote(to_date)}
       SQL
