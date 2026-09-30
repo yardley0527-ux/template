@@ -37,6 +37,20 @@ class NotificationBoardBlackOverdueTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "12 天"
   end
 
+  test "customer_opportunity section shows only the list, no notification cards below it" do
+    Notification.create!(
+      notification_key: "vip_silent_90_179", kind: "opportunity", category: "vip_silent", severity: "opportunity",
+      priority: "P2", title: "黑/金卡沉睡 90–179 天：31 位", deduplication_key: "vip:#{SecureRandom.hex(4)}",
+      status: "detected", first_detected_at: Time.current, last_detected_at: Time.current
+    )
+
+    get notification_board_path(section: "customer_opportunity")
+
+    assert_select "h5", text: "黑卡逾期未回購名單"
+    assert_not_includes response.body, "黑/金卡沉睡 90–179 天"
+    assert_not_includes response.body, "其他客戶商機提醒"
+  end
+
   test "non-black customers never appear in the list" do
     ShoplineCustomer.create!(email: "gold@example.com", full_name: "金卡阿姨", membership_level: "金卡", total_amount: 900_000)
     CrmCustomerProductTracking.create!(

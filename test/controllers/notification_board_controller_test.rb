@@ -68,11 +68,12 @@ class NotificationBoardControllerTest < ActionDispatch::IntegrationTest
     assert_equal "in_progress", n.reload.status, "visiting the board must wake the snooze"
   end
 
-  test "customer_opportunity section only shows the customer-opportunity categories" do
+  test "customer_opportunity section shows the black-card list, not notification cards" do
     build_notification(category: "customer_runout", title: "商機卡")
     build_notification(category: "system_health", title: "系統卡")
     get notification_board_path(section: "customer_opportunity")
-    assert_includes response.body, "商機卡"
+    assert_select "h5", text: "黑卡逾期未回購名單"
+    assert_not_includes response.body, "商機卡"
     assert_not_includes response.body, "系統卡"
   end
 
@@ -118,8 +119,13 @@ class NotificationBoardControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "empty state renders when a section has no notifications" do
+    get notification_board_path(section: "inventory")
+    assert_includes response.body, "目前沒有庫存到貨提醒"
+  end
+
+  test "customer_opportunity empty state renders when no black-card customer is overdue" do
     get notification_board_path(section: "customer_opportunity")
-    assert_includes response.body, "目前沒有客戶商機提醒"
+    assert_includes response.body, "目前沒有黑卡逾期未回購的客人"
   end
 
   test "tab badge counts equal the number of active notifications in that category set (not unread, not customer count)" do

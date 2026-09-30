@@ -76,10 +76,9 @@
             <% end %>
           <% else %>
             <% if @section == "customer_opportunity" %>
+              <%# 客戶商機只放名單，不放卡片（老闆要直接進去維護，不是看卡片） %>
               <%= render "black_overdue_list", groups: @black_overdue_groups, active: @black_overdue_active %>
-              <div class="text-muted small fw-bold mb-2">其他客戶商機提醒</div>
-            <% end %>
-            <% if @notifications.blank? %>
+            <% elsif @notifications.blank? %>
               <div class="text-center text-muted py-5">
                 <i class="fal fa-check-circle fa-2x mb-2 d-block"></i>
                 <%= notification_empty_state_message(@section) %>
