@@ -75,13 +75,14 @@ class JourneyProductsAddedProductsTest < ActiveSupport::TestCase
     pre = CrmCustomerProductTracking.find_by!(email: "pre@example.com", product_key: "iced_tomato")
     stock = CrmCustomerProductTracking.find_by!(email: "stock@example.com", product_key: "iced_tomato")
     assert_equal Date.new(2026, 9, 25), pre.last_order_date
-    assert_equal Date.new(2026, 9, 25) + 45, pre.expected_return_date
+    assert_equal Date.new(2026, 9, 25) + 30, pre.expected_return_date
     assert_equal Date.new(2026, 7, 25), stock.last_order_date, "in-stock orders still count from the order date"
   end
 
-  test "iced tomato reuses the whitening historical medians" do
-    row, order_date = track("iced_tomato", "冰晶蕃茄3")
-
-    assert_equal order_date + 54, row.expected_return_date
+  test "iced tomato: 30 days per bottle, gift bottles included" do
+    { "冰晶蕃茄1" => 30, "冰晶蕃茄5" => 150, "冰晶蕃茄10送1" => 330 }.each_with_index do |(name, days), i|
+      row, order_date = track("iced_tomato", name, email: "tomato#{i}@example.com")
+      assert_equal order_date + days, row.expected_return_date, name
+    end
   end
 end

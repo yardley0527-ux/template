@@ -145,8 +145,8 @@ module JourneyProducts
       in_stock:     true,
       restock_date: nil
     },
-    # 冰晶蕃茄 7/24 才上市，沒有回購歷史：沿用同一條白藜蘆醇美白膠囊線「美白」
-    # （crm_repurchase_cycle_configs.whitening，2,087 位買家）的歷史中位數，這是推斷不是確定值。
+    # 冰晶蕃茄 7/24 才上市，沒有回購歷史：9/30 使用者指定每瓶約 30 天，瓶數 × 30 天。
+    # （原本借用「美白」歷史中位數，但那組數字不規律、5 瓶只估 70 天，會太早提醒。）
     # 訂單裡同時有「番茄」「蕃茄」兩種寫法，還有「預購-」前綴，SQL 要兩種都抓。
     "iced_tomato" => {
       key:          "iced_tomato",
@@ -156,7 +156,7 @@ module JourneyProducts
       color:        "#e11d48",
       sql:          "(product_name LIKE '%冰晶番茄%' OR product_name LIKE '%冰晶蕃茄%')",
       regex:        /冰晶[番蕃]茄\s?(\d+)/,
-      medians:      { 1=>45, 2=>37, 3=>54, 4=>50, 6=>89, 10=>87 },
+      medians:      { 1=>30, 2=>60, 3=>90, 4=>120, 5=>150, 6=>180, 7=>210, 8=>240, 9=>270, 10=>300, 11=>330, 12=>360 },
       in_stock:     true,
       restock_date: nil,
       # 「預購」訂單 9/25 才到貨（隱藏頁面「預購商品9/25到貨」），回購天數從到貨日起算。
