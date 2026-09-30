@@ -126,7 +126,9 @@ class PrGiftsControllerTest < ActionDispatch::IntegrationTest
     get customer_path(@customer)
     assert_response :success
     assert_select "#pr-gifts", text: /魚油 ×1瓶/
-    assert_select "#pr-gifts form.pr-gift-form", minimum: 2 # 新增 + 這筆的修改
+    assert_select "#pr-gifts button.btn.btn-primary[data-target='#new-pr-gift-modal']", text: /新增公關品/
+    assert_select "#new-pr-gift-modal.modal form.pr-gift-form"
+    assert_select "#edit-pr-gift-modal-#{@customer.pr_gifts.first.id}.modal form.pr-gift-form"
   end
 
   test "客戶頁：非 owner 只看得到清單，沒有任何表單或刪除鈕" do
@@ -135,7 +137,9 @@ class PrGiftsControllerTest < ActionDispatch::IntegrationTest
     get customer_path(@customer)
     assert_response :success
     assert_select "#pr-gifts", text: /魚油 ×1瓶/
-    assert_select "#pr-gifts form", count: 0
+    assert_select "form.pr-gift-form", count: 0
+    assert_select ".modal[id*='pr-gift']", count: 0
+    assert_select "#pr-gifts button[data-toggle=modal]", count: 0
     assert_select "#pr-gifts a[data-method=delete]", count: 0
   end
 end

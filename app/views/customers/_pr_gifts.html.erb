@@ -1,29 +1,31 @@
-<%# 公關品紀錄：所有人可看，只有 owner（admin）可新增／修改／刪除 %>
-<% gifts    = customer.pr_gifts.recent_first.to_a %>
+<%# 公關品紀錄：所有人可看，只有 owner（admin）可新增／修改／刪除。
+    新增／修改的彈窗在 _pr_gift_modals（放在頁面最上層，跟其他頁面的 modal 一樣） %>
+<% @pr_gifts ||= customer.pr_gifts.recent_first.to_a %>
 <% is_owner = current_user&.admin? %>
-<% products = is_owner ? CrmProduct.series_labels_for_filter : [] %>
 
 <div class="profile-block" id="pr-gifts">
   <span class="profile-block-title">🎁 公關品紀錄</span>
 
-  <% if gifts.empty? %>
+  <% if @pr_gifts.empty? %>
     <p class="profile-block-text">（尚無公關品紀錄）</p>
   <% else %>
     <ul class="list-unstyled mb-2">
-      <% gifts.each do |gift| %>
+      <% @pr_gifts.each do |gift| %>
         <li class="mb-2">
           <span class="text-muted"><%= gift.given_on.strftime("%Y/%m/%d") %></span>
           <strong><%= gift.summary %></strong>
           <% if gift.note.present? %><span class="text-muted small">（<%= gift.note %>）</span><% end %>
 
           <% if is_owner %>
-            <%= link_to "🗑", customer_pr_gift_path(customer, gift), method: :delete,
+            <button type="button" class="btn btn-sm btn-outline-secondary ml-1" title="修改"
+                    data-toggle="modal" data-target="#edit-pr-gift-modal-<%= gift.id %>">
+              <i class="fal fa-edit"></i>
+            </button>
+            <%= link_to customer_pr_gift_path(customer, gift), method: :delete, title: "刪除",
                   data: { confirm: "確定刪除這筆公關品紀錄？（#{gift.given_on.strftime('%Y/%m/%d')} #{gift.summary}）" },
-                  class: "btn btn-sm btn-link text-danger p-0 ml-1", title: "刪除" %>
-            <details class="d-inline-block ml-1">
-              <summary class="btn btn-sm btn-link p-0" title="修改">✏️</summary>
-              <%= render "customers/pr_gift_form", customer: customer, gift: gift, products: products %>
-            </details>
+                  class: "btn btn-sm btn-outline-danger" do %>
+              <i class="fal fa-trash-alt"></i>
+            <% end %>
           <% end %>
         </li>
       <% end %>
@@ -31,34 +33,8 @@
   <% end %>
 
   <% if is_owner %>
-    <details class="mb-2">
-      <summary class="btn btn-outline-secondary btn-sm">＋ 新增公關品</summary>
-      <%= render "customers/pr_gift_form", customer: customer, gift: customer.pr_gifts.new(given_on: Date.current), products: products %>
-    </details>
+    <button type="button" class="btn btn-primary btn-sm mb-2" data-toggle="modal" data-target="#new-pr-gift-modal">
+      <i class="fal fa-plus mr-1"></i>新增公關品
+    </button>
   <% end %>
 </div>
-
-<% if is_owner %>
-  <% content_for :scripts_block do %>
-    <script>
-      (function () {
-        function syncOther(form) {
-          var sel = form.querySelector('.pr-gift-product');
-          var other = form.querySelector('.pr-gift-other');
-          var isOther = sel.value === '<%= PrGiftsController::OTHER_PRODUCT %>';
-          other.style.display = isOther ? '' : 'none';
-          other.required = isOther;
-        }
-        document.querySelectorAll('.pr-gift-form').forEach(function (form) {
-          var sel = form.querySelector('.pr-gift-product');
-          syncOther(form);
-          sel.addEventListener('change', function () {
-            var opt = sel.options[sel.selectedIndex];
-            if (opt && opt.dataset.unit) form.querySelector('.pr-gift-unit').value = opt.dataset.unit;
-            syncOther(form);
-          });
-        });
-      })();
-    </script>
-  <% end %>
-<% end %>

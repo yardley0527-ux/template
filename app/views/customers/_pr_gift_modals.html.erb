@@ -1,0 +1,36 @@
+<%# 公關品的新增／修改彈窗（只有 owner 看得到）。@pr_gifts 由 _pr_gifts 先載入 %>
+<% if current_user&.admin? %>
+  <% @pr_gifts ||= customer.pr_gifts.recent_first.to_a %>
+  <% products = CrmProduct.series_labels_for_filter %>
+
+  <%= render "customers/pr_gift_modal", customer: customer, products: products,
+        modal_id: "new-pr-gift-modal", title: "新增公關品", gift: customer.pr_gifts.new(given_on: Date.current) %>
+
+  <% @pr_gifts.each do |gift| %>
+    <%= render "customers/pr_gift_modal", customer: customer, products: products,
+          modal_id: "edit-pr-gift-modal-#{gift.id}", title: "修改公關品", gift: gift %>
+  <% end %>
+
+  <% content_for :scripts_block do %>
+    <script>
+      (function () {
+        function syncOther(form) {
+          var sel = form.querySelector('.pr-gift-product');
+          var other = form.querySelector('.pr-gift-other');
+          var isOther = sel.value === '<%= PrGiftsController::OTHER_PRODUCT %>';
+          other.style.display = isOther ? '' : 'none';
+          other.required = isOther;
+        }
+        document.querySelectorAll('.pr-gift-form').forEach(function (form) {
+          var sel = form.querySelector('.pr-gift-product');
+          syncOther(form);
+          sel.addEventListener('change', function () {
+            var opt = sel.options[sel.selectedIndex];
+            if (opt && opt.dataset.unit) form.querySelector('.pr-gift-unit').value = opt.dataset.unit;
+            syncOther(form);
+          });
+        });
+      })();
+    </script>
+  <% end %>
+<% end %>

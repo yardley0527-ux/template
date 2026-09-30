@@ -347,6 +347,9 @@
 
 </div>
 
+<%# 公關品的新增／修改彈窗：放最上層，避免被卡片的層級蓋住 %>
+<%= render "customers/pr_gift_modals", customer: @customer %>
+
 <style>
   *, *::before, *::after {
     box-sizing: border-box;
