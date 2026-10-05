@@ -284,6 +284,31 @@ class CrmCustomerProductCycleBuilderServiceTest < ActiveSupport::TestCase
     assert query_count < 15, "expected O(1) queries, got #{query_count}"
   end
 
+  # 2026-10-05：單一巨大 upsert 讓正式站 256MB DB OOM 崩潰，改成分批。
+  # 這裡把批次大小壓到 2，確認 5 個週期會拆成 3 條 INSERT、且一列都不少。
+  test "upsert 依 UPSERT_BATCH_SIZE 分批寫入，不會一次塞進單一巨大 INSERT" do
+    key = unique_key
+    make_product(key, "測試批", medians: { 1 => 60 })
+    5.times do |i|
+      make_order(email: "chunk_#{i}_#{SecureRandom.hex(4)}@example.com", product_name: "測試批1", order_date: Date.new(2026, 1, 1))
+    end
+
+    original = CrmCustomerProductCycleBuilderService::UPSERT_BATCH_SIZE
+    inserts = 0
+    counter = ->(*, payload) { inserts += 1 if payload[:sql].include?("INSERT INTO crm_customer_product_cycles") }
+    begin
+      silence_warnings { CrmCustomerProductCycleBuilderService.const_set(:UPSERT_BATCH_SIZE, 2) }
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record") do
+        CrmCustomerProductCycleBuilderService.call(product_key: key)
+      end
+    ensure
+      silence_warnings { CrmCustomerProductCycleBuilderService.const_set(:UPSERT_BATCH_SIZE, original) }
+    end
+
+    assert_equal 3, inserts
+    assert_equal 5, CrmCustomerProductCycle.where(product_key: key).count
+  end
+
   # Phase 5：已知 typo（登記在 CrmProductAlias）的訂單，過去只用 sql_pattern
   # 比對會完全抓不到，導致這些顧客永遠不會被建立 cycle。
   test "只有 CrmProductAlias 拼法、sql_pattern 抓不到的訂單，仍然會建立 cycle" do

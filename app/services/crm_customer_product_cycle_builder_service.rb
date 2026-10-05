@@ -16,6 +16,7 @@ class CrmCustomerProductCycleBuilderService
   LOCK_NAMESPACE        = "crm_customer_product_cycle_builder"
   REMINDER_BUFFER_DAYS  = 7
   LOOKBACK_DAYS         = 730
+  UPSERT_BATCH_SIZE     = 500
 
   IDENTITY_JOIN_SQL = <<~SQL.squish.freeze
     LEFT JOIN shopline_customers sc
@@ -233,9 +234,22 @@ class CrmCustomerProductCycleBuilderService
 
   # ── Persistence：manual_override_* 不覆寫，matched_at 只在狀態改變時更新 ──
 
+  # 2026-10-05：原本一個產品的全部週期塞進「單一」INSERT（代謝 1 萬列、約 3MB
+  # SQL），本機實測光解析這一條 Postgres 後端就吃到約 190MB；正式站 DB 只有
+  # 約 256MB，WeeklyBriefingRunner 又是 3 執行緒並行，直接 OOM 讓整個 DB 崩潰
+  # 重啟（薑黃／膠原因此從 8/6 起就沒刷新成功過）。改成每 UPSERT_BATCH_SIZE
+  # 列一條，包在同一個 transaction 裡，維持原本「整個產品要嘛全寫入、要嘛
+  # 全不寫」的原子性。同一產品內 (identity_key, cycle_started_at) 已在
+  # fetch_purchase_events 合併過，不會跨批重複。
   def upsert_rows(rows)
     return if rows.empty?
 
+    ActiveRecord::Base.transaction do
+      rows.each_slice(UPSERT_BATCH_SIZE) { |batch| upsert_batch(batch) }
+    end
+  end
+
+  def upsert_batch(rows)
     conn = ActiveRecord::Base.connection
     values_sql = rows.map { |row| row_values_sql(row) }.join(",\n")
 
