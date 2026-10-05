@@ -23,6 +23,16 @@ class WeeklyMetricsService
   COHORT_WINDOWS            = [7, 14, 30, 60, 90].freeze # 新客回購率觀察窗（天），只有已完整走完窗口的 cohort 才計入分母
   DECOMPOSITION_DECLINE_THRESHOLD_PCT = 5.0 # 判斷「購買人數／客單價是否下降」的最小顯著門檻，避免把誤差雜訊當成下降
 
+  # 只給頁面顯示、不送進AI prompt的資料（含客人姓名／email 等個資），
+  # WeeklyBriefingService 組 prompt 與 fact-check context 前會用 ai_visible 拿掉。
+  PAGE_ONLY_KEY = "page_only"
+  # 高價值降級：近365天消費達這個金額，降級時列為優先挽回對象
+  HIGH_VALUE_DOWNGRADE_SPEND = 50_000
+
+  def self.ai_visible(metrics)
+    metrics.except(PAGE_ONLY_KEY)
+  end
+
   def self.call(week_start: Date.current)
     new(week_start).call
   end
@@ -35,6 +45,7 @@ class WeeklyMetricsService
     new_vs_returning   = build_new_vs_returning
     week_type          = WeeklyWeekTypeClassifier.call(@period)
     product_repurchase = build_product_repurchase(new_vs_returning)
+    new_vs_returning["new_customer_entry_products"] = new_customer_entry_products(product_repurchase, new_vs_returning)
     membership         = build_membership
     revenue_progress   = build_revenue_progress(week_type)
     order_quality      = build_order_quality
@@ -50,7 +61,8 @@ class WeeklyMetricsService
       "revenue_progress"   => revenue_progress,
       "order_quality"      => order_quality,
       "data_quality"       => data_quality,
-      "data_gaps"          => build_data_gaps(week_type, revenue_progress, membership, data_quality)
+      "data_gaps"          => build_data_gaps(week_type, revenue_progress, membership, data_quality),
+      PAGE_ONLY_KEY        => { "membership_change_customers" => membership_change_customers }
     }
   end
 
@@ -88,8 +100,10 @@ class WeeklyMetricsService
   end
 
   # ── 1. 新客與舊客分析 ────────────────────────────────────────────
-  def customer_segment_stats(scope, time_range)
-    rows = order_level_rows(scope, time_range)
+  # rows 可以直接傳 [[email, 金額], ...]（每張訂單一列）；商品層級用品項拆分後的
+  # 金額（見 product_order_rows），不要用整張訂單總額。
+  def customer_segment_stats(scope, time_range, rows: nil)
+    rows ||= order_level_rows(scope, time_range)
     return empty_segment_stats if rows.empty?
 
     emails = rows.map(&:first).uniq
@@ -122,6 +136,19 @@ class WeeklyMetricsService
       "new_pct"             => round2(pct(new_emails.size, new_emails.size + returning_emails.size)),
       "order_count"         => rows.size
     }
+  end
+
+  # 本週新客「從哪個商品進來」：各商品本週的新客買家數與新客品項營收（品項拆分口徑）。
+  # 一位新客同單買兩個商品會在兩個商品各算一次，所以人數加總可能大於新客總數。
+  def new_customer_entry_products(product_repurchase, new_vs_returning)
+    total_new = new_vs_returning.dig("this_week", "new_customers").to_i
+    product_repurchase["products"].filter_map do |p|
+      n = p.dig("this_week", "new_customers").to_i
+      next if n.zero?
+
+      { "label" => p["label"], "new_customers" => n, "new_revenue" => p.dig("this_week", "new_revenue"),
+        "share_of_new_customers_pct" => round2(pct(n, total_new)) }
+    end.sort_by { |r| -r["new_customers"] }
   end
 
   def empty_segment_stats
@@ -478,8 +505,65 @@ class WeeklyMetricsService
       "prev_week_upgrade_count"   => prev_week_changes.upgrades.count,
       "prev_week_downgrade_count" => prev_week_changes.downgrades.count,
       "prev_week_net"             => prev_week_net,
+      "transitions"               => week_changes.group(:direction, :from_level, :to_level).count
+                                                 .map { |(dir, from, to), n| { "direction" => dir, "from_level" => from, "to_level" => to, "count" => n } }
+                                                 .sort_by { |t| [t["direction"], -t["count"]] },
+      "net_by_level"              => net_by_level(week_changes),
+      "high_value_downgrade_threshold_365d" => HIGH_VALUE_DOWNGRADE_SPEND,
+      "high_value_downgrade_count" => high_value_downgrades.size,
+      "high_value_downgrade_spend_365d_total" => round2(high_value_downgrades.sum { |c| c["spend_365d"] }),
       "revenue_note" => "升降級金額＝該群客戶本週下單總額（近似值，不是導致升降等的單一訂單金額，membership_level_changes 沒有記錄金額欄位）"
     }
+  end
+
+  # 每個卡別本週「轉入／轉出／淨變化」（升級跟降級都算）
+  def net_by_level(week_changes)
+    flows = MembershipLevels::TARGET_MEMBERSHIPS.index_with { { "in" => 0, "out" => 0 } }
+    week_changes.group(:from_level, :to_level).count.each do |(from, to), n|
+      flows[from]["out"] += n if flows[from]
+      flows[to]["in"] += n if flows[to]
+    end
+    flows.transform_values { |f| f.merge("net" => f["in"] - f["out"]) }
+  end
+
+  # 本週升降級的客人明細（含姓名），只放頁面、不送AI。近365天消費＝以週末日回推
+  # 365天的有效訂單整單總額；最後下單日讓營運判斷是「真的流失」還是「還在買只是
+  # 年度門檻到期」。
+  def membership_change_customers
+    @membership_change_customers ||= begin
+      changes = MembershipLevelChange.where(changed_at: @period.time_range).order(:changed_at).to_a
+      emails = changes.map(&:email).compact.uniq
+      names = ShoplineCustomer.where(email: emails).pluck(:email, :full_name).to_h
+      year_range = (@period.week_end - 364).beginning_of_day..@period.week_end.end_of_day
+      spend = Hash.new(0.0)
+      order_level_rows(ShoplineOrder.valid_paid.where(email: emails), year_range).each { |e, t| spend[e] += t.to_f }
+      last_order = ShoplineOrder.valid_paid.where(email: emails).where(order_date: ..@period.week_end.end_of_day)
+                                .group(:email).maximum(:order_date)
+      recent_cutoff = @period.week_end - ACTIVE_MEMBER_WINDOW_DAYS
+
+      rows = changes.map do |c|
+        last = last_order[c.email]&.in_time_zone&.to_date
+        {
+          "name" => c.full_name.presence || names[c.email], "email" => c.email,
+          "direction" => c.direction, "from_level" => c.from_level, "to_level" => c.to_level,
+          "changed_on" => c.changed_at.in_time_zone.to_date.to_s,
+          "spend_365d" => round2(spend[c.email]), "last_order_date" => last&.to_s,
+          "active_recently" => last.present? && last >= recent_cutoff,
+          "high_value" => c.direction == "downgrade" && spend[c.email] >= HIGH_VALUE_DOWNGRADE_SPEND
+        }
+      end
+      by_dir = rows.group_by { |r| r["direction"] }
+      {
+        "downgrades" => Array(by_dir["downgrade"]).sort_by { |r| -r["spend_365d"] },
+        "upgrades"   => Array(by_dir["upgrade"]).sort_by { |r| -r["spend_365d"] },
+        "active_window_days" => ACTIVE_MEMBER_WINDOW_DAYS,
+        "high_value_threshold_365d" => HIGH_VALUE_DOWNGRADE_SPEND
+      }
+    end
+  end
+
+  def high_value_downgrades
+    membership_change_customers["downgrades"].select { |r| r["high_value"] }
   end
 
   def revenue_for_emails(emails)
@@ -514,6 +598,8 @@ class WeeklyMetricsService
     end
 
     {
+      "revenue_basis_note"            => "商品營收（this_week.*_revenue、trailing4_revenue）是品項拆分後的金額：品項標價×數量，" \
+                                         "再依整張訂單實付÷標價合計等比例折算；不是含有該商品的整張訂單總額",
       "products"                      => payloads,
       "contradiction_detected"        => contradiction,
       "returning_customers_this_week" => returning_customers_this_week
@@ -522,7 +608,7 @@ class WeeklyMetricsService
 
   def product_payload(crm)
     scope = ShoplineOrder.valid_paid.where(crm.matching_sql_pattern)
-    week_stats = customer_segment_stats(scope, @period.time_range)
+    week_stats = customer_segment_stats(scope, @period.time_range, rows: product_order_rows(crm.key, @period.time_range))
 
     cycles_refreshed_at = CrmCustomerProductCycle.for_product(crm.key).maximum(:refreshed_at)
     stale = cycles_refreshed_at.nil? || cycles_refreshed_at < CYCLE_STALE_HOURS.hours.ago
@@ -554,7 +640,7 @@ class WeeklyMetricsService
       product_key: crm.key, reference_date: @period.week_end, availability_status: crm.availability_status
     )
 
-    trailing4_product_revenue = weekly_total(scope, @period.trailing4_time_range)
+    trailing4_product_revenue = product_order_rows(crm.key, @period.trailing4_time_range).sum { |_, amt| amt }
 
     {
       "product_key"              => crm.key,
@@ -767,11 +853,52 @@ class WeeklyMetricsService
     }
   end
 
-  def product_weekly_revenues(scope)
+  # 品項拆分後的商品營收（見 allocated_lines）。2026-10-05 前是「含該商品的整張訂單
+  # 總額」，同單其他商品也被算進去，PDRN 週曾因此高估約11萬、佔比高估約3.6個百分點。
+  def product_weekly_revenues(_scope = nil)
     CrmProduct.confirmed.where.not(key: EXCLUDED_PRODUCT_KEYS).filter_map do |crm|
-      amt = weekly_total(scope.where(crm.matching_sql_pattern), @period.time_range)
+      amt = product_order_rows(crm.key, @period.time_range).sum { |_, a| a }
       [crm.label, amt] if amt.positive?
     end.to_h
+  end
+
+  # 某商品在期間內「每張訂單一列」的 [email, 該商品品項金額]。
+  def product_order_rows(product_key, time_range)
+    by_order = Hash.new { |h, k| h[k] = [nil, 0.0] }
+    allocated_lines(time_range).each do |line|
+      next unless line[:product_key] == product_key
+
+      by_order[line[:order_number]][0] = line[:email]
+      by_order[line[:order_number]][1] += line[:revenue]
+    end
+    by_order.values
+  end
+
+  # 每一行商品的實收金額：標價(checkout_amount)×數量，再乘上「整單實付÷整單標價
+  # 合計」（上限1，運費等多出來的部分不分給商品）。整單實付沿用 ShoplineOrder::TOTAL_SQL
+  # 的口徑（total_amount 只記在訂單第一行）。薑黃「X」與「X送M」成對重複行同屬一個
+  # 商品，等比例分攤後該商品金額仍等於整單金額，不會翻倍。
+  def allocated_lines(time_range)
+    @allocated_lines ||= {}
+    @allocated_lines[time_range] ||= begin
+      matchers = CrmProduct.substring_matchers.sort_by { |key, _| product_id_order.index(key) || Float::INFINITY }
+      lines = ShoplineOrder.valid_paid.where(order_date: time_range)
+                           .pluck(:order_number, :email, :product_name, :checkout_amount, :quantity, :total_amount)
+      lines.group_by(&:first).flat_map do |order_number, rows|
+        paid = rows.map { |r| r[5].to_f }.select(&:positive?).max || rows.sum { |r| r[3].to_f }
+        list = rows.sum { |r| r[3].to_f * (r[4] || 1) }
+        ratio = list.positive? ? [paid / list, 1.0].min : 0.0
+        email = rows.map { |r| r[1] }.compact.max
+        rows.map do |_, _, name, price, qty, _|
+          key = matchers.find { |_, subs| subs.any? { |sub| name.to_s.include?(sub) } }&.first
+          { order_number: order_number, email: email, product_key: key, revenue: price.to_f * (qty || 1) * ratio }
+        end
+      end
+    end
+  end
+
+  def product_id_order
+    @product_id_order ||= CrmProduct.confirmed.order(:id).pluck(:key)
   end
 
   def concentration_empty

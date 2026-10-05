@@ -289,11 +289,42 @@ class WeeklyBriefingServiceTest < ActiveSupport::TestCase
   end
 
   # ── Prompt v5/v6 版本切換 ────────────────────────────────────────
-  test "prompt_version defaults to v6 when WEEKLY_BRIEFING_PROMPT_VERSION is unset" do
+  test "prompt_version defaults to v7 when WEEKLY_BRIEFING_PROMPT_VERSION is unset" do
     ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
     briefing = build_service.call
 
-    assert_equal "v6", briefing.prompt_version
+    assert_equal "v7", briefing.prompt_version
+  end
+
+  test "v7 prompt appends rules 21-23 (new customers / membership transitions / line-level product revenue); v6 does not" do
+    ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
+    service = build_service
+    service.call
+    assert_includes service.sent_prompt, "21. new_and_returning_customers 必須「新客」與「舊客」各自至少一條"
+    assert_includes service.sent_prompt, "23. 商品營收一律用 product_repurchase 的品項拆分口徑"
+
+    ENV["WEEKLY_BRIEFING_PROMPT_VERSION"] = "v6"
+    v6 = build_service
+    v6.call
+    assert_not_includes v6.sent_prompt, "21. new_and_returning_customers 必須"
+  ensure
+    ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
+  end
+
+  test "page-only customer name lists are never sent to the AI prompt" do
+    ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
+    ShoplineCustomer.create!(email: "secret_down@example.com", membership_level: "白卡", full_name: "不該外送的姓名")
+    import_run = ImportRun.create!(kind: "paid_orders_workbook", file_name: "x.csv", file_checksum: SecureRandom.hex(8))
+    MembershipLevelChange.create!(import_run: import_run, shopline_id: "sx", email: "secret_down@example.com", full_name: "不該外送的姓名",
+                                   from_level: "銀卡", to_level: "白卡", direction: "downgrade",
+                                   changed_at: @week_start.to_time + 1.day)
+    service = build_service
+    briefing = service.call
+
+    assert_not_includes service.sent_prompt, "不該外送的姓名"
+    assert_not_includes service.sent_prompt, "secret_down@example.com"
+    assert_not_includes service.sent_prompt, WeeklyMetricsService::PAGE_ONLY_KEY
+    assert_includes briefing.metrics.to_json, "不該外送的姓名" # 頁面仍然拿得到
   end
 
   test "v6 prompt includes the four business-area signals and headline as read-only AI context" do
@@ -329,11 +360,11 @@ class WeeklyBriefingServiceTest < ActiveSupport::TestCase
     ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
   end
 
-  test "an unsupported WEEKLY_BRIEFING_PROMPT_VERSION value silently falls back to v6, not a typo'd dead branch" do
+  test "an unsupported WEEKLY_BRIEFING_PROMPT_VERSION value silently falls back to the default (v7), not a typo'd dead branch" do
     ENV["WEEKLY_BRIEFING_PROMPT_VERSION"] = "v99_typo"
     briefing = build_service.call
 
-    assert_equal "v6", briefing.prompt_version
+    assert_equal "v7", briefing.prompt_version
   ensure
     ENV.delete("WEEKLY_BRIEFING_PROMPT_VERSION")
   end

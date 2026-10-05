@@ -42,10 +42,22 @@ require "net/http"
 class WeeklyBriefingService
   CLAUDE_API_URL  = "https://api.anthropic.com/v1/messages"
   MODEL           = "claude-opus-4-8"
-  SUPPORTED_PROMPT_VERSIONS = %w[v5 v6].freeze
-  DEFAULT_PROMPT_VERSION    = "v6"
+  SUPPORTED_PROMPT_VERSIONS = %w[v5 v6 v7].freeze
+  DEFAULT_PROMPT_VERSION    = "v7"
   MAX_TOKENS      = 16_000
   RAW_RESPONSE_DEBUG_LENGTH = 4000 # invalid_response 時存這麼多原始回應供除錯，不整段存避免meta過大
+
+  # 2026-10-05（PROMPT_VERSION v7）：使用者看 9/28 週報後反映三個問題——
+  # 會員降級只有總數、沒有卡別進出無法決策；商品營收用「含該商品的整張訂單」
+  # 高估集中度；新舊客段落只寫舊客、漏掉新客暴增。數據端已補 transitions／
+  # net_by_level／高價值降級、品項拆分營收、new_customer_entry_products，
+  # 這裡追加對應的寫作規則（接在 v6 規則後面）。客人姓名名單只在頁面顯示，
+  # 不送進 prompt（見 WeeklyMetricsService::PAGE_ONLY_KEY）。
+  V7_EXTRA_RULES = <<~RULES
+    21. new_and_returning_customers 必須「新客」與「舊客」各自至少一條，不能只寫其中一邊。新客那條要交代：新客人數跟近4週平均／去年同週比較、新客營收、新客客單價，以及 new_vs_returning.new_customer_entry_products 裡新客主要從哪幾個商品進來（人數與占新客比例）；如果新客客單價明顯低於舊客且新客占比上升，要說明它對整體客單價的拉低效果。
+    22. membership_health 必須引用 membership.changes.net_by_level 指出淨流失最多的卡別（含轉入／轉出人數），並引用 transitions 說明主要是哪一種升降路徑；要另外寫一條高價值降級（high_value_downgrade_count 人、近一年消費合計 high_value_downgrade_spend_365d_total 元，門檻 high_value_downgrade_threshold_365d 元），提醒頁面下方已列出名單可以直接一對一聯繫。升降級人數要跟 trailing4_weekly_avg_upgrade_count／trailing4_weekly_avg_downgrade_count 比較，降級多於升級若跟近4週常態一致，不可寫成新的惡化。
+    23. 商品營收一律用 product_repurchase 的品項拆分口徑（見 revenue_basis_note），不可以把含有某商品的整張訂單金額當成該商品營收；談單一商品集中度時，要同時交代「其他商品本週營收合計」跟近幾週比較是否下滑，才能判斷是否排擠其他商品。
+  RULES
 
   def self.call(week_start: Date.current)
     new(week_start).call
@@ -154,10 +166,10 @@ class WeeklyBriefingService
     # 出所有數字，跟手動登記的核心指標合併成同一份允許值清單，見
     # weekly_ai_context_value_index.rb 開頭註解（「二、降低AI fact-check誤判」）。
     ai_input_context = {
-      "metrics" => metrics, "status" => status,
+      "metrics" => WeeklyMetricsService.ai_visible(metrics), "status" => status,
       "risk_flags" => labeled_risk_flags(risk_flags), "business_signals" => business_signals, "headline" => headline
     }
-    metric_registry = WeeklyMetricRegistry.call(metrics).merge(WeeklyAiContextValueIndex.call(ai_input_context))
+    metric_registry = WeeklyMetricRegistry.call(WeeklyMetricsService.ai_visible(metrics)).merge(WeeklyAiContextValueIndex.call(ai_input_context))
     quality_check = WeeklyBriefingQualityChecker.call(
       ai_report: ai_report, metrics: metrics, risk_flags: risk_flags,
       business_signals: business_signals, metric_registry: metric_registry,
@@ -264,7 +276,10 @@ class WeeklyBriefingService
   end
 
   def build_prompt(metrics, risk_flags, status, business_signals, headline)
-    prompt_version == "v5" ? build_prompt_v5(metrics, risk_flags, status) : build_prompt_v6(metrics, risk_flags, status, business_signals, headline)
+    return build_prompt_v5(metrics, risk_flags, status) if prompt_version == "v5"
+
+    prompt = build_prompt_v6(metrics, risk_flags, status, business_signals, headline)
+    prompt_version == "v7" ? "#{prompt}#{V7_EXTRA_RULES}" : prompt
   end
 
   def labeled_risk_flags(risk_flags)
@@ -326,7 +341,7 @@ class WeeklyBriefingService
 
       ＝＝ 本週（#{metrics["period"]["week_start"]} ~ #{metrics["period"]["week_end"]}）結構化數據 ＝＝
       程式已經算好所有數字，你不需要、也不可以自己重新計算或推翻裡面任何一個數字：
-      #{metrics.to_json}
+      #{WeeklyMetricsService.ai_visible(metrics).to_json}
 
       ＝＝ 本週整體狀態（用固定規則算出，不是你判斷的）＝＝
       #{status.to_json}
@@ -428,7 +443,7 @@ class WeeklyBriefingService
 
       ＝＝ 本週（#{metrics["period"]["week_start"]} ~ #{metrics["period"]["week_end"]}）結構化數據 ＝＝
       程式已經算好所有數字，你不需要、也不可以自己重新計算或推翻裡面任何一個數字：
-      #{metrics.to_json}
+      #{WeeklyMetricsService.ai_visible(metrics).to_json}
 
       ＝＝ 本週整體狀態（用固定規則算出，不是你判斷的）＝＝
       #{status.to_json}

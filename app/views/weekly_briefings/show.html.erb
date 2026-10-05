@@ -443,6 +443,22 @@
             </tbody>
           </table>
         </div>
+        <% entry = Array(nvr["new_customer_entry_products"]) %>
+        <% if entry.any? %>
+          <div class="p-3 border-top">
+            <div class="text-muted small mb-1">本週新客從哪個商品進來（同單買兩個商品會各算一次）</div>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead class="thead-light"><tr><th>商品</th><th>新客人數</th><th>占本週新客</th><th>新客品項營收</th></tr></thead>
+                <tbody>
+                  <% entry.each do |e| %>
+                    <tr><td><%= e["label"] %></td><td><%= e["new_customers"] %></td><td><%= wb_pct(e["share_of_new_customers_pct"]) %></td><td><%= wb_money(e["new_revenue"]) %></td></tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% end %>
         <div class="p-3 border-top">
           <div class="text-muted small mb-1">新客回購率（成熟cohort，只計入已完整走完觀察窗的首購週）</div>
           <div class="table-responsive">
@@ -546,6 +562,63 @@
           <div>卡別營收加總校驗：未分類營收 <%= wb_money(mem.dig("reconciliation","unclassified_revenue")) %>（<%= wb_pct(mem.dig("reconciliation","unclassified_pct")) %>）
             <%= mem.dig("reconciliation","note") %></div>
         </div>
+        <% net = mem.dig("changes", "net_by_level") %>
+        <% if net.present? %>
+          <div class="p-3 border-top">
+            <div class="text-muted small mb-1">本週各卡別進出（升級＋降級都算）</div>
+            <div class="table-responsive">
+              <table class="table table-sm mb-2">
+                <thead class="thead-light"><tr><th>卡別</th><th>轉入</th><th>轉出</th><th>淨變化</th></tr></thead>
+                <tbody>
+                  <% net.each do |level, f| %>
+                    <tr>
+                      <td><%= level %></td><td><%= f["in"] %></td><td><%= f["out"] %></td>
+                      <td class="<%= f['net'].negative? ? 'text-danger' : (f['net'].positive? ? 'text-success' : '') %>"><strong><%= f["net"].positive? ? "+#{f['net']}" : f["net"] %></strong></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <div class="small">
+              <% Array(mem.dig("changes", "transitions")).each do |t| %>
+                <span class="badge <%= t['direction'] == 'upgrade' ? 'badge-success' : 'badge-danger' %> mr-1 mb-1"><%= t["from_level"] %>→<%= t["to_level"] %> <%= t["count"] %> 人</span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <% lists = m.dig(WeeklyMetricsService::PAGE_ONLY_KEY, "membership_change_customers") %>
+        <% if lists %>
+          <% [["downgrades", "本週降級名單"], ["upgrades", "本週升級名單"]].each do |key, title| %>
+            <% rows = Array(lists[key]) %>
+            <% next if rows.empty? %>
+            <div class="p-3 border-top">
+              <div class="d-flex align-items-center mb-1">
+                <strong class="mr-2"><%= title %>（<%= rows.size %> 人）</strong>
+                <% if key == "downgrades" %>
+                  <span class="small text-muted">依近一年消費排序；<span class="badge badge-warning">優先挽回</span>＝近一年消費 ≥ <%= wb_money(lists["high_value_threshold_365d"]) %>；「近<%= lists["active_window_days"] %>天有買」代表還在買、只是年度門檻到期</span>
+                <% end %>
+              </div>
+              <div class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                <table class="table table-sm table-hover mb-0">
+                  <thead class="thead-light"><tr><th>客人</th><th>Email</th><th>卡別變化</th><th>近一年消費</th><th>最後下單</th><th>近<%= lists["active_window_days"] %>天有買</th><th>偵測日</th></tr></thead>
+                  <tbody>
+                    <% rows.each do |r| %>
+                      <tr class="<%= 'table-warning' if r['high_value'] %>">
+                        <td><%= r["name"].presence || "（無姓名）" %><% if r["high_value"] %> <span class="badge badge-warning">優先挽回</span><% end %></td>
+                        <td class="small"><%= r["email"] %></td>
+                        <td class="text-nowrap"><%= r["from_level"] %>→<%= r["to_level"] %></td>
+                        <td><%= wb_money(r["spend_365d"]) %></td>
+                        <td class="small"><%= r["last_order_date"] || "—" %></td>
+                        <td><%= r["active_recently"] ? "是" : "否" %></td>
+                        <td class="small"><%= r["changed_on"] %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          <% end %>
+        <% end %>
       </div>
     </div>
   <% end %>
@@ -568,7 +641,7 @@
           <table class="table table-sm table-hover mb-0">
             <thead class="thead-light">
               <tr>
-                <th>產品</th><th>庫存</th><th>預計到貨日</th><th>本週買家</th><th>本週回購人數</th>
+                <th>產品</th><th>庫存</th><th>預計到貨日</th><th>本週營收</th><th>本週買家（新客）</th><th>本週回購人數</th>
                 <th>A/B/C/沉睡</th><th>今日待聯絡</th><th>即將用完</th><th>歷史回購率</th><th>建議行動</th>
               </tr>
             </thead>
@@ -583,7 +656,8 @@
                     <% if stockout %><br><span class="badge badge-danger" title="<%= Array(stockout.dig('evidence','reasons')).join('；') %>">缺貨風險</span><% end %>
                   </td>
                   <td class="small"><%= p["expected_restock_date"] || "未定" %></td>
-                  <td><%= p.dig("this_week","total_customers") %></td>
+                  <td><%= wb_money(p.dig("this_week","total_revenue")) %></td>
+                  <td><%= p.dig("this_week","total_customers") %><% if p.dig("this_week","new_customers").to_i.positive? %>（<%= p.dig("this_week","new_customers") %>）<% end %></td>
                   <td><%= wb_num(p["repurchased_this_week"]) %></td>
                   <td class="small text-nowrap">
                     A<%= tiers["a_tier_count"] %>／B<%= tiers["b_tier_count"] %>／C<%= tiers["c_tier_count"] %>／沉睡<%= tiers["dormant_tier_count"] %>
@@ -609,6 +683,7 @@
             </tbody>
           </table>
         </div>
+        <% if pr["revenue_basis_note"] %><div class="px-3 py-2 small text-muted border-top">本週營收：<%= pr["revenue_basis_note"] %></div><% end %>
       </div>
     </div>
   <% end %>

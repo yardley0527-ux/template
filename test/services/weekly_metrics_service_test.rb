@@ -108,6 +108,49 @@ class WeeklyMetricsServiceTest < ActiveSupport::TestCase
     assert_equal 1, mem.dig("changes", "downgrade_count")
   end
 
+  test "membership changes include per-level in/out/net, transitions, and a named page-only customer list flagging high-value downgrades" do
+    import_run = ImportRun.create!(kind: "paid_orders_workbook", file_name: "x.csv", file_checksum: SecureRandom.hex(8))
+    ShoplineCustomer.create!(email: "vip_down@example.com", membership_level: "白卡", full_name: "王大明")
+    make_order(email: "vip_down@example.com", order_date: @period.week_start - 30.days, amount: 60_000)
+    make_order(email: "small_down@example.com", order_date: @period.week_start - 300.days, amount: 3_000)
+    [["vip_down@example.com", "金卡", "白卡", "downgrade", nil], ["small_down@example.com", "白卡", "一般會員", "downgrade", "小李"],
+     ["up@example.com", "一般會員", "白卡", "upgrade", "小陳"]].each_with_index do |(email, from, to, dir, name), i|
+      MembershipLevelChange.create!(import_run: import_run, shopline_id: "m#{i}", email: email, full_name: name,
+                                     from_level: from, to_level: to, direction: dir, changed_at: @period.week_start.to_time + 1.day)
+    end
+
+    metrics = WeeklyMetricsService.call(week_start: @week_start)
+    changes = metrics.dig("membership", "changes")
+
+    assert_equal({ "in" => 2, "out" => 1, "net" => 1 }, changes.dig("net_by_level", "白卡"))
+    assert_equal(-1, changes.dig("net_by_level", "金卡", "net"))
+    assert_equal 3, changes["transitions"].sum { |t| t["count"] }
+    assert_equal 1, changes["high_value_downgrade_count"]
+
+    downs = metrics.dig(WeeklyMetricsService::PAGE_ONLY_KEY, "membership_change_customers", "downgrades")
+    assert_equal %w[王大明 小李], downs.map { |r| r["name"] } # 名字缺漏時用 shopline_customers 補；依近一年消費排序
+    assert downs.first["high_value"]
+    assert_not downs.second["high_value"]
+    assert_not WeeklyMetricsService.ai_visible(metrics).key?(WeeklyMetricsService::PAGE_ONLY_KEY)
+  end
+
+  test "product revenue is allocated per line item, not the whole order that contains the product" do
+    key = "wbline_#{SecureRandom.hex(4)}"
+    CrmProduct.create!(key: key, label: "拆分測試品", status: "confirmed", sql_pattern: "product_name LIKE '%拆分測試品%'")
+    make_summary(email: "mix@example.com", first_date: @period.week_start - 100.days)
+    # 同一張單：拆分測試品 標價1000×2 + 其他商品 標價2000×1，整單折扣後實付3600（9折）
+    order_date = @period.week_start + 1.day
+    ShoplineOrder.create!(order_number: "MIX1", email: "mix@example.com", product_name: "拆分測試品1", order_date: order_date,
+                          payment_status: "已付款", quantity: 2, checkout_amount: 1000, total_amount: 3600)
+    ShoplineOrder.create!(order_number: "MIX1", email: "mix@example.com", product_name: "別的商品1", order_date: order_date,
+                          payment_status: "已付款", quantity: 1, checkout_amount: 2000, total_amount: nil)
+
+    product = WeeklyMetricsService.call(week_start: @week_start)["product_repurchase"]["products"].find { |p| p["product_key"] == key }
+
+    assert_in_delta 1800.0, product.dig("this_week", "total_revenue"), 0.01 # 2000×0.9，不是整單3600
+    assert_equal 1, product.dig("this_week", "total_customers")
+  end
+
   test "product repurchase overdue counts reuse CrmCustomerProductCycle and compute week-over-week growth" do
     key = "wbtest_#{SecureRandom.hex(4)}"
     CrmProduct.create!(key: key, label: "週報測試品", status: "confirmed",
