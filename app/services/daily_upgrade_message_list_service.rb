@@ -31,7 +31,7 @@ class DailyUpgradeMessageListService
         source_note: "由會員報表匯入（import_run##{import_run.id}）自動記錄升級為#{level}的會員",
         source: "daily_snapshot"
       )
-      created << list.name
+      created << list.name if list # 全被黑名單排除時不建名單
     end
 
     { created: created }

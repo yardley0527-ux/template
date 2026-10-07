@@ -12,10 +12,25 @@
 #     emails: [...],
 #     segments: { "a@x.com" => "回購鐵粉" }   # 選填：email → 分類標籤
 #   )
+#
+# 黑名單客人（customer_profiles.brand_ambassador_blacklisted 或 blacklisted）一律
+# 排除，不管是手動灌的還是每日自動快照。同一人常用好幾個 email 下單，所以也用
+# IG 帳號把黑名單展開到同一人的其他 email。被排除的人數／姓名會補記在
+# source_note，日後查得到；排除後一個人都不剩就不建名單，回傳 nil。
 class MessageListBuilder
   def self.create!(name:, sent_on:, target_product:, emails:, source_note: nil, segments: {}, source: "manual", with_line_id: false)
     normalized = emails.filter_map { |e| e.to_s.strip.downcase.presence }.uniq
     raise ArgumentError, "emails 不可為空" if normalized.empty?
+
+    blacklisted = blacklisted_emails
+    excluded = normalized & blacklisted.keys
+    normalized -= excluded
+    return nil if normalized.empty?
+
+    if excluded.any?
+      names = excluded.map { |e| blacklisted[e].presence || e }.uniq
+      source_note = [source_note.presence, "已排除黑名單 #{excluded.size} 人（#{names.join('、')}）"].compact.join("\n")
+    end
 
     customers = customer_snapshots(normalized)
     igs       = latest_ig_by_email(normalized)
@@ -44,6 +59,30 @@ class MessageListBuilder
       list
     end
   end
+
+  # email → 姓名。黑名單本人的 email，加上跟黑名單同 IG 的其他帳號。
+  def self.blacklisted_emails
+    flagged = ShoplineCustomer.joins(:customer_profile)
+                              .where("customer_profiles.brand_ambassador_blacklisted OR customer_profiles.blacklisted")
+                              .pluck(:email, :instagram_account, :full_name)
+    igs = flagged.filter_map { |_, ig, _| normalize_ig(ig) }.uniq
+
+    rows = flagged.map { |email, _, name| [email, name] }
+    if igs.any?
+      rows += ShoplineCustomer.where("LOWER(TRIM(instagram_account)) IN (?)", igs).pluck(:email, :full_name)
+    end
+    rows.each_with_object({}) do |(email, name), h|
+      key = email.to_s.strip.downcase
+      h[key] ||= name if key.present?
+    end
+  end
+  private_class_method :blacklisted_emails
+
+  def self.normalize_ig(ig)
+    v = ig.to_s.strip.downcase.delete_prefix("@")
+    v.presence unless %w[無 - none].include?(v)
+  end
+  private_class_method :normalize_ig
 
   def self.customer_snapshots(emails)
     ShoplineCustomer
