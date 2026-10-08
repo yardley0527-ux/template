@@ -18,6 +18,13 @@
   </div>
 </div>
 
+<% if script["props"].present? %>
+  <div class="mb-3">
+    <div class="text-muted small mb-1"><i class="fal fa-box-open mr-1"></i>場景／道具</div>
+    <div><%= video_topic_text(script["props"]) %></div>
+  </div>
+<% end %>
+
 <% if script["alt_titles"].present? %>
   <div class="mb-3">
     <div class="text-muted small mb-1">同系列可延伸的短影音題目</div>
@@ -64,9 +71,9 @@
       <thead class="thead-light">
         <tr>
           <th class="text-nowrap" style="width:90px;">分鏡／時間</th>
-          <th>鏡頭與動作</th>
-          <th>講解方向</th>
-          <th>圖片／字幕建議</th>
+          <% (local_assigns[:headers].presence || VideoTopicsHelper::DEFAULT_SHOT_HEADERS).each do |h| %>
+            <th><%= h %></th>
+          <% end %>
         </tr>
       </thead>
       <tbody>
@@ -132,3 +139,7 @@
     </div>
   <% end %>
 </div>
+
+<% if script["reference"].present? %>
+  <div class="text-muted small mt-2"><i class="fal fa-link mr-1"></i>參考資料：<%= script["reference"] %></div>
+<% end %>

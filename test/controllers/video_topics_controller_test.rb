@@ -50,6 +50,23 @@ class VideoTopicsControllerTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "看到97%，妳知道它指的是什麼嗎？"
     assert_includes @response.body, 'href="#topic-3-0"'
   end
+
+  test "shows 維生素D鈣K storyboards with host lines and placeholders" do
+    get video_topics_path(product: "vitamin_dk_calcium")
+    assert_response :success
+    assert_equal 19, @response.body.scan('class="tab-pane').size
+    assert_includes @response.body, "<th>主持人口白</th>"
+    assert_includes @response.body, "場景／道具"
+    assert_includes @response.body, "參考資料：NIAMS"
+    assert_includes @response.body, '<span class="text-danger fw-500">【待填】</span>'
+    assert_includes @response.body, "這瓶維DK鈣，怎麼讀懂它的配方？"
+  end
+
+  test "全能 keeps the default storyboard headers" do
+    get video_topics_path
+    assert_includes @response.body, "<th>講解方向</th>"
+    assert_not_includes @response.body, "<th>主持人口白</th>"
+  end
   test "sidebar lists the page under 產品 & 策略" do
     group = SidebarEntry.all.find { |g| g[:group_title] == "產品 & 策略" }
     assert_includes group[:children].map { |c| [c[:title], c[:href]] }, ["產品拍片主題", video_topics_path]

@@ -72,7 +72,7 @@
           <% if direction["intro"].present? %>
             <p class="text-muted mb-3"><%= video_topic_text(direction["intro"]) %></p>
           <% end %>
-          <%= render "script_tabs", scripts: scripts, prefix: "topic-#{i}" %>
+          <%= render "script_tabs", scripts: scripts, prefix: "topic-#{i}", headers: @product["shot_headers"] %>
         </div>
       </div>
     </div>
@@ -86,7 +86,7 @@
       </div>
       <div class="panel-container show">
         <div class="panel-content">
-          <%= render "script_tabs", scripts: @product["knowledge_topics"], prefix: "knowledge" %>
+          <%= render "script_tabs", scripts: @product["knowledge_topics"], prefix: "knowledge", headers: @product["shot_headers"] %>
         </div>
       </div>
     </div>
