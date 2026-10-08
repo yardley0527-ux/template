@@ -54,6 +54,7 @@ Rails.application.routes.draw do
   end
   get '/livestream_overview', to: 'livestream_overview#index', as: :livestream_overview
   get '/livestream_reports', to: 'livestream_reports#index', as: :livestream_reports
+  get '/video_topics', to: 'video_topics#index', as: :video_topics
 
   get  '/weekly_briefings',                          to: 'weekly_briefings#index',      as: :weekly_briefings
   get  '/weekly_briefings/in_progress',               to: 'weekly_briefings#in_progress', as: :in_progress_weekly_briefing
