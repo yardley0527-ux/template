@@ -6,6 +6,9 @@
     <% end %>
   </div>
   <div class="mt-1">
+    <% if script["first_batch"] %>
+      <span class="badge badge-danger"><i class="fal fa-star mr-1"></i>第一批先拍</span>
+    <% end %>
     <% if script["format"].present? %>
       <span class="badge badge-primary"><i class="fal fa-camera mr-1"></i>拍法：<%= script["format"] %></span>
     <% end %>
@@ -14,6 +17,17 @@
     <% end %>
   </div>
 </div>
+
+<% if script["alt_titles"].present? %>
+  <div class="mb-3">
+    <div class="text-muted small mb-1">同系列可延伸的短影音題目</div>
+    <ul class="mb-0 pl-3">
+      <% script["alt_titles"].each do |t| %>
+        <li><%= video_topic_text(t) %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
 
 <% if script["questions"].present? %>
   <div class="mb-3">

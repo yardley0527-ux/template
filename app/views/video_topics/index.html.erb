@@ -48,6 +48,18 @@
     <% end %>
   </div>
 
+  <% first_batch = directions.each_with_index.flat_map { |d, i| d["scripts"].to_a.each_with_index.select { |sc, _| sc["first_batch"] }.map { |sc, j| [sc, "topic-#{i}-#{j}"] } } %>
+  <% if first_batch.any? %>
+    <div class="alert alert-danger mb-3">
+      <div class="fw-500 mb-2"><i class="fal fa-star mr-1"></i>第一批建議先拍（<%= first_batch.size %> 支）</div>
+      <ol class="mb-0 pl-3">
+        <% first_batch.each do |sc, anchor| %>
+          <li><a href="#<%= anchor %>" class="text-danger"><%= sc["title"] %></a></li>
+        <% end %>
+      </ol>
+    </div>
+  <% end %>
+
   <% directions.each_with_index do |direction, i| %>
     <% scripts = direction["scripts"].to_a %>
     <div class="panel" id="topic-<%= i %>">
@@ -57,6 +69,9 @@
       </div>
       <div class="panel-container show">
         <div class="panel-content">
+          <% if direction["intro"].present? %>
+            <p class="text-muted mb-3"><%= video_topic_text(direction["intro"]) %></p>
+          <% end %>
           <%= render "script_tabs", scripts: scripts, prefix: "topic-#{i}" %>
         </div>
       </div>

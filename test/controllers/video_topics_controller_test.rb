@@ -39,6 +39,17 @@ class VideoTopicsControllerTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "好睡方向"
   end
 
+
+  test "shows 蝦紅素 categories with storyboards and first-batch list" do
+    get video_topics_path(product: "astaxanthin")
+    assert_response :success
+    assert_equal 29, @response.body.scan('class="tab-pane').size
+    assert_includes @response.body, "第一批建議先拍（8 支）"
+    assert_includes @response.body, "上班族｜螢幕接力"
+    assert_includes @response.body, "同系列可延伸的短影音題目"
+    assert_includes @response.body, "看到97%，妳知道它指的是什麼嗎？"
+    assert_includes @response.body, 'href="#topic-3-0"'
+  end
   test "sidebar lists the page under 產品 & 策略" do
     group = SidebarEntry.all.find { |g| g[:group_title] == "產品 & 策略" }
     assert_includes group[:children].map { |c| [c[:title], c[:href]] }, ["產品拍片主題", video_topics_path]

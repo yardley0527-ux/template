@@ -4,7 +4,8 @@
     <li class="nav-item">
       <a class="nav-link <%= 'active' if j.zero? %>" data-toggle="tab" role="tab"
          href="#<%= prefix %>-<%= j %>" style="max-width:340px; white-space:normal;">
-        <strong><%= video_topic_number(j) %></strong> <%= script["title"] %>
+        <strong><%= video_topic_number(j) %></strong> <%= script["tab"].presence || script["title"] %>
+        <% if script["first_batch"] %><span class="badge badge-danger ml-1">先拍</span><% end %>
       </a>
     </li>
   <% end %>
