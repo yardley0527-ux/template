@@ -18,6 +18,10 @@ class VideoTopicsControllerTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "孕婦可以吃方向"
     assert_not_includes @response.body, "給拍攝團隊的共用安排"
     assert_includes @response.body, "<strong>「B7＝生物素」</strong>"
+    assert_includes @response.body, "想留長髮，看到「生物素」就直接下單？"
+    assert_equal 4, @response.body.scan("✓ 目前分鏡").size
+    assert_includes @response.body, "知識型主題"
+    assert_includes @response.body, "最近很紅的鎂到底是什麼？"
   end
 
   test "unknown product falls back to the first product" do
