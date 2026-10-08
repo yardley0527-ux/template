@@ -151,9 +151,6 @@ end %>
 </div>
 
 <% if @stats[:repurchased].positive? %>
-  <% content_for :head_block do %>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <% end %>
   <% content_for :scripts_block do %>
     <script>
       (function () {

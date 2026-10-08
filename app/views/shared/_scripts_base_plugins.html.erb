@@ -1,3 +1,7 @@
 <%=javascript_include_tag 'smartadmin/app.bundle' %>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<%# 全站唯一一份 Chart.js（webpack pack 跟各頁面 head_block 不要再各自載一份）。
+    data-turbolinks-eval="false"：只在整頁載入時執行一次，Turbolinks 換頁時不重新
+    解析這 200KB——window.Chart 是全域的，換頁後仍然在。必須留在 body 底部、
+    scripts_block 之前，因為各頁 scripts_block 會直接同步呼叫 new Chart。 %>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" data-turbolinks-eval="false"></script>

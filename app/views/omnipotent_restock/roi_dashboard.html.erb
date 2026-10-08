@@ -1,10 +1,6 @@
 <%# app/views/omnipotent_restock/roi_dashboard.html.erb %>
 <% content_for :page_title, "CRM ROI Dashboard" %>
 
-<% content_for :head_block do %>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<% end %>
-
 <% switcher_links = @all_products.map { |p| { product: p, href: crm_roi_path(product: p[:key]) } } %>
 <%= render 'shared/product_switcher', links: switcher_links %>
 

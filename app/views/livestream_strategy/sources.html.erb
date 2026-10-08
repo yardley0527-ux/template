@@ -1,10 +1,6 @@
 <%# app/views/livestream_strategy/sources.html.erb %>
 <% content_for :page_title, "直播來源分析" %>
 
-<% content_for :head_block do %>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<% end %>
-
 <%= render "tabs" %>
 
 <% switcher_links = @all_products.map { |p| { product: p, href: livestream_strategy_sources_path(product: p[:key]) } } %>
