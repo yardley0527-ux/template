@@ -39,11 +39,6 @@
         <%= video_topic_number(i) %> <%= topic["direction"] %>
       </a>
     <% end %>
-    <% if @product["crew_guide"].present? %>
-      <a href="#crew-guide" class="btn btn-sm btn-outline-secondary mr-2 mb-2">
-        <i class="fal fa-users mr-1"></i>拍攝團隊共用安排
-      </a>
-    <% end %>
   </div>
 
   <% topics.each_with_index do |topic, i| %>
@@ -133,38 +128,4 @@
     </div>
   <% end %>
 
-  <% if @product["crew_guide"].present? || @product["closing_note"].present? %>
-    <div class="panel" id="crew-guide">
-      <div class="panel-hdr">
-        <h2><i class="fal fa-users mr-2"></i>給拍攝團隊的共用安排</h2>
-      </div>
-      <div class="panel-container show">
-        <div class="panel-content">
-          <% if @product["crew_guide"].present? %>
-            <div class="table-responsive mb-3">
-              <table class="table table-bordered table-sm mb-0">
-                <thead class="thead-light">
-                  <tr>
-                    <th style="width:140px;">項目</th>
-                    <th>建議</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% @product["crew_guide"].each do |row| %>
-                    <tr>
-                      <td class="text-nowrap fw-500"><%= row["item"] %></td>
-                      <td><%= video_topic_text(row["advice"]) %></td>
-                    </tr>
-                  <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% end %>
-          <% if @product["closing_note"].present? %>
-            <div class="alert alert-secondary mb-0"><%= video_topic_text(@product["closing_note"]) %></div>
-          <% end %>
-        </div>
-      </div>
-    </div>
-  <% end %>
 <% end %>

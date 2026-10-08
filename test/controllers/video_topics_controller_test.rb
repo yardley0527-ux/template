@@ -11,12 +11,12 @@ class VideoTopicsControllerTest < ActionDispatch::IntegrationTest
     sign_in @admin
   end
 
-  test "shows the 全能 video topics with storyboard and crew guide" do
+  test "shows the 全能 video topics with storyboard" do
     get video_topics_path
     assert_response :success
     assert_includes @response.body, "護髮買了很多，卻常常忙到隨便吃一餐？"
     assert_includes @response.body, "孕婦可以吃方向"
-    assert_includes @response.body, "給拍攝團隊的共用安排"
+    assert_not_includes @response.body, "給拍攝團隊的共用安排"
     assert_includes @response.body, "<strong>「B7＝生物素」</strong>"
   end
 
