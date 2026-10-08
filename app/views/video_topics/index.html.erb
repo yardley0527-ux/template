@@ -7,7 +7,7 @@
 </div>
 
 <p class="text-muted small mb-3">
-  每個產品的影片方向、分鏡、照片準備與拍攝注意事項。這份內容目前是手動維護，新增產品時要請 Claude 加進 <code>config/video_topics.yml</code>。
+  每個產品的影片方向，每個方向有幾個主題，點主題頁籤可切換看各自的分鏡、照片準備與拍攝重點。這份內容目前是手動維護，新增產品時要請 Claude 加進 <code>config/video_topics.yml</code>。
 </p>
 
 <% if @product.blank? %>
@@ -18,6 +18,8 @@
     </div>
   </div>
 <% else %>
+  <% directions = @product["directions"].to_a %>
+
   <ul class="nav nav-pills mb-3">
     <% @products.each do |product| %>
       <li class="nav-item">
@@ -25,18 +27,17 @@
               class: "nav-link #{'active' if product["key"] == @product["key"]}" do %>
           <%= product["name"] %>
           <% if product["label"].present? %><span class="small opacity-75">（<%= product["label"] %>）</span><% end %>
-          <span class="badge badge-light ml-1"><%= product["topics"].to_a.size %></span>
+          <span class="badge badge-light ml-1"><%= product["directions"].to_a.sum { |d| d["scripts"].to_a.size } %></span>
         <% end %>
       </li>
     <% end %>
   </ul>
 
-  <% topics = @product["topics"].to_a %>
-
   <div class="d-flex flex-wrap mb-3">
-    <% topics.each_with_index do |topic, i| %>
+    <% directions.each_with_index do |direction, i| %>
       <a href="#topic-<%= i %>" class="btn btn-sm btn-outline-secondary mr-2 mb-2">
-        <%= video_topic_number(i) %> <%= topic["direction"] %>
+        <%= video_topic_number(i) %> <%= direction["name"] %>
+        <span class="badge badge-light ml-1"><%= direction["scripts"].to_a.size %></span>
       </a>
     <% end %>
     <% if @product["knowledge_topics"].present? %>
@@ -46,111 +47,112 @@
     <% end %>
   </div>
 
-  <% topics.each_with_index do |topic, i| %>
+  <% directions.each_with_index do |direction, i| %>
+    <% scripts = direction["scripts"].to_a %>
     <div class="panel" id="topic-<%= i %>">
       <div class="panel-hdr">
-        <h2>
-          <%= video_topic_number(i) %>&nbsp;<%= topic["direction"] %>
-        </h2>
-        <% if topic["duration"].present? %>
-          <span class="badge badge-info mr-3"><i class="fal fa-clock mr-1"></i>建議片長 <%= topic["duration"] %></span>
-        <% end %>
+        <h2><%= video_topic_number(i) %>&nbsp;<%= direction["name"] %></h2>
+        <span class="text-muted small mr-3"><%= scripts.size %> 個主題</span>
       </div>
       <div class="panel-container show">
         <div class="panel-content">
-          <div class="mb-3">
-            <div class="text-muted small mb-1">主題</div>
-            <div class="fs-lg fw-500"><%= video_topic_text(topic["title"]) %></div>
-            <% if topic["subtitle"].present? %>
-              <div class="text-muted mt-1">副標：<%= video_topic_text(topic["subtitle"]) %></div>
+          <ul class="nav nav-tabs" role="tablist">
+            <% scripts.each_with_index do |script, j| %>
+              <li class="nav-item">
+                <a class="nav-link <%= 'active' if j.zero? %>" data-toggle="tab" role="tab"
+                   href="#topic-<%= i %>-<%= j %>" style="max-width:340px; white-space:normal;">
+                  <strong><%= video_topic_number(j) %></strong> <%= script["title"] %>
+                </a>
+              </li>
             <% end %>
-          </div>
+          </ul>
 
-          <% if topic["candidates"].present? %>
-            <div class="text-muted small mb-1">候選主題</div>
-            <div class="table-responsive mb-3">
-              <table class="table table-bordered table-sm mb-0">
-                <thead class="thead-light">
-                  <tr>
-                    <th style="width:120px;"></th>
-                    <th>主題</th>
-                    <th>內容怎麼接下去</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% topic["candidates"].each_with_index do |candidate, c| %>
-                    <tr class="<%= 'table-success' if candidate["current"] %>">
-                      <td class="text-nowrap">
-                        <%= video_topic_number(c) %>
-                        <% if candidate["current"] %><span class="badge badge-success ml-1">✓ 目前分鏡</span><% end %>
-                      </td>
-                      <td class="fw-500"><%= video_topic_text(candidate["title"]) %></td>
-                      <td><%= video_topic_text(candidate["follow_up"]) %></td>
-                    </tr>
+          <div class="tab-content border border-top-0 rounded-bottom p-3">
+            <% scripts.each_with_index do |script, j| %>
+              <div class="tab-pane fade <%= 'show active' if j.zero? %>" id="topic-<%= i %>-<%= j %>" role="tabpanel">
+                <div class="d-flex flex-wrap align-items-start justify-content-between mb-3">
+                  <div class="mr-3">
+                    <div class="fs-lg fw-500"><%= video_topic_text(script["title"]) %></div>
+                    <% if script["subtitle"].present? %>
+                      <div class="text-muted mt-1">副標：<%= video_topic_text(script["subtitle"]) %></div>
+                    <% end %>
+                  </div>
+                  <% if script["duration"].present? %>
+                    <span class="badge badge-info mt-1"><i class="fal fa-clock mr-1"></i>建議片長 <%= script["duration"] %></span>
                   <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% end %>
+                </div>
 
-          <% if topic["approach"].present? %>
-            <div class="mb-3">
-              <div class="text-muted small mb-1">切入方式</div>
-              <div><%= video_topic_text(topic["approach"]) %></div>
-            </div>
-          <% end %>
+                <% if script["follow_up"].present? || script["approach"].present? %>
+                  <div class="row">
+                    <% if script["follow_up"].present? %>
+                      <div class="col-md-5 mb-3">
+                        <div class="text-muted small mb-1">內容怎麼接下去</div>
+                        <div><%= video_topic_text(script["follow_up"]) %></div>
+                      </div>
+                    <% end %>
+                    <% if script["approach"].present? %>
+                      <div class="col-md-7 mb-3">
+                        <div class="text-muted small mb-1">切入方式</div>
+                        <div><%= video_topic_text(script["approach"]) %></div>
+                      </div>
+                    <% end %>
+                  </div>
+                <% end %>
 
-          <% if topic["shots"].present? %>
-            <div class="text-muted small mb-1">分鏡</div>
-            <div class="table-responsive mb-3">
-              <table class="table table-bordered table-sm mb-0">
-                <thead class="thead-light">
-                  <tr>
-                    <th class="text-nowrap" style="width:90px;">分鏡／時間</th>
-                    <th>鏡頭與動作</th>
-                    <th>講解方向</th>
-                    <th>圖片／字幕建議</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <% topic["shots"].each_with_index do |shot, s| %>
-                    <tr>
-                      <td class="text-nowrap"><strong><%= s + 1 %></strong>｜<%= shot["time"] %></td>
-                      <td><%= video_topic_text(shot["camera"]) %></td>
-                      <td><%= video_topic_text(shot["talk"]) %></td>
-                      <td><%= video_topic_text(shot["visual"]) %></td>
-                    </tr>
+                <% if script["shots"].present? %>
+                  <div class="text-muted small mb-1">分鏡</div>
+                  <div class="table-responsive mb-3">
+                    <table class="table table-bordered table-sm mb-0">
+                      <thead class="thead-light">
+                        <tr>
+                          <th class="text-nowrap" style="width:90px;">分鏡／時間</th>
+                          <th>鏡頭與動作</th>
+                          <th>講解方向</th>
+                          <th>圖片／字幕建議</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% script["shots"].each_with_index do |shot, s| %>
+                          <tr>
+                            <td class="text-nowrap"><strong><%= s + 1 %></strong>｜<%= shot["time"] %></td>
+                            <td><%= video_topic_text(shot["camera"]) %></td>
+                            <td><%= video_topic_text(shot["talk"]) %></td>
+                            <td><%= video_topic_text(shot["visual"]) %></td>
+                          </tr>
+                        <% end %>
+                      </tbody>
+                    </table>
+                  </div>
+                <% end %>
+
+                <% script["extra_sections"].to_a.each do |section| %>
+                  <div class="alert alert-info mb-3">
+                    <div class="fw-500 mb-1"><i class="fal fa-flask mr-1"></i><%= section["heading"] %></div>
+                    <% section["paragraphs"].to_a.each do |para| %>
+                      <p class="mb-1"><%= video_topic_text(para) %></p>
+                    <% end %>
+                  </div>
+                <% end %>
+
+                <div class="row">
+                  <% if script["photos"].present? %>
+                    <div class="col-md-6 mb-3 mb-md-0">
+                      <div class="text-muted small mb-1"><i class="fal fa-images mr-1"></i>照片準備</div>
+                      <ul class="mb-0 pl-3">
+                        <% script["photos"].each do |photo| %>
+                          <li><%= video_topic_text(photo) %></li>
+                        <% end %>
+                      </ul>
+                    </div>
                   <% end %>
-                </tbody>
-              </table>
-            </div>
-          <% end %>
-
-          <% topic["extra_sections"].to_a.each do |section| %>
-            <div class="alert alert-info mb-3">
-              <div class="fw-500 mb-1"><i class="fal fa-flask mr-1"></i><%= section["heading"] %></div>
-              <% section["paragraphs"].to_a.each do |para| %>
-                <p class="mb-1"><%= video_topic_text(para) %></p>
-              <% end %>
-            </div>
-          <% end %>
-
-          <div class="row">
-            <% if topic["photos"].present? %>
-              <div class="col-md-6 mb-3">
-                <div class="text-muted small mb-1"><i class="fal fa-images mr-1"></i>照片準備</div>
-                <ul class="mb-0 pl-3">
-                  <% topic["photos"].each do |photo| %>
-                    <li><%= video_topic_text(photo) %></li>
+                  <% if script["notes"].present? %>
+                    <div class="col-md-6">
+                      <div class="alert alert-warning mb-0">
+                        <div class="fw-500 mb-1"><i class="fal fa-exclamation-triangle mr-1"></i>拍攝重點</div>
+                        <%= video_topic_text(script["notes"]) %>
+                      </div>
+                    </div>
                   <% end %>
-                </ul>
-              </div>
-            <% end %>
-            <% if topic["notes"].present? %>
-              <div class="col-md-6 mb-3">
-                <div class="alert alert-warning mb-0">
-                  <div class="fw-500 mb-1"><i class="fal fa-exclamation-triangle mr-1"></i>拍攝重點</div>
-                  <%= video_topic_text(topic["notes"]) %>
                 </div>
               </div>
             <% end %>
@@ -188,4 +190,28 @@
       </div>
     </div>
   <% end %>
+<% end %>
+
+<% content_for :scripts_block do %>
+  <script>
+    (function () {
+      // 網址帶 #topic-1-2 時，直接打開那個主題的頁籤並捲過去
+      function openFromHash() {
+        var m = window.location.hash.match(/^#topic-\d+-\d+$/);
+        if (!m) return;
+        var link = document.querySelector('a[data-toggle="tab"][href="' + m[0] + '"]');
+        if (!link) return;
+        $(link).tab('show');
+        var panel = link.closest('.panel');
+        if (panel) panel.scrollIntoView();
+      }
+      document.addEventListener('turbolinks:load', openFromHash, { once: true });
+      window.addEventListener('hashchange', openFromHash);
+      // 切換頁籤時更新網址，方便把某個主題的連結傳給拍攝的人
+      $(document).off('shown.bs.tab.videoTopics').on('shown.bs.tab.videoTopics', 'a[data-toggle="tab"]', function (e) {
+        var href = e.target.getAttribute('href');
+        if (/^#topic-\d+-\d+$/.test(href)) history.replaceState(history.state, '', href);
+      });
+    })();
+  </script>
 <% end %>
