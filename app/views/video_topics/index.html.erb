@@ -77,9 +77,14 @@
                       <div class="text-muted mt-1">副標：<%= video_topic_text(script["subtitle"]) %></div>
                     <% end %>
                   </div>
-                  <% if script["duration"].present? %>
-                    <span class="badge badge-info mt-1"><i class="fal fa-clock mr-1"></i>建議片長 <%= script["duration"] %></span>
-                  <% end %>
+                  <div class="mt-1">
+                    <% if script["format"].present? %>
+                      <span class="badge badge-primary"><i class="fal fa-camera mr-1"></i>拍法：<%= script["format"] %></span>
+                    <% end %>
+                    <% if script["duration"].present? %>
+                      <span class="badge badge-info"><i class="fal fa-clock mr-1"></i>建議片長 <%= script["duration"] %></span>
+                    <% end %>
+                  </div>
                 </div>
 
                 <% if script["follow_up"].present? || script["approach"].present? %>
@@ -122,6 +127,26 @@
                         <% end %>
                       </tbody>
                     </table>
+                  </div>
+                <% end %>
+
+                <% boosts = [
+                     ["owner_story",   "fa-user",        "老闆經驗切入（有真實經驗再用）"],
+                     ["cta",           "fa-comment-dots", "結尾互動問句"],
+                     ["short_version", "fa-cut",          "15–20 秒短版剪法"],
+                   ].select { |key, _, _| script[key].present? } %>
+                <% if boosts.any? %>
+                  <div class="row">
+                    <% boosts.each do |key, icon, label| %>
+                      <div class="col-md mb-3">
+                        <div class="card h-100 border-success">
+                          <div class="card-body py-2 px-3">
+                            <div class="text-success small fw-500 mb-1"><i class="fal <%= icon %> mr-1"></i><%= label %></div>
+                            <div><%= video_topic_text(script[key]) %></div>
+                          </div>
+                        </div>
+                      </div>
+                    <% end %>
                   </div>
                 <% end %>
 

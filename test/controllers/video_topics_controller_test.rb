@@ -22,6 +22,10 @@ class VideoTopicsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 12, @response.body.scan('class="tab-pane').size
     assert_includes @response.body, "白天靠咖啡撐，晚上又捨不得放下手機？"
     assert_includes @response.body, "把明天交給紙，不交給枕頭"
+    assert_equal 12, @response.body.scan("結尾互動問句").size
+    assert_equal 12, @response.body.scan("15–20 秒短版剪法").size
+    assert_includes @response.body, "拍法：Vlog 快剪「老闆的一天」"
+    assert_includes @response.body, "我今天第四杯了。"
     assert_includes @response.body, "知識型主題"
     assert_includes @response.body, "最近很紅的鎂到底是什麼？"
   end
