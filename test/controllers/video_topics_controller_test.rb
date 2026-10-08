@@ -45,6 +45,8 @@ class VideoTopicsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal 29, @response.body.scan('class="tab-pane').size
     assert_includes @response.body, "第一批建議先拍（8 支）"
+    assert_includes @response.body, "POV：妳是一副隱形眼鏡"
+    assert_includes @response.body, "系列：背標偵探"
     assert_includes @response.body, "上班族｜螢幕接力"
     assert_includes @response.body, "同系列可延伸的短影音題目"
     assert_includes @response.body, "看到97%，妳知道它指的是什麼嗎？"
@@ -54,7 +56,10 @@ class VideoTopicsControllerTest < ActionDispatch::IntegrationTest
   test "shows 維生素D鈣K storyboards with host lines and placeholders" do
     get video_topics_path(product: "vitamin_dk_calcium")
     assert_response :success
-    assert_equal 19, @response.body.scan('class="tab-pane').size
+    assert_equal 27, @response.body.scan('class="tab-pane').size
+    assert_includes @response.body, "FAQ 短片（留言回覆系列）"
+    assert_includes @response.body, "系列：真的假的"
+    assert_includes @response.body, "固定系列"
     assert_includes @response.body, "<th>主持人口白</th>"
     assert_includes @response.body, "場景／道具"
     assert_includes @response.body, "參考資料：NIAMS"

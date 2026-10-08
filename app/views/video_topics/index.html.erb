@@ -49,6 +49,22 @@
   </div>
 
   <% first_batch = directions.each_with_index.flat_map { |d, i| d["scripts"].to_a.each_with_index.select { |sc, _| sc["first_batch"] }.map { |sc, j| [sc, "topic-#{i}-#{j}"] } } %>
+  <% series = Hash.new { |h, k| h[k] = [] } %>
+  <% directions.each_with_index { |d, i| d["scripts"].to_a.each_with_index { |sc, j| series[sc["series"]] << [sc, "topic-#{i}-#{j}"] if sc["series"].present? } } %>
+  <% @product["knowledge_topics"].to_a.each_with_index { |sc, j| series[sc["series"]] << [sc, "knowledge-#{j}"] if sc["series"].present? } %>
+  <% if series.any? %>
+    <div class="alert alert-warning mb-3">
+      <div class="fw-500 mb-2"><i class="fal fa-layer-group mr-1"></i>固定系列（同系列用同樣的開場與名稱，讓觀眾認得、會追）</div>
+      <% series.each do |name, items| %>
+        <div class="mb-1">
+          <span class="badge badge-warning mr-1"><%= name %></span>
+          <span class="text-muted small mr-1"><%= VideoTopicsHelper::SERIES[name] %></span>
+          <% items.each_with_index do |(sc, anchor), n| %><%= "、" if n.positive? %><a href="#<%= anchor %>"><%= sc["tab"].presence || sc["title"] %></a><% end %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
   <% if first_batch.any? %>
     <div class="alert alert-danger mb-3">
       <div class="fw-500 mb-2"><i class="fal fa-star mr-1"></i>第一批建議先拍（<%= first_batch.size %> 支）</div>
