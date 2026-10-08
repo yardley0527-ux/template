@@ -1,0 +1,19 @@
+<%# 一組主題頁籤：prefix 是頁籤 id 前綴（例如 topic-0、knowledge），每個主題的 id 為 prefix-序號 %>
+<ul class="nav nav-tabs" role="tablist">
+  <% scripts.each_with_index do |script, j| %>
+    <li class="nav-item">
+      <a class="nav-link <%= 'active' if j.zero? %>" data-toggle="tab" role="tab"
+         href="#<%= prefix %>-<%= j %>" style="max-width:340px; white-space:normal;">
+        <strong><%= video_topic_number(j) %></strong> <%= script["title"] %>
+      </a>
+    </li>
+  <% end %>
+</ul>
+
+<div class="tab-content border border-top-0 rounded-bottom p-3">
+  <% scripts.each_with_index do |script, j| %>
+    <div class="tab-pane fade <%= 'show active' if j.zero? %>" id="<%= prefix %>-<%= j %>" role="tabpanel">
+      <%= render "script", script: script %>
+    </div>
+  <% end %>
+</div>
