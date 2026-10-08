@@ -12,6 +12,9 @@
     <%= yield %>
   </div>
 
+  <%# app.bundle 讀 #js-color-profile 的 CSS 色票，少了這段登入頁會噴 JS 錯誤 %>
+  <%= render 'shared/color_profile_reference' %>
+
   <%= render 'shared/scripts_base_plugins' %>
   <%= yield :scripts_block %>
 </body>
