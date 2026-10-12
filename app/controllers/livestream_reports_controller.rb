@@ -108,6 +108,15 @@ class LivestreamReportsController < ApplicationController
         desc: "PDRN 補打名單：穀胱甘肽/冰晶蕃茄/膠原蛋白三產品都買過、未買PDRN的144位，依三產品合計消費排序，是四產品全買名單的4.1倍",
       },
     ],
+    "全能" => [
+      {
+        title: "全能名單回購追蹤：黑金卡應回未回／買少／買多",
+        date: Date.new(2026, 10, 12),
+        type: :post,
+        url: "https://claude.ai/artifact/1BHqMxMs8RGL7gZgfj7e27",
+        desc: "上週三份全能傳訊名單（584 卡友B群／594 一般會員／597 去年買過，共700人）到10/11成效：53人回購；①黑金卡67人只回10人，已過回購日未回50人（黑14・金36）②買得比上次少6人 ③買得比上次多39人（整單合計$576,906）",
+      },
+    ],
   }.freeze
 
   def index
