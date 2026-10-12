@@ -116,6 +116,13 @@ class LivestreamReportsController < ApplicationController
         url: "https://claude.ai/artifact/1BHqMxMs8RGL7gZgfj7e27",
         desc: "上週三份全能傳訊名單（584 卡友B群／594 一般會員／597 去年買過，共700人）到10/11成效：53人回購；①黑金卡67人只回10人，已過回購日未回50人（黑14・金36）②買得比上次少6人 ③買得比上次多39人（整單合計$576,906）",
       },
+      {
+        title: "全能雙十新客名單：完全新客／以前客人回來／待確認",
+        date: Date.new(2026, 10, 12),
+        type: :post,
+        url: "https://claude.ai/artifact/DLAd1C8nxnBavrkngHhsrp",
+        desc: "10/08–10/11 新email首購57位（$578,425）分類：完全新客35位（$384,633）、以前客人回來13位（醫美／再生霜／廣告客＋系統比對手機抓到姜婕）、待確認9位（IG無效），含IG與判定依據",
+      },
     ],
   }.freeze
 
