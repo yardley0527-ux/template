@@ -4,6 +4,13 @@ class LivestreamReportsController < ApplicationController
   REPORTS = {
     "薑黃" => [
       {
+        title: "薑黃直播報告：10/23 場前的診斷與建議",
+        date: Date.new(2026, 10, 23),
+        type: :pre,
+        url: "https://claude.ai/artifact/QAVWCzqo1RkxuBNpE3nLR1",
+        desc: "直播前診斷：現貨僅475瓶（8/7開播前就賣出657瓶）、距8/7共77天剛好是回購高峰、11場歷史場次比較與逐時賣貨速度、可聯絡名單（8/7後吃完273人＋近一年買≥2次沒回來590人）、建議定價沿用8/7拿掉10送1、建議備貨1,500瓶（中情境約$224萬）",
+      },
+      {
         title: "薑黃回購活動報表・8/7場",
         date: Date.new(2026, 8, 7),
         type: :post,
