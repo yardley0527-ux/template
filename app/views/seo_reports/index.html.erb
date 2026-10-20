@@ -81,6 +81,47 @@
                   <div class="small text-muted">前週 <%= summary.dig("previous", "position") || "—" %></div>
                 </div>
               </div>
+              <% bench = @benchmarks[site] || {} %>
+              <% if (t = bench[:target]) %>
+                <hr>
+                <div class="d-flex justify-content-between small mb-1">
+                  <strong>本週目標：點擊 <%= number_with_delimiter(t[:target_clicks]) %></strong>
+                  <span class="<%= t[:clicks_ok] ? 'text-success' : 'text-danger' %>">
+                    <%= number_with_delimiter(t[:clicks]) %>（<%= t[:clicks_ok] ? "達標" : "差 #{number_with_delimiter(t[:target_clicks] - t[:clicks])}" %>）
+                  </span>
+                </div>
+                <div class="progress mb-2" style="height:8px">
+                  <div class="progress-bar <%= t[:clicks_ok] ? 'bg-success' : 'bg-warning' %>" style="width:<%= t[:progress_pct] %>%"></div>
+                </div>
+                <div class="small text-muted mb-2">
+                  標準＝前 4 週（<%= t[:base_label] %>）週平均 <%= number_with_delimiter(t[:base_clicks]) %> × <%= (100 + Seo::Sites::TARGET_GROWTH * 100).round %>%
+                </div>
+                <div class="small">
+                  <span class="badge <%= t[:ctr_ok] ? 'badge-success' : 'badge-danger' %>">
+                    點擊率 <%= t[:ctr] ? number_to_percentage(t[:ctr] * 100, precision: 2) : "—" %>
+                    ／ 目標 ≥ <%= t[:ctr_target] ? number_to_percentage(t[:ctr_target] * 100, precision: 2) : "—" %>
+                  </span>
+                  <span class="badge <%= t[:position_ok] ? 'badge-success' : 'badge-danger' %>">
+                    排名 <%= t[:position] || "—" %> ／ 目標 ≤ <%= t[:position_target] || "—" %>
+                  </span>
+                </div>
+              <% end %>
+              <% if bench[:baselines].present? %>
+                <table class="table table-sm small mt-3 mb-0">
+                  <thead><tr><th>比較基準（每 7 天）</th><th class="text-right">點擊</th><th class="text-right">本週差異</th><th class="text-right">點擊率</th><th class="text-right">排名</th></tr></thead>
+                  <tbody>
+                    <% bench[:baselines].each do |b| %>
+                      <tr>
+                        <td><%= b[:label] %></td>
+                        <td class="text-right"><%= number_with_delimiter(b[:clicks]) %></td>
+                        <td class="text-right <%= pct_class.(b[:diff_pct]) %>"><%= fmt_pct.(b[:diff_pct]) %></td>
+                        <td class="text-right"><%= b[:ctr] ? number_to_percentage(b[:ctr] * 100, precision: 2) : "—" %></td>
+                        <td class="text-right"><%= b[:position] || "—" %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% end %>
             <% else %>
               <p class="text-muted mb-0">沒有 Search Console 數據</p>
             <% end %>
@@ -91,7 +132,8 @@
   </div>
 
   <div class="card border-0 shadow-sm mb-3">
-    <div class="card-header bg-white"><strong>每日自然搜尋點擊（近 <%= SeoReportsController::CHART_DAYS %> 天）</strong></div>
+    <div class="card-header bg-white"><strong>每日自然搜尋點擊（近 <%= SeoReportsController::CHART_DAYS %> 天）</strong>
+      <small class="text-muted ml-2">虛線＝當天的浮動目標（前 4 週日平均 × <%= (100 + Seo::Sites::TARGET_GROWTH * 100).round %>%）</small></div>
     <div class="card-body"><canvas id="seoClicksChart" height="90"></canvas></div>
   </div>
 
@@ -173,9 +215,14 @@
     type: 'line',
     data: {
       labels: <%= raw @chart[:labels].to_json %>,
-      datasets: series.map(function (s, i) {
-        return { label: s.label, data: s.data, borderColor: colors[i % colors.length], backgroundColor: 'transparent',
-                 borderWidth: 1.5, pointRadius: 0, tension: 0.2, spanGaps: true };
+      datasets: series.flatMap(function (s, i) {
+        var color = colors[i % colors.length];
+        return [
+          { label: s.label, data: s.data, borderColor: color, backgroundColor: 'transparent',
+            borderWidth: 1.5, pointRadius: 0, tension: 0.2, spanGaps: true },
+          { label: s.label + ' 目標', data: s.target, borderColor: color, backgroundColor: 'transparent',
+            borderWidth: 1, borderDash: [6, 4], pointRadius: 0, tension: 0.2, spanGaps: true }
+        ];
       })
     },
     options: { interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true } } }

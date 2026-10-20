@@ -13,19 +13,34 @@ class SeoReportsController < ApplicationController
               end
     @history = SeoReport.order(report_date: :desc).limit(14).pluck(:report_date, :status)
     @chart = chart_series
+    @benchmarks = benchmarks
   end
 
   private
 
+  def benchmarks
+    return {} unless @report
+
+    Seo::Sites::ALL.keys.each_with_object({}) do |site, memo|
+      through = @report.site_data(site)["data_through"]
+      next unless through
+
+      bench = Seo::Benchmarks.new(site, Date.parse(through))
+      memo[site] = { baselines: bench.baselines, target: bench.weekly_target }
+    end
+  end
+
   def chart_series
     since = Date.current - CHART_DAYS
-    rows = SeoDailyMetric.where("date >= ?", since).order(:date).pluck(:site, :date, :clicks)
-    dates = rows.map { |r| r[1] }.uniq.sort
+    # 多抓 4 週給目標線算前 4 週平均
+    rows = SeoDailyMetric.where("date >= ?", since - Seo::Sites::TARGET_BASE_DAYS).order(:date).pluck(:site, :date, :clicks)
+    dates = rows.map { |r| r[1] }.uniq.sort.select { |d| d >= since }
     {
       labels: dates.map { |d| d.strftime("%-m/%-d") },
       series: Seo::Sites::ALL.keys.map do |site|
         by_date = rows.select { |r| r[0] == site }.to_h { |r| [r[1], r[2]] }
-        { label: Seo::Sites.label(site), data: dates.map { |d| by_date[d] } }
+        { label: Seo::Sites.label(site), data: dates.map { |d| by_date[d] },
+          target: Seo::Benchmarks.daily_targets(by_date, dates) }
       end
     }
   end

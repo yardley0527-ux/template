@@ -5,6 +5,14 @@ module Seo
   # （yardley 是網址前置字元資源、shengtingbio 是網域資源）。
   # redirect_hosts：應該 301 到主網域的其他主機名稱，沒轉址＝重複網站。
   module Sites
+    # 積木（stack）SEO 合作期間，當成比較基準之一
+    CONTRACT_PERIOD = Date.new(2025, 10, 18)..Date.new(2026, 10, 17)
+
+    # 浮動目標：本週點擊 ≥ 前 4 週週平均 × (1 + TARGET_GROWTH)；點擊率、排名不能比前 4 週差。
+    # 只看上一週波動太大（連假、直播檔期），所以用前 4 週平均當標準。
+    TARGET_GROWTH = 0.05
+    TARGET_BASE_DAYS = 28
+
     ALL = {
       "yardley" => {
         label: "yardley.tw",
