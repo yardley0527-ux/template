@@ -3,8 +3,9 @@
 require "net/http"
 
 module Seo
-  # 每日 SEO 摘要推到「苼莛小幫手」LINE 群組（部門主管）：數字＋目標達成、待處理問題，
+  # 每日 SEO 摘要推到「苼莛小幫手」LINE 群組（部門主管）：數字＋目標達成，
   # 再請 Claude 寫 2–3 條重點和一個「今天想一想」，讓主管有東西可以思考，不只看數字。
+  # 網站技術問題（Schema、轉址、H1…）是工程師的事，只留在報告頁和營運提醒，不進 LINE。
   # AI 失敗時照樣發，只是少了 AI 那兩段（數字本身不靠 AI）。
   # 同一份報告只發一次（data["line_sent_at"]），手動重跑 seo:daily 不會重複推播。
   class LineDigest
@@ -55,12 +56,6 @@ module Seo
         ai["highlights"].first(3).each_with_index { |h, i| lines << "#{i + 1}. #{h}" }
       end
 
-      alerts = alert_checks
-      if alerts.any?
-        lines += ["", "【⚠️ 待處理】"]
-        alerts.first(5).each { |c| lines << "・#{Sites.label(c['site'])} #{c['label']}：#{c['detail']}" }
-      end
-
       lines += ["", "【💭 今天想一想】", ai["question"]] if ai && ai["question"].present?
       lines += ["", "完整報告 → #{REPORT_URL}"]
       lines.join("\n")
@@ -79,12 +74,6 @@ module Seo
       else
         "#{Sites.label(site)} 本週點擊 #{fmt(summary['clicks'])}"
       end
-    end
-
-    def alert_checks
-      @report.checks.select { |c| %w[critical warning].include?(c["level"]) }
-             .sort_by { |c| HealthCheck::LEVELS.index(c["level"]) }
-             .uniq { |c| [c["site"], c["check"]] }
     end
 
     def benchmark(site)
@@ -124,7 +113,7 @@ module Seo
 
         請產出：
         - highlights：2–3 條今天最值得主管知道的觀察，每條 45 字以內，要有具體數字或關鍵字；
-          優先寫「變化大的」和「跟目標或比較基準落差大的」，不要重複列出已經在待處理清單的網站問題
+          優先寫「變化大的」和「跟目標或比較基準落差大的」；這是給主管看的成效觀察，不要寫網站技術問題
         - question：一個讓主管思考的問題（60 字以內），要從數據推出一個可以驗證的假設或下一步，
           例如「X 掉了，是因為 A 還是 B？可以看 C 確認」，不要問空泛的問題
         只根據提供的數據，不要編造數據裡沒有的數字或原因；用繁體中文。
@@ -143,8 +132,7 @@ module Seo
           "比較基準" => bench&.baselines&.map { |b| b.slice(:label, :clicks, :diff_pct) },
           "關鍵字點擊掉最多" => compact_movers(movers.dig("queries", "drops")),
           "關鍵字點擊漲最多" => compact_movers(movers.dig("queries", "gains")),
-          "頁面點擊掉最多" => compact_movers(movers.dig("pages", "drops")),
-          "待處理問題" => alert_checks.select { |c| c["site"] == site }.map { |c| "#{c['label']}：#{c['detail']}" }
+          "頁面點擊掉最多" => compact_movers(movers.dig("pages", "drops"))
         }]
       end
     end

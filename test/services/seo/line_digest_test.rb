@@ -32,15 +32,15 @@ module Seo
       %w[LINE_REPORT_CHANNEL_ACCESS_TOKEN ANTHROPIC_API_KEY].each { |k| @env.key?(k) ? ENV[k] = @env[k] : ENV.delete(k) }
     end
 
-    test "只發給 active 群組，含數字與待處理，不含正常項目" do
+    test "只發給 active 群組，含數字，不含網站技術問題" do
       line = FakeLine.new
       assert_equal 1, LineDigest.new(@report, line: line).call
 
       to, text = line.sent.first
       assert_equal "Cboss", to
       assert_includes text, "yardley.tw 本週點擊 708"
-      assert_includes text, "Organization Schema：重複宣告 2 次"
-      refute_includes text, "SSL"
+      refute_includes text, "Organization Schema"
+      refute_includes text, "待處理"
       assert_includes text, LineDigest::REPORT_URL
     end
 
