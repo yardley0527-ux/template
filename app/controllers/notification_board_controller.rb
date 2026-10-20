@@ -14,7 +14,7 @@ class NotificationBoardController < ApplicationController
     "inventory"            => %w[inventory_attention],
     "livestream_event"     => %w[livestream_schedule_gap livestream_preparation livestream_day_attention
                                   livestream_performance_drop livestream_review_due],
-    "system_health"        => %w[system_health]
+    "system_health"        => %w[system_health seo_health]
   }.freeze
   COMPLETED_PER_PAGE = 20
 

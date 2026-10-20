@@ -1,0 +1,181 @@
+<%# app/views/seo_reports/index.html.erb %>
+<% content_for :page_title, "SEO 每日報告" %>
+<%
+  level_badge = { "critical" => ["badge-danger", "嚴重"], "warning" => ["badge-warning", "注意"],
+                  "info" => ["badge-info", "參考"], "ok" => ["badge-success", "正常"] }
+  level_order = Seo::HealthCheck::LEVELS
+  fmt_pct = ->(v) { v.nil? ? "—" : "#{v.positive? ? '+' : ''}#{v}%" }
+  pct_class = ->(v) { v.nil? ? "text-muted" : (v.negative? ? "text-danger" : "text-success") }
+%>
+
+<div class="row mb-3">
+  <div class="col-12 d-flex flex-wrap align-items-end justify-content-between">
+    <div>
+      <h4 class="font-weight-bold mb-0">SEO 每日報告</h4>
+      <p class="text-muted small mb-0">
+        Search Console 自然搜尋數據＋每日網站健康檢查。GSC 資料約有 3 天延遲，「最近 7 天」以資料最新日期往回算。
+      </p>
+    </div>
+    <% if @history.any? %>
+      <div class="mt-2">
+        <% @history.each do |date, status| %>
+          <%= link_to date.strftime("%-m/%-d"), seo_reports_path(date: date),
+                class: "btn btn-xs #{@report&.report_date == date ? 'btn-primary' : 'btn-outline-secondary'} mb-1",
+                title: status %>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% if @report.nil? %>
+  <div class="alert alert-info">還沒有 SEO 報告。執行 <code>bundle exec rake seo:daily</code> 產生第一份。</div>
+<% else %>
+  <% if @report.status != "success" %>
+    <div class="alert <%= @report.status == 'failed' ? 'alert-danger' : 'alert-warning' %>">
+      <%= @report.report_date %> 報告狀態：<%= @report.status %><%= "（#{@report.error_message}）" if @report.error_message.present? %>
+    </div>
+  <% end %>
+
+  <% alerts = @report.checks.select { |c| %w[critical warning].include?(c["level"]) } %>
+  <div class="alert <%= alerts.any? ? 'alert-warning' : 'alert-success' %> mb-3">
+    <% if alerts.any? %>
+      <strong>今天有 <%= alerts.size %> 項需要處理</strong>（也已推到營運提醒）：
+      <%= alerts.map { |c| "#{Seo::Sites.label(c['site'])} #{c['label']}" }.uniq.join("、") %>
+    <% else %>
+      <strong>網站健康檢查沒有發現需要處理的問題。</strong>
+    <% end %>
+  </div>
+
+  <div class="row">
+    <% Seo::Sites::ALL.each_key do |site| %>
+      <% data = @report.site_data(site) %>
+      <% summary = data["summary"] %>
+      <div class="col-lg-6 mb-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <strong><%= Seo::Sites.label(site) %></strong>
+            <small class="text-muted">資料到 <%= data["data_through"] || "—" %></small>
+          </div>
+          <div class="card-body">
+            <% if summary %>
+              <div class="row text-center">
+                <div class="col-3">
+                  <div class="small text-muted">點擊（7 天）</div>
+                  <div class="h4 mb-0"><%= number_with_delimiter(summary["clicks"]) %></div>
+                  <div class="small <%= pct_class.(summary['clicks_change_pct']) %>"><%= fmt_pct.(summary["clicks_change_pct"]) %></div>
+                </div>
+                <div class="col-3">
+                  <div class="small text-muted">曝光（7 天）</div>
+                  <div class="h4 mb-0"><%= number_with_delimiter(summary["impressions"]) %></div>
+                  <div class="small <%= pct_class.(summary['impressions_change_pct']) %>"><%= fmt_pct.(summary["impressions_change_pct"]) %></div>
+                </div>
+                <div class="col-3">
+                  <div class="small text-muted">點擊率</div>
+                  <div class="h4 mb-0"><%= summary["ctr"] ? number_to_percentage(summary["ctr"] * 100, precision: 2) : "—" %></div>
+                  <div class="small text-muted">前週 <%= summary.dig("previous", "ctr") ? number_to_percentage(summary.dig("previous", "ctr") * 100, precision: 2) : "—" %></div>
+                </div>
+                <div class="col-3">
+                  <div class="small text-muted">平均排名</div>
+                  <div class="h4 mb-0"><%= summary["position"] || "—" %></div>
+                  <div class="small text-muted">前週 <%= summary.dig("previous", "position") || "—" %></div>
+                </div>
+              </div>
+            <% else %>
+              <p class="text-muted mb-0">沒有 Search Console 數據</p>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white"><strong>每日自然搜尋點擊（近 <%= SeoReportsController::CHART_DAYS %> 天）</strong></div>
+    <div class="card-body"><canvas id="seoClicksChart" height="90"></canvas></div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white"><strong>網站健康檢查</strong></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0">
+          <thead class="bg-light">
+            <tr><th style="width:80px">狀態</th><th style="width:130px">網站</th><th>項目</th><th>說明</th></tr>
+          </thead>
+          <tbody>
+            <% @report.checks.sort_by { |c| [level_order.index(c["level"]) || 9, c["site"]] }.each do |c| %>
+              <% css, text = level_badge[c["level"]] %>
+              <tr>
+                <td><span class="badge <%= css %>"><%= text %></span></td>
+                <td><%= Seo::Sites.label(c["site"]) %></td>
+                <td><%= link_to c["label"], c["url"], target: "_blank", rel: "noopener" %></td>
+                <td class="small"><%= c["detail"] %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <% Seo::Sites::ALL.each_key do |site| %>
+    <% movers = @report.site_data(site)["movers"] %>
+    <% next unless movers %>
+    <h5 class="mt-4 mb-2"><%= Seo::Sites.label(site) %> 漲跌（最近 7 天 vs 前 7 天）</h5>
+    <div class="row">
+      <% [["queries", "drops", "關鍵字：點擊掉最多"], ["queries", "gains", "關鍵字：點擊漲最多"],
+          ["pages", "drops", "頁面：點擊掉最多"], ["pages", "gains", "頁面：點擊漲最多"]].each do |dim, kind, title| %>
+        <% rows = movers.dig(dim, kind) || [] %>
+        <div class="col-lg-6 mb-3">
+          <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white"><strong><%= title %></strong></div>
+            <div class="card-body p-0">
+              <% if rows.empty? %>
+                <p class="text-muted small p-3 mb-0">沒有明顯變化</p>
+              <% else %>
+                <table class="table table-sm mb-0 small">
+                  <thead class="bg-light"><tr><th><%= dim == "queries" ? "關鍵字" : "頁面" %></th><th class="text-right">點擊</th><th class="text-right">變化</th><th class="text-right">排名</th></tr></thead>
+                  <tbody>
+                    <% rows.each do |r| %>
+                      <tr>
+                        <td class="text-truncate" style="max-width:280px">
+                          <%= dim == "pages" ? link_to(CGI.unescape(r["key"].sub(%r{\Ahttps?://[^/]+}, "")), r["key"], target: "_blank", rel: "noopener") : r["key"] %>
+                        </td>
+                        <td class="text-right"><%= r["previous_clicks"] %> → <%= r["clicks"] %></td>
+                        <td class="text-right <%= r['change'].negative? ? 'text-danger' : 'text-success' %>"><%= r["change"].positive? ? "+" : "" %><%= r["change"] %></td>
+                        <td class="text-right text-muted"><%= r["previous_position"] || "—" %> → <%= r["position"] || "—" %></td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<% content_for :scripts_block do %>
+<script>
+(function () {
+  var el = document.getElementById('seoClicksChart');
+  if (!el || typeof Chart === 'undefined') return;
+  var series = <%= raw @chart[:series].to_json %>;
+  var colors = ['rgba(37,99,235,0.9)', 'rgba(234,88,12,0.9)'];
+  new Chart(el, {
+    type: 'line',
+    data: {
+      labels: <%= raw @chart[:labels].to_json %>,
+      datasets: series.map(function (s, i) {
+        return { label: s.label, data: s.data, borderColor: colors[i % colors.length], backgroundColor: 'transparent',
+                 borderWidth: 1.5, pointRadius: 0, tension: 0.2, spanGaps: true };
+      })
+    },
+    options: { interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true } } }
+  });
+})();
+</script>
+<% end %>

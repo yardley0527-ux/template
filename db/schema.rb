@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_30_160000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_20_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1314,6 +1314,28 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_30_160000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["key"], name: "index_roles_on_key", unique: true
+  end
+
+  create_table "seo_daily_metrics", force: :cascade do |t|
+    t.string "site", null: false
+    t.date "date", null: false
+    t.integer "clicks", default: 0, null: false
+    t.integer "impressions", default: 0, null: false
+    t.decimal "ctr", precision: 8, scale: 6
+    t.decimal "position", precision: 8, scale: 2
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["site", "date"], name: "index_seo_daily_metrics_on_site_and_date", unique: true
+  end
+
+  create_table "seo_reports", force: :cascade do |t|
+    t.date "report_date", null: false
+    t.string "status", default: "running", null: false
+    t.jsonb "data", default: {}, null: false
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["report_date"], name: "index_seo_reports_on_report_date", unique: true
   end
 
   create_table "shopline_customer_health_assessments", force: :cascade do |t|

@@ -128,6 +128,7 @@ Rails.application.routes.draw do
     patch :toggle_hidden, on: :member
   end
   resources :koc_contracts, only: [:index, :update]
+  resources :seo_reports, only: [:index]
   get  '/koc_search', to: 'koc_search#index', as: :koc_search
   get  '/replied_contacts', to: 'replied_contacts#index', as: :replied_contacts
   resources :podcast_contacts, only: [:index, :create, :update, :destroy] do

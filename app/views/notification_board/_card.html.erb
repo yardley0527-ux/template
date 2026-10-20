@@ -40,6 +40,10 @@
           <div id="customers-<%= notification.id %>" class="mt-2" style="display:none;"></div>
         <% end %>
 
+        <% if notification.category == "seo_health" %>
+          <%= link_to "查看 SEO 報告", seo_reports_path, class: "btn btn-sm btn-outline-secondary mt-2" %>
+        <% end %>
+
         <% if notification.category == "livestream_review_due" && notification.metadata["livestream_date"] %>
           <%= link_to "查看直播數據", livestreams_path(year: Date.parse(notification.metadata["livestream_date"]).year), class: "btn btn-sm btn-outline-secondary mt-2" %>
           <% if notification.subject_id.present? %>

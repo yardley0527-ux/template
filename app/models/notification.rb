@@ -23,7 +23,8 @@ class Notification < ApplicationRecord
   CATEGORIES  = %w[system_health inventory_attention event_attention customer_runout
                    customer_overdue black_overdue high_spender_no_second vip_silent product_attention
                    promotion_opportunity livestream_schedule_gap livestream_preparation
-                   livestream_day_attention livestream_performance_drop livestream_review_due].freeze
+                   livestream_day_attention livestream_performance_drop livestream_review_due
+                   seo_health].freeze
   SEVERITIES  = %w[critical warning opportunity info].freeze
   PRIORITIES  = %w[P0 P1 P2 P3].freeze
   STATUSES    = %w[detected pending_assignment in_progress pending_verification
@@ -51,7 +52,8 @@ class Notification < ApplicationRecord
     "livestream_preparation"      => "livestream_event",
     "livestream_day_attention"    => "livestream_event",
     "livestream_performance_drop" => "livestream_event",
-    "livestream_review_due"       => "livestream_event"
+    "livestream_review_due"       => "livestream_event",
+    "seo_health"                  => "system_health"
   }.freeze
   BROAD_CATEGORIES = %w[customer_opportunity product_revenue inventory livestream_event system_health].freeze
 

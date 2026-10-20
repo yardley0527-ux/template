@@ -46,7 +46,8 @@ class NotificationEngine
     "livestream_preparation"      => "NotificationRules::LivestreamPreparation",
     "livestream_day_attention"    => "NotificationRules::LivestreamDayAttention",
     "livestream_performance_drop" => "NotificationRules::LivestreamPerformanceDrop",
-    "livestream_review_due"       => "NotificationRules::LivestreamReviewDue"
+    "livestream_review_due"       => "NotificationRules::LivestreamReviewDue",
+    "seo_health"                  => "NotificationRules::SeoHealth"
   }.freeze
 
   def self.run_all

@@ -39,7 +39,8 @@ module NotificationBoardHelper
     "promotion_opportunity" => "官網優惠商機",
     "livestream_schedule_gap" => "直播週期缺口", "livestream_preparation" => "直播前準備",
     "livestream_day_attention" => "直播當天摘要", "livestream_performance_drop" => "直播後表現比較",
-    "livestream_review_due" => "直播檢討待完成"
+    "livestream_review_due" => "直播檢討待完成",
+    "seo_health" => "SEO 健康"
   }.freeze
 
   BROAD_CATEGORY_LABEL = {

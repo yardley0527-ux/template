@@ -16,14 +16,16 @@ class SyncRun < ApplicationRecord
     "shopline_orders_rehash"  => "訂單 Hash 遷移",
     "shopline_orders_restore" => "訂單清理回復",
     "notifications"           => "營運提醒產生器",
-    "membership_level_snapshot" => "會員卡別快照"
+    "membership_level_snapshot" => "會員卡別快照",
+    "seo_daily"               => "SEO 每日報告"
   }.freeze
   STATUSES = %w[running success partial failed].freeze
 
   # 每日批次型 source 的過期門檻：有跑過但最後成功太久以前 → 告警。
   # 從未跑過不告警（功能尚未啟用時不該在首頁製造噪音）。
   STALE_AFTER = {
-    "crm_rollup" => 26.hours
+    "crm_rollup" => 26.hours,
+    "seo_daily"  => 30.hours
   }.freeze
 
   validates :source, presence: true, inclusion: { in: SOURCES.keys }
