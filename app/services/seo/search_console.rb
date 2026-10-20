@@ -42,7 +42,40 @@ module Seo
       end
     end
 
+    # 選題參考（最近 28 天 vs 前 28 天）：
+    #   aio    — 排名前 5 但點擊率 < 1%：答案多半被 Google AI 摘要直接給了，點擊被吃掉
+    #   rising — 曝光翻倍的關鍵字：正在變熱門的話題
+    AIO_MAX_POSITION = 5
+    AIO_MAX_CTR = 0.01
+    AIO_MIN_IMPRESSIONS = 300
+    RISING_MIN_IMPRESSIONS = 150
+    TOPIC_LIMIT = 5
+
+    def topics(site, end_date:)
+      current = fetch_by(site, "query", (end_date - 27)..end_date)
+      previous = fetch_by(site, "query", (end_date - 55)..(end_date - 28))
+
+      aio = current.values.select do |r|
+        r["impressions"] >= AIO_MIN_IMPRESSIONS && r["position"] <= AIO_MAX_POSITION && r["ctr"] < AIO_MAX_CTR
+      end
+      rising = current.values.filter_map do |r|
+        before = previous.dig(r["keys"][0], "impressions").to_i
+        next if r["impressions"] < RISING_MIN_IMPRESSIONS || r["impressions"] < before * 2
+
+        r.merge("previous_impressions" => before)
+      end
+
+      { "aio" => aio.sort_by { |r| -r["impressions"] }.first(TOPIC_LIMIT).map { |r| topic_row(r) },
+        "rising" => rising.sort_by { |r| -(r["impressions"] - r["previous_impressions"]) }.first(TOPIC_LIMIT).map { |r| topic_row(r) } }
+    end
+
     private
+
+    def topic_row(row)
+      { "query" => row["keys"][0], "impressions" => row["impressions"].to_i,
+        "previous_impressions" => row["previous_impressions"], "position" => row["position"].round(1),
+        "ctr" => row["ctr"].round(4) }.compact
+    end
 
     def fetch_by(site, dimension, range)
       query(site, startDate: range.first.to_s, endDate: range.last.to_s, dimensions: [dimension], rowLimit: 1000)

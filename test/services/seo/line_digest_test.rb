@@ -21,10 +21,13 @@ module Seo
         "sites" => { "yardley" => {
           "data_through" => "2026-10-17",
           "summary" => { "clicks" => 708 },
+          "topics" => { "rising" => [{ "query" => "膝蓋痛吃什麼", "impressions" => 214, "previous_impressions" => 0, "position" => 4.0, "ctr" => 0.02 }],
+                        "aio" => [{ "query" => "碳水化合物是什麼", "impressions" => 3707, "position" => 1.0, "ctr" => 0.0005 }] },
           "checks" => [{ "check" => "organization_schema", "label" => "Organization Schema", "url" => "u",
                          "level" => "warning", "detail" => "重複宣告 2 次" },
                        { "check" => "ssl", "label" => "SSL", "url" => "u", "level" => "ok", "detail" => nil }]
-        } }
+        } },
+        "articles" => [{ "id" => 1, "title" => "PDRN 全解析", "flags" => ["標題不是問句"], "h2s" => [], "first_paragraph" => "" }]
       })
     end
 
@@ -41,6 +44,9 @@ module Seo
       assert_includes text, "yardley.tw 本週點擊 708"
       refute_includes text, "Organization Schema"
       refute_includes text, "待處理"
+      assert_includes text, "膝蓋痛吃什麼：曝光 0→214"
+      assert_includes text, "碳水化合物是什麼：排名 1.0、點擊率 0.05%"
+      assert_includes text, "〈PDRN 全解析〉\n⚠️ 標題不是問句"
       assert_includes text, LineDigest::REPORT_URL
     end
 

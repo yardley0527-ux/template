@@ -5,6 +5,7 @@ module Seo
   #   1. Search Console 每日總數重抓最近 10 天（GSC 會回頭修正）
   #   2. 每站最近 7 天 vs 前 7 天摘要 + 關鍵字／頁面漲跌
   #   3. 網站健康檢查
+  #   4. 選題參考（疑似被 AI 摘要吃掉點擊、正在變熱門的關鍵字）＋昨日文章健檢
   # 各段獨立 rescue：GSC 掛了健康檢查照跑，反之亦然（狀態記成 partial）。
   # 留 SyncRun(source: "seo_daily") 紀錄，失敗會被既有 system_health 規則抓到。
   class DailyReportService
@@ -18,10 +19,11 @@ module Seo
       new(**kwargs).call
     end
 
-    def initialize(date: Date.current, search_console: nil, health_check: nil)
+    def initialize(date: Date.current, search_console: nil, health_check: nil, article_review: nil)
       @date = date
       @search_console = search_console
       @health_check = health_check
+      @article_review = article_review
     end
 
     def call
@@ -41,6 +43,7 @@ module Seo
           sites[site]["data_through"] = latest.to_s
           sites[site]["summary"] = summary(site, latest)
           sites[site]["movers"] = search_console.movers(site, end_date: latest)
+          sites[site]["topics"] = search_console.topics(site, end_date: latest)
         end
       end
 
@@ -48,9 +51,12 @@ module Seo
         Sites::ALL.each_key { |site| sites[site]["checks"] = health_check.call(site) }
       end
 
+      articles = []
+      parts["articles"] = capture { articles = article_review.call }
+
       errors = parts.values.filter_map { |p| p["error"] }
       status = if errors.empty? then "success" elsif errors.size == parts.size then "failed" else "partial" end
-      report.update!(status: status, data: { "sites" => sites, "parts" => parts }, error_message: errors.join("；").presence)
+      report.update!(status: status, data: { "sites" => sites, "articles" => articles, "parts" => parts }, error_message: errors.join("；").presence)
       run.update!(status: status, finished_at: Time.current, meta: parts, error_messages: errors)
       report
     rescue StandardError => e
@@ -107,6 +113,10 @@ module Seo
 
     def health_check
       @health_check ||= HealthCheck.new(date: @date)
+    end
+
+    def article_review
+      @article_review ||= ArticleReview.new(date: @date)
     end
   end
 end

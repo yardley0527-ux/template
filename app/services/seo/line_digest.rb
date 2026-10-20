@@ -6,6 +6,7 @@ module Seo
   # 每日 SEO 摘要推到「苼莛小幫手」LINE 群組（部門主管）：數字＋目標達成，
   # 再請 Claude 寫 2–3 條重點和一段「觀察與建議」，讓主管有東西可以思考，不只看數字。
   # 網站技術問題（Schema、轉址、H1…）是工程師的事，只留在報告頁和營運提醒，不進 LINE。
+  # 另附選題參考（熱門話題、疑似被 AI 摘要搶走點擊）與昨日文章健檢，給 SEO 部門參考。
   # AI 失敗時照樣發，只是少了 AI 那兩段（數字本身不靠 AI）。
   # 同一份報告只發一次（data["line_sent_at"]），手動重跑 seo:daily 不會重複推播。
   class LineDigest
@@ -17,9 +18,14 @@ module Seo
       type: "object",
       properties: {
         highlights: { type: "array", items: { type: "string" } },
+        article_comments: {
+          type: "array",
+          items: { type: "object", properties: { id: { type: "integer" }, comment: { type: "string" } },
+                   required: %w[id comment], additionalProperties: false }
+        },
         suggestion: { type: "string" }
       },
-      required: %w[highlights suggestion],
+      required: %w[highlights article_comments suggestion],
       additionalProperties: false
     }.freeze
 
@@ -56,12 +62,57 @@ module Seo
         ai["highlights"].first(3).each_with_index { |h, i| lines << "#{i + 1}. #{h}" }
       end
 
+      lines += topic_lines
+      lines += article_lines(ai)
       lines += ["", "【💭 觀察與建議】", ai["suggestion"]] if ai && ai["suggestion"].present?
       lines += ["", "完整報告 → #{REPORT_URL}"]
       lines.join("\n")
     end
 
     private
+
+    TOPICS_PER_SECTION = 4
+
+    def topic_rows(kind)
+      Sites::ALL.keys.flat_map do |site|
+        Array(@report.site_data(site).dig("topics", kind)).map { |t| t.merge("site" => site) }
+      end
+    end
+
+    def topic_lines
+      lines = []
+      aio = topic_rows("aio").sort_by { |t| -t["impressions"] }.first(TOPICS_PER_SECTION)
+      # 同一個關鍵字只出現一次：被 AI 摘要搶走的那段比較需要動作，熱門話題就不重複列
+      aio_queries = aio.map { |t| t["query"] }
+      rising = topic_rows("rising").reject { |t| aio_queries.include?(t["query"]) }
+                                   .sort_by { |t| -(t["impressions"] - t["previous_impressions"].to_i) }.first(TOPICS_PER_SECTION)
+      if rising.any?
+        lines += ["", "【🔥 熱門話題】曝光翻倍的關鍵字（近 28 天）"]
+        rising.each { |t| lines << "・#{t['query']}：曝光 #{fmt(t['previous_impressions'])}→#{fmt(t['impressions'])}（#{Sites.label(t['site'])}）" }
+      end
+
+      if aio.any?
+        lines += ["", "【🤖 疑似被 AI 摘要搶走點擊】排名前 5、點擊率不到 1%"]
+        aio.each do |t|
+          lines << "・#{t['query']}：排名 #{t['position']}、點擊率 #{(t['ctr'] * 100).round(2)}%（#{Sites.label(t['site'])}）"
+        end
+      end
+      lines
+    end
+
+    def article_lines(ai)
+      articles = Array(@report.data["articles"])
+      return [] if articles.empty?
+
+      comments = ai ? Array(ai["article_comments"]).to_h { |c| [c["id"].to_i, c["comment"]] } : {}
+      lines = ["", "【📝 昨日文章健檢】"]
+      articles.each do |a|
+        lines << "〈#{a['title']}〉"
+        lines << (a["flags"].any? ? "⚠️ #{a['flags'].join('、')}" : "✅ 格式檢查都符合")
+        lines << "💡 #{comments[a['id'].to_i]}" if comments[a["id"].to_i].present?
+      end
+      lines
+    end
 
     def site_line(site)
       target = benchmark(site)&.weekly_target
@@ -114,6 +165,9 @@ module Seo
         請產出：
         - highlights：2–3 條今天最值得主管知道的觀察，每條 45 字以內，要有具體數字或關鍵字；
           優先寫「變化大的」和「跟目標或比較基準落差大的」；這是給主管看的成效觀察，不要寫網站技術問題
+        - article_comments：昨日新發的每篇文章各一句建議（50 字以內，id 對應文章 id），依苼莛的 AIO 改寫原則：
+          標題要是完整問句、開頭 100 字內直接回答核心問題（不要「近年來…」這類鋪陳）、每段可獨立被 AI 截取；
+          看 first_paragraph 判斷開頭有沒有直接給答案；同一天多篇主題重疊會互相搶排名，也要點出。沒有文章就給空陣列
         - suggestion：一段觀察與建議（80 字以內）：從數據推出最可能的原因，再給一個具體、這週就能做的下一步，
           例如「X 掉了，比較可能是 A（依據）；建議先 B，再用 C 確認」，不要給空泛建議
         只根據提供的數據，不要編造數據裡沒有的數字或原因；用繁體中文。
@@ -132,9 +186,13 @@ module Seo
           "比較基準" => bench&.baselines&.map { |b| b.slice(:label, :clicks, :diff_pct) },
           "關鍵字點擊掉最多" => compact_movers(movers.dig("queries", "drops")),
           "關鍵字點擊漲最多" => compact_movers(movers.dig("queries", "gains")),
-          "頁面點擊掉最多" => compact_movers(movers.dig("pages", "drops"))
+          "頁面點擊掉最多" => compact_movers(movers.dig("pages", "drops")),
+          "曝光翻倍的關鍵字" => Array(data.dig("topics", "rising")).first(5),
+          "排名前5但點擊率低於1%（疑似被AI摘要搶走）" => Array(data.dig("topics", "aio")).first(5)
         }]
-      end
+      end.merge("昨日新發文章（shengtingbio.com）" => Array(@report.data["articles"]).map do |a|
+        a.slice("id", "title", "flags", "h2s", "first_paragraph")
+      end)
     end
 
     def compact_movers(rows)
@@ -174,7 +232,9 @@ module Seo
 
     def parse(text)
       json = JSON.parse(text[/\{.*\}/m].to_s)
-      { "highlights" => Array(json["highlights"]).map(&:to_s).reject(&:blank?), "suggestion" => json["suggestion"].to_s }
+      { "highlights" => Array(json["highlights"]).map(&:to_s).reject(&:blank?),
+        "article_comments" => Array(json["article_comments"]).select { |c| c.is_a?(Hash) },
+        "suggestion" => json["suggestion"].to_s }
     end
   end
 end
