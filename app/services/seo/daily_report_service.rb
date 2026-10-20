@@ -9,6 +9,10 @@ module Seo
   # 留 SyncRun(source: "seo_daily") 紀錄，失敗會被既有 system_health 規則抓到。
   class DailyReportService
     RESYNC_DAYS = 10
+    # 歷史不足一年（例如新環境第一次跑）就一次回補 GSC 能給的 16 個月，
+    # 不用另外在正式站手動跑 seo:backfill
+    HISTORY_DAYS = 480
+    MIN_HISTORY_DAYS = 365
 
     def self.call(**kwargs)
       new(**kwargs).call
@@ -29,7 +33,7 @@ module Seo
       sites = Sites::ALL.keys.index_with { {} }
 
       parts["gsc"] = capture do
-        search_console.sync_daily!(start_date: @date - RESYNC_DAYS, end_date: @date)
+        search_console.sync_daily!(start_date: sync_start_date, end_date: @date)
         Sites::ALL.each_key do |site|
           latest = search_console.latest_date(site)
           next unless latest
@@ -65,6 +69,13 @@ module Seo
     end
 
     private
+
+    def sync_start_date
+      oldest = SeoDailyMetric.minimum(:date)
+      return @date - HISTORY_DAYS if oldest.nil? || oldest > @date - MIN_HISTORY_DAYS
+
+      @date - RESYNC_DAYS
+    end
 
     def window(site, range)
       rows = SeoDailyMetric.for_site(site).where(date: range)
