@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_20_110000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_20_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -837,6 +837,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_20_110000) do
     t.datetime "updated_at", null: false
     t.text "follow_up"
     t.string "status", default: "待聯絡", null: false
+  end
+
+  create_table "line_bot_groups", force: :cascade do |t|
+    t.string "group_id", null: false
+    t.string "name"
+    t.boolean "active", default: true, null: false
+    t.datetime "joined_at"
+    t.datetime "left_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["group_id"], name: "index_line_bot_groups_on_group_id", unique: true
   end
 
   create_table "line_broadcast_highlights", force: :cascade do |t|
