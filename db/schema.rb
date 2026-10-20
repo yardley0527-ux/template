@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_20_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_20_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1336,6 +1336,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_20_120000) do
     t.decimal "position", precision: 8, scale: 2
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "ga_sessions"
+    t.integer "ga_purchases"
+    t.decimal "ga_revenue", precision: 12, scale: 2
+    t.integer "referred_sessions"
+    t.integer "referred_purchases"
+    t.decimal "referred_revenue", precision: 12, scale: 2
     t.index ["site", "date"], name: "index_seo_daily_metrics_on_site_and_date", unique: true
   end
 

@@ -24,6 +24,18 @@ module Seo
       assert target[:position_ok], "排名 8.0 比前 4 週 9.0 好"
     end
 
+    test "GA4 營收目標＝前 4 週週平均 × 1.05，用 GA4 自己的最新日期" do
+      SeoDailyMetric.where(site: "yardley").update_all(ga_sessions: 10, ga_purchases: 1, ga_revenue: 1000)
+      SeoDailyMetric.where(site: "yardley", date: (END_DATE - 6)..END_DATE).update_all(ga_revenue: 2000)
+      ga = Benchmarks.ga_week("yardley")
+
+      assert_equal END_DATE, ga[:end_date]
+      assert_equal 14_000, ga[:revenue]
+      assert_equal 7_000, ga[:base_revenue]
+      assert_equal 7_350, ga[:target_revenue]
+      assert ga[:revenue_ok]
+    end
+
     test "沒有足夠資料的基準不顯示（去年同期不存在）" do
       labels = Benchmarks.new("yardley", END_DATE).baselines.map { |b| b[:label] }
       assert_includes labels, "近 90 天平均"

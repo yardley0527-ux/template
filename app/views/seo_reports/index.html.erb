@@ -106,6 +106,32 @@
                   </span>
                 </div>
               <% end %>
+              <% if (ga = bench[:ga]) %>
+                <hr>
+                <% if site == "yardley" %>
+                  <div class="d-flex justify-content-between small mb-1">
+                    <strong>SEO 營收（7 天，資料到 <%= ga[:end_date].strftime("%-m/%-d") %>）</strong>
+                    <span class="<%= ga[:revenue_ok] ? 'text-success' : 'text-danger' %>">
+                      $<%= number_with_delimiter(ga[:revenue]) %> ／ 目標 $<%= number_with_delimiter(ga[:target_revenue]) %>
+                    </span>
+                  </div>
+                  <% if ga[:revenue_progress_pct] %>
+                    <div class="progress mb-2" style="height:8px">
+                      <div class="progress-bar <%= ga[:revenue_ok] ? 'bg-success' : 'bg-warning' %>" style="width:<%= ga[:revenue_progress_pct] %>%"></div>
+                    </div>
+                  <% end %>
+                  <div class="small text-muted">
+                    自然搜尋 <%= number_with_delimiter(ga[:sessions]) %> 個工作階段、<%= ga[:purchases] %> 筆訂單（GA4）
+                  </div>
+                <% else %>
+                  <div class="small">
+                    <strong>雜誌導到官網（7 天，資料到 <%= ga[:end_date].strftime("%-m/%-d") %>）</strong><br>
+                    <%= number_with_delimiter(ga[:referred_sessions]) %> 個工作階段、<%= ga[:referred_purchases] %> 筆訂單、營收 $<%= number_with_delimiter(ga[:referred_revenue]) %>
+                    <span class="text-muted">（前 4 週週平均 <%= ga[:base_referred_purchases] %> 筆／$<%= number_with_delimiter(ga[:base_referred_revenue]) %>）</span><br>
+                    <span class="text-muted">自然搜尋 <%= number_with_delimiter(ga[:sessions]) %> 個工作階段</span>
+                  </div>
+                <% end %>
+              <% end %>
               <% if bench[:baselines].present? %>
                 <table class="table table-sm small mt-3 mb-0">
                   <thead><tr><th>比較基準（每 7 天）</th><th class="text-right">點擊</th><th class="text-right">本週差異</th><th class="text-right">點擊率</th><th class="text-right">排名</th></tr></thead>
@@ -164,6 +190,27 @@
       <% end %>
     </div>
   </div>
+
+  <% if (pages = @report.site_data("yardley")["revenue_pages"]).present? %>
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white"><strong>yardley.tw 自然搜尋帶來最多營收的進站頁面（近 28 天）</strong></div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0 small">
+          <thead class="bg-light"><tr><th>進站頁面</th><th class="text-right">工作階段</th><th class="text-right">訂單</th><th class="text-right">營收</th></tr></thead>
+          <tbody>
+            <% pages.each do |p| %>
+              <tr>
+                <td><%= link_to CGI.unescape(p["page"]), "https://www.yardley.tw#{p['page']}", target: "_blank", rel: "noopener" %></td>
+                <td class="text-right"><%= number_with_delimiter(p["sessions"]) %></td>
+                <td class="text-right"><%= p["purchases"] %></td>
+                <td class="text-right">$<%= number_with_delimiter(p["revenue"]) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
 
   <% Seo::Sites::ALL.each_key do |site| %>
     <% movers = @report.site_data(site)["movers"] %>

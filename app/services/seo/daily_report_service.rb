@@ -5,7 +5,8 @@ module Seo
   #   1. Search Console 每日總數重抓最近 10 天（GSC 會回頭修正）
   #   2. 每站最近 7 天 vs 前 7 天摘要 + 關鍵字／頁面漲跌
   #   3. 網站健康檢查
-  #   4. 選題參考（疑似被 AI 摘要吃掉點擊、正在變熱門的關鍵字）＋昨日文章健檢
+  #   4. GA4：自然搜尋帶來的訂單／營收、雜誌導到官網的流量（第二階段）
+  #   5. 選題參考（疑似被 AI 摘要吃掉點擊、正在變熱門的關鍵字）＋昨日文章健檢
   # 各段獨立 rescue：GSC 掛了健康檢查照跑，反之亦然（狀態記成 partial）。
   # 留 SyncRun(source: "seo_daily") 紀錄，失敗會被既有 system_health 規則抓到。
   class DailyReportService
@@ -19,8 +20,9 @@ module Seo
       new(**kwargs).call
     end
 
-    def initialize(date: Date.current, search_console: nil, health_check: nil, article_review: nil)
+    def initialize(date: Date.current, search_console: nil, health_check: nil, article_review: nil, analytics: nil)
       @date = date
+      @analytics = analytics
       @search_console = search_console
       @health_check = health_check
       @article_review = article_review
@@ -51,6 +53,12 @@ module Seo
         Sites::ALL.each_key { |site| sites[site]["checks"] = health_check.call(site) }
       end
 
+      parts["ga4"] = capture do
+        analytics.sync_daily!(start_date: ga_sync_start_date, end_date: @date - 1)
+        latest = analytics.latest_date("yardley")
+        sites["yardley"]["revenue_pages"] = analytics.revenue_pages("yardley", end_date: latest) if latest
+      end
+
       articles = []
       parts["articles"] = capture { articles = article_review.call }
 
@@ -77,7 +85,14 @@ module Seo
     private
 
     def sync_start_date
-      oldest = SeoDailyMetric.minimum(:date)
+      history_start(SeoDailyMetric.minimum(:date))
+    end
+
+    def ga_sync_start_date
+      history_start(SeoDailyMetric.where.not(ga_sessions: nil).minimum(:date))
+    end
+
+    def history_start(oldest)
       return @date - HISTORY_DAYS if oldest.nil? || oldest > @date - MIN_HISTORY_DAYS
 
       @date - RESYNC_DAYS
@@ -117,6 +132,10 @@ module Seo
 
     def article_review
       @article_review ||= ArticleReview.new(date: @date)
+    end
+
+    def analytics
+      @analytics ||= Analytics.new
     end
   end
 end

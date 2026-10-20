@@ -13,16 +13,24 @@ module Seo
     TARGET_GROWTH = 0.05
     TARGET_BASE_DAYS = 28
 
+    # 兩站在同一個 GA4 資源（兩個資料串流），要用 hostName 拆開
+    GA4_PROPERTY = "438779977"
+    SHOP_HOSTS = %w[www.yardley.tw yardley.tw].freeze
+
     ALL = {
       "yardley" => {
         label: "yardley.tw",
         gsc_property: "https://www.yardley.tw/",
+        ga_hosts: %w[www.yardley.tw yardley.tw],
         base_url: "https://www.yardley.tw",
         redirect_hosts: %w[yardley.tw]
       },
       "shengtingbio" => {
         label: "shengtingbio.com",
         gsc_property: "sc-domain:shengtingbio.com",
+        ga_hosts: %w[shengtingbio.com www.shengtingbio.com],
+        # 雜誌導購：yardley.tw 上「來源含 shengtingbio」的工作階段
+        referral_source: "shengtingbio",
         base_url: "https://shengtingbio.com",
         redirect_hosts: %w[www.shengtingbio.com]
       }

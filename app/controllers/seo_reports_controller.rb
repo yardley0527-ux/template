@@ -26,7 +26,7 @@ class SeoReportsController < ApplicationController
       next unless through
 
       bench = Seo::Benchmarks.new(site, Date.parse(through))
-      memo[site] = { baselines: bench.baselines, target: bench.weekly_target }
+      memo[site] = { baselines: bench.baselines, target: bench.weekly_target, ga: Seo::Benchmarks.ga_week(site) }
     end
   end
 

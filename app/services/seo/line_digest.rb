@@ -55,7 +55,10 @@ module Seo
     def message
       ai = ai_commentary
       lines = ["📊 SEO 日報 #{@report.report_date.strftime('%-m/%-d')}（資料到 #{data_through_label}）", ""]
-      Sites::ALL.each_key { |site| lines << site_line(site) }
+      Sites::ALL.each_key do |site|
+        lines << site_line(site)
+        lines << ga_line(site) if ga_line(site)
+      end
 
       if ai && ai["highlights"].present?
         lines += ["", "【重點】"]
@@ -112,6 +115,23 @@ module Seo
         lines << "💡 #{comments[a['id'].to_i]}" if comments[a["id"].to_i].present?
       end
       lines
+    end
+
+    def ga_week(site)
+      @ga_week ||= {}
+      @ga_week.fetch(site) { @ga_week[site] = Benchmarks.ga_week(site) }
+    end
+
+    def ga_line(site)
+      ga = ga_week(site)
+      return nil unless ga
+
+      if site == "yardley"
+        mark = ga[:revenue_ok].nil? ? "" : (ga[:revenue_ok] ? " ✅" : " ❌")
+        "　SEO 營收 $#{fmt(ga[:revenue])}（目標 $#{fmt(ga[:target_revenue])}#{mark}）・#{ga[:purchases]} 筆訂單（到 #{ga[:end_date].strftime('%-m/%-d')}）"
+      else
+        "　導到官網 #{fmt(ga[:referred_sessions])} 人次・#{ga[:referred_purchases]} 筆訂單（到 #{ga[:end_date].strftime('%-m/%-d')}）"
+      end
     end
 
     def site_line(site)
@@ -187,6 +207,8 @@ module Seo
           "關鍵字點擊掉最多" => compact_movers(movers.dig("queries", "drops")),
           "關鍵字點擊漲最多" => compact_movers(movers.dig("queries", "gains")),
           "頁面點擊掉最多" => compact_movers(movers.dig("pages", "drops")),
+          "GA4最近7天（自然搜尋工作階段／訂單／營收；shengtingbio 另含導到官網）" => ga_week(site)&.except(:revenue_progress_pct),
+          "自然搜尋帶來最多營收的進站頁（近28天）" => data["revenue_pages"],
           "曝光翻倍的關鍵字" => Array(data.dig("topics", "rising")).first(5),
           "排名前5但點擊率低於1%（疑似被AI摘要搶走）" => Array(data.dig("topics", "aio")).first(5)
         }]

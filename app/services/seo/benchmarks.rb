@@ -29,6 +29,35 @@ module Seo
       }
     end
 
+    # GA4：最近 7 天自然搜尋的生意，目標同樣是前 4 週週平均 × (1 + 成長率)。
+    # GA4 資料到昨天，跟 Search Console（約 3 天前）的日期不同，所以用自己的最新日期。
+    def self.ga_week(site)
+      end_date = SeoDailyMetric.for_site(site).where.not(ga_sessions: nil).maximum(:date)
+      return nil unless end_date
+
+      scope = SeoDailyMetric.for_site(site)
+      current = ga_sum(scope.where(date: (end_date - 6)..end_date))
+      base_range = (end_date - 6 - Sites::TARGET_BASE_DAYS)..(end_date - 7)
+      base = ga_sum(scope.where(date: base_range))
+      weeks = Sites::TARGET_BASE_DAYS / 7.0
+      base_revenue = (base[:revenue] / weeks).round
+      target_revenue = (base_revenue * (1 + Sites::TARGET_GROWTH)).round
+
+      current.merge(
+        end_date: end_date, base_revenue: base_revenue, target_revenue: target_revenue,
+        revenue_ok: base_revenue.positive? ? current[:revenue] >= target_revenue : nil,
+        revenue_progress_pct: target_revenue.positive? ? [(current[:revenue] * 100.0 / target_revenue).round, 100].min : nil,
+        base_referred_purchases: (base[:referred_purchases] / weeks).round(1),
+        base_referred_revenue: (base[:referred_revenue] / weeks).round
+      )
+    end
+
+    def self.ga_sum(rows)
+      { sessions: rows.sum(:ga_sessions).to_i, purchases: rows.sum(:ga_purchases).to_i, revenue: rows.sum(:ga_revenue).to_f.round,
+        referred_sessions: rows.sum(:referred_sessions).to_i, referred_purchases: rows.sum(:referred_purchases).to_i,
+        referred_revenue: rows.sum(:referred_revenue).to_f.round }
+    end
+
     def baselines
       current = window(@end_date - 6..@end_date)
       [
