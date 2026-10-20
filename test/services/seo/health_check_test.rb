@@ -80,12 +80,12 @@ module Seo
       assert_equal "ok", ok.redirect_check("www.shengtingbio.com", "https://shengtingbio.com")["level"]
     end
 
-    test "不帶 www 的網址 SSL 憑證錯誤是 warning" do
+    test "不帶 www 的網址 SSL 憑證無效是 warning" do
       fetcher = ->(_url) { raise OpenSSL::SSL::SSLError, "certificate verify failed (self signed certificate)" }
       hc = HealthCheck.new(fetcher: fetcher, sleeper: ->(_) {})
       result = hc.redirect_check("yardley.tw", "https://www.yardley.tw")
       assert_equal "warning", result["level"]
-      assert_match "SSL 憑證錯誤", result["detail"]
+      assert_match "SSL 憑證無效", result["detail"]
     end
 
     test "完整跑一站：sitemap index 會往下抓子 sitemap 並抽商品頁" do

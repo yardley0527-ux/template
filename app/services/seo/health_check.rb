@@ -77,7 +77,7 @@ module Seo
       meta = doc.css("meta[name='robots'], meta[name='googlebot']").map { |m| m["content"].to_s.downcase }
       header = response.headers["x-robots-tag"].to_s.downcase
       if meta.any? { |c| c.include?("noindex") } || header.include?("noindex")
-        result("noindex", "#{prefix}沒有 noindex", url, "critical", "頁面被設成 noindex，Google 會把它從搜尋結果移除")
+        result("noindex", "#{prefix}沒有 noindex", url, "critical", "meta robots／X-Robots-Tag 含 noindex，頁面將被移出索引")
       else
         result("noindex", "#{prefix}沒有 noindex", url, "ok", nil)
       end
@@ -92,7 +92,7 @@ module Seo
       if descriptions.size > 1
         result("meta_description", label, url, "warning", "重複輸出 #{descriptions.size} 組 description")
       elsif longest > DESCRIPTION_BLOAT
-        result("meta_description", label, url, "warning", "長度 #{longest} 字（應在 #{DESCRIPTION_MAX} 字內），疑似沒有設定 SEO 描述、直接截取頁面內文")
+        result("meta_description", label, url, "warning", "#{longest} 字，超過 #{DESCRIPTION_MAX} 字上限；未設定 SEO 描述，系統自動截取頁面內文")
       elsif longest > DESCRIPTION_MAX
         result("meta_description", label, url, "info", "長度 #{longest} 字，略超過 #{DESCRIPTION_MAX} 字")
       else
@@ -117,7 +117,7 @@ module Seo
     def organization_schema_check(doc, url)
       count = doc.css("script[type='application/ld+json']").sum { |s| s.text.scan(/"@type"\s*:\s*"Organization"/).size }
       if count > 1
-        result("organization_schema", "Organization Schema", url, "warning", "重複宣告 #{count} 次，應只保留 1 組")
+        result("organization_schema", "Organization Schema", url, "warning", "重複輸出 #{count} 組，需移除主題預設的那組")
       elsif count.zero?
         result("organization_schema", "Organization Schema", url, "info", "首頁沒有 Organization Schema")
       else
@@ -128,7 +128,7 @@ module Seo
     def h1_check(doc, url)
       count = doc.css("h1").size
       level = count.zero? ? "warning" : (count > 1 ? "info" : "ok")
-      result("h1", "首頁 H1", url, level, "#{count} 個 H1")
+      result("h1", "首頁 H1", url, level, count.zero? ? "缺少 H1" : "#{count} 個 H1")
     end
 
     def alt_check(doc, url)
@@ -151,7 +151,7 @@ module Seo
 
       blocked = robots_blocks_google?(response.body)
       [result("robots", "robots.txt", url, blocked ? "critical" : "ok",
-              blocked ? "robots.txt 擋住了 Google 爬整個網站（Disallow: /）" : nil)]
+              blocked ? "User-agent: * 為 Disallow: /，全站禁止爬取" : nil)]
     end
 
     # 只看套用到 Googlebot 的群組（User-agent: * 或 googlebot）。Shopline 的 robots.txt
@@ -231,7 +231,7 @@ module Seo
         result("redirect", "#{host} 轉址", url, "ok", "301 → #{target_host}")
       elsif response.code == 200
         result("redirect", "#{host} 轉址", url, "warning",
-               "#{host} 沒有轉址到 #{target_host}，兩個版本同時被 Google 收錄，排名分數被拆開")
+               "未 301 至 #{target_host}，兩個主機名稱重複收錄")
       elsif response.code.zero?
         result("redirect", "#{host} 轉址", url, "warning", "https://#{host} #{response.body}")
       else
@@ -281,7 +281,7 @@ module Seo
     end
 
     def connection_error_detail(error)
-      return "SSL 憑證錯誤（#{error.message.split(':').last.strip}），瀏覽器會顯示不安全警告" if error.is_a?(OpenSSL::SSL::SSLError)
+      return "SSL 憑證無效（#{error.message.split(':').last.strip}），需補發憑證或改由 DNS 層轉址" if error.is_a?(OpenSSL::SSL::SSLError)
 
       "連線失敗（#{error.class.name.demodulize}）"
     end
