@@ -28,7 +28,9 @@ class SeoReportsControllerTest < ActionDispatch::IntegrationTest
                                                    "position" => 12.0, "previous_position" => 3.0 }], "gains" => [] },
                       "pages" => { "drops" => [], "gains" => [] } },
         "checks" => [{ "check" => "organization_schema", "label" => "Organization Schema", "url" => "https://www.yardley.tw/",
-                       "level" => "warning", "detail" => "重複宣告 2 次" }]
+                       "level" => "warning", "detail" => "重複宣告 2 次" },
+                     { "check" => "ssl", "label" => "SSL 憑證", "url" => "https://www.yardley.tw/",
+                       "level" => "ok", "detail" => "還有 80 天到期" }]
       } }
     })
 
@@ -38,6 +40,8 @@ class SeoReportsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "薑黃推薦"
     assert_includes response.body, "重複宣告 2 次"
     assert_includes response.body, "今天有 1 項需要處理"
+    refute_includes response.body, "還有 80 天到期"
+    assert_includes response.body, "其他 1 項檢查正常"
   end
 
   test "SEO 報告檢視帳號登入後首頁導到 SEO 報告，其他頁面不能看" do

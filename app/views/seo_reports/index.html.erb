@@ -104,7 +104,8 @@
             <tr><th style="width:80px">狀態</th><th style="width:130px">網站</th><th>項目</th><th>說明</th></tr>
           </thead>
           <tbody>
-            <% @report.checks.sort_by { |c| [level_order.index(c["level"]) || 9, c["site"]] }.each do |c| %>
+            <% visible_checks, ok_checks = @report.checks.partition { |c| c["level"] != "ok" } %>
+            <% visible_checks.sort_by { |c| [level_order.index(c["level"]) || 9, c["site"]] }.each do |c| %>
               <% css, text = level_badge[c["level"]] %>
               <tr>
                 <td><span class="badge <%= css %>"><%= text %></span></td>
@@ -116,6 +117,9 @@
           </tbody>
         </table>
       </div>
+      <% if ok_checks.any? %>
+        <p class="text-muted small px-3 py-2 mb-0">其他 <%= ok_checks.size %> 項檢查正常，不列出。</p>
+      <% end %>
     </div>
   </div>
 
