@@ -39,4 +39,20 @@ class SeoReportsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "重複宣告 2 次"
     assert_includes response.body, "今天有 1 項需要處理"
   end
+
+  test "SEO 報告檢視帳號登入後首頁導到 SEO 報告，其他頁面不能看" do
+    role = Role.find_or_create_by!(key: "seo_viewer") { |r| r.name = "SEO 報告檢視" }
+    PagePermission.find_or_create_by!(role: role, controller_name: "seo_reports")
+    viewer = User.create!(email: "seo_viewer@test.com", username: "seo_viewer", password: "password123", role: role)
+
+    sign_in viewer
+    get root_path
+    assert_redirected_to seo_reports_path
+
+    get seo_reports_path
+    assert_response :success
+
+    get customers_path
+    assert_redirected_to root_path
+  end
 end

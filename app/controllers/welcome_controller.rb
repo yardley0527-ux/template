@@ -5,6 +5,8 @@ class WelcomeController < ApplicationController
     if COVER_ONLY_USERNAMES.include?(current_user.username)
       render :cover and return
     end
+    # SEO 報告檢視帳號（總編輯）不能看首頁的營運數據
+    redirect_to seo_reports_path and return if current_user.role&.key == "seo_viewer"
 
     @snapshot = CommandCenterSnapshot.call
 
