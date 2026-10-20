@@ -49,3 +49,9 @@ vendor/bundle
 
 # Instaloader session cache (IG follower tracker)
 .ig_session
+
+# git worktree used by script/update_ig_followers.sh to publish data straight to main
+.ig-data-main-worktree/
+
+# Python venv for script/update_ig_followers.sh
+.venv-ig/
