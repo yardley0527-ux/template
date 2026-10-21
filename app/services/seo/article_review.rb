@@ -49,7 +49,8 @@ module Seo
       description = meta_description(post["link"])
 
       flags = []
-      flags << "標題不是問句" unless title.end_with?("？", "?")
+      # 「X 是什麼？完整解析」這種問句在前、副標在後的也算問句
+      flags << "標題不是問句" unless title.match?(/[？?]/)
       flags << "表格 #{tables} 個（上限 #{MAX_TABLES}）" if tables > MAX_TABLES
       flags << (faq.zero? ? "沒有 FAQ" : "FAQ 只有 #{faq} 題（建議 #{MIN_FAQ}–20 題）") if faq < MIN_FAQ
       flags << "沒有連到 yardley 商品頁" if product_links.zero?

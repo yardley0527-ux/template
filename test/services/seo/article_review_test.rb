@@ -31,6 +31,12 @@ module Seo
       assert_empty result["flags"]
     end
 
+    test "問號在中間（問句＋副標）也算問句" do
+      flags = review_with("<p>不是。</p>", title: "鮭魚 DNA 與 PDRN 是一樣的東西嗎？破解原料來源迷思")["flags"]
+
+      assert_not_includes flags, "標題不是問句"
+    end
+
     test "週一要看週五到週日" do
       assert_equal Date.new(2026, 10, 16)...Date.new(2026, 10, 19), ArticleReview.new(date: Date.new(2026, 10, 19)).window
     end
