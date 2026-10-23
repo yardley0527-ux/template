@@ -135,6 +135,15 @@ module OrderBrief
       end
     end
 
+    test "重點每 3 條一則，編號接著排，標題只在第一則" do
+      highlights = Array.new(7) { |i| { "title" => "結論#{i + 1}", "details" => ["補充#{i + 1}"] } }
+      msgs = LineDigest.new(DAY, line: FakeLine.new).messages(Report.new(DAY), highlights).first(3).map { |m| m[:text] }
+
+      assert_equal "📝 10/22 今天的重點\n\n1. 結論1\n- 補充1\n\n2. 結論2\n- 補充2\n\n3. 結論3\n- 補充3", msgs[0]
+      assert_equal "4. 結論4\n- 補充4\n\n5. 結論5\n- 補充5\n\n6. 結論6\n- 補充6", msgs[1]
+      assert_equal "7. 結論7\n- 補充7", msgs[2]
+    end
+
     test "長訊息切成每則都能直接看完，不會被折成 See more" do
       long = ["📝 重點", *Array.new(7) { |i| "#{i + 1}. 結論#{i}\n- " + ("補充" * 30) + "\n- " + ("說明" * 20) }].join("\n\n")
       parts = LineBot::Client.split_readable(long)

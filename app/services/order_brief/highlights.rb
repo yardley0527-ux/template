@@ -49,10 +49,11 @@ module OrderBrief
     end
 
     # LINE 純文字，照使用者的格式：「1. 結論」，補充一行一個「- 」
-    def self.to_text(day, highlights)
+    # start：第一條的編號（分成好幾則發時，後面幾則要接著編號）
+    def self.to_text(day, highlights, start: 1)
       lines = ["📝 #{day.month}/#{day.day} 今天的重點"]
-      highlights.each_with_index do |h, i|
-        lines += ["", "#{i + 1}. #{h['title']}"]
+      highlights.each.with_index(start) do |h, i|
+        lines += ["", "#{i}. #{h['title']}"]
         Array(h["details"]).each { |d| lines << "- #{d}" }
       end
       lines.join("\n")
