@@ -70,6 +70,12 @@ module LineBot
       nil
     end
 
+    def user_name(user_id)
+      get("/profile/#{user_id}")["displayName"]
+    rescue Error
+      nil
+    end
+
     private
 
     def post(path, body)

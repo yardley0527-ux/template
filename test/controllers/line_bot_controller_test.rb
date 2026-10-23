@@ -23,6 +23,17 @@ class LineBotControllerTest < ActionDispatch::IntegrationTest
     refute LineBotGroup.find_by(group_id: "Cabc").active
   end
 
+  test "私訊或加好友時記下個人聊天室，封鎖時標成 inactive" do
+    deliver([{ type: "message", source: { type: "user", userId: "Uabc123456" }, message: { type: "text", text: "123" } }])
+    chat = LineBotGroup.find_by(group_id: "Uabc123456")
+    assert chat.active
+    assert_equal "個人：123456", chat.name
+    assert_empty chat.subscriptions
+
+    deliver([{ type: "unfollow", source: { type: "user", userId: "Uabc123456" } }])
+    refute chat.reload.active
+  end
+
   test "簽章不對的請求擋掉" do
     deliver([{ type: "join", source: { type: "group", groupId: "Cfake" } }], signature: "bogus")
     assert_response :bad_request
