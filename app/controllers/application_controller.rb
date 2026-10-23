@@ -49,7 +49,9 @@ class ApplicationController < ActionController::Base
   end
 
   def track_page_view
-    return unless PageView::TRACKED_CONTROLLERS.include?(controller_name)
+    return unless PageView.tracked_controllers.include?(controller_name)
+    # 頁面上的 JS 輪詢（例如資料匯入每 5 秒查一次狀態）不算一次使用
+    return if request.xhr? || request.format.json?
     PageView.create!(
       controller_name: controller_name,
       action_name:     action_name,

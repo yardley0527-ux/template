@@ -39,7 +39,7 @@
     <div class="card border-0 shadow-sm text-center py-4">
       <div class="text-muted small mb-1">從未使用功能</div>
       <div class="fw-bold text-danger" style="font-size: 2rem; line-height: 1;"><%= @never_visited.size %></div>
-      <div class="text-muted small mt-1">共 <%= PageView::ALL_TRACKED_PAGES.size %> 個功能</div>
+      <div class="text-muted small mt-1">共 <%= PageView.all_tracked_pages.size %> 個功能</div>
     </div>
   </div>
 </div>
@@ -101,7 +101,10 @@
   <div class="d-flex align-items-center mb-3">
     <div class="border-start border-3 border-danger ps-3">
       <h5 class="fw-bold mb-0 text-danger">從未使用（近 <%= @days %> 天）</h5>
-      <p class="text-muted small mb-0">可考慮簡化或移除</p>
+      <p class="text-muted small mb-0">可考慮簡化或移除。
+        <% if @days.days.ago.to_date < PageView::FULL_TRACKING_SINCE %>
+          <span class="text-warning">注意：<%= PageView::FULL_TRACKING_SINCE.strftime("%-m/%-d") %> 以前只有約 20 頁有紀錄，其他頁在那之前一律顯示 0；要等到 <%= (PageView::FULL_TRACKING_SINCE + @days).strftime("%-m/%-d") %> 以後看「近 <%= @days %> 天」才準。</span>
+        <% end %></p>
     </div>
   </div>
   <div class="card border-0 shadow-sm mb-5">

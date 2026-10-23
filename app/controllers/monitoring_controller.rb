@@ -10,7 +10,7 @@ class MonitoringController < ApplicationController
       .transform_keys { |c, a| "#{c}##{a}" }
 
     # 整理成帶有 label 的列表，按造訪數排序
-    @pages = PageView::ALL_TRACKED_PAGES.map do |key, label|
+    @pages = PageView.all_tracked_pages.map do |key, label|
       { key: key, label: label, count: counts[key] || 0 }
     end.sort_by { |p| -p[:count] }
 
@@ -43,7 +43,7 @@ class MonitoringController < ApplicationController
       user      = users[user_id]
       user_label = user&.username || user&.email&.split("@")&.first || "—"
       page_key  = "#{ctrl}##{act}"
-      page_label = PageView::ALL_TRACKED_PAGES[page_key] || page_key
+      page_label = PageView.all_tracked_pages[page_key] || page_key
       { user: user_label, page: page_label, key: page_key, count: count }
     end.sort_by { |r| [r[:user], -r[:count]] }
 
