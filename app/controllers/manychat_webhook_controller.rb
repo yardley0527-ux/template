@@ -6,7 +6,7 @@
 # ManyChat 設定：POST <網域>/manychat/webhook，Header 帶 X-Manychat-Token
 # （= ENV MANYCHAT_WEBHOOK_TOKEN），Body 用 JSON：
 #   { "account": "shengting.slim", "subscriber": <Full Subscriber Data> }
-# account 是這個 Flow 所在的 IG 帳號（ManychatCheck::ACCOUNTS 的 key）。
+# account 是這個 Flow 所在的 IG 帳號名稱（如 shengting.slim），大小寫與 @ 不拘。
 # 回傳的 matched / membership_level 可在 Response mapping 存成自訂欄位，讓 Flow 分流。
 class ManychatWebhookController < ActionController::Base
   skip_forgery_protection
@@ -17,8 +17,8 @@ class ManychatWebhookController < ActionController::Base
     payload = JSON.parse(request.raw_post)
     sub = payload["subscriber"].is_a?(Hash) ? payload["subscriber"] : payload
     subscriber_id = sub["id"].presence || sub["subscriber_id"].presence
-    account_key = payload["account"].to_s
-    unless subscriber_id && ManychatCheck::ACCOUNTS.key?(account_key)
+    account_key = ShoplineCustomer.normalize_ig(payload["account"]).to_s
+    unless subscriber_id && account_key.match?(ManychatSubscriber::ACCOUNT_KEY_FORMAT)
       return render json: { error: "account 或 subscriber id 缺少／不正確" }, status: :unprocessable_entity
     end
 

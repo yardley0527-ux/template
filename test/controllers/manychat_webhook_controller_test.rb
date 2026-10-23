@@ -45,8 +45,16 @@ class ManychatWebhookControllerTest < ActionDispatch::IntegrationTest
     assert_equal 0, ManychatSubscriber.count
   end
 
-  test "未知帳號或缺 subscriber id 回 422" do
-    deliver({ account: "unknown", subscriber: { id: 1 } })
+  test "不在每日確認面板的帳號也收，代號大小寫與 @ 不拘" do
+    deliver({ account: "@Shengting.PDRN", subscriber: { id: 5 } })
+    assert_response :ok
+    assert ManychatSubscriber.exists?(account_key: "shengting.pdrn", subscriber_id: 5)
+  end
+
+  test "帳號代號格式不對或缺 subscriber id 回 422" do
+    deliver({ account: "苼莛 主帳號", subscriber: { id: 1 } })
+    assert_response :unprocessable_entity
+    deliver({ account: "", subscriber: { id: 1 } })
     assert_response :unprocessable_entity
     deliver({ account: "shengting.slim", subscriber: {} })
     assert_response :unprocessable_entity

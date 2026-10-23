@@ -2,7 +2,10 @@
 class ManychatSubscriber < ApplicationRecord
   belongs_to :shopline_customer, optional: true
 
-  validates :account_key, inclusion: { in: ManychatCheck::ACCOUNTS.keys }
+  # account_key 用該 IG 帳號名稱（如 shengting.slim）；不設白名單，新開的產品帳號直接能接。
+  ACCOUNT_KEY_FORMAT = /\A[a-z0-9._]{1,30}\z/
+
+  validates :account_key, format: { with: ACCOUNT_KEY_FORMAT }
   validates :subscriber_id, presence: true, uniqueness: { scope: :account_key }
 
   before_save :match_customer, if: -> { will_save_change_to_ig_username? || shopline_customer_id.nil? }
