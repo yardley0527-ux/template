@@ -41,8 +41,6 @@ module Seo
       doc = Nokogiri::HTML.fragment(html)
       title = CGI.unescapeHTML(Nokogiri::HTML.fragment(post.dig("title", "rendered").to_s).text).strip
       h2s = doc.css("h2").map { |h| h.text.strip }
-      images = doc.css("img")
-      missing_alt = images.count { |img| img["alt"].to_s.strip.empty? }
       tables = doc.css("table").size
       faq = faq_count(doc, h2s)
       product_links = doc.css("a[href]").count { |a| a["href"].match?(%r{\Ahttps?://(www\.)?yardley\.tw/}) }
@@ -56,7 +54,6 @@ module Seo
       flags << "沒有連到 yardley 商品頁" if product_links.zero?
       flags << "缺 Meta Description" if description&.empty?
       flags << "Meta Description #{description.length} 字（上限 #{DESCRIPTION_MAX}）" if description && description.length > DESCRIPTION_MAX
-      flags << "#{missing_alt} 張圖片缺 alt" if missing_alt.positive?
 
       { "id" => post["id"], "title" => title, "link" => post["link"], "date" => post["date"],
         "flags" => flags, "h2s" => h2s, "faq_count" => faq, "tables" => tables,

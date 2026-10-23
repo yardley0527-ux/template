@@ -19,7 +19,7 @@ module Seo
       assert_includes flags, "表格 3 個（上限 2）"
       assert_includes flags, "FAQ 只有 10 題（建議 15–20 題）"
       assert_includes flags, "沒有連到 yardley 商品頁"
-      assert_includes flags, "1 張圖片缺 alt"
+      refute flags.any? { |f| f.include?("alt") }, "編輯不放 alt，不該檢查"
     end
 
     test "沒有寫題數時數 FAQ 底下的問句小標" do
