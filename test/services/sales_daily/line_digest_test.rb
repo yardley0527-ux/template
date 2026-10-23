@@ -47,6 +47,25 @@ module SalesDaily
       assert_includes text, "1. PDRN1\n  3 個／2 單｜$7,750（88.6%）\n2. 全能2\n  1 個／1 單｜$1,000（11.4%）"
     end
 
+    test "好幾天合併成一份：每天一行、人數去重、卡別和熱銷是合計" do
+      order("#G3", "gold@example.com", Date.new(2026, 10, 4), "PDRN1", 1, total: 2750, checkout: 2750)
+      text = LineDigest.new(DAY..Date.new(2026, 10, 4), line: FakeLine.new).message
+
+      assert_includes text, "📊 10/3（六）–10/4（日） SL 訂單\n訂單 3 單｜營收 $11,500（均 $3,833）\n舊客 1人/2單 $8,750（均 $4,375）"
+      assert_includes text, "\n\n10/3（六）❌ 2單 $8,750\n10/4（日）❌ 1單 $2,750"
+      assert_includes text, "📅 10 月累計（10/1–10/4）"
+      assert_includes text, "👑 10/3–10/4 購買卡別\n黑卡 0 人\n金卡 1人/2單 $8,750"
+      assert_includes text, "1. PDRN1\n  4 個／3 單｜$10,500"
+    end
+
+    test "從上次發的隔天報到昨天（after_import 的算法），記在最後一天" do
+      LineDigestDelivery.create!(topic: "sales_daily", report_date: Date.new(2026, 10, 1))
+      line = FakeLine.new
+      assert_equal 1, LineDigest.new(LineDigestDelivery.pending_days("sales_daily", through: DAY), line: line).call
+      assert_includes line.sent.first.last.first, "📊 10/2（五）–10/3（六） SL 訂單"
+      assert LineDigestDelivery.exists?(topic: "sales_daily", report_date: DAY)
+    end
+
     test "只發給有訂閱的群組，同一天只發一次；當天沒訂單不發" do
       line = FakeLine.new
       assert_equal 1, LineDigest.new(DAY, line: line).call

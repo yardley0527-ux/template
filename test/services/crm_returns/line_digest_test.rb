@@ -65,6 +65,22 @@ module CrmReturns
       assert_includes text, "已排除黑名單 1 人（黑名單金卡）"
     end
 
+    test "好幾天合併：寫哪天回來，隔多久從那天往回算" do
+      order("#B2", "black@example.com", DAY - 1, 3000)
+      text = LineDigest.new((DAY - 2)..DAY, line: FakeLine.new).message
+
+      assert_includes text, "10/20（二）–10/22（四） 訂單・上次購買已隔 180 天以上\n共 1 人"
+      assert_includes text, "🖤 黑卡回來｜黑卡\nIG：black_ig\n10/21（三） 回來下單\n上次購買 2026/2/1（隔 262 天）\n這次 $15,000"
+    end
+
+    test "沒人回來也記成檢查過，下次不會再從這天找" do
+      line = FakeLine.new
+      ShoplineOrder.where(order_number: "#B1").delete_all
+      assert_equal 0, LineDigest.new(DAY, line: line).call
+      assert_empty line.sent
+      assert LineDigestDelivery.exists?(topic: "crm_returns", report_date: DAY)
+    end
+
     test "只發給有訂閱的群組，同一天只發一次；沒人回來不發" do
       line = FakeLine.new
       assert_equal 1, LineDigest.new(DAY, line: line).call

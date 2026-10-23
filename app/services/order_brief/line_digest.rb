@@ -5,11 +5,12 @@ module OrderBrief
   # 重點（AI）→ 總覽（文字）→ PDRN／全能表格（圖片）→ 其他舊客（文字）→ 很久沒回來表格（圖片）。
   # 匯入已付款訂單（/imports 或 rake import:paid_orders）跑完後呼叫；一天可能匯入好幾次，
   # 同一天的簡報只發一次（line_digest_deliveries 唯一索引），FORCE 才重發。
+  # 星期一一次匯入五六日時，三天各發一份（簡報是逐人明細，合併會太長）。
   class LineDigest
     TOPIC = "order_brief"
 
     def self.after_import
-      call(Date.current - 1)
+      LineDigestDelivery.pending_days(TOPIC, through: Date.current - 1).sum { |day| call(day) }
     rescue StandardError => e
       Rails.logger.warn("[order_brief] LINE 推播失敗：#{e.class}: #{e.message}")
       0

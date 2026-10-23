@@ -6,6 +6,8 @@ module SalesDaily
   # 2. 當月 1 號到前一天的累計業績（日目標 DAILY_TARGET 達標天數）
   # 3. 前一天的卡別、年齡層
   # 4. 前一天熱銷商品 Top 5（依數量）
+  # 星期一一次匯入五六日時合併成一份（同 /daily_dashboard 星期一看三天）：數量段多列每天一行，
+  # 卡別、年齡層、熱銷是這幾天合計。要報哪幾天看上次發到哪天（LineDigestDelivery.pending_days）。
   # 新舊客、整單金額的口徑跟訂單簡報（OrderBrief::Report）一樣：當天以前全部歷史＋IG 分身。
   # 所以數字會跟 /daily_dashboard 有小差異（後台用「查詢區間開始前有沒有買過」）。
   class LineDigest
@@ -17,22 +19,26 @@ module SalesDaily
     WEEKDAYS = %w[日 一 二 三 四 五 六].freeze
 
     def self.after_import
-      call(Date.current - 1)
+      call(LineDigestDelivery.pending_days(TOPIC, through: Date.current - 1))
     rescue StandardError => e
       Rails.logger.warn("[sales_daily] LINE 推播失敗：#{e.class}: #{e.message}")
       0
     end
 
-    def self.call(day, force: false)
-      new(day).call(force: force)
+    # days：一天（Date）或連續幾天（Range）
+    def self.call(days, force: false)
+      new(days).call(force: force)
     end
 
-    def initialize(day, line: LineBot::Client.new)
-      @day = day.to_date
+    def initialize(days, line: LineBot::Client.new)
+      days = days.is_a?(Range) ? days : days..days
+      @days = days.first.to_date..days.last.to_date
+      @day = @days.last
       @line = line
     end
 
-    # 回傳發送的群組數；沒設定 LINE、沒有訂閱群組、當天沒訂單（還沒匯入）、已發過都回 0
+    # 回傳發送的群組數；沒設定 LINE、沒有訂閱群組、最後一天沒訂單（還沒匯入）、已發過都回 0。
+    # 已發紀錄記在最後一天
     def call(force: false)
       return 0 unless LineBot::Client.configured?
 
@@ -61,16 +67,26 @@ module SalesDaily
       @reports[date] ||= OrderBrief::Report.new(date)
     end
 
-    def rows = report(@day).rows
+    def rows
+      @rows ||= @days.flat_map { |date| report(date).rows }
+    end
 
-    # ---- 1. 前一天訂單數量 ----
+    # ---- 1. 訂單數量 ----
 
     def day_section
       new_rows, old_rows = rows.partition(&:new_customer?)
-      ["📊 #{day_label(@day)} SL 訂單",
-       "訂單 #{order_count(rows)} 單｜營收 #{money(amount(rows))}#{avg(rows)}",
-       "舊客 #{stat(old_rows)}#{avg(old_rows)}",
-       "新客 #{stat(new_rows)}#{avg(new_rows)}"].join("\n")
+      lines = ["📊 #{range_label} SL 訂單",
+               "訂單 #{order_count(rows)} 單｜營收 #{money(amount(rows))}#{avg(rows)}",
+               "舊客 #{stat(old_rows)}#{avg(old_rows)}",
+               "新客 #{stat(new_rows)}#{avg(new_rows)}"]
+      if @days.count > 1
+        lines << ""
+        @days.each do |date|
+          rs = report(date).rows
+          lines << "#{day_label(date)}#{amount(rs) >= DAILY_TARGET ? '✅' : '❌'} #{order_count(rs)}單 #{money(amount(rs))}"
+        end
+      end
+      lines.join("\n")
     end
 
     # ---- 2. 當月累計 ----
@@ -93,7 +109,7 @@ module SalesDaily
     # 舊客依目前卡別，新客另外一行（同 /daily_dashboard）
     def level_section
       new_rows, old_rows = rows.partition(&:new_customer?)
-      lines = ["👑 #{md(@day)} 購買卡別"]
+      lines = ["👑 #{short_range} 購買卡別"]
       LEVELS.each do |level|
         rs = old_rows.select { |r| customer(r.email)[:level] == level }
         lines << "#{level} #{rs.any? ? "#{stat(rs)}#{avg(rs)}" : '0 人'}"
@@ -106,7 +122,7 @@ module SalesDaily
 
     def age_section
       groups = rows.group_by { |r| age_band(customer(r.email)[:birthdate]) }
-      lines = ["🎂 #{md(@day)} 年齡層"]
+      lines = ["🎂 #{short_range} 年齡層"]
       AGE_BANDS.each do |band|
         rs = groups[band]
         lines << "#{band} #{stat(rs)}#{avg(rs)}" if rs
@@ -116,9 +132,9 @@ module SalesDaily
 
     # ---- 4. 熱銷商品 ----
 
-    # 依數量排序；營業額用各行 checkout_amount，占比是占當天營收（同 /daily_dashboard「昨日主力商品」）
+    # 依數量排序；營業額用各行 checkout_amount，占比是占這幾天營收（同 /daily_dashboard「昨日主力商品」）
     def product_section
-      products = ShoplineOrder.where(payment_status: "已付款").where("order_date::date = ?", @day)
+      products = ShoplineOrder.where(payment_status: "已付款").where("order_date::date BETWEEN ? AND ?", @days.first, @days.last)
                               .where.not(product_name: [nil, ""])
                               .group(Arel.sql("trim(product_name)"))
                               .order(Arel.sql("SUM(COALESCE(quantity, 1)) DESC, SUM(COALESCE(checkout_amount, 0)) DESC"))
@@ -126,7 +142,7 @@ module SalesDaily
                               .pluck(Arel.sql("trim(product_name)"), Arel.sql("SUM(COALESCE(quantity, 1))"),
                                      Arel.sql("COUNT(DISTINCT order_number)"), Arel.sql("SUM(COALESCE(checkout_amount, 0))"))
       total = amount(rows)
-      lines = ["🔥 #{md(@day)} 熱銷商品"]
+      lines = ["🔥 #{short_range} 熱銷商品"]
       products.each_with_index do |(name, qty, orders, revenue), i|
         share = total.positive? ? (revenue.to_f / total * 100).round(1) : 0
         lines << "#{i + 1}. #{name}"
@@ -138,7 +154,7 @@ module SalesDaily
     # ---- 共用 ----
 
     def customer(email)
-      @customers ||= ShoplineCustomer.where("lower(trim(email)) IN (?)", rows.map(&:email))
+      @customers ||= ShoplineCustomer.where("lower(trim(email)) IN (?)", rows.map(&:email).uniq)
                                      .pluck(Arel.sql("lower(trim(email))"), :membership_level, :birthdate)
                                      .each_with_object({}) { |(em, level, birthdate), h| h[em] ||= { level: level.presence, birthdate: birthdate } }
       @customers.fetch(email, {})
@@ -157,11 +173,14 @@ module SalesDaily
       end
     end
 
-    def stat(rs) = "#{rs.size}人/#{order_count(rs)}單 #{money(amount(rs))}"
+    # 好幾天合併時同一個人可能出現在不同天，人數用 email 去重
+    def stat(rs) = "#{rs.map(&:email).uniq.size}人/#{order_count(rs)}單 #{money(amount(rs))}"
     def avg(rs) = order_count(rs).positive? ? "（均 #{money(amount(rs) / order_count(rs))}）" : ""
     def amount(rs) = rs.sum(&:amount)
     def order_count(rs) = rs.sum { |r| r.orders.size }
     def day_label(date) = "#{md(date)}（#{WEEKDAYS[date.wday]}）"
+    def range_label = @days.count > 1 ? "#{day_label(@days.first)}–#{day_label(@days.last)}" : day_label(@day)
+    def short_range = @days.count > 1 ? "#{md(@days.first)}–#{md(@days.last)}" : md(@day)
     def md(date) = "#{date.month}/#{date.day}"
     def money(x) = "$#{ActiveSupport::NumberHelper.number_to_delimited(x.round)}"
   end
