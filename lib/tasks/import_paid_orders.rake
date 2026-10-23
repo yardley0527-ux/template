@@ -72,6 +72,7 @@ namespace :import do
     end
 
     puts "[task] order brief pushed to #{OrderBrief::LineDigest.after_import} LINE group(s)."
+    puts "[task] black/gold returns pushed to #{CrmReturns::LineDigest.after_import} LINE group(s)."
   end
 
   desc <<~DESC

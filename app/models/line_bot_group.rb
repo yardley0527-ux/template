@@ -5,7 +5,8 @@ class LineBotGroup < ApplicationRecord
   TOPICS = {
     "seo_daily" => "SEO 日報（平日 10:00）",
     "order_brief" => "訂單簡報（匯入前一天訂單後）",
-    "crm_birthdays" => "黑金卡生日＋高消費客人（週一 10:00）"
+    "crm_birthdays" => "黑金卡生日＋高消費客人（週一 10:00）",
+    "crm_returns" => "久未消費黑金卡回來了（匯入前一天訂單後）"
   }.freeze
 
   validates :group_id, presence: true, uniqueness: true
