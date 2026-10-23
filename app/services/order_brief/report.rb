@@ -1,16 +1,15 @@
 # frozen_string_literal: true
 
 module OrderBrief
-  # 每日訂單簡報（使用者每天看的格式），LINE 純文字版。
-  # 口徑跟使用者 10/19 定案的 order_brief.py 一樣：
+  # 每日訂單簡報（使用者每天看的格式）的資料；LINE Flex 總覽（FlexMessage）和
+  # /order_briefs 明細頁共用。口徑跟使用者 10/19 定案的 order_brief.py 一樣：
   # - 只算已付款；整單金額取該張單 total_amount 的最大值（只記在其中一行）
   # - 卡別用客人「目前」的卡別（shopline_customers），不是下單當時的
   # - 新客＝當天以前（2024/1 起全部歷史）沒有已付款訂單，同 IG 的其他 email 也算同一人
   # - 瓶數＝品名數字 × quantity，「送M」另計；薑黃等「X N」＋「X N送M」成對重複行只留「送」那行
   # - 「以前買過 N 次」只算當天以前
-  # LINE 沒有表格，表格改成一人一行；「90 天內回來」那張表跟上面各段重複，LINE 版不放。
   class Report
-    FOCUS = %w[PDRN 全能].freeze # 有詳細段落的主力產品，換檔期改這裡
+    FOCUS = %w[PDRN 全能].freeze # 有詳細表的主力產品，換檔期改這裡
     LONG_GAP = 90
     LEVELS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
     SHORT_LEVEL = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白" }.freeze
@@ -34,15 +33,87 @@ module OrderBrief
       rows.empty?
     end
 
-    # LINE 一則訊息上限 5,000 字，分段回傳讓呼叫端自己組
-    def sections
-      return [] if empty?
-
-      ([overview] + FOCUS.map { |s| focus_section(s) } + [others_section, long_gap_section]).compact
-    end
-
     def rows
       @rows ||= build_rows
+    end
+
+    # ---- 總覽 ----
+
+    def summary
+      new_rows, old_rows = rows.partition(&:new_customer?)
+      total = rows.sum(&:amount)
+      new_amount = new_rows.sum(&:amount)
+      { people: rows.size, orders: order_count(rows), revenue: total,
+        new_people: new_rows.size, new_orders: order_count(new_rows), new_revenue: new_amount,
+        new_share: total.positive? ? (new_amount / total * 100).round : 0,
+        old_people: old_rows.size, old_orders: order_count(old_rows), old_revenue: total - new_amount }
+    end
+
+    def level_stats
+      LEVELS.map do |level|
+        rs = rows.select { |r| level_full(r.email) == level }
+        { level: level, people: rs.size, amount: rs.sum(&:amount), new_people: rs.count(&:new_customer?) }
+      end
+    end
+
+    # 依人數多到少；pre＝預購瓶數
+    def product_stats
+      stats = Hash.new { |h, k| h[k] = { series: k, emails: Set.new, paid: 0, gift: 0, pre: 0 } }
+      rows.each do |r|
+        r.items.each do |name, k|
+          series, n, gift = parse(name)
+          p = stats[series]
+          p[:emails] << r.email
+          p[:paid] += n * k
+          p[:gift] += gift * k
+          p[:pre] += n * k if name.start_with?("預購-")
+        end
+      end
+      stats.values.map { |p| p.except(:emails).merge(people: p[:emails].size) }.sort_by { |p| -p[:people] }
+    end
+
+    # ---- 客人明細 ----
+
+    # { buyers:, repeat: [...], first: [...], fresh: [...] }，回購／第一次買依「隔幾天」多到少
+    def focus(series)
+      @focus ||= {}
+      @focus[series] ||= begin
+        buyers = rows.select { |r| row_series(r).include?(series) }
+        repeat = buyers.select { |r| r.history.any? { |o| series_of(o).include?(series) } }
+        first = buyers.select { |r| !r.new_customer? && !repeat.include?(r) }
+        { buyers: buyers.size,
+          repeat: repeat.map { |r| repeat_entry(r, series) }.sort_by { |e| -e[:gap] },
+          first: first.map { |r| first_entry(r) }.sort_by { |e| -e[:gap] },
+          fresh: buyers.select(&:new_customer?).map { |r| base_entry(r) } }
+      end
+    end
+
+    # 沒買主力產品的舊客／新客
+    def other_old
+      rows.reject { |r| r.new_customer? || (row_series(r) & FOCUS).any? }.map do |r|
+        same = r.history.select { |o| (series_of(o) & row_series(r)).any? }
+        first_entry(r).merge(same_item_date: same.last&.date, low_amount: r.amount < 1000)
+      end.sort_by { |e| -e[:gap] }
+    end
+
+    def other_new
+      rows.select { |r| r.new_customer? && (row_series(r) & FOCUS).empty? }.map { |r| base_entry(r) }
+    end
+
+    # 舊客依「距離任何品項上一單」分成 ≥90 天、90 天內兩張表
+    def long_gap
+      returning.select { |e| e[:gap] >= LONG_GAP }
+    end
+
+    def back_within
+      returning.select { |e| e[:gap] < LONG_GAP }
+    end
+
+    def md(date) = date.year == day.year ? "#{date.month}/#{date.day}" : "#{date.year}/#{date.month}/#{date.day}"
+
+    def disp(items)
+      items.each_with_object(Hash.new(0)) { |(n, k), h| h[n] += k }
+           .map { |n, k| n.delete_prefix("預購-") + (k > 1 ? "×#{k}" : "") }.join("、")
     end
 
     private
@@ -120,78 +191,20 @@ module OrderBrief
     def row_series(row) = row.orders.map { |o| series_of(o) }.reduce(Set.new, :|)
     def bottles(order, s) = order.items.sum { |n, k| parse(n)[0] == s ? parse(n)[1] * k : 0 }
 
-    # ---- 文字 ----
+    # ---- 明細列 ----
 
-    def overview
-      new_rows, old_rows = rows.partition(&:new_customer?)
-      total = rows.sum(&:amount)
-      new_amount = new_rows.sum(&:amount)
-      share = total.positive? ? (new_amount / total * 100).round : 0
-
-      lines = ["📦 #{md(day)} 訂單簡報", "",
-               "共 #{rows.size} 人下單、#{order_count(rows)} 張單，營收 #{money(total)}",
-               "新客 #{new_rows.size} 人、#{order_count(new_rows)} 張單，#{money(new_amount)}（占 #{share}%）",
-               "舊客 #{old_rows.size} 人、#{order_count(old_rows)} 張單，#{money(total - new_amount)}",
-               "", "【依卡別】"]
-      LEVELS.each do |level|
-        rs = rows.select { |r| level_full(r.email) == level }
-        extra = level == "一般會員" ? "（含新客 #{rs.count(&:new_customer?)} 人）" : ""
-        lines << "#{level} #{rs.size} 人#{extra}#{rs.any? ? "，#{money(rs.sum(&:amount))}" : ''}"
-      end
-
-      lines += ["", "【依產品】"]
-      product_stats.sort_by { |_, p| -p[:people].size }.each do |series, p|
-        line = "#{series} #{p[:people].size} 人，付費 #{p[:paid]} 瓶"
-        line += "，另送 #{p[:gift]} 瓶" if p[:gift].positive?
-        line += p[:pre] == p[:paid] ? "（全部是預購）" : "（預購 #{p[:pre]} 瓶）" if p[:pre].positive?
-        lines << line
-      end
-      lines.join("\n")
+    def base_entry(row)
+      { name: name(row.email), level: level(row.email), today: today_items(row), amount: row.amount }
     end
 
-    def product_stats
-      stats = Hash.new { |h, k| h[k] = { people: Set.new, paid: 0, gift: 0, pre: 0 } }
-      rows.each do |r|
-        r.items.each do |name, k|
-          series, n, gift = parse(name)
-          p = stats[series]
-          p[:people] << r.email
-          p[:paid] += n * k
-          p[:gift] += gift * k
-          p[:pre] += n * k if name.start_with?("預購-")
-        end
-      end
-      stats
+    def first_entry(row)
+      lo = row.last_order
+      base_entry(row).merge(last_date: lo.date, gap: gap(lo.date), last_items: disp(lo.items), times: row.history.size)
     end
 
-    def focus_section(series)
-      buyers = rows.select { |r| row_series(r).include?(series) }
-      return nil if buyers.empty? # 當天沒人買就整段不放
-
-      repeat = buyers.select { |r| r.history.any? { |o| series_of(o).include?(series) } }
-      first = buyers.select { |r| !r.new_customer? && !repeat.include?(r) }
-      fresh = buyers.select(&:new_customer?)
-
-      lines = ["【#{series}】#{buyers.size} 人：回購 #{repeat.size}、舊客第一次買 #{first.size}、新客 #{fresh.size}"]
-      if repeat.any?
-        lines += ["", "🔁 回購（依多久沒回來排序）"]
-        repeat.map { |r| repeat_line(r, series) }.sort_by { |gap, _| -gap }.each { |_, l| lines << l }
-      end
-      if first.any?
-        lines += ["", "🆕 舊客第一次買"]
-        first.sort_by { |r| -gap(r.last_order.date) }.each do |r|
-          lo = r.last_order
-          lines << "・#{who(r)}：#{today_items(r)}，#{money(r.amount)}｜上次消費 #{md(lo.date)}，隔 #{gap(lo.date)} 天｜上次買#{disp(lo.items)}"
-        end
-      end
-      lines += ["", "新客：" + fresh.map { |r| "#{name(r.email)}（#{today_items(r)}，#{money(r.amount)}）" }.join("、")] if fresh.any?
-      lines.join("\n")
-    end
-
-    def repeat_line(row, series)
+    def repeat_entry(row, series)
       past = row.history.select { |o| series_of(o).include?(series) }
       last = past.last
-      g = gap(last.date)
       if series == "PDRN"
         now_b = row.orders.sum { |o| bottles(o, series) }
         last_b = bottles(last, series)
@@ -201,59 +214,28 @@ module OrderBrief
         note += "，加購#{others.join('、')}" if others.any?
       else
         lo = row.last_order
-        note = lo.equal?(last) ? "上次就是#{series}" : "最近一次 #{md(lo.date)} #{disp(lo.items)}"
+        note = lo.equal?(last) ? "上次就是#{series}" : "#{md(lo.date)} #{disp(lo.items)}"
         note += "（以前買過 #{past.size} 次#{series}）" if past.size > 1
       end
-      last_items = last.items.select { |n, _| parse(n).first == series }
-      [g, "・#{who(row)}：#{today_items(row)}，#{money(row.amount)}｜上次 #{md(last.date)} #{disp(last_items)}，隔 #{g} 天｜#{note}"]
+      base_entry(row).merge(last_date: last.date, gap: gap(last.date), note: note,
+                            last_items: disp(last.items.select { |n, _| parse(n).first == series }))
     end
 
-    def others_section
-      old = rows.reject { |r| r.new_customer? || (row_series(r) & FOCUS).any? }
-      fresh = rows.select { |r| r.new_customer? && (row_series(r) & FOCUS).empty? }
-      return nil if old.empty? && fresh.empty?
-
-      lines = ["【其他舊客】#{old.size} 人（沒買#{FOCUS.join('和')}）"]
-      old.sort_by { |r| -gap(r.last_order.date) }.each do |r|
-        lo = r.last_order
-        same = r.history.select { |o| (series_of(o) & row_series(r)).any? }
-        extra = same.any? ? "，上次買同品項 #{md(same.last.date)}" : "，第一次買這個品項"
-        low = r.amount < 1000 ? "（實付很低，大概是購物金折抵）" : ""
-        lines << "・#{who(r)}：#{today_items(r)}，#{money(r.amount)}#{low}，#{gap(lo.date)} 天沒來（上次 #{md(lo.date)} #{disp(lo.items)}）#{extra}"
-      end
-      lines += ["", "其他新客：" + fresh.map { |r| "#{name(r.email)}（#{today_items(r)}，#{money(r.amount)}）" }.join("、")] if fresh.any?
-      lines.join("\n")
-    end
-
-    # 距離任何品項上一單 ≥ 90 天
-    def long_gap_section
-      back = rows.reject(&:new_customer?).select { |r| gap(r.last_order.date) >= LONG_GAP }
-      return nil if back.empty?
-
-      lines = ["【很久沒回來買的（≥#{LONG_GAP} 天）】#{back.size} 人"]
-      back.sort_by { |r| -gap(r.last_order.date) }.each do |r|
-        lo = r.last_order
-        lines << "・#{who(r)}：隔 #{gap(lo.date)} 天（上次 #{md(lo.date)} #{disp(lo.items)}，以前買過 #{r.history.size} 次）"
-      end
-      lines.join("\n")
+    def returning
+      @returning ||= rows.reject(&:new_customer?).map do |r|
+        bought = r.history.map { |o| series_of(o) }.reduce(Set.new, :|)
+        first_entry(r).merge(repurchased: (row_series(r) & bought).to_a.sort, first_time: (row_series(r) - bought).to_a.sort)
+      end.sort_by { |e| -e[:gap] }
     end
 
     def level_full(email) = @customers.dig(email, :level).presence || "一般會員"
     def level(email) = SHORT_LEVEL.fetch(level_full(email), "一般")
     def name(email) = (@customers.dig(email, :name).presence || email.split("@").first).strip
-    def who(row) = "#{name(row.email)}（#{level(row.email)}）"
     def order_count(rs) = rs.sum { |r| r.orders.size }
     def gap(date) = (day - date).to_i
-    def money(x) = "$#{ActiveSupport::NumberHelper.number_to_delimited(x.round)}"
-    def md(date) = date.year == day.year ? "#{date.month}/#{date.day}" : "#{date.year}/#{date.month}/#{date.day}"
 
     def today_items(row)
       disp(row.items) + (row.orders.size > 1 ? "（#{row.orders.size} 張單）" : "")
-    end
-
-    def disp(items)
-      items.each_with_object(Hash.new(0)) { |(n, k), h| h[n] += k }
-           .map { |n, k| n.delete_prefix("預購-") + (k > 1 ? "×#{k}" : "") }.join("、")
     end
   end
 end

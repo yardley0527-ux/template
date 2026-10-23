@@ -56,8 +56,12 @@ module LineBot
 
     # 一次推多則（LINE 上限 5 則），群組裡會連續出現
     def push_texts(to, texts)
-      messages = texts.first(MAX_MESSAGES).map { |t| { type: "text", text: t.to_s.truncate(MAX_TEXT) } }
-      post("/message/push", { to: to, messages: messages })
+      push_messages(to, texts.map { |t| { type: "text", text: t.to_s.truncate(MAX_TEXT) } })
+    end
+
+    # 任意訊息物件（例如 Flex 卡片）
+    def push_messages(to, messages)
+      post("/message/push", { to: to, messages: messages.first(MAX_MESSAGES) })
     end
 
     def group_name(group_id)

@@ -8,7 +8,7 @@ module OrderBrief
       attr_reader :sent
 
       def initialize = @sent = []
-      def push_texts(to, texts) = @sent << [to, texts]
+      def push_messages(to, messages) = @sent << [to, messages]
     end
 
     DAY = Date.new(2026, 10, 22)
@@ -47,20 +47,43 @@ module OrderBrief
     end
 
     test "簡報口徑：IG 分身算同一人、新客、卡別、瓶數" do
-      text = LineDigest.new(DAY, line: FakeLine.new).messages(Report.new(DAY)).join("\n\n")
+      r = Report.new(DAY)
+      s = r.summary
+      assert_equal [3, 3, 34_000], s.values_at(:people, :orders, :revenue)
+      assert_equal [1, 2000, 6], s.values_at(:new_people, :new_revenue, :new_share)
 
-      assert_includes text, "📦 10/22 訂單簡報"
-      assert_includes text, "共 3 人下單、3 張單，營收 $34,000"
-      assert_includes text, "新客 1 人、1 張單，$2,000（占 6%）"
-      assert_includes text, "黑卡 1 人，$20,000"
-      assert_includes text, "一般會員 1 人（含新客 1 人），$2,000"
-      assert_includes text, "PDRN 2 人，付費 9 瓶（預購 3 瓶）"
-      assert_includes text, "薑黃 1 人，付費 3 瓶，另送 1 瓶"
-      assert_includes text, "【PDRN】2 人：回購 1、舊客第一次買 1、新客 0"
-      assert_includes text, "・Amy（黑）：PDRN6、全能1×2，$20,000｜上次 9/20 PDRN3，隔 32 天｜第 2 次買 PDRN，從 3 瓶升到 6 瓶，加購全能"
-      assert_includes text, "・Bob（銀）：PDRN3、薑黃3送1，$12,000｜上次消費 5/1，隔 174 天｜上次買全能3"
-      assert_includes text, "【很久沒回來買的（≥90 天）】1 人"
-      assert_includes text, "其他新客：Newbie（益生菌2，$2,000）"
+      black = r.level_stats.find { |l| l[:level] == "黑卡" }
+      assert_equal [1, 20_000], black.values_at(:people, :amount)
+      assert_equal 1, r.level_stats.find { |l| l[:level] == "一般會員" }[:new_people]
+
+      pdrn = r.product_stats.find { |p| p[:series] == "PDRN" }
+      assert_equal [2, 9, 3], pdrn.values_at(:people, :paid, :pre)
+      turmeric = r.product_stats.find { |p| p[:series] == "薑黃" }
+      assert_equal [3, 1], turmeric.values_at(:paid, :gift)
+
+      f = r.focus("PDRN")
+      assert_equal [2, 1, 1, 0], [f[:buyers], f[:repeat].size, f[:first].size, f[:fresh].size]
+      amy = f[:repeat].first
+      assert_equal ["Amy", "黑", 32], amy.values_at(:name, :level, :gap)
+      assert_equal "第 2 次買 PDRN，從 3 瓶升到 6 瓶，加購全能", amy[:note]
+      bob = f[:first].first
+      assert_equal ["Bob", 174, "全能3"], bob.values_at(:name, :gap, :last_items)
+
+      assert_equal ["Bob"], r.long_gap.map { |e| e[:name] }
+      assert_equal ["Amy"], r.back_within.map { |e| e[:name] }
+      assert_equal ["Newbie"], r.other_new.map { |e| e[:name] }
+    end
+
+    test "Flex 卡片：總覽表格＋明細頁按鈕" do
+      flex = FlexMessage.new(Report.new(DAY)).to_h
+      json = flex.to_json
+      assert_equal "flex", flex[:type]
+      assert_equal "📦 10/22（四） 訂單簡報：3 人、3 張單，營收 $34,000", flex[:altText]
+      assert_includes json, "$34,000"
+      assert_includes json, "$2,000（6%）"
+      assert_includes json, "https://st-crm-v2.onrender.com/order_briefs?date=2026-10-22"
+      # LINE 不接受空字串的 text
+      refute_includes json, '"text":""'
     end
 
     test "只發給有訂閱的群組，同一天只發一次" do
@@ -72,14 +95,6 @@ module OrderBrief
       assert_equal 1, LineDigestDelivery.where(report_date: DAY).count
     end
 
-    test "直播日段落太長時按行切成多則，每則不超過 LINE 上限" do
-      long = Struct.new(:sections).new(["標題\n" + Array.new(300) { |i| "・客人#{i}：#{'全能' * 20}" }.join("\n")])
-      texts = LineDigest.new(DAY, line: FakeLine.new).messages(long)
-      assert texts.size > 1
-      assert texts.all? { |t| t.size <= LineBot::Client::MAX_TEXT }
-      assert_includes texts.last, "客人299"
-    end
-
     test "當天還沒有訂單（還沒匯入）不發也不記錄" do
       assert_equal 0, LineDigest.new(DAY + 1, line: FakeLine.new).call
       assert_equal 0, LineDigestDelivery.count
@@ -87,7 +102,7 @@ module OrderBrief
 
     test "推播失敗時拿掉紀錄，下次匯入還能再發" do
       broken = Object.new
-      def broken.push_texts(*) = raise(LineBot::Client::Error, "LINE 500")
+      def broken.push_messages(*) = raise(LineBot::Client::Error, "LINE 500")
       assert_raises(LineBot::Client::Error) { LineDigest.new(DAY, line: broken).call }
       assert_equal 0, LineDigestDelivery.count
     end

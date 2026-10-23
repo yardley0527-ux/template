@@ -1,0 +1,170 @@
+<% content_for :page_title, "每日訂單簡報" %>
+<% r = @report
+   money = ->(x) { "$#{number_with_delimiter(x.round)}" }
+   weekday = %w[日 一 二 三 四 五 六][@date.wday] %>
+
+<div class="d-flex align-items-start justify-content-between flex-wrap mb-3" style="gap:12px;">
+  <div>
+    <h4 class="fw-bold mb-0">每日訂單簡報 <%= @date.month %>/<%= @date.day %>（<%= weekday %>）</h4>
+    <p class="text-muted small mb-0">LINE 群組收到的是總覽卡片，客人明細在這頁。只算已付款；新客看全部歷史＋同 IG 分身；卡別是客人目前的卡別。</p>
+  </div>
+  <div class="d-flex align-items-center" style="gap:8px;">
+    <%= link_to "‹ 前一天", order_briefs_path(date: (@date - 1).iso8601), class: "btn btn-sm btn-outline-secondary" %>
+    <%= form_tag order_briefs_path, method: :get, class: "d-flex", style: "gap:8px;" do %>
+      <input type="date" name="date" value="<%= @date.iso8601 %>" class="form-control form-control-sm" onchange="this.form.submit()">
+    <% end %>
+    <%= link_to "後一天 ›", order_briefs_path(date: (@date + 1).iso8601), class: "btn btn-sm btn-outline-secondary" %>
+  </div>
+</div>
+
+<% if r.empty? %>
+  <div class="alert alert-light border">這天沒有已付款訂單（可能還沒匯入）。</div>
+<% else %>
+  <% s = r.summary %>
+  <div class="row">
+    <div class="col-6 col-lg-3 mb-3"><div class="panel p-3 mb-0 h-100">
+      <div class="text-muted small">營收</div><div class="fs-xl fw-700"><%= money.(s[:revenue]) %></div>
+      <div class="small text-muted"><%= s[:people] %> 人・<%= s[:orders] %> 張單</div>
+    </div></div>
+    <div class="col-6 col-lg-3 mb-3"><div class="panel p-3 mb-0 h-100">
+      <div class="text-muted small">新客</div><div class="fs-xl fw-700"><%= s[:new_people] %> 人</div>
+      <div class="small text-muted"><%= money.(s[:new_revenue]) %>（占 <%= s[:new_share] %>%）</div>
+    </div></div>
+    <div class="col-6 col-lg-3 mb-3"><div class="panel p-3 mb-0 h-100">
+      <div class="text-muted small">舊客</div><div class="fs-xl fw-700"><%= s[:old_people] %> 人</div>
+      <div class="small text-muted"><%= money.(s[:old_revenue]) %></div>
+    </div></div>
+    <div class="col-6 col-lg-3 mb-3"><div class="panel p-3 mb-0 h-100">
+      <div class="text-muted small">很久沒回來（≥<%= OrderBrief::Report::LONG_GAP %> 天）</div><div class="fs-xl fw-700"><%= r.long_gap.size %> 人</div>
+      <div class="small text-muted"><a href="#long-gap">看名單 ↓</a></div>
+    </div></div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-5">
+      <div class="panel"><div class="panel-hdr"><h2>依卡別</h2></div><div class="panel-container show"><div class="panel-content p-0">
+        <table class="table table-sm small mb-0">
+          <thead class="thead-light"><tr><th>卡別</th><th class="text-right">人數</th><th class="text-right">營收</th></tr></thead>
+          <tbody>
+            <% r.level_stats.each do |l| %>
+              <tr>
+                <td><%= l[:level] %><% if l[:level] == "一般會員" && l[:new_people].positive? %> <span class="text-muted">（含新客 <%= l[:new_people] %> 人）</span><% end %></td>
+                <td class="text-right"><%= l[:people] %></td>
+                <td class="text-right"><%= l[:people].positive? ? money.(l[:amount]) : "—" %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div></div></div>
+    </div>
+    <div class="col-lg-7">
+      <div class="panel"><div class="panel-hdr"><h2>依產品</h2></div><div class="panel-container show"><div class="panel-content p-0">
+        <table class="table table-sm small mb-0">
+          <thead class="thead-light"><tr><th>產品</th><th class="text-right">人數</th><th class="text-right">付費瓶數</th><th class="text-right">另送</th><th>預購</th></tr></thead>
+          <tbody>
+            <% r.product_stats.each do |p| %>
+              <tr>
+                <td><%= p[:series] %></td>
+                <td class="text-right"><%= p[:people] %></td>
+                <td class="text-right"><%= p[:paid] %></td>
+                <td class="text-right"><%= p[:gift].positive? ? p[:gift] : "—" %></td>
+                <td><%= p[:pre].zero? ? "" : (p[:pre] == p[:paid] ? "全部預購" : "#{p[:pre]} 瓶") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div></div></div>
+    </div>
+  </div>
+
+  <% OrderBrief::Report::FOCUS.each do |series| %>
+    <% f = r.focus(series) %>
+    <div class="panel">
+      <div class="panel-hdr"><h2><%= series %>　<span class="text-muted fw-400"><%= f[:buyers] %> 人：回購 <%= f[:repeat].size %>、舊客第一次買 <%= f[:first].size %>、新客 <%= f[:fresh].size %></span></h2></div>
+      <div class="panel-container show"><div class="panel-content">
+        <% if f[:buyers].zero? %>
+          <p class="text-muted small mb-0">這天沒有人買 <%= series %>。</p>
+        <% else %>
+          <h6 class="fw-bold">回購 <%= series %>（<%= f[:repeat].size %> 人）<small class="text-muted">依多久沒回來排序</small></h6>
+          <div style="overflow-x:auto;">
+            <table class="table table-sm table-bordered small">
+              <thead class="thead-light"><tr><th>客人</th><th>卡別</th><th>今天買</th><th class="text-right">整單</th><th>上次買 <%= series %></th><th class="text-right">隔幾天</th><th><%= series == "PDRN" ? "備註" : "最近一次消費" %></th></tr></thead>
+              <tbody>
+                <% f[:repeat].each do |e| %>
+                  <tr><td class="text-nowrap"><%= e[:name] %></td><td><%= e[:level] %></td><td><%= e[:today] %></td><td class="text-right"><%= money.(e[:amount]) %></td>
+                    <td class="text-nowrap"><%= r.md(e[:last_date]) %>（<%= e[:last_items] %>）</td><td class="text-right fw-bold"><%= e[:gap] %> 天</td><td><%= e[:note] %></td></tr>
+                <% end %>
+                <% if f[:repeat].empty? %><tr><td colspan="7" class="text-muted text-center">—</td></tr><% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <h6 class="fw-bold mt-3">舊客第一次買 <%= series %>（<%= f[:first].size %> 人）<small class="text-muted">依多久沒來排序</small></h6>
+          <div style="overflow-x:auto;">
+            <table class="table table-sm table-bordered small">
+              <thead class="thead-light"><tr><th>客人</th><th>卡別</th><th>今天買</th><th class="text-right">整單</th><th>上次消費</th><th class="text-right">隔幾天</th><th>上次買什麼</th></tr></thead>
+              <tbody>
+                <% f[:first].each do |e| %>
+                  <tr><td class="text-nowrap"><%= e[:name] %></td><td><%= e[:level] %></td><td><%= e[:today] %></td><td class="text-right"><%= money.(e[:amount]) %></td>
+                    <td class="text-nowrap"><%= r.md(e[:last_date]) %></td><td class="text-right fw-bold"><%= e[:gap] %> 天</td><td><%= e[:last_items] %></td></tr>
+                <% end %>
+                <% if f[:first].empty? %><tr><td colspan="7" class="text-muted text-center">—</td></tr><% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <% if f[:fresh].any? %>
+            <p class="small mb-0"><strong>新客買 <%= series %>（<%= f[:fresh].size %> 人）：</strong><%= f[:fresh].map { |e| "#{e[:name]}（#{e[:today]}，#{money.(e[:amount])}）" }.join("、") %></p>
+          <% end %>
+        <% end %>
+      </div></div>
+    </div>
+  <% end %>
+
+  <% others = r.other_old %>
+  <div class="panel">
+    <div class="panel-hdr"><h2>其他舊客　<span class="text-muted fw-400"><%= others.size %> 人，沒買<%= OrderBrief::Report::FOCUS.join("和") %></span></h2></div>
+    <div class="panel-container show"><div class="panel-content">
+      <div style="overflow-x:auto;">
+        <table class="table table-sm table-bordered small">
+          <thead class="thead-light"><tr><th>客人</th><th>卡別</th><th>今天買</th><th class="text-right">整單</th><th class="text-right">幾天沒來</th><th>上次消費</th><th>同品項</th></tr></thead>
+          <tbody>
+            <% others.each do |e| %>
+              <tr><td class="text-nowrap"><%= e[:name] %></td><td><%= e[:level] %></td><td><%= e[:today] %></td>
+                <td class="text-right"><%= money.(e[:amount]) %><% if e[:low_amount] %><br><span class="text-muted">大概是購物金折抵</span><% end %></td>
+                <td class="text-right fw-bold"><%= e[:gap] %> 天</td><td><%= r.md(e[:last_date]) %> <%= e[:last_items] %></td>
+                <td><%= e[:same_item_date] ? "上次買 #{r.md(e[:same_item_date])}" : "第一次買這個品項" %></td></tr>
+            <% end %>
+            <% if others.empty? %><tr><td colspan="7" class="text-muted text-center">—</td></tr><% end %>
+          </tbody>
+        </table>
+      </div>
+      <% if (fresh = r.other_new).any? %>
+        <p class="small mb-0"><strong>其他新客（<%= fresh.size %> 人）：</strong><%= fresh.map { |e| "#{e[:name]}（#{e[:today]}，#{money.(e[:amount])}）" }.join("、") %></p>
+      <% end %>
+    </div></div>
+  </div>
+
+  <% [["long-gap", "很久沒回來買的（≥#{OrderBrief::Report::LONG_GAP} 天）", r.long_gap, false],
+      ["back-within", "#{OrderBrief::Report::LONG_GAP} 天內回來買的", r.back_within, true]].each do |anchor, title, list, extra| %>
+    <div class="panel" id="<%= anchor %>">
+      <div class="panel-hdr"><h2><%= title %>　<span class="text-muted fw-400"><%= list.size %> 人，隔幾天＝距離任何品項的上一單</span></h2></div>
+      <div class="panel-container show"><div class="panel-content">
+        <div style="overflow-x:auto;">
+          <table class="table table-sm table-bordered small mb-0">
+            <thead class="thead-light"><tr><th>客人</th><th>卡別</th><th>這次買</th><th class="text-right">整單</th><th>上次消費</th><th class="text-right">隔幾天</th><th>上次買什麼</th><th class="text-right">以前買過</th>
+              <% if extra %><th>回購品項</th><th>第一次買</th><% end %></tr></thead>
+            <tbody>
+              <% list.each do |e| %>
+                <tr><td class="text-nowrap"><%= e[:name] %></td><td><%= e[:level] %></td><td><%= e[:today] %></td><td class="text-right"><%= money.(e[:amount]) %></td>
+                  <td class="text-nowrap"><%= r.md(e[:last_date]) %></td><td class="text-right fw-bold"><%= e[:gap] %> 天</td><td><%= e[:last_items] %></td><td class="text-right"><%= e[:times] %> 次</td>
+                  <% if extra %><td><%= e[:repurchased].join("、").presence || "—" %></td><td><%= e[:first_time].join("、").presence || "—" %></td><% end %></tr>
+              <% end %>
+              <% if list.empty? %><tr><td colspan="<%= extra ? 10 : 8 %>" class="text-muted text-center">—</td></tr><% end %>
+            </tbody>
+          </table>
+        </div>
+      </div></div>
+    </div>
+  <% end %>
+<% end %>

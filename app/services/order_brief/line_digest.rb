@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module OrderBrief
-  # 把前一天的訂單簡報推到有訂閱「order_brief」的 LINE 群組（例如苼莛國際-策略部）。
+  # 把前一天的訂單簡報（Flex 卡片總覽＋明細頁連結）推到有訂閱「order_brief」的 LINE 群組。
   # 匯入已付款訂單（/imports 或 rake import:paid_orders）跑完後呼叫；一天可能匯入好幾次，
   # 同一天的簡報只發一次（line_digest_deliveries 唯一索引），FORCE 才重發。
   class LineDigest
@@ -34,14 +34,10 @@ module OrderBrief
       return 0 if report.empty?
 
       LineDigestDelivery.deliver_once(TOPIC, @day, force: force) do
-        texts = messages(report)
-        groups.each { |group| @line.push_texts(group.group_id, texts) }
+        message = FlexMessage.new(report).to_h
+        groups.each { |group| @line.push_messages(group.group_id, [message]) }
         groups.size
       end
-    end
-
-    def messages(report)
-      LineBot::Client.pack(report.sections, overflow_note: "（內容太長，後面省略；完整版可跑 rake order_brief:print）")
     end
   end
 end
