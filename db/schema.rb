@@ -10,7 +10,8 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_23_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_23_140001) do
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -507,6 +508,40 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_23_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["snapshot_date"], name: "index_dandy_inventory_snapshots_on_snapshot_date", unique: true
+  end
+
+  create_table "decopop_koc_message_templates", force: :cascade do |t|
+    t.text "content", default: "", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "decopop_kocs", force: :cascade do |t|
+    t.string "ig_username"
+    t.string "ig_full_name"
+    t.string "ig_user_id"
+    t.string "email"
+    t.string "alias"
+    t.string "profile_url"
+    t.string "status"
+    t.boolean "has_paid_partnership"
+    t.integer "post_count"
+    t.integer "max_likes"
+    t.integer "max_video_views"
+    t.datetime "last_post_at"
+    t.string "last_post_url"
+    t.string "source"
+    t.text "notes"
+    t.boolean "follows_chloe_ig", default: false, null: false
+    t.boolean "follows_official_ig", default: false, null: false
+    t.string "video_shoot_status", default: "未拍攝", null: false
+    t.boolean "email_sent", default: false, null: false
+    t.text "logistics_notes"
+    t.date "pr_gift_shipped_at"
+    t.boolean "hidden", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_username"], name: "index_decopop_kocs_on_ig_username", unique: true
   end
 
   create_table "department_updates", force: :cascade do |t|
@@ -1080,6 +1115,40 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_23_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["category_key", "subcategory", "position"], name: "idx_on_category_key_subcategory_position_4bbf348cdd"
+  end
+
+  create_table "mirae_koc_message_templates", force: :cascade do |t|
+    t.text "content", default: "", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "mirae_kocs", force: :cascade do |t|
+    t.string "ig_username"
+    t.string "ig_full_name"
+    t.string "ig_user_id"
+    t.string "email"
+    t.string "alias"
+    t.string "profile_url"
+    t.string "status"
+    t.boolean "has_paid_partnership"
+    t.integer "post_count"
+    t.integer "max_likes"
+    t.integer "max_video_views"
+    t.datetime "last_post_at"
+    t.string "last_post_url"
+    t.string "source"
+    t.text "notes"
+    t.boolean "follows_chloe_ig", default: false, null: false
+    t.boolean "follows_official_ig", default: false, null: false
+    t.string "video_shoot_status", default: "未拍攝", null: false
+    t.boolean "email_sent", default: false, null: false
+    t.text "logistics_notes"
+    t.date "pr_gift_shipped_at"
+    t.boolean "hidden", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_username"], name: "index_mirae_kocs_on_ig_username", unique: true
   end
 
   create_table "notifications", force: :cascade do |t|

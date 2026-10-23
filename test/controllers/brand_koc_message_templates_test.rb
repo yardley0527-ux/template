@@ -13,7 +13,9 @@ class BrandKocMessageTemplatesTest < ActionDispatch::IntegrationTest
     { index_path: :body_goals_kocs_path,  update_path: :message_template_body_goals_kocs_path,  model: BodyGoalsKocMessageTemplate },
     { index_path: :betterbio_kocs_path,   update_path: :message_template_betterbio_kocs_path,   model: BetterbioKocMessageTemplate },
     { index_path: :dianbopopo_kocs_path,  update_path: :message_template_dianbopopo_kocs_path,  model: DianbopopoKocMessageTemplate },
-    { index_path: :akimia_kocs_path,      update_path: :message_template_akimia_kocs_path,      model: AkimiaKocMessageTemplate }
+    { index_path: :akimia_kocs_path,      update_path: :message_template_akimia_kocs_path,      model: AkimiaKocMessageTemplate },
+    { index_path: :mirae_kocs_path,       update_path: :message_template_mirae_kocs_path,       model: MiraeKocMessageTemplate },
+    { index_path: :decopop_kocs_path,     update_path: :message_template_decopop_kocs_path,     model: DecopopKocMessageTemplate }
   ].freeze
 
   setup do

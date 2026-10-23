@@ -127,6 +127,14 @@ Rails.application.routes.draw do
     patch :message_template, on: :collection, action: :update_message_template
     patch :toggle_hidden, on: :member
   end
+  resources :mirae_kocs, only: [:index, :create, :update, :destroy] do
+    patch :message_template, on: :collection, action: :update_message_template
+    patch :toggle_hidden, on: :member
+  end
+  resources :decopop_kocs, only: [:index, :create, :update, :destroy] do
+    patch :message_template, on: :collection, action: :update_message_template
+    patch :toggle_hidden, on: :member
+  end
   resources :koc_contracts, only: [:index, :update]
   resources :seo_reports, only: [:index]
   post '/line_bot/webhook', to: 'line_bot#webhook'

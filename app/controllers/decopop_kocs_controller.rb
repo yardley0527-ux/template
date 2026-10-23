@@ -1,0 +1,93 @@
+class DecopopKocsController < ApplicationController
+  PER_PAGE = 10
+  LOGISTICS_USERNAME = "crmdata".freeze
+
+  helper_method :can_edit_logistics_fields?, :can_edit_social_fields?
+
+  def index
+    @message_template = DecopopKocMessageTemplate.current
+
+    @sort = params[:sort]
+    @kocs = @sort == "likes" ? DecopopKoc.order(Arel.sql("COALESCE(max_likes, 0) DESC")) : DecopopKoc.ordered_by_engagement
+    @show_hidden = params[:hidden] == "1"
+    @kocs = @show_hidden ? @kocs.hidden_only : @kocs.visible
+    @kocs = @kocs.where(status: params[:status]) if params[:status].present?
+    @kocs = @kocs.where(has_paid_partnership: true) if params[:paid] == "1"
+    @kocs = @kocs.pr_gift_shipped if params[:shipped] == "1"
+    @kocs = @kocs.where("ig_username ILIKE ?", "%#{params[:ig_username].to_s.strip.delete_prefix('@')}%") if params[:ig_username].present?
+
+    @total_count = DecopopKoc.count
+    @paid_count  = DecopopKoc.where(has_paid_partnership: true).count
+    @hidden_count = DecopopKoc.hidden_only.count
+    @status_counts = DecopopKoc.group(:status).count
+    @shipped_by_status = DecopopKoc.pr_gift_shipped.group(:status).count
+    @shipped_count = @shipped_by_status.values.sum
+
+    @page = [params[:page].to_i, 1].max
+    @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max
+    @page = @total_pages if @page > @total_pages
+    @kocs = @kocs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
+  end
+
+  def update_message_template
+    DecopopKocMessageTemplate.current.update(content: params[:content])
+    redirect_to decopop_kocs_path, notice: "已更新發送訊息內容"
+  end
+
+  def create
+    @koc = DecopopKoc.new(koc_params)
+    @koc.source = "手動新增"
+
+    if @koc.save
+      redirect_to decopop_kocs_path, notice: "已新增 #{@koc.ig_username}"
+    else
+      redirect_to decopop_kocs_path, alert: @koc.errors.full_messages.join("、")
+    end
+  end
+
+  def update
+    @koc = DecopopKoc.find(params[:id])
+    @koc.update(koc_params)
+    redirect_back fallback_location: decopop_kocs_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
+  end
+
+  def destroy
+    return head :forbidden unless can_hide_or_delete?
+
+    @koc = DecopopKoc.find(params[:id])
+    @koc.destroy
+    redirect_to decopop_kocs_path, notice: "已刪除 #{@koc.ig_username}"
+  end
+
+  def toggle_hidden
+    return head :forbidden unless can_hide_or_delete?
+
+    @koc = DecopopKoc.find(params[:id])
+    @koc.update!(hidden: !@koc.hidden?)
+    redirect_back fallback_location: decopop_kocs_path, allow_other_host: false,
+                   notice: @koc.hidden? ? "已隱藏 #{@koc.ig_username}" : "已取消隱藏 #{@koc.ig_username}"
+  end
+
+  private
+
+  def can_hide_or_delete?
+    current_user.admin? || current_user.role&.key == "social"
+  end
+
+  # 物流部備註／公關品寄出日期只有 crmdata 帳號（物流部）能編輯，admin 維持全權限。
+  def can_edit_logistics_fields?
+    current_user.admin? || current_user.username == LOGISTICS_USERNAME
+  end
+
+  # crmdata（物流部）只能編輯物流部備註／公關品寄出日期，其他欄位一律不能碰。
+  def can_edit_social_fields?
+    current_user.username != LOGISTICS_USERNAME
+  end
+
+  def koc_params
+    permitted = can_edit_social_fields? ? %i[ig_username ig_full_name alias email profile_url status notes follows_chloe_ig follows_official_ig video_shoot_status email_sent] : []
+    permitted += %i[logistics_notes pr_gift_shipped_at] if can_edit_logistics_fields?
+
+    params.require(:decopop_koc).permit(*permitted)
+  end
+end

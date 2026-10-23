@@ -118,6 +118,8 @@ class SidebarEntry
                 { href: betterbio_kocs_path,   title: "好好生醫業配名單",   icon: "fa-star" },
                 { href: dianbopopo_kocs_path,  title: "Dianbopopo 業配名單", icon: "fa-star" },
                 { href: akimia_kocs_path,      title: "微電流面膜業配名單", icon: "fa-star" },
+                { href: mirae_kocs_path,       title: "未來美業配名單",     icon: "fa-star" },
+                { href: decopop_kocs_path,     title: "大可波波業配名單",   icon: "fa-star" },
                 { href: podcast_contacts_path, title: "Podcast 聯絡名單",  icon: "fa-star" },
                 { href: kol_contacts_path,     title: "KOL、藝人聯絡名單", icon: "fa-star" },
               ]
