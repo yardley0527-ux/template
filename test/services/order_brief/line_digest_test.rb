@@ -43,6 +43,15 @@ module OrderBrief
       ENV["ANTHROPIC_API_KEY"] = @old_ai if @old_ai
     end
 
+    # minitest 6 沒有 stub，暫時換掉 class method，跑完換回來
+    def replace(klass, name, impl)
+      original = klass.method(name)
+      klass.define_singleton_method(name, &impl)
+      yield
+    ensure
+      klass.define_singleton_method(name, original)
+    end
+
     def order(number, email, date, items, total)
       items.each do |name, qty|
         ShoplineOrder.create!(order_number: number, email: email, product_name: name, quantity: qty,
@@ -78,50 +87,59 @@ module OrderBrief
       assert_equal ["Newbie"], r.other_new.map { |e| e[:name] }
     end
 
-    test "Flex 總覽卡片：表格、沒有明細按鈕" do
-      flex = FlexMessage.new(Report.new(DAY)).to_h
-      json = flex.to_json
-      assert_equal "flex", flex[:type]
-      assert_equal "📦 10/22（四） 訂單簡報：3 人、3 張單，營收 $34,000", flex[:altText]
-      assert_includes json, "$34,000"
-      assert_includes json, "$2,000（6%）"
-      refute_includes json, "看客人明細"
-      # LINE 不接受空字串的 text
-      refute_includes json, '"text":""'
+    test "總覽文字照使用者的格式" do
+      text = Sections.new(Report.new(DAY)).overview_text
+      assert_includes text, "10/22 全天共 3 人下單、3 張單，營收 $34,000"
+      assert_includes text, "新客 1 人、1 張單，營收 $2,000，占 6%"
+      assert_includes text, "依卡別分：\n黑卡 1 人，$20,000\n金卡 0 人"
+      assert_includes text, "一般會員 1 人（含新客 1 人），$2,000"
+      assert_includes text, "PDRN 2 人，付費 9 瓶（預購 3 瓶）"
+      assert_includes text, "薑黃 1 人，付費 3 瓶，另送 1 瓶"
     end
 
-    test "客人明細卡：一張表一張卡，沒人的表不出卡" do
-      carousel = DetailCards.new(Report.new(DAY)).messages
-      assert_equal 1, carousel.size
-      titles = carousel.first.dig(:contents, :contents).map { |b| b.dig(:header, :contents, 0, :text) }
-      assert_equal ["PDRN 回購 1 人", "PDRN 舊客第一次買 1 人", "全能 舊客第一次買 1 人", "其他新客 1 人", "很久沒回來（≥90 天） 1 人"], titles
-      json = carousel.to_json
-      assert_includes json, "Amy・黑"
-      assert_includes json, "上次 9/20（PDRN3）｜第 2 次買 PDRN，從 3 瓶升到 6 瓶，加購全能"
-      assert_includes json, "上次消費 5/1：全能3"
-      refute_includes json, '"text":""'
+    test "段落順序：總覽 → PDRN 表 → 全能表 → 其他新客 → 很久沒回來表" do
+      parts = Sections.new(Report.new(DAY)).parts
+      assert_equal [:text, :image, :image, :text, :image], parts.map(&:first)
+      assert_equal "PDRN（2 人：回購 1、舊客第一次買 1、新客 0）", parts[1][2]
+      assert_includes parts[3][1], "其他新客（1 人）：Newbie（益生菌2，$2,000）"
+
+      pdrn = parts[1][3]
+      table = pdrn.find { |b| b[0] == :table }
+      assert_equal ["客人", "卡別", "今天買", "整單", "上次買 PDRN", "隔幾天", "備註"], table[1]
+      assert_equal ["Amy", "黑", "PDRN6、全能1×2", "$20,000", "9/20（PDRN3）", "32 天", "第 2 次買 PDRN，從 3 瓶升到 6 瓶，加購全能"], table[2].first
     end
 
-    test "人多的表拆成好幾張卡" do
-      report = Report.new(DAY)
-      many = Array.new(20) { |i| { name: "客#{i}", level: "一般", today: "PDRN1", amount: 2750, gap: 30 + i,
-                                    last_date: Date.new(2026, 9, 1), last_items: "PDRN1", note: "第 2 次買 PDRN" } }
-      report.define_singleton_method(:focus) { |_| { buyers: 20, repeat: many, first: [], fresh: [] } }
-      report.define_singleton_method(:other_old) { [] }
-      report.define_singleton_method(:other_new) { [] }
-      report.define_singleton_method(:long_gap) { [] }
-      titles = DetailCards.new(report).messages.flat_map { |m| m.dig(:contents, :contents) }.map { |b| b.dig(:header, :contents, 0, :text) }
-      assert_includes titles, "PDRN 回購 20 人（1/2）"
-      assert_includes titles, "PDRN 回購 20 人（2/2）"
+    test "表格畫成 PDF，中文字型沒有的字拿掉" do
+      pdf = TableImage.new([[:heading, "回購 PDRN（1 人）", "依「多久沒回來」排序"],
+                            [:table, %w[客人 隔幾天], [["🐣倫倫🐣", "7 天"]], [1]],
+                            [:text, "新客買 PDRN（0 人）"]]).render
+      assert pdf.start_with?("%PDF")
     end
 
-    test "訊息順序：重點文字、總覽卡、明細卡；沒有重點就省略" do
+    test "訊息順序：重點、總覽、表格圖片；圖片做不出來改發說明，其他照發" do
       report = Report.new(DAY)
       highlights = [{ "title" => "PDRN 回購都升級", "details" => ["Amy 從 3 瓶升到 6 瓶"] }]
       msgs = LineDigest.new(DAY, line: FakeLine.new).messages(report, highlights)
-      assert_equal %w[text flex flex], msgs.map { |m| m[:type] }
-      assert_equal "📝 10/22 今天的重點\n\n1. PDRN 回購都升級\n・Amy 從 3 瓶升到 6 瓶", msgs.first[:text]
-      assert_equal %w[flex flex], LineDigest.new(DAY, line: FakeLine.new).messages(report, nil).map { |m| m[:type] }
+      assert_equal %w[text text text text text text], msgs.map { |m| m[:type] } # 測試環境沒有 Cloudinary
+      assert_equal "📝 10/22 今天的重點\n\n1. PDRN 回購都升級\n- Amy 從 3 瓶升到 6 瓶", msgs[0][:text]
+      assert msgs[1][:text].start_with?("📦 10/22 訂單簡報")
+      assert_includes msgs[2][:text], "表格圖片產生失敗"
+
+      fake_upload = ->(pdf, **) { { type: "image", originalContentUrl: "https://x/#{pdf.bytesize}.png", previewImageUrl: "https://x/p.jpg" } }
+      replace(ImageHost, :configured?, -> { true }) do
+        replace(ImageHost, :upload, fake_upload) do
+          types = LineDigest.new(DAY, line: FakeLine.new).messages(report, nil).map { |m| m[:type] }
+          assert_equal %w[text image image text image], types
+        end
+      end
+    end
+
+    test "超過 5 則分批推，順序不變" do
+      line = FakeLine.new
+      highlights = [{ "title" => "重點", "details" => [] }]
+      replace(Highlights, :call, ->(_) { highlights }) { LineDigest.new(DAY, line: line).call }
+      assert_equal [5, 1], line.sent.map { |_, batch| batch.size }
+      assert_equal "📝 10/22 今天的重點\n\n1. 重點", line.sent.first[1].first[:text]
     end
 
     test "只發給有訂閱的群組，同一天只發一次" do

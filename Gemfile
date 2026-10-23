@@ -20,6 +20,9 @@ gem 'jbuilder', '~> 2.7'
 # Reduces boot times through caching; required in config/boot.rb
 gem 'bootsnap', '>= 1.4.2', require: false
 gem 'cloudinary'
+# 訂單簡報表格畫成圖片（PDF → Cloudinary 轉 PNG）發 LINE
+gem 'prawn'
+gem 'prawn-table'
 gem 'paper_trail', '~> 15.1'
 
 group :development, :test do
