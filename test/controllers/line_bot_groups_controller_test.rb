@@ -23,4 +23,11 @@ class LineBotGroupsControllerTest < ActionDispatch::IntegrationTest
     patch line_bot_group_path(@group), params: { line_bot_group: { subscriptions: [""] } }
     assert_equal [], @group.reload.subscriptions
   end
+  test "按鈕在背景發一份前一天訂單簡報預覽" do
+    sign_in @admin
+    assert_enqueued_with(job: OrderBriefPreviewJob, args: [@group.id, (Date.current - 1).iso8601]) do
+      post preview_order_brief_line_bot_group_path(@group)
+    end
+    assert_redirected_to line_bot_groups_path
+  end
 end
