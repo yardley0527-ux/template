@@ -70,6 +70,8 @@ namespace :import do
       Rails.logger.warn "[import:paid_orders] livestream stats refresh failed: #{e.class} - #{e.message}"
       puts "[task] livestream stats refresh FAILED (import itself still succeeded): #{e.class} - #{e.message}"
     end
+
+    puts "[task] order brief pushed to #{OrderBrief::LineDigest.after_import} LINE group(s)."
   end
 
   desc <<~DESC

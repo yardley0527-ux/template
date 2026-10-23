@@ -882,6 +882,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_23_153000) do
     t.datetime "left_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "subscriptions", default: [], null: false, array: true
     t.index ["group_id"], name: "index_line_bot_groups_on_group_id", unique: true
   end
 
@@ -896,6 +897,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_23_153000) do
     t.integer "position", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "line_digest_deliveries", force: :cascade do |t|
+    t.string "topic", null: false
+    t.date "report_date", null: false
+    t.integer "group_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["topic", "report_date"], name: "index_line_digest_deliveries_on_topic_and_report_date", unique: true
   end
 
   create_table "live_ad_tests", force: :cascade do |t|

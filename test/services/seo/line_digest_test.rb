@@ -15,8 +15,9 @@ module Seo
       @env = ENV.to_h.slice("LINE_REPORT_CHANNEL_ACCESS_TOKEN", "ANTHROPIC_API_KEY")
       ENV["LINE_REPORT_CHANNEL_ACCESS_TOKEN"] = "token"
       ENV.delete("ANTHROPIC_API_KEY") # 不打真的 AI：驗證沒有 AI 時照樣發數字
-      LineBotGroup.create!(group_id: "Cboss", active: true)
-      LineBotGroup.create!(group_id: "Cold", active: false)
+      LineBotGroup.create!(group_id: "Cboss", active: true, subscriptions: ["seo_daily"])
+      LineBotGroup.create!(group_id: "Cold", active: false, subscriptions: ["seo_daily"])
+      LineBotGroup.create!(group_id: "Corders", active: true, subscriptions: ["order_brief"])
       @report = SeoReport.create!(report_date: Date.new(2026, 10, 20), status: "success", data: {
         "sites" => { "yardley" => {
           "data_through" => "2026-10-17",
@@ -35,7 +36,7 @@ module Seo
       %w[LINE_REPORT_CHANNEL_ACCESS_TOKEN ANTHROPIC_API_KEY].each { |k| @env.key?(k) ? ENV[k] = @env[k] : ENV.delete(k) }
     end
 
-    test "只發給 active 群組，含數字，不含網站技術問題" do
+    test "只發給有訂閱 SEO 日報的 active 群組，含數字，不含網站技術問題" do
       line = FakeLine.new
       assert_equal 1, LineDigest.new(@report, line: line).call
 

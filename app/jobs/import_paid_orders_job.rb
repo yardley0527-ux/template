@@ -38,6 +38,10 @@ class ImportPaidOrdersJob < ApplicationJob
     rescue => e
       Rails.logger.warn "[ImportPaidOrdersJob] livestream stats refresh failed (secondary trigger): #{e.class} - #{e.message}"
     end
+
+    # 前一天的訂單匯入後，把訂單簡報推到有訂閱的 LINE 群組（同一天只發一次，失敗只記 log）
+    sent = OrderBrief::LineDigest.after_import
+    Rails.logger.info "[ImportPaidOrdersJob] order brief pushed to #{sent} LINE group(s)"
   rescue => e
     Rails.logger.error "[ImportPaidOrdersJob] FAILED #{e.class} - #{e.message}"
     Rails.logger.error e.backtrace.first(10).join("\n")

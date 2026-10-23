@@ -26,7 +26,13 @@ module LineBot
     end
 
     def push_text(to, text)
-      post("/message/push", { to: to, messages: [{ type: "text", text: text.to_s.truncate(MAX_TEXT) }] })
+      push_texts(to, [text])
+    end
+
+    # 一次推多則（LINE 上限 5 則），群組裡會連續出現
+    def push_texts(to, texts)
+      messages = texts.first(5).map { |t| { type: "text", text: t.to_s.truncate(MAX_TEXT) } }
+      post("/message/push", { to: to, messages: messages })
     end
 
     def group_name(group_id)

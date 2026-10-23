@@ -43,7 +43,7 @@ module Seo
       return 0 unless LineBot::Client.configured?
       return 0 if @report.data["line_sent_at"].present? && !force
 
-      groups = LineBotGroup.active.to_a
+      groups = LineBotGroup.subscribed_to("seo_daily").to_a
       return 0 if groups.empty?
 
       text = message
