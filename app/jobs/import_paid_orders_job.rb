@@ -44,6 +44,8 @@ class ImportPaidOrdersJob < ApplicationJob
     Rails.logger.info "[ImportPaidOrdersJob] order brief pushed to #{sent} LINE group(s)"
     sent = CrmReturns::LineDigest.after_import
     Rails.logger.info "[ImportPaidOrdersJob] black/gold returns pushed to #{sent} LINE group(s)"
+    sent = SalesDaily::LineDigest.after_import
+    Rails.logger.info "[ImportPaidOrdersJob] sales daily pushed to #{sent} LINE group(s)"
   rescue => e
     Rails.logger.error "[ImportPaidOrdersJob] FAILED #{e.class} - #{e.message}"
     Rails.logger.error e.backtrace.first(10).join("\n")

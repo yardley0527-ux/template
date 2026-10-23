@@ -176,14 +176,22 @@ module OrderBrief
       ig ? ([email] + @by_ig[ig]).uniq : [email]
     end
 
+    # 整單金額 total_amount 偶爾整張單都是空的，那就用各行 checkout_amount 加總（同 /daily_dashboard）
     def load_orders(emails)
       by_email = Hash.new { |h, k| h[k] = {} }
+      checkout = Hash.new(0.0)
       paid_orders.where("lower(trim(email)) IN (?)", emails).where("order_date::date <= ?", day)
-                 .pluck(Arel.sql("lower(trim(email))"), :order_number, Arel.sql("order_date::date"), :product_name, :quantity, :total_amount)
-                 .each do |em, number, date, name, qty, total|
+                 .pluck(Arel.sql("lower(trim(email))"), :order_number, Arel.sql("order_date::date"), :product_name, :quantity,
+                        :total_amount, :checkout_amount)
+                 .each do |em, number, date, name, qty, total, line_amount|
         order = (by_email[em][number] ||= Order.new(date: date.to_date, number: number, items: [], amount: 0))
         order.items << [name.to_s, (qty || 1).to_i]
         order.amount = [order.amount, total.to_f].max
+        checkout[[em, number]] += line_amount.to_f
+      end
+      checkout.each do |(em, number), amount|
+        order = by_email[em][number]
+        order.amount = amount unless order.amount.positive?
       end
       by_email.transform_values { |orders| orders.values.each { |o| drop_paired_lines(o) } }
     end

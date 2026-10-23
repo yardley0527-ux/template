@@ -6,7 +6,8 @@ class LineBotGroup < ApplicationRecord
     "seo_daily" => "SEO 日報（平日 10:00）",
     "order_brief" => "訂單簡報（匯入前一天訂單後）",
     "crm_birthdays" => "黑金卡生日＋高消費客人（週一 10:00）",
-    "crm_returns" => "久未消費黑金卡回來了（匯入前一天訂單後）"
+    "crm_returns" => "久未消費黑金卡回來了（匯入前一天訂單後）",
+    "sales_daily" => "銷售日報：訂單數量、月業績、卡別年齡、熱銷（匯入前一天訂單後）"
   }.freeze
 
   validates :group_id, presence: true, uniqueness: true

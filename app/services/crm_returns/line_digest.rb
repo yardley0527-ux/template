@@ -80,7 +80,7 @@ module CrmReturns
     # 當天已付款訂單，依 email 分組
     def day_orders
       @day_orders ||= ShoplineOrder.where(payment_status: "已付款").where("order_date::date = ?", @day)
-                                   .pluck(Arel.sql("lower(trim(email))"), :order_number, :product_name, :quantity, :total_amount)
+                                   .pluck(Arel.sql("lower(trim(email))"), :order_number, :product_name, :quantity, :total_amount, :checkout_amount)
                                    .group_by(&:first)
                                    .except(nil, "")
     end
@@ -95,10 +95,14 @@ module CrmReturns
       scope.maximum(:order_date)&.to_date
     end
 
-    # 一人一個區塊；這次買的品項（同名合併數量）＋金額（整單金額只記在其中一行，取每張單的最大值再加總）
+    # 一人一個區塊；這次買的品項（同名合併數量）＋金額（整單金額只記在其中一行，取每張單的最大值再加總；
+    # 整張單都沒有整單金額就用各行 checkout_amount 加總）
     def customer_block(c)
       items = c[:lines].group_by { |row| row[2].to_s.strip }.map { |name, rows| "#{name} x#{rows.sum { |r| r[3] || 1 }}" }
-      amount = c[:lines].group_by { |row| row[1] }.sum { |_, rows| rows.map { |r| r[4].to_f }.max }
+      amount = c[:lines].group_by { |row| row[1] }.sum do |_, rows|
+        total = rows.map { |r| r[4].to_f }.max
+        total.positive? ? total : rows.sum { |r| r[5].to_f }
+      end
       lines = ["🖤 #{c[:name]}｜#{c[:level]}"]
       lines << "IG：#{c[:ig]}" if c[:ig]
       lines << "上次購買 #{full_date(c[:previous])}（隔 #{c[:gap]} 天）"
