@@ -36,12 +36,11 @@ module SalesDaily
                             checkout_amount: checkout, payment_status: "已付款", order_date: Time.utc(date.year, date.month, date.day, 12))
     end
 
-    test "前一天訂單、當月概況、卡別、年齡層、熱銷商品" do
+    test "前一天訂單、當月累計、卡別、年齡層、熱銷商品" do
       text = LineDigest.new(DAY, line: FakeLine.new).message
 
       assert_includes text, "📊 10/3（六） SL 訂單\n訂單 2 單｜營收 $8,750（均 $4,375）\n舊客 1人/1單 $6,000（均 $6,000）\n新客 1人/1單 $2,750（均 $2,750）"
-      assert_includes text, "📅 10/1–10/3 業績概況\n累計 $168,750｜未達標 2 天\n（日目標 $150,000）"
-      assert_includes text, "10/1（四）✅ 1單 $160,000\n  舊 1單 $160,000｜新 0單 $0\n10/2（五）❌ 0單 $0\n10/3（六）❌ 2單 $8,750"
+      assert_includes text, "📅 10 月累計（10/1–10/3）\n$168,750｜3 天中 1 天達標\n日均 $56,250（日目標 $150,000）\n舊客 $166,000｜新客 $2,750"
       assert_includes text, "金卡 1人/1單 $6,000（均 $6,000）\n銀卡 0 人"
       assert_includes text, "新客 1人/1單 $2,750（均 $2,750）"
       assert_includes text, "30-39 1人/1單 $6,000（均 $6,000）\n40-49 1人/1單 $2,750（均 $2,750）"

@@ -3,7 +3,7 @@
 module SalesDaily
   # 匯入前一天訂單後，推到有訂閱「sales_daily」的 LINE 群組（苼莛國際-銷售後台）：
   # 1. 前一天 SL 訂單數量（新舊客）
-  # 2. 當月 1 號到前一天的每日業績概況（日目標 DAILY_TARGET）
+  # 2. 當月 1 號到前一天的累計業績（日目標 DAILY_TARGET 達標天數）
   # 3. 前一天的卡別、年齡層
   # 4. 前一天熱銷商品 Top 5（依數量）
   # 新舊客、整單金額的口徑跟訂單簡報（OrderBrief::Report）一樣：當天以前全部歷史＋IG 分身。
@@ -73,24 +73,19 @@ module SalesDaily
        "新客 #{stat(new_rows)}#{avg(new_rows)}"].join("\n")
     end
 
-    # ---- 2. 當月業績概況 ----
+    # ---- 2. 當月累計 ----
 
+    # 只放累計；每天的明細看 /daily_dashboard（每天發都重複，手機上太長）
     def month_section
-      days = (@day.beginning_of_month..@day).map do |date|
-        rs = report(date).rows
-        new_rows, old_rows = rs.partition(&:new_customer?)
-        { date: date, rows: rs, new: new_rows, old: old_rows, amount: amount(rs) }
-      end
-      missed = days.count { |d| d[:amount] < DAILY_TARGET }
+      days = (@day.beginning_of_month..@day).map { |date| report(date).rows }
+      all = days.flatten
+      new_rows, old_rows = all.partition(&:new_customer?)
+      met = days.count { |rs| amount(rs) >= DAILY_TARGET }
 
-      lines = ["📅 #{md(@day.beginning_of_month)}–#{md(@day)} 業績概況",
-               "累計 #{money(days.sum { |d| d[:amount] })}｜未達標 #{missed} 天",
-               "（日目標 #{money(DAILY_TARGET)}）", ""]
-      days.each do |d|
-        lines << "#{day_label(d[:date])}#{d[:amount] >= DAILY_TARGET ? '✅' : '❌'} #{order_count(d[:rows])}單 #{money(d[:amount])}"
-        lines << "  舊 #{order_count(d[:old])}單 #{money(amount(d[:old]))}｜新 #{order_count(d[:new])}單 #{money(amount(d[:new]))}" if d[:rows].any?
-      end
-      lines.join("\n")
+      ["📅 #{@day.month} 月累計（#{md(@day.beginning_of_month)}–#{md(@day)}）",
+       "#{money(amount(all))}｜#{days.size} 天中 #{met} 天達標",
+       "日均 #{money(amount(all) / days.size)}（日目標 #{money(DAILY_TARGET)}）",
+       "舊客 #{money(amount(old_rows))}｜新客 #{money(amount(new_rows))}"].join("\n")
     end
 
     # ---- 3. 卡別、年齡層 ----
