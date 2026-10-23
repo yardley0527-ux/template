@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_20_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_23_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -976,6 +976,23 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_20_130000) do
     t.index ["date", "account_key", "time_slot"], name: "index_manychat_checks_on_date_account_slot", unique: true
   end
 
+  create_table "manychat_subscribers", force: :cascade do |t|
+    t.string "account_key", null: false
+    t.bigint "subscriber_id", null: false
+    t.string "ig_username"
+    t.bigint "ig_id"
+    t.string "name"
+    t.datetime "last_interaction_at"
+    t.bigint "shopline_customer_id"
+    t.jsonb "raw_payload", default: {}, null: false
+    t.datetime "last_webhook_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_key", "subscriber_id"], name: "index_manychat_subscribers_on_account_key_and_subscriber_id", unique: true
+    t.index ["ig_username"], name: "index_manychat_subscribers_on_ig_username"
+    t.index ["shopline_customer_id"], name: "index_manychat_subscribers_on_shopline_customer_id"
+  end
+
   create_table "membership_level_changes", force: :cascade do |t|
     t.bigint "import_run_id", null: false
     t.string "shopline_id"
@@ -1791,6 +1808,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_20_130000) do
   add_foreign_key "livestream_products", "livestreams"
   add_foreign_key "livestreams", "users", column: "owner_user_id"
   add_foreign_key "livestreams", "users", column: "review_completed_by_user_id"
+  add_foreign_key "manychat_subscribers", "shopline_customers"
   add_foreign_key "membership_level_changes", "import_runs"
   add_foreign_key "message_list_recipients", "message_lists"
   add_foreign_key "message_template_blocks", "message_templates"

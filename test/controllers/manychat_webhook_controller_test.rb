@@ -1,0 +1,54 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class ManychatWebhookControllerTest < ActionDispatch::IntegrationTest
+  TOKEN = "test-token"
+
+  setup { @old = ENV["MANYCHAT_WEBHOOK_TOKEN"]; ENV["MANYCHAT_WEBHOOK_TOKEN"] = TOKEN }
+  teardown { ENV["MANYCHAT_WEBHOOK_TOKEN"] = @old }
+
+  def deliver(body, token: TOKEN)
+    post "/manychat/webhook", params: body.to_json,
+         headers: { "X-Manychat-Token" => token, "CONTENT_TYPE" => "application/json" }
+  end
+
+  test "記下訂閱者並用 IG 帳號對到客人，重送時更新同一筆" do
+    customer = ShoplineCustomer.create!(full_name: "王小美", instagram_account: "may.wang", membership_level: "黑金卡")
+
+    deliver({ account: "shengting.slim",
+              subscriber: { id: 123, name: "May", ig_username: "@May.Wang", last_interaction: "2026-10-23T10:00:00+08:00" } })
+    assert_response :ok
+    assert_equal({ "matched" => true, "membership_level" => "黑金卡" }, response.parsed_body)
+
+    sub = ManychatSubscriber.find_by(account_key: "shengting.slim", subscriber_id: 123)
+    assert_equal "may.wang", sub.ig_username
+    assert_equal customer.id, sub.shopline_customer_id
+
+    assert_no_difference -> { ManychatSubscriber.count } do
+      deliver({ account: "shengting.slim", subscriber: { id: 123, name: "May W" } })
+    end
+    assert_equal "May W", sub.reload.name
+    assert_equal "may.wang", sub.ig_username
+  end
+
+  test "對不到客人時 matched 為 false" do
+    deliver({ account: "shengting.fishoil", subscriber: { id: 9, ig_username: "nobody_here" } })
+    assert_response :ok
+    assert_equal false, response.parsed_body["matched"]
+    assert_nil ManychatSubscriber.last.shopline_customer_id
+  end
+
+  test "token 不對擋掉" do
+    deliver({ account: "shengting.slim", subscriber: { id: 1 } }, token: "bogus")
+    assert_response :unauthorized
+    assert_equal 0, ManychatSubscriber.count
+  end
+
+  test "未知帳號或缺 subscriber id 回 422" do
+    deliver({ account: "unknown", subscriber: { id: 1 } })
+    assert_response :unprocessable_entity
+    deliver({ account: "shengting.slim", subscriber: {} })
+    assert_response :unprocessable_entity
+  end
+end
