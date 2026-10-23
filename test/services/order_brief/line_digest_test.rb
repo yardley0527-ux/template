@@ -120,32 +120,42 @@ module OrderBrief
       report = Report.new(DAY)
       highlights = [{ "title" => "PDRN 回購都升級", "details" => ["Amy 從 3 瓶升到 6 瓶"] }]
       msgs = LineDigest.new(DAY, line: FakeLine.new).messages(report, highlights)
-      assert_equal %w[text text text text text text], msgs.map { |m| m[:type] } # 測試環境沒有 Cloudinary
+      assert msgs.all? { |m| m[:type] == "text" } # 測試環境沒有 Cloudinary，表格改發說明
+      assert msgs.all? { |m| LineBot::Client.visual_lines(m[:text]) <= LineBot::Client::READABLE_LINES }, "每則都要能直接看完"
       assert_equal "📝 10/22 今天的重點\n\n1. PDRN 回購都升級\n- Amy 從 3 瓶升到 6 瓶", msgs[0][:text]
       assert msgs[1][:text].start_with?("📦 10/22 訂單簡報")
-      assert_includes msgs[2][:text], "表格圖片產生失敗"
+      assert msgs.any? { |m| m[:text].include?("表格圖片產生失敗") }
 
       fake_upload = ->(pdf, **) { { type: "image", originalContentUrl: "https://x/#{pdf.bytesize}.png", previewImageUrl: "https://x/p.jpg" } }
       replace(ImageHost, :configured?, -> { true }) do
         replace(ImageHost, :upload, fake_upload) do
           types = LineDigest.new(DAY, line: FakeLine.new).messages(report, nil).map { |m| m[:type] }
-          assert_equal %w[text image image text image], types
+          assert_equal %w[image image text image], types.drop_while { |t| t == "text" }
         end
       end
+    end
+
+    test "長訊息切成每則都能直接看完，不會被折成 See more" do
+      long = ["📝 重點", *Array.new(7) { |i| "#{i + 1}. 結論#{i}\n- " + ("補充" * 30) + "\n- " + ("說明" * 20) }].join("\n\n")
+      parts = LineBot::Client.split_readable(long)
+      assert parts.size > 1
+      assert parts.all? { |p| LineBot::Client.visual_lines(p) <= LineBot::Client::READABLE_LINES }
+      assert_equal long.gsub(/\n+/, ""), parts.join.gsub(/\n+/, ""), "內容不能少"
     end
 
     test "超過 5 則分批推，順序不變" do
       line = FakeLine.new
       highlights = [{ "title" => "重點", "details" => [] }]
       replace(Highlights, :call, ->(_) { highlights }) { LineDigest.new(DAY, line: line).call }
-      assert_equal [5, 1], line.sent.map { |_, batch| batch.size }
+      assert line.sent.size > 1
+      assert line.sent.all? { |_, batch| batch.size <= 5 }
       assert_equal "📝 10/22 今天的重點\n\n1. 重點", line.sent.first[1].first[:text]
     end
 
     test "只發給有訂閱的群組，同一天只發一次" do
       line = FakeLine.new
       assert_equal 1, LineDigest.new(DAY, line: line).call
-      assert_equal ["Cstrategy"], line.sent.map(&:first)
+      assert_equal ["Cstrategy"], line.sent.map(&:first).uniq
       assert_equal 0, LineDigest.new(DAY, line: line).call
       assert_equal 1, LineDigest.new(DAY, line: line).call(force: true)
       assert_equal 1, LineDigestDelivery.where(report_date: DAY).count

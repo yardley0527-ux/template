@@ -45,9 +45,9 @@ module OrderBrief
     # images: false 時表格不畫圖，只放標題（rake order_brief:print 預覽用）
     def messages(report, highlights, images: true)
       list = []
-      list << text(Highlights.to_text(@day, highlights)) if highlights
+      list.concat(texts(Highlights.to_text(@day, highlights))) if highlights
       Sections.new(report).parts.each do |kind, *args|
-        list << (kind == :text ? text(args.first) : image(*args, upload: images))
+        kind == :text ? list.concat(texts(args.first)) : list << image(*args, upload: images)
       end
       list
     end
@@ -55,6 +55,9 @@ module OrderBrief
     private
 
     def text(str) = { type: "text", text: str.truncate(LineBot::Client::MAX_TEXT) }
+
+    # 每則都要能在訊息框裡直接看完，太長的切成好幾則
+    def texts(str) = LineBot::Client.split_readable(str).map { |part| text(part) }
 
     # 圖片做不出來（Cloudinary 沒設定或上傳失敗）就改發一行說明，其他段落照發
     def image(name, title, blocks, upload:)

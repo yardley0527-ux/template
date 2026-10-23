@@ -42,6 +42,36 @@ module LineBot
     end
     private_class_method :split_long
 
+    # LINE 文字訊息超過約 20 行會被折起來（要按「See more」），切成每則都能直接看完的長度。
+    # 手機一行約 22 個中文字，長句會折行，所以用「折行後的行數」估。先按空行分段，段落太長再按行切。
+    PHONE_LINE_CHARS = 22
+    READABLE_LINES = 18
+
+    def self.split_readable(text)
+      paragraphs = text.to_s.split(/\n{2,}/).flat_map { |para| split_paragraph(para) }
+      paragraphs.each_with_object([]) do |para, out|
+        if out.any? && visual_lines("#{out.last}\n\n#{para}") <= READABLE_LINES
+          out[-1] = "#{out.last}\n\n#{para}"
+        else
+          out << para
+        end
+      end
+    end
+
+    def self.visual_lines(text)
+      text.split("\n", -1).sum { |line| [(line.size.to_f / PHONE_LINE_CHARS).ceil, 1].max }
+    end
+
+    def self.split_paragraph(para)
+      return [para] if visual_lines(para) <= READABLE_LINES
+
+      para.split("\n").each_with_object([+""]) do |line, acc|
+        acc << +"" if acc.last.present? && visual_lines("#{acc.last}\n#{line}") > READABLE_LINES
+        acc.last << (acc.last.empty? ? line : "\n#{line}")
+      end
+    end
+    private_class_method :split_paragraph
+
     def self.valid_signature?(body, signature)
       secret = ENV["LINE_REPORT_CHANNEL_SECRET"].to_s
       return false if secret.empty? || signature.blank?
