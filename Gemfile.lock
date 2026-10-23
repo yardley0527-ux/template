@@ -388,6 +388,7 @@ DEPENDENCIES
   dotenv-rails
   jbuilder (~> 2.7)
   listen (~> 3.5)
+  matrix
   paper_trail (~> 15.1)
   pg
   prawn

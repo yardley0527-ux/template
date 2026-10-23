@@ -22,6 +22,8 @@ gem 'bootsnap', '>= 1.4.2', require: false
 gem 'cloudinary'
 # 訂單簡報表格畫成圖片（PDF → Cloudinary 轉 PNG）發 LINE
 gem 'prawn'
+# prawn 2.4 會 require 'matrix'，Ruby 3.1 起不是內建；本機有 capybara（test group）帶進來，Render 沒裝 test group 會開不起來
+gem 'matrix'
 gem 'prawn-table'
 gem 'paper_trail', '~> 15.1'
 
