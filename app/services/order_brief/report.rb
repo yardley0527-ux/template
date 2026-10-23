@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module OrderBrief
-  # 每日訂單簡報（使用者每天看的格式）的資料；LINE Flex 總覽（FlexMessage）和
-  # /order_briefs 明細頁共用。口徑跟使用者 10/19 定案的 order_brief.py 一樣：
+  # 每日訂單簡報（使用者每天看的格式）的資料；LINE Flex 總覽（FlexMessage）、
+  # 客人明細卡（DetailCards）、AI 重點（Highlights）共用。口徑跟使用者 10/19 定案的 order_brief.py 一樣：
   # - 只算已付款；整單金額取該張單 total_amount 的最大值（只記在其中一行）
   # - 卡別用客人「目前」的卡別（shopline_customers），不是下單當時的
   # - 新客＝當天以前（2024/1 起全部歷史）沒有已付款訂單，同 IG 的其他 email 也算同一人
@@ -24,6 +24,13 @@ module OrderBrief
     end
 
     attr_reader :day
+
+    # 「預購-全能12送1」→ ["全能", 12, 1]
+    def self.parse(name)
+      base = name.delete_prefix("預購-")
+      m = base.match(/\A(.*?)(\d+)(?:送(\d+))?\z/)
+      m ? [m[1], m[2].to_i, m[3].to_i] : [base, 0, 0]
+    end
 
     def initialize(day)
       @day = day.to_date
@@ -109,6 +116,16 @@ module OrderBrief
       returning.select { |e| e[:gap] < LONG_GAP }
     end
 
+    # 給 AI 寫重點用：每位當天買家的完整購買歷史（含 IG 分身），避免只看上一單就下結論
+    def customer_histories(max_orders: 20)
+      rows.map do |r|
+        { "客人" => name(r.email), "卡別" => level_full(r.email), "新客" => r.new_customer?,
+          "今天買" => today_items(r), "今天整單" => r.amount.round,
+          "以前已付款訂單數" => r.history.size,
+          "購買歷史（舊到新，最多最近 #{max_orders} 張）" => r.history.last(max_orders).map { |o| "#{o.date} #{disp(o.items)} $#{o.amount.round}" } }
+      end
+    end
+
     def md(date) = date.year == day.year ? "#{date.month}/#{date.day}" : "#{date.year}/#{date.month}/#{date.day}"
 
     def disp(items)
@@ -180,12 +197,7 @@ module OrderBrief
       end
     end
 
-    # 「預購-全能12送1」→ ["全能", 12, 1]
-    def parse(name)
-      base = name.delete_prefix("預購-")
-      m = base.match(/\A(.*?)(\d+)(?:送(\d+))?\z/)
-      m ? [m[1], m[2].to_i, m[3].to_i] : [base, 0, 0]
-    end
+    def parse(name) = self.class.parse(name)
 
     def series_of(order) = order.items.map { |n, _| parse(n).first }.to_set
     def row_series(row) = row.orders.map { |o| series_of(o) }.reduce(Set.new, :|)

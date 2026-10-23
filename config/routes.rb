@@ -139,7 +139,6 @@ Rails.application.routes.draw do
   resources :seo_reports, only: [:index]
   post '/line_bot/webhook', to: 'line_bot#webhook'
   resources :line_bot_groups, only: [:index, :update]
-  resources :order_briefs, only: [:index]
   post '/manychat/webhook', to: 'manychat_webhook#create'
   get  '/koc_search', to: 'koc_search#index', as: :koc_search
   get  '/replied_contacts', to: 'replied_contacts#index', as: :replied_contacts

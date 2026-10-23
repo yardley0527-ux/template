@@ -15,6 +15,7 @@ module OrderBrief
 
     setup do
       @old_token = ENV["LINE_REPORT_CHANNEL_ACCESS_TOKEN"]
+      @old_ai = ENV.delete("ANTHROPIC_API_KEY") # 不打真的 AI：沒有重點時照樣發
       ENV["LINE_REPORT_CHANNEL_ACCESS_TOKEN"] = "token"
       LineBotGroup.create!(group_id: "Cstrategy", name: "苼莛國際-策略部", subscriptions: ["order_brief"])
       LineBotGroup.create!(group_id: "Cseo", subscriptions: ["seo_daily"])
@@ -37,7 +38,10 @@ module OrderBrief
       order("#X1", "x@example.com", Date.new(2026, 1, 1), [["魚油1", 1]], 800)
     end
 
-    teardown { ENV["LINE_REPORT_CHANNEL_ACCESS_TOKEN"] = @old_token }
+    teardown do
+      ENV["LINE_REPORT_CHANNEL_ACCESS_TOKEN"] = @old_token
+      ENV["ANTHROPIC_API_KEY"] = @old_ai if @old_ai
+    end
 
     def order(number, email, date, items, total)
       items.each do |name, qty|
@@ -74,16 +78,50 @@ module OrderBrief
       assert_equal ["Newbie"], r.other_new.map { |e| e[:name] }
     end
 
-    test "Flex 卡片：總覽表格＋明細頁按鈕" do
+    test "Flex 總覽卡片：表格、沒有明細按鈕" do
       flex = FlexMessage.new(Report.new(DAY)).to_h
       json = flex.to_json
       assert_equal "flex", flex[:type]
       assert_equal "📦 10/22（四） 訂單簡報：3 人、3 張單，營收 $34,000", flex[:altText]
       assert_includes json, "$34,000"
       assert_includes json, "$2,000（6%）"
-      assert_includes json, "https://st-crm-v2.onrender.com/order_briefs?date=2026-10-22"
+      refute_includes json, "看客人明細"
       # LINE 不接受空字串的 text
       refute_includes json, '"text":""'
+    end
+
+    test "客人明細卡：一張表一張卡，沒人的表不出卡" do
+      carousel = DetailCards.new(Report.new(DAY)).messages
+      assert_equal 1, carousel.size
+      titles = carousel.first.dig(:contents, :contents).map { |b| b.dig(:header, :contents, 0, :text) }
+      assert_equal ["PDRN 回購 1 人", "PDRN 舊客第一次買 1 人", "全能 舊客第一次買 1 人", "其他新客 1 人", "很久沒回來（≥90 天） 1 人"], titles
+      json = carousel.to_json
+      assert_includes json, "Amy・黑"
+      assert_includes json, "上次 9/20（PDRN3）｜第 2 次買 PDRN，從 3 瓶升到 6 瓶，加購全能"
+      assert_includes json, "上次消費 5/1：全能3"
+      refute_includes json, '"text":""'
+    end
+
+    test "人多的表拆成好幾張卡" do
+      report = Report.new(DAY)
+      many = Array.new(20) { |i| { name: "客#{i}", level: "一般", today: "PDRN1", amount: 2750, gap: 30 + i,
+                                    last_date: Date.new(2026, 9, 1), last_items: "PDRN1", note: "第 2 次買 PDRN" } }
+      report.define_singleton_method(:focus) { |_| { buyers: 20, repeat: many, first: [], fresh: [] } }
+      report.define_singleton_method(:other_old) { [] }
+      report.define_singleton_method(:other_new) { [] }
+      report.define_singleton_method(:long_gap) { [] }
+      titles = DetailCards.new(report).messages.flat_map { |m| m.dig(:contents, :contents) }.map { |b| b.dig(:header, :contents, 0, :text) }
+      assert_includes titles, "PDRN 回購 20 人（1/2）"
+      assert_includes titles, "PDRN 回購 20 人（2/2）"
+    end
+
+    test "訊息順序：重點文字、總覽卡、明細卡；沒有重點就省略" do
+      report = Report.new(DAY)
+      highlights = [{ "title" => "PDRN 回購都升級", "details" => ["Amy 從 3 瓶升到 6 瓶"] }]
+      msgs = LineDigest.new(DAY, line: FakeLine.new).messages(report, highlights)
+      assert_equal %w[text flex flex], msgs.map { |m| m[:type] }
+      assert_equal "📝 10/22 今天的重點\n\n1. PDRN 回購都升級\n・Amy 從 3 瓶升到 6 瓶", msgs.first[:text]
+      assert_equal %w[flex flex], LineDigest.new(DAY, line: FakeLine.new).messages(report, nil).map { |m| m[:type] }
     end
 
     test "只發給有訂閱的群組，同一天只發一次" do

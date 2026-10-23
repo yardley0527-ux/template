@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
 module OrderBrief
-  # 訂單簡報的 LINE Flex 卡片：營收、新舊客、卡別、產品排成小表格，
-  # 客人明細太長不放，底部按鈕連到 /order_briefs 明細頁。
+  # 訂單簡報的總覽 LINE Flex 卡片：營收、新舊客、卡別、產品排成小表格。
+  # 客人明細在 DetailCards（另外幾張左右滑的表格卡）。
   class FlexMessage
-    DETAIL_URL = "https://st-crm-v2.onrender.com/order_briefs"
     MAX_PRODUCTS = 12 # 產品太多卡片會很長，其餘合併成一列
     WEEKDAYS = %w[日 一 二 三 四 五 六].freeze
 
@@ -13,10 +12,6 @@ module OrderBrief
 
     def initialize(report)
       @report = report
-    end
-
-    def detail_url
-      "#{DETAIL_URL}?date=#{@report.day.iso8601}"
     end
 
     def alt_text
@@ -33,9 +28,7 @@ module OrderBrief
     def bubble
       { type: "bubble", size: "giga",
         header: box([text("📦 #{day_label} 訂單簡報", weight: "bold", size: "lg")], paddingBottom: "8px"),
-        body: box(body_contents, spacing: "md"),
-        footer: box([{ type: "button", style: "primary", color: ACCENT, height: "sm",
-                       action: { type: "uri", label: "看客人明細", uri: detail_url } }]) }
+        body: box(body_contents, spacing: "md") }
     end
 
     def body_contents
