@@ -13,7 +13,7 @@ module CrmBirthdays
     RECENT_SPEND = 30_000 # 近 30 天已付款訂單合計（整單金額）
     WATCH_DAYS = 21
     WEEKDAYS = %w[日 一 二 三 四 五 六].freeze
-    SHORT_LEVEL = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白" }.freeze
+    IG_JUNK = ["無", "na", "no", "n/a", "none", "-", "沒有", "x", "."].freeze
 
     def self.call(today = Date.current, force: false)
       new(today).call(force: force)
@@ -49,11 +49,14 @@ module CrmBirthdays
               .reject { |c| BLACK_GOLD.include?(c[:level]) }
               .select { |c| c[:recent_total] >= RECENT_SPEND }
 
-      first = ["🎂 生日名單 #{day_label(@week_start)}–#{day_label(week_end)}", "", "【黑金卡本週生日】#{black_gold.size} 人"]
-      first += black_gold.any? ? black_gold.map { |c| customer_line(c, "累計 #{money(c[:total])}") } : ["本週沒有黑金卡客人生日"]
+      first = ["🎂 生日名單", "#{day_label(@week_start)} – #{day_label(week_end)}", "",
+               "━━ 黑金卡本週生日 #{black_gold.size} 人 ━━"]
+      first += black_gold.any? ? black_gold.map { |c| customer_block(c, "🎈", "累計 #{money(c[:total])}") } : ["本週沒有黑金卡客人生日"]
 
-      second = ["【特別關注】非黑金卡、近 #{RECENT_DAYS} 天消費 #{money(RECENT_SPEND)} 以上，接下來 3 週生日（到 #{day_label(@week_start + WATCH_DAYS - 1)}）#{watch.size} 人"]
-      second += watch.any? ? watch.map { |c| customer_line(c, "近 #{RECENT_DAYS} 天消費 #{money(c[:recent_total])}（#{c[:recent_orders]} 張單）") } : ["接下來 3 週沒有符合的客人"]
+      second = ["━━ 特別關注 #{watch.size} 人 ━━",
+                "非黑金卡・近 #{RECENT_DAYS} 天消費 #{money(RECENT_SPEND)} 以上",
+                "3 週內生日（到 #{day_label(@week_start + WATCH_DAYS - 1)}）"]
+      second += watch.any? ? watch.map { |c| customer_block(c, "⭐", "近 #{RECENT_DAYS} 天 #{money(c[:recent_total])}（#{c[:recent_orders]} 張單）") } : ["", "接下來 3 週沒有符合的客人"]
 
       [first.join("\n"), second.join("\n"), excluded_line]
     end
@@ -98,12 +101,18 @@ module CrmBirthdays
       end
     end
 
-    def customer_line(c, spend)
-      parts = ["・#{day_label(c[:date])} #{c[:name]}（#{SHORT_LEVEL.fetch(c[:level], '一般')}）"]
-      parts << "IG #{c[:ig]}" if c[:ig] && !%w[無 na no n/a none - 沒有 x .].include?(c[:ig].downcase)
-      parts << spend
-      parts << (c[:last_order] ? "最近購買 #{c[:last_order].strftime('%Y/%-m/%-d')}" : "沒有購買紀錄")
-      parts.join("｜")
+    # 一人一個區塊，前面空一行；手機上一行一項比較好讀
+    def customer_block(c, icon, spend)
+      lines = ["", "#{icon} #{day_label(c[:date])} #{c[:name]}｜#{c[:level]}"]
+      lines << "IG：#{c[:ig]}" if real_ig?(c[:ig])
+      lines << spend
+      lines << (c[:last_order] ? "最近購買 #{short_date(c[:last_order])}" : "沒有購買紀錄")
+      lines.join("\n")
+    end
+
+    # 「無」「na」這類佔位字、或誤填成 email 的都不顯示
+    def real_ig?(ig)
+      ig.present? && !IG_JUNK.include?(ig.downcase) && !ig.include?("@")
     end
 
     def excluded_line
@@ -120,6 +129,7 @@ module CrmBirthdays
     end
 
     def day_label(date) = "#{date.month}/#{date.day}（#{WEEKDAYS[date.wday]}）"
+    def short_date(date) = date.year == @week_start.year ? "#{date.month}/#{date.day}" : "#{date.year}/#{date.month}/#{date.day}"
     def money(x) = "$#{ActiveSupport::NumberHelper.number_to_delimited(x.round)}"
   end
 end
