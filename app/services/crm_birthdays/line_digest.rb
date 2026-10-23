@@ -3,13 +3,14 @@
 module CrmBirthdays
   # 每週一推到有訂閱「crm_birthdays」的 LINE 群組（苼莛國際-CRM優質會員）：
   # 1. 本週（週一到週日）生日的黑金卡客人
-  # 2. 特別關注：接下來 3 週生日、累計消費 ≥ HIGH_SPEND 的非黑金卡客人
+  # 2. 特別關注：接下來 3 週生日、近 30 天合計消費 ≥ RECENT_SPEND 的非黑金卡客人
   # 黑名單客人（含 IG 分身）一律排除，訊息最後寫排除了誰。
   # 由 seo:daily（Render Cron 台灣 10:00）在週一順便呼叫；同一週只發一次。
   class LineDigest
     TOPIC = "crm_birthdays"
     BLACK_GOLD = %w[黑卡 金卡].freeze
-    HIGH_SPEND = 50_000 # 累計消費門檻（shopline_customers.total_amount）
+    RECENT_DAYS = 30
+    RECENT_SPEND = 30_000 # 近 30 天已付款訂單合計（整單金額）
     WATCH_DAYS = 21
     WEEKDAYS = %w[日 一 二 三 四 五 六].freeze
     SHORT_LEVEL = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白" }.freeze
@@ -46,13 +47,13 @@ module CrmBirthdays
       black_gold = birthdays(@week_start..week_end).select { |c| BLACK_GOLD.include?(c[:level]) }
       watch = birthdays(@week_start..(@week_start + WATCH_DAYS - 1))
               .reject { |c| BLACK_GOLD.include?(c[:level]) }
-              .select { |c| c[:total] >= HIGH_SPEND }
+              .select { |c| c[:recent_total] >= RECENT_SPEND }
 
       first = ["🎂 生日名單 #{day_label(@week_start)}–#{day_label(week_end)}", "", "【黑金卡本週生日】#{black_gold.size} 人"]
-      first += black_gold.any? ? black_gold.map { |c| customer_line(c) } : ["本週沒有黑金卡客人生日"]
+      first += black_gold.any? ? black_gold.map { |c| customer_line(c, "累計 #{money(c[:total])}") } : ["本週沒有黑金卡客人生日"]
 
-      second = ["【特別關注】非黑金卡、累計消費 #{money(HIGH_SPEND)} 以上，接下來 3 週生日（到 #{day_label(@week_start + WATCH_DAYS - 1)}）#{watch.size} 人"]
-      second += watch.any? ? watch.map { |c| customer_line(c) } : ["接下來 3 週沒有符合的客人"]
+      second = ["【特別關注】非黑金卡、近 #{RECENT_DAYS} 天消費 #{money(RECENT_SPEND)} 以上，接下來 3 週生日（到 #{day_label(@week_start + WATCH_DAYS - 1)}）#{watch.size} 人"]
+      second += watch.any? ? watch.map { |c| customer_line(c, "近 #{RECENT_DAYS} 天消費 #{money(c[:recent_total])}（#{c[:recent_orders]} 張單）") } : ["接下來 3 週沒有符合的客人"]
 
       [first.join("\n"), second.join("\n"), excluded_line]
     end
@@ -78,21 +79,29 @@ module CrmBirthdays
           { email: email, name: name.presence || email.split("@").first, level: level.presence || "一般會員",
             date: date, total: total.to_f, ig: ig.to_s.strip.presence }
         end.uniq { |c| c[:email] }
-        attach_last_order(customers).sort_by { |c| [c[:date], -c[:total]] }
+        attach_orders(customers).sort_by { |c| [c[:date], -c[:total]] }
       end
     end
 
-    def attach_last_order(customers)
-      last = ShoplineOrder.where(payment_status: "已付款")
-                          .where("lower(trim(email)) IN (?)", customers.map { |c| c[:email] })
-                          .group(Arel.sql("lower(trim(email))")).maximum(:order_date)
-      customers.each { |c| c[:last_order] = last[c[:email]]&.to_date }
+    # 最近購買日，和近 30 天的消費（整單金額只記在其中一行，取每張單的最大值再加總）
+    def attach_orders(customers)
+      paid = ShoplineOrder.where(payment_status: "已付款").where("lower(trim(email)) IN (?)", customers.map { |c| c[:email] })
+      last = paid.group(Arel.sql("lower(trim(email))")).maximum(:order_date)
+      recent = Hash.new { |h, k| h[k] = {} }
+      paid.where("order_date::date >= ?", @week_start - RECENT_DAYS)
+          .group(Arel.sql("lower(trim(email))"), :order_number).maximum(:total_amount)
+          .each { |(email, number), amount| recent[email][number] = amount.to_f }
+      customers.each do |c|
+        c[:last_order] = last[c[:email]]&.to_date
+        c[:recent_total] = recent[c[:email]].values.sum
+        c[:recent_orders] = recent[c[:email]].size
+      end
     end
 
-    def customer_line(c)
+    def customer_line(c, spend)
       parts = ["・#{day_label(c[:date])} #{c[:name]}（#{SHORT_LEVEL.fetch(c[:level], '一般')}）"]
       parts << "IG #{c[:ig]}" if c[:ig] && !%w[無 na no n/a none - 沒有 x .].include?(c[:ig].downcase)
-      parts << "累計 #{money(c[:total])}"
+      parts << spend
       parts << (c[:last_order] ? "最近購買 #{c[:last_order].strftime('%Y/%-m/%-d')}" : "沒有購買紀錄")
       parts.join("｜")
     end
