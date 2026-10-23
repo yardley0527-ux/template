@@ -17,6 +17,31 @@ module LineBot
       ENV["LINE_REPORT_CHANNEL_ACCESS_TOKEN"].present?
     end
 
+    MAX_MESSAGES = 5 # push 一次最多 5 則
+
+    # 段落依序塞進最多 5 則訊息，每則不超過上限；單一段落太長就按行切開
+    def self.pack(sections, overflow_note: "（內容太長，後面省略）")
+      chunks = sections.flat_map { |section| split_long(section) }
+      out = chunks.each_with_object([]) do |chunk, acc|
+        if acc.any? && acc.last.size + chunk.size + 2 <= MAX_TEXT
+          acc[-1] = "#{acc.last}\n\n#{chunk}"
+        else
+          acc << chunk
+        end
+      end
+      out.size <= MAX_MESSAGES ? out : out.first(MAX_MESSAGES - 1) + [overflow_note]
+    end
+
+    def self.split_long(section)
+      return [section] if section.size <= MAX_TEXT
+
+      section.lines.each_with_object([+""]) do |line, acc|
+        acc << +"" if acc.last.size + line.size > MAX_TEXT
+        acc.last << line
+      end.map(&:chomp)
+    end
+    private_class_method :split_long
+
     def self.valid_signature?(body, signature)
       secret = ENV["LINE_REPORT_CHANNEL_SECRET"].to_s
       return false if secret.empty? || signature.blank?
@@ -31,7 +56,7 @@ module LineBot
 
     # 一次推多則（LINE 上限 5 則），群組裡會連續出現
     def push_texts(to, texts)
-      messages = texts.first(5).map { |t| { type: "text", text: t.to_s.truncate(MAX_TEXT) } }
+      messages = texts.first(MAX_MESSAGES).map { |t| { type: "text", text: t.to_s.truncate(MAX_TEXT) } }
       post("/message/push", { to: to, messages: messages })
     end
 

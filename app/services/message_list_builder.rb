@@ -61,6 +61,7 @@ class MessageListBuilder
   end
 
   # email → 姓名。黑名單本人的 email，加上跟黑名單同 IG 的其他帳號。
+  # CrmBirthdays::LineDigest 也用這個排除黑名單。
   def self.blacklisted_emails
     flagged = ShoplineCustomer.joins(:customer_profile)
                               .where("customer_profiles.brand_ambassador_blacklisted OR customer_profiles.blacklisted")
@@ -76,7 +77,6 @@ class MessageListBuilder
       h[key] ||= name if key.present?
     end
   end
-  private_class_method :blacklisted_emails
 
   def self.normalize_ig(ig)
     v = ig.to_s.strip.downcase.delete_prefix("@")

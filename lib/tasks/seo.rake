@@ -23,6 +23,15 @@ namespace :seo do
         puts "[seo:daily] LINE 推播失敗：#{e.class}: #{e.message}"
       end
     end
+
+    # 這支 Cron 剛好是台灣 10:00 跑，週一順便發 CRM 群組的生日名單（跟 SEO 報告無關，失敗互不影響）
+    if Date.current.monday?
+      begin
+        puts "[seo:daily] 生日名單推播 #{CrmBirthdays::LineDigest.call} 個群組"
+      rescue StandardError => e
+        puts "[seo:daily] 生日名單推播失敗：#{e.class}: #{e.message}"
+      end
+    end
   end
 
   desc "Push the latest SEO report to the LINE groups. FORCE=1 re-sends even if already sent."
