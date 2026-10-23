@@ -25,4 +25,8 @@ class Manychat::SheetImporterTest < ActiveSupport::TestCase
     again = Manychat::SheetImporter.new(nil, csv: csv).call
     assert_equal 0, again[:created]
   end
+
+  test "rake manychat:sync 用的 SyncRun source 是合法值" do
+    assert SyncRun.new(source: "manychat", started_at: Time.current).valid?
+  end
 end

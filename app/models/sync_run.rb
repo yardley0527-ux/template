@@ -17,7 +17,8 @@ class SyncRun < ApplicationRecord
     "shopline_orders_restore" => "訂單清理回復",
     "notifications"           => "營運提醒產生器",
     "membership_level_snapshot" => "會員卡別快照",
-    "seo_daily"               => "SEO 每日報告"
+    "seo_daily"               => "SEO 每日報告",
+    "manychat"                => "ManyChat 訂閱者同步"
   }.freeze
   STATUSES = %w[running success partial failed].freeze
 
