@@ -8,13 +8,24 @@ module Manychat
   # 這裡下載整份表（試算表需開「知道連結的人可檢視」），寫進 manychat_subscribers。
   # 第一列是欄位標題：account, subscriber_id, ig_username, name, time（順序不拘）。
   # 同一人會有多列，取最後一列。
+  #
+  # Flow 的 Insert Row 不能填固定文字，所以每個 ManyChat 帳號寫各自的分頁，
+  # ENV["MANYCHAT_SHEET_TABS"] = {"分頁 gid": "IG帳號"}，account 欄空白時用分頁對應的帳號。
   class SheetImporter
-    def self.call(sheet_id = ENV["MANYCHAT_SHEET_ID"])
-      new(sheet_id).call
+    def self.call(sheet_id = ENV["MANYCHAT_SHEET_ID"], tabs: tabs_from_env)
+      new(sheet_id, tabs: tabs).call
     end
 
-    def initialize(sheet_id, csv: nil)
+    def self.tabs_from_env
+      JSON.parse(ENV["MANYCHAT_SHEET_TABS"].presence || "{}")
+    rescue JSON::ParserError
+      {}
+    end
+
+    # csv：測試用，{gid => CSV 字串}（沒有分頁設定時 key 用 nil）
+    def initialize(sheet_id, tabs: {}, csv: nil)
       @sheet_id = sheet_id
+      @tabs = tabs.presence || { nil => nil }
       @csv = csv
     end
 
@@ -22,13 +33,16 @@ module Manychat
       raise ArgumentError, "MANYCHAT_SHEET_ID 未設定" if @sheet_id.blank? && @csv.nil?
 
       latest = {}
-      CSV.parse(@csv || download, headers: true).each do |row|
-        h = row.to_h.transform_keys { |k| k.to_s.strip.downcase }
-        account = ShoplineCustomer.normalize_ig(h["account"])
-        subscriber_id = h["subscriber_id"].to_s.strip
-        next if account.blank? || subscriber_id !~ /\A\d+\z/
+      @tabs.each do |gid, tab_account|
+        default_account = ShoplineCustomer.normalize_ig(tab_account)
+        CSV.parse(@csv ? @csv[gid].to_s : download(gid), headers: true).each do |row|
+          h = row.to_h.transform_keys { |k| k.to_s.strip.downcase }
+          account = ShoplineCustomer.normalize_ig(h["account"]) || default_account
+          subscriber_id = h["subscriber_id"].to_s.gsub(/[,\s]/, "")
+          next if account.blank? || subscriber_id !~ /\A\d+\z/
 
-        latest[[account, subscriber_id.to_i]] = h
+          latest[[account, subscriber_id.to_i]] = h
+        end
       end
 
       result = { rows: latest.size, created: 0, updated: 0, invalid: 0 }
@@ -53,8 +67,9 @@ module Manychat
 
     private
 
-    def download
+    def download(gid)
       url = "https://docs.google.com/spreadsheets/d/#{@sheet_id}/export?format=csv"
+      url += "&gid=#{gid}" if gid
       URI.parse(url).open(open_timeout: 15, read_timeout: 60).read.force_encoding("UTF-8")
     end
 

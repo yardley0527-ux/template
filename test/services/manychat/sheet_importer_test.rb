@@ -14,7 +14,7 @@ class Manychat::SheetImporterTest < ActiveSupport::TestCase
       Chloe.Chao,999,stranger,Stranger,
     CSV
 
-    result = Manychat::SheetImporter.new(nil, csv: csv).call
+    result = Manychat::SheetImporter.new(nil, csv: { nil => csv }).call
     assert_equal({ rows: 2, created: 2, updated: 0, invalid: 0 }, result)
 
     sub = ManychatSubscriber.find_by(account_key: "chloe.chao", subscriber_id: 149562575)
@@ -22,8 +22,17 @@ class Manychat::SheetImporterTest < ActiveSupport::TestCase
     assert_equal customer.id, sub.shopline_customer_id
     assert_nil ManychatSubscriber.find_by(subscriber_id: 999).shopline_customer_id
 
-    again = Manychat::SheetImporter.new(nil, csv: csv).call
+    again = Manychat::SheetImporter.new(nil, csv: { nil => csv }).call
     assert_equal 0, again[:created]
+  end
+
+  test "account 欄空白時用分頁對應的帳號，ID 有千分位逗號也能讀" do
+    csv = <<~CSV
+      account,subscriber_id,ig_username,name,time
+      ,"149,562,575",anyu.wang,Anyu,
+    CSV
+    Manychat::SheetImporter.new(nil, tabs: { "0" => "ChloeChao0527" }, csv: { "0" => csv }).call
+    assert ManychatSubscriber.exists?(account_key: "chloechao0527", subscriber_id: 149562575)
   end
 
   test "rake manychat:sync 用的 SyncRun source 是合法值" do

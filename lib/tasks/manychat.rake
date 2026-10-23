@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 #
 # ManyChat 同步（Render Cron Job：bundle exec rake manychat:sync，建議每 15 分鐘 "*/15 * * * *"）。
-# 需要 ENV：MANYCHAT_SHEET_ID（Flow 寫入的 Google Sheet）、MANYCHAT_API_KEYS（{"IG帳號": "金鑰"}）。
+# 需要 ENV：MANYCHAT_SHEET_ID（Flow 寫入的 Google Sheet）、MANYCHAT_SHEET_TABS（{"分頁gid": "IG帳號"}）、MANYCHAT_API_KEYS（{"IG帳號": "金鑰"}）。
 namespace :manychat do
   desc "Import ManyChat subscribers from the Google Sheet, then push CRM fields back to ManyChat"
   task sync: :environment do
