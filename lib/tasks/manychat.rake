@@ -1,0 +1,23 @@
+# frozen_string_literal: true
+#
+# ManyChat 同步（Render Cron Job：bundle exec rake manychat:sync，建議每 15 分鐘 "*/15 * * * *"）。
+# 需要 ENV：MANYCHAT_SHEET_ID（Flow 寫入的 Google Sheet）、MANYCHAT_API_KEYS（{"IG帳號": "金鑰"}）。
+namespace :manychat do
+  desc "Import ManyChat subscribers from the Google Sheet, then push CRM fields back to ManyChat"
+  task sync: :environment do
+    run = SyncRun.create!(source: "manychat", started_at: Time.current)
+    imported = Manychat::SheetImporter.call
+    puts "[manychat:sync] 試算表 #{imported}"
+
+    pushed = Manychat::CustomerFieldSync.call
+    puts "[manychat:sync] 寫回欄位 synced=#{pushed[:synced]} skipped=#{pushed[:skipped]} errors=#{pushed[:errors].size}"
+    pushed[:errors].first(20).each { |e| puts "  #{e}" }
+
+    run.update!(status: pushed[:errors].empty? ? "success" : "partial", finished_at: Time.current,
+                meta: { imported: imported, pushed: pushed.except(:errors) },
+                error_messages: pushed[:errors].first(50))
+  rescue StandardError => e
+    run&.update!(status: "failed", finished_at: Time.current, error_messages: ["#{e.class}: #{e.message}"])
+    raise
+  end
+end
