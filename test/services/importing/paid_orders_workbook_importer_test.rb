@@ -151,10 +151,78 @@ module Importing
       import_csv([row(order_number: "#20260115120000011", product_name: "薑黃6",
                       checkout_amount: 10050, total_amount: 15830)])
 
-      # 新公式算出的 hash 找不到舊列 → 目前會多一列。這正是需要先跑
-      # rehash 遷移任務的原因，見 ShopelineOrders::RehashContentIdentity。
-      assert_equal 2, ShoplineOrder.where(order_number: "#20260115120000011").count,
-        "documents pre-fix state: rehash migration is required before deploying this importer"
+      # 新公式算出的 hash 找不到舊列 → 先新增一列；但這張訂單在這次檔案裡，
+      # 以訂單為單位覆蓋會把舊公式那列清掉，最後只剩新列。
+      orders = ShoplineOrder.where(order_number: "#20260115120000011")
+      assert_equal 1, orders.count
+      assert_not_equal old_hash, orders.first.source_row_hash
+    end
+
+    # ── 以訂單為單位覆蓋：檔案裡有的訂單，以這次檔案內容為準 ───────────
+
+    test "a line renamed by Shopline between exports replaces the old line instead of duplicating" do
+      order_number = "#20260115120000030"
+      import_csv([row(order_number: order_number, product_name: "薑黃6", checkout_amount: 10500)])
+      run = import_csv([row(order_number: order_number, product_name: "薑黃6送1", checkout_amount: 10500)])
+
+      assert_equal ["薑黃6送1"], ShoplineOrder.where(order_number: order_number).pluck(:product_name)
+      assert_equal 1, run.reload.meta["pruned_stale_rows"]
+      assert_equal "薑黃6", run.meta["pruned_rows"].first["product_name"]
+    end
+
+    test "a changed quantity or price replaces the old line" do
+      order_number = "#20260115120000031"
+      import_csv([row(order_number: order_number, product_name: "冰晶蕃茄1", checkout_amount: 2750)])
+      import_csv([row(order_number: order_number, product_name: "冰晶蕃茄1", checkout_amount: 0)])
+
+      assert_equal [BigDecimal("0")], ShoplineOrder.where(order_number: order_number).pluck(:checkout_amount)
+    end
+
+    test "a line dropped from an order that is still in the file is removed" do
+      order_number = "#20260115120000032"
+      import_csv([
+        row(order_number: order_number, product_name: "代謝錠1", checkout_amount: 3380),
+        row(order_number: order_number, product_name: "清纖粉1", checkout_amount: 1980)
+      ])
+      import_csv([row(order_number: order_number, product_name: "代謝錠1", checkout_amount: 3380)])
+
+      assert_equal ["代謝錠1"], ShoplineOrder.where(order_number: order_number).pluck(:product_name)
+    end
+
+    test "orders absent from a partial file are left alone (only flagged, never pruned)" do
+      kept = "#20260115120000033"
+      import_csv([
+        row(order_number: kept, product_name: "薑黃1", checkout_amount: 1780),
+        row(order_number: "#20260115120000034", product_name: "薑黃1", checkout_amount: 1780)
+      ])
+      run = import_csv([row(order_number: "#20260115120000034", product_name: "薑黃1送1", checkout_amount: 1780)])
+
+      assert ShoplineOrder.exists?(order_number: kept, product_name: "薑黃1")
+      assert_equal 1, run.reload.meta["pruned_stale_rows"]
+      assert_equal [kept], run.meta["canceled_candidates"].map { |c| c["order_number"] }
+    end
+
+    test "an order with a failed row is not pruned" do
+      order_number = "#20260115120000035"
+      import_csv([row(order_number: order_number, product_name: "魚油12送1", checkout_amount: 18720)])
+
+      original_save = ShoplineOrder.instance_method(:save!)
+      ShoplineOrder.define_method(:save!) do |*args, **kw|
+        raise ActiveRecord::RecordInvalid, self if product_name == "壞掉的列"
+        original_save.bind(self).call(*args, **kw)
+      end
+      begin
+        run = import_csv([
+          row(order_number: order_number, product_name: "魚油12", checkout_amount: 18720),
+          row(order_number: order_number, product_name: "壞掉的列", checkout_amount: 1)
+        ])
+      ensure
+        ShoplineOrder.define_method(:save!, original_save)
+      end
+
+      assert_equal 1, run.reload.error_rows
+      assert_equal 0, run.meta["pruned_stale_rows"]
+      assert_equal ["魚油12", "魚油12送1"], ShoplineOrder.where(order_number: order_number).order(:product_name).pluck(:product_name)
     end
 
     # ── 共用 advisory lock：與 rehash/dedupe 互斥 ─────────────────────
