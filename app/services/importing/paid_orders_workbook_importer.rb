@@ -80,6 +80,11 @@ module Importing
       # same counts to stay idempotent.
       occurrence_counts = Hash.new(0)
       touched_months = Set.new
+      # 這次檔案裡出現、而且每一行都成功寫入的訂單號碼 → 匯入後以訂單為單位
+      # 覆蓋（見 prune_stale_rows!）。任何一行出錯的訂單不覆蓋，避免把舊資料
+      # 刪了、新資料又沒寫進去。
+      seen_orders = Set.new
+      failed_orders = Set.new
 
       book.sheets.each do |sheet_name|
         month = sheet_name.to_i
@@ -142,9 +147,11 @@ module Importing
           order.raw = raw.compact if order.respond_to?(:raw=)
           order.save!
 
+          seen_orders << order_number
           upserted += 1
           progress(run, processed, upserted, skipped, error_rows, sheet_name) if (processed % PROGRESS_EVERY).zero?
         rescue => e
+          failed_orders << order_number if order_number.present?
           error_rows += 1
           run.add_error("orders sheet=#{sheet_name} row=#{row_i}: #{e.class} - #{e.message}")
           progress(run, processed, upserted, skipped, error_rows, sheet_name) if (processed % PROGRESS_EVERY).zero?
@@ -152,6 +159,8 @@ module Importing
 
         log "[import] sheet=#{sheet_name} month=#{month} end"
       end
+
+      pruned = prune_stale_rows!(run, seen_orders - failed_orders)
 
       canceled_candidates = touched_months.sort.flat_map do |month|
         Importing::CanceledOrderCandidates.call(year: @source_year, month: month).to_a
@@ -175,6 +184,8 @@ module Importing
         error_rows: error_rows,
         error_messages: run.error_messages,
         meta: run.meta.merge(
+          "pruned_stale_rows" => pruned.size,
+          "pruned_rows" => pruned.first(500),
           "canceled_candidates" => canceled_candidates.map { |o|
             {
               order_number: o.order_number,
@@ -190,6 +201,43 @@ module Importing
 
       log "[import] done run_id=#{run.id} processed=#{processed} upserted=#{upserted} skipped=#{skipped} errors=#{error_rows}"
       run
+    end
+
+    # 以訂單為單位覆蓋：檔案裡有的訂單，以這次檔案的內容為準。
+    #
+    # 每一行的身分是 order_number＋商品名稱＋數量＋結帳價（ShoplineOrder.content_hash），
+    # 但 Shopline 每次匯出的商品名稱會變（「薑黃6」→「薑黃6送1」、「冰晶蕃茄5」→
+    # 「冰晶番茄5送1」、SKU 改名、組合順序互換），數量／金額也可能被改。名稱一變，
+    # find_or_initialize_by 找不到舊列就新增一列，舊列永遠留著 → 同一張單新舊兩版
+    # 並存、營收重複計算（2026/10/20 正式站一次清出 474 列、約 $541 萬）。
+    #
+    # 這裡只刪「這次檔案裡有出現的訂單」底下、這次沒被寫到的列：訂單本身確定還在，
+    # 這些列只是舊版內容，所以即使上傳的是不完整的檔案（例如只匯一天）也安全。
+    # 整張訂單都不在檔案裡的（可能是取消，也可能只是檔案不完整）不在這裡處理，
+    # 仍走 canceled_candidates ＋ import:purge_canceled_orders 人工確認。
+    def prune_stale_rows!(run, order_numbers)
+      pruned = []
+      order_numbers.each_slice(1000) do |batch|
+        stale = ShoplineOrder
+          .where(order_number: batch)
+          .where("import_run_id IS NULL OR import_run_id <> ?", run.id)
+        stale.order(:order_number, :id).each do |o|
+          pruned << {
+            "order_number" => o.order_number,
+            "product_name" => o.product_name,
+            "quantity" => o.quantity,
+            "checkout_amount" => o.checkout_amount&.to_s,
+            "order_date" => o.order_date&.to_date&.to_s,
+            "import_run_id" => o.import_run_id
+          }
+        end
+        stale.delete_all
+      end
+
+      if pruned.any?
+        log "[import] replaced #{pruned.size} stale row(s) in orders present in this file (renamed/changed lines from earlier imports)"
+      end
+      pruned
     end
 
     def infer_month_from_filename

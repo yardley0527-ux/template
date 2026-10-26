@@ -51,14 +51,17 @@ class ImportDedupeRehashInterplayTest < ActiveSupport::TestCase
   end
 
   # 1) 歷史模式 A 尚未清理時，用新 importer 再匯入同一檔案
-  test "scenario 1: re-importing before rehash creates a third row (documents why rehash must run first)" do
+  test "scenario 1: re-importing before rehash converges to the file's single row" do
     order_number = "#I1"
-    seed_old_formula_pair(order_number: order_number)
+    legacy = seed_old_formula_pair(order_number: order_number)
 
     import_csv([row(order_number: order_number, product_name: "薑黃6", checkout_amount: 10050, total_amount: 15830)])
 
-    assert_equal 3, ShoplineOrder.where(order_number: order_number).count,
-      "without rehash, the new importer's hash matches neither legacy row"
+    # 新公式的 hash 兩列舊資料都對不上 → 先新增一列；但這張訂單在檔案裡，
+    # 以訂單為單位覆蓋會把兩列舊公式資料清掉，只留這次檔案那一列。
+    orders = ShoplineOrder.where(order_number: order_number)
+    assert_equal 1, orders.count
+    assert_not_includes legacy.map(&:id), orders.first.id
   end
 
   # 2) 歷史模式 A 清理後，用新 importer 再匯入同一檔案
@@ -106,7 +109,7 @@ class ImportDedupeRehashInterplayTest < ActiveSupport::TestCase
   end
 
   # 6) 同訂單相同商品但 quantity 改變 — documents a known, deliberate limitation
-  test "scenario 6: a genuine quantity correction is NOT recognized as an edit of the same line (documented limitation)" do
+  test "scenario 6: a genuine quantity correction replaces the old line" do
     order_number = "#I6"
     import_csv([row(order_number: order_number, product_name: "益生菌1", checkout_amount: 1950, quantity: 1, total_amount: 1950)])
     assert_equal 1, ShoplineOrder.where(order_number: order_number).count
@@ -115,12 +118,10 @@ class ImportDedupeRehashInterplayTest < ActiveSupport::TestCase
     import_csv([row(order_number: order_number, product_name: "益生菌1", checkout_amount: 1950, quantity: 2, total_amount: 1950)])
 
     orders = ShoplineOrder.where(order_number: order_number).order(:id)
-    # quantity 是 identity 的一部分（刻意設計，見 content_hash 註解）：
-    # 這裡不會被視為「同一列更新」，而是被當成第二條獨立線。這是為了不吞掉
-    # 「同商品真的買了兩次、數量剛好不同」的情況所付出的已知代價 —— 需要
-    # 這類「同商品數量修正」的案例交由 ShoplineOrdersDedupeService 之外的
-    # 專案判斷（quantity 不同不在其安全刪除範圍內，見 dedupe 測試）。
-    assert_equal 2, orders.count, "documents that quantity changes are NOT merged as an update"
+    # quantity 仍是 identity 的一部分（同一檔案內「同商品買兩次、數量不同」
+    # 會是兩列），所以這裡先新增一列；但訂單在檔案裡，舊的數量 1 那列會被
+    # 以訂單為單位覆蓋清掉。
+    assert_equal [2], orders.pluck(:quantity)
   end
 
   # 7) 不同 order_number 短時間內購買相同商品（Pattern B）— dedupe 完全不動
@@ -188,11 +189,9 @@ class ImportDedupeRehashInterplayTest < ActiveSupport::TestCase
       ShoplineOrder.where(order_number: order_number).order(:id).pluck(:source_row_hash).sort
   end
 
-  # 8) 部分商品列從匯出檔消失 — the importer is upsert-only and never
-  # deletes; a line that stops appearing in later exports leaves its DB
-  # row stale but present (a known, documented data-quality gap, not a
-  # crash/corruption risk).
-  test "occurrence scenario: a line disappearing from a later export leaves a stale but harmless orphan row" do
+  # 8) 部分商品列從匯出檔消失 — the order is still in the file, so the
+  # file is the source of truth for its lines: the vanished line is pruned.
+  test "occurrence scenario: a line disappearing from a later export is pruned" do
     order_number = "#O8"
     import_csv([
       row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683),
@@ -204,10 +203,8 @@ class ImportDedupeRehashInterplayTest < ActiveSupport::TestCase
     # 後續匯出檔只剩 1 條（另一條「消失」——真實情境如取消其中一件）
     import_csv([row(order_number: order_number, product_name: "清纖粉2", checkout_amount: 3683, total_amount: 3683)])
 
-    # Upsert-only：兩列都還在，其中一列現在代表已不存在的真實資料
-    # （已知限制，交由後續的資料盤點/dedupe 類工具另行處理，不在本 importer 範圍）。
-    assert_equal ids_before, ShoplineOrder.where(order_number: order_number).order(:id).pluck(:id)
-    assert_equal 2, ShoplineOrder.where(order_number: order_number).count
+    # 第 1 次出現的那列（occurrence 1）hash 不變、原地更新；第 2 列被清掉。
+    assert_equal [ids_before.first], ShoplineOrder.where(order_number: order_number).order(:id).pluck(:id)
   end
 
   # 9) 不同月份檔案重疊涵蓋同一訂單 — the SAME order+line appearing in two
