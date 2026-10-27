@@ -17,6 +17,11 @@ module LineBot
       ENV["LINE_REPORT_CHANNEL_ACCESS_TOKEN"].present?
     end
 
+    LAST_ERROR_KEY = "line_bot:last_push_error"
+
+    # 最近一次推播失敗（/line_bot_groups 顯示用；背景工作失敗只記 log，使用者看不到）
+    def self.last_error = Rails.cache.read(LAST_ERROR_KEY)
+
     MAX_MESSAGES = 5 # push 一次最多 5 則
 
     # 段落依序塞進最多 5 則訊息，每則不超過上限；單一段落太長就按行切開
@@ -92,6 +97,15 @@ module LineBot
     # 任意訊息物件（例如 Flex 卡片）
     def push_messages(to, messages)
       post("/message/push", { to: to, messages: messages.first(MAX_MESSAGES) })
+    rescue Error => e
+      Rails.cache.write(LAST_ERROR_KEY, { at: Time.current, to: to, message: e.message }, expires_in: 14.days)
+      raise
+    end
+
+    # 本月推播額度：limit 是 nil 代表沒有上限（付費方案）
+    def quota
+      q = get("/message/quota")
+      { limit: q["type"] == "limited" ? q["value"] : nil, used: get("/message/quota/consumption")["totalUsage"] }
     end
 
     def group_name(group_id)

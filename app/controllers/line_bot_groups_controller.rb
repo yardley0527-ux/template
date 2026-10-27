@@ -7,6 +7,14 @@ class LineBotGroupsController < ApplicationController
   def index
     @groups = LineBotGroup.order(active: :desc, joined_at: :desc)
     @deliveries = LineDigestDelivery.order(report_date: :desc).limit(10)
+    @last_error = LineBot::Client.last_error
+    if LineBot::Client.configured?
+      begin
+        @quota = LineBot::Client.new.quota
+      rescue LineBot::Client::Error, Net::OpenTimeout, Net::ReadTimeout, SocketError => e
+        @quota_error = e.message
+      end
+    end
   end
 
   def update

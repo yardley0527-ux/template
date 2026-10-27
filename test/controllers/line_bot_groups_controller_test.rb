@@ -16,6 +16,7 @@ class LineBotGroupsControllerTest < ActionDispatch::IntegrationTest
     get line_bot_groups_path
     assert_response :ok
     assert_includes response.body, "苼莛國際-策略部"
+    assert_includes response.body, "沒有設定 LINE_REPORT_CHANNEL_ACCESS_TOKEN" # 測試環境沒有金鑰
 
     patch line_bot_group_path(@group), params: { line_bot_group: { subscriptions: ["", "order_brief", "bogus"] } }
     assert_equal ["order_brief"], @group.reload.subscriptions

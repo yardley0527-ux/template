@@ -9,6 +9,27 @@
   把「苼莛小幫手」邀進 LINE 群組後，群組會自動出現在這裡。新群組預設不收任何報告，勾選後按「儲存」才會開始收。
 </div>
 
+<%# LINE 推播狀態：額度用完或推播失敗時，背景工作只記 log，這裡讓人看得到原因 %>
+<% if !LineBot::Client.configured? %>
+  <div class="alert alert-danger small mb-3">⚠️ 伺服器沒有設定 LINE_REPORT_CHANNEL_ACCESS_TOKEN，所有報告都不會發出</div>
+<% else %>
+  <% full = @quota && @quota[:limit] && @quota[:used] >= @quota[:limit] %>
+  <div class="alert <%= full || @last_error ? 'alert-danger' : 'alert-light border' %> small mb-3">
+    <% if @quota %>
+      <div>
+        📨 LINE 本月推播：已用 <strong><%= @quota[:used] %></strong> 則
+        <%= @quota[:limit] ? "／上限 #{@quota[:limit]} 則" : "（無上限）" %>
+        <% if full %><strong class="ml-1">— 額度已用完，下個月 1 號前所有報告都發不出去（要升級 LINE 方案或等下個月）</strong><% end %>
+      </div>
+    <% else %>
+      <div>📨 查不到 LINE 推播額度：<%= @quota_error %></div>
+    <% end %>
+    <% if @last_error %>
+      <div class="mt-1">❌ 最近一次發送失敗（<%= @last_error[:at].in_time_zone.strftime("%m/%d %H:%M") %>）：<%= @last_error[:message] %></div>
+    <% end %>
+  </div>
+<% end %>
+
 <div class="panel">
   <div class="panel-container show">
     <div class="panel-content">
