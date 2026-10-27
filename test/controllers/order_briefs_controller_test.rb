@@ -35,6 +35,17 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Amy"
   end
 
+  test "產生銷售日報：每段可複製，也可以全部複製" do
+    sign_in @admin
+    get order_briefs_path, params: { date: DAY.iso8601, report: "sales" }
+    assert_response :ok
+    assert_includes response.body, "10/22 銷售日報"
+    assert_includes response.body, "全部複製"
+    assert_includes response.body, "SL 訂單"
+    assert_includes response.body, "月累計"
+    assert_not_includes response.body, "回購 PDRN" # 不是訂單簡報
+  end
+
   test "那天沒有訂單就說沒有" do
     sign_in @admin
     get order_briefs_path, params: { date: "2026-10-01" }

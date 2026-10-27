@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# 訂單簡報預覽：選日期在網頁上看整份簡報（跟 LINE 發的同一份），自己複製文字、截表格貼到群組。
+# 訂單簡報／銷售日報預覽：選日期在網頁上看整份報告（跟 LINE 發的同一份），自己複製文字、截表格貼到群組。
 # 不經過 LINE，不用推播額度（小幫手免費方案額度用完時也能用）。
 # 沒加進任何角色的 page_permissions，限 admin（同 line_bot_groups）。
 class OrderBriefsController < ApplicationController
@@ -11,8 +11,12 @@ class OrderBriefsController < ApplicationController
     @report = OrderBrief::Report.new(@day)
     return if @report.empty?
 
-    @highlights = OrderBrief::Highlights.call(@report) if params[:ai] == "1"
-    @parts = OrderBrief::Sections.new(@report).parts
+    if params[:report] == "sales"
+      @sales = SalesDaily::LineDigest.new(@day).sections
+    else
+      @highlights = OrderBrief::Highlights.call(@report) if params[:ai] == "1"
+      @parts = OrderBrief::Sections.new(@report).parts
+    end
   end
 
   private

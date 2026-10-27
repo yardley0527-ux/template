@@ -1,12 +1,13 @@
-<% content_for :page_title, "訂單簡報預覽" %>
+<% content_for :page_title, "訂單簡報／銷售日報預覽" %>
 
 <div class="subheader">
-  <h1 class="subheader-title"><i class="fal fa-file-alt mr-2 text-success"></i> 訂單簡報預覽</h1>
+  <h1 class="subheader-title"><i class="fal fa-file-alt mr-2 text-success"></i> 訂單簡報／銷售日報預覽</h1>
 </div>
 
 <div class="alert alert-light border small mb-3">
   <i class="fal fa-info-circle mr-1"></i>
-  跟 LINE 小幫手發的是同一份簡報，但不經過 LINE、不用推播額度。文字按「複製」貼到群組，表格用截圖。
+  跟 LINE 小幫手發的是同一份報告，但不經過 LINE、不用推播額度。文字按「複製」貼到群組，表格用截圖。
+  訂單簡報給策略部、銷售日報給銷售後台。
 </div>
 
 <div class="panel">
@@ -18,7 +19,9 @@
           <%= check_box_tag :ai, "1", params[:date].blank? || params[:ai] == "1", class: "custom-control-input" %>
           <label class="custom-control-label" for="ai">加 AI 重點（多等約 1 分鐘）</label>
         </div>
-        <button type="submit" class="btn btn-sm btn-primary" data-disable-with="產生中，請稍等…">產生簡報</button>
+        <button type="submit" name="report" value="brief" class="btn btn-sm btn-primary mr-2" data-disable-with="產生中，請稍等…">產生簡報</button>
+        <%# 不加 data-disable-with：按鈕被停用後瀏覽器不會送出它的 report=sales（銷售日報很快，不用防連按） %>
+        <button type="submit" name="report" value="sales" class="btn btn-sm btn-success">產生銷售日報</button>
       <% end %>
     </div>
   </div>
@@ -26,6 +29,26 @@
 
 <% if @report&.empty? %>
   <div class="alert alert-warning"><%= @day.strftime("%-m/%-d") %> 沒有已付款訂單（可能還沒匯入）</div>
+<% elsif @sales %>
+  <div class="panel">
+    <div class="panel-hdr">
+      <h2><%= @day.strftime("%-m/%-d") %> 銷售日報</h2>
+      <div class="panel-toolbar">
+        <button type="button" class="btn btn-xs btn-success js-copy" data-target="sales-all">全部複製</button>
+      </div>
+    </div>
+    <div class="panel-container show">
+      <div class="panel-content">
+        <div id="sales-all" class="d-none"><%= @sales.join("\n\n") %></div>
+        <% @sales.each_with_index do |section, i| %>
+          <div class="<%= 'border-top pt-3 mt-3' if i.positive? %>">
+            <button type="button" class="btn btn-xs btn-outline-success float-right js-copy" data-target="sales-<%= i %>">複製</button>
+            <div id="sales-<%= i %>" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"><%= section %></div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
 <% elsif @parts %>
   <% blocks = [] %>
   <% blocks << [:text, OrderBrief::Highlights.to_text(@day, @highlights)] if @highlights %>
@@ -72,10 +95,12 @@
     document.addEventListener("click", function (e) {
       var btn = e.target.closest(".js-copy");
       if (!btn) return;
-      var text = document.getElementById(btn.dataset.target).innerText;
+      var el = document.getElementById(btn.dataset.target);
+      var text = el.innerText || el.textContent; // 全部複製的區塊是隱藏的，innerText 會是空的
+      var label = btn.textContent;
       navigator.clipboard.writeText(text).then(function () {
         btn.textContent = "已複製 ✓";
-        setTimeout(function () { btn.textContent = "複製"; }, 1500);
+        setTimeout(function () { btn.textContent = label; }, 1500);
       });
     });
   }
