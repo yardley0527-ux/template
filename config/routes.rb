@@ -138,6 +138,7 @@ Rails.application.routes.draw do
   resources :koc_contracts, only: [:index, :update]
   resources :seo_reports, only: [:index]
   post '/line_bot/webhook', to: 'line_bot#webhook'
+  get '/order_briefs', to: 'order_briefs#show', as: :order_briefs
   resources :line_bot_groups, only: [:index, :update] do
     post :preview_order_brief, on: :member
     post :resend_reports, on: :member

@@ -1,0 +1,82 @@
+<% content_for :page_title, "訂單簡報預覽" %>
+
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-file-alt mr-2 text-success"></i> 訂單簡報預覽</h1>
+</div>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  跟 LINE 小幫手發的是同一份簡報，但不經過 LINE、不用推播額度。文字按「複製」貼到群組，表格用截圖。
+</div>
+
+<div class="panel">
+  <div class="panel-container show">
+    <div class="panel-content">
+      <%= form_with url: order_briefs_path, method: :get, local: true, class: "form-inline" do %>
+        <%= date_field_tag :date, @day, max: Date.current - 1, class: "form-control form-control-sm mr-2" %>
+        <div class="custom-control custom-checkbox mr-3">
+          <%= check_box_tag :ai, "1", params[:date].blank? || params[:ai] == "1", class: "custom-control-input" %>
+          <label class="custom-control-label" for="ai">加 AI 重點（多等約 1 分鐘）</label>
+        </div>
+        <button type="submit" class="btn btn-sm btn-primary" data-disable-with="產生中，請稍等…">產生簡報</button>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% if @report&.empty? %>
+  <div class="alert alert-warning"><%= @day.strftime("%-m/%-d") %> 沒有已付款訂單（可能還沒匯入）</div>
+<% elsif @parts %>
+  <% blocks = [] %>
+  <% blocks << [:text, OrderBrief::Highlights.to_text(@day, @highlights)] if @highlights %>
+  <% blocks.concat(@parts) %>
+  <% blocks.each_with_index do |(kind, *args), i| %>
+    <div class="panel">
+      <div class="panel-container show">
+        <div class="panel-content">
+          <% if kind == :text %>
+            <button type="button" class="btn btn-xs btn-outline-success float-right js-copy" data-target="brief-text-<%= i %>">複製</button>
+            <div id="brief-text-<%= i %>" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"><%= args.first %></div>
+          <% else %>
+            <% _name, _title, table_blocks = args %>
+            <% table_blocks.each do |bkind, *bargs| %>
+              <% case bkind %>
+              <% when :heading %>
+                <h5 class="mt-2 mb-2 font-weight-bold"><%= bargs[0] %> <small class="text-muted ml-1"><%= bargs[1] %></small></h5>
+              <% when :table %>
+                <% header, rows, bold_cols = bargs %>
+                <div style="overflow-x:auto;">
+                  <table class="table table-bordered table-sm small mb-3">
+                    <thead class="thead-light"><tr><% header.each do |h| %><th class="text-nowrap"><%= h %></th><% end %></tr></thead>
+                    <tbody>
+                      <% rows.each do |row| %>
+                        <tr><% row.each_with_index do |cell, c| %><td class="<%= 'font-weight-bold' if Array(bold_cols).include?(c) %>"><%= cell %></td><% end %></tr>
+                      <% end %>
+                    </tbody>
+                  </table>
+                </div>
+              <% when :text %>
+                <p style="white-space: pre-wrap;"><%= bargs.first %></p>
+              <% end %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<script>
+  if (!window.orderBriefCopyBound) {
+    window.orderBriefCopyBound = true;
+    document.addEventListener("click", function (e) {
+      var btn = e.target.closest(".js-copy");
+      if (!btn) return;
+      var text = document.getElementById(btn.dataset.target).innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = "已複製 ✓";
+        setTimeout(function () { btn.textContent = "複製"; }, 1500);
+      });
+    });
+  }
+</script>
