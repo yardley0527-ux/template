@@ -36,7 +36,6 @@ Rails.application.routes.draw do
   delete "/board_sections/:id", to: "bulletin_notes#destroy_section", as: :board_section
 
   resources :live_ad_tests, only: [:index, :new, :create, :edit, :update, :destroy]
-  resources :manychat_checks, only: [:index, :update]
   get '/manychat_leads', to: 'manychat_leads#index', as: :manychat_leads
   resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]
 

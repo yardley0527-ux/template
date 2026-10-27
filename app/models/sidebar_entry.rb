@@ -153,7 +153,6 @@ class SidebarEntry
           group_title: "客服支援",
           children: [
             { href: faqs_path, title: "常見問題", icon: "fa-question-circle" },
-            { href: manychat_checks_path, title: "ManyChat 每日確認", icon: "fa-check-square" },
             { href: manychat_leads_path, title: "ManyChat 新客追蹤", icon: "fa-user-tag" },
           ]
         },
