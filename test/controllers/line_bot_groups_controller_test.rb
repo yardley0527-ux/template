@@ -23,8 +23,16 @@ class LineBotGroupsControllerTest < ActionDispatch::IntegrationTest
     patch line_bot_group_path(@group), params: { line_bot_group: { subscriptions: [""] } }
     assert_equal [], @group.reload.subscriptions
   end
-  test "按鈕在背景發一份前一天訂單簡報預覽" do
+  test "按鈕在背景發一份前一天訂單簡報預覽；沒勾訂單簡報的群組不出現、也發不了" do
     sign_in @admin
+    get line_bot_groups_path
+    assert_not_includes response.body, "發一份前一天訂單簡報（測試）"
+    assert_raises(ActiveRecord::RecordNotFound) { post preview_order_brief_line_bot_group_path(@group) }
+    assert_no_enqueued_jobs only: OrderBriefPreviewJob
+
+    @group.update!(subscriptions: ["order_brief"])
+    get line_bot_groups_path
+    assert_includes response.body, "發一份前一天訂單簡報（測試）"
     assert_enqueued_with(job: OrderBriefPreviewJob, args: [@group.id, (Date.current - 1).iso8601]) do
       post preview_order_brief_line_bot_group_path(@group)
     end

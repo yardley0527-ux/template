@@ -51,9 +51,13 @@
                                     form_class: "d-inline-block",
                                     form: { data: { confirm: "要把前一天的報告（訂單簡報／銷售日報／黑金卡回來，有勾的才發）補發到「#{group.name || group.group_id}」嗎？" } } %>
                     <% end %>
-                    <%= button_to "發一份前一天訂單簡報（測試）", preview_order_brief_line_bot_group_path(group),
-                                  method: :post, class: "btn btn-sm btn-outline-secondary mt-2",
-                                  form: { data: { confirm: "要發一份前一天的訂單簡報到「#{group.name || group.group_id}」嗎？（測試預覽，不算正式發送）" } } %>
+                    <%# 訂單簡報只給有勾的群組（目前是策略部），測試按鈕也只在這些群組出現 %>
+                    <% if group.subscriptions.include?("order_brief") %>
+                      <%= button_to "發一份前一天訂單簡報（測試）", preview_order_brief_line_bot_group_path(group),
+                                    method: :post, class: "btn btn-sm btn-outline-secondary mt-2",
+                                    form_class: "d-inline-block",
+                                    form: { data: { confirm: "要發一份前一天的訂單簡報到「#{group.name || group.group_id}」嗎？（測試預覽，不算正式發送）" } } %>
+                    <% end %>
                   <% else %>
                     —
                   <% end %>

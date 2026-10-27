@@ -16,8 +16,9 @@ class LineBotGroupsController < ApplicationController
   end
 
   # 發一份前一天的訂單簡報到這個聊天室看樣子；在背景跑（AI 寫重點＋畫表格約 1–3 分鐘）
+  # 只有勾了訂單簡報的群組可以發（其他群組不該收到訂單簡報）
   def preview_order_brief
-    group = LineBotGroup.active.find(params[:id])
+    group = LineBotGroup.subscribed_to("order_brief").find(params[:id])
     day = Date.current - 1
     OrderBriefPreviewJob.perform_later(group.id, day.iso8601)
     redirect_to line_bot_groups_path, notice: "正在產生 #{day.strftime('%-m/%-d')} 訂單簡報，約 1–3 分鐘後會出現在「#{group.name || group.group_id}」"
