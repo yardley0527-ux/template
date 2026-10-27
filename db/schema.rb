@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_23_153000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_27_120001) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
@@ -1021,6 +1021,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_23_153000) do
     t.index ["date", "account_key", "time_slot"], name: "index_manychat_checks_on_date_account_slot", unique: true
   end
 
+  create_table "manychat_interactions", force: :cascade do |t|
+    t.bigint "manychat_subscriber_id", null: false
+    t.string "source", default: "", null: false
+    t.datetime "interacted_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["interacted_at"], name: "index_manychat_interactions_on_interacted_at"
+    t.index ["manychat_subscriber_id", "interacted_at", "source"], name: "index_manychat_interactions_uniqueness", unique: true
+    t.index ["manychat_subscriber_id"], name: "index_manychat_interactions_on_manychat_subscriber_id"
+  end
+
   create_table "manychat_subscribers", force: :cascade do |t|
     t.string "account_key", null: false
     t.bigint "subscriber_id", null: false
@@ -1889,6 +1900,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_23_153000) do
   add_foreign_key "livestream_products", "livestreams"
   add_foreign_key "livestreams", "users", column: "owner_user_id"
   add_foreign_key "livestreams", "users", column: "review_completed_by_user_id"
+  add_foreign_key "manychat_interactions", "manychat_subscribers"
   add_foreign_key "manychat_subscribers", "shopline_customers"
   add_foreign_key "membership_level_changes", "import_runs"
   add_foreign_key "message_list_recipients", "message_lists"

@@ -1,0 +1,128 @@
+<% content_for :page_title, "ManyChat 新客追蹤" %>
+<% statuses = Manychat::LeadReport::STATUSES %>
+<% counts = @report.status_counts %>
+<% filter = { account: @account, from: @from, to: @to, source: params[:source].presence } %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-user-tag mr-2 text-danger"></i> ManyChat 新客追蹤
+  </h1>
+</div>
+
+<div class="alert alert-light border small mb-3">
+  <i class="fal fa-info-circle mr-1"></i>
+  在 IG 留言或回覆限動、觸發 ManyChat automation 的人，每 15 分鐘從試算表同步一次。
+  用 IG 帳號對到官網顧客，看他互動後有沒有下單。「來源」是 automation 在自訂欄位「來源」填的名字，沒填的會顯示「<%= Manychat::LeadReport::NO_SOURCE %>」。
+</div>
+
+<% if @accounts.empty? %>
+  <div class="alert alert-warning">還沒有 ManyChat 資料。確認 Render 的「ManyChat Sync」排程有在跑、試算表有新資料。</div>
+<% else %>
+
+<%= form_with url: manychat_leads_path, method: :get, local: true, class: "form-inline mb-3", html: { style: "gap:8px;" } do %>
+  <select name="account" id="mc-account" class="form-control form-control-sm">
+    <% @accounts.each do |a| %>
+      <option value="<%= a %>" <%= "selected" if a == @account %>>@<%= a %></option>
+    <% end %>
+  </select>
+  <input type="date" name="from" id="mc-from" value="<%= @from.iso8601 %>" class="form-control form-control-sm">
+  <span class="small text-muted">到</span>
+  <input type="date" name="to" id="mc-to" value="<%= @to.iso8601 %>" class="form-control form-control-sm">
+  <select name="source" id="mc-source" class="form-control form-control-sm">
+    <option value="">全部來源</option>
+    <% @report.sources.each do |s| %>
+      <option value="<%= s %>" <%= "selected" if s == params[:source] %>><%= s %></option>
+    <% end %>
+  </select>
+  <% if @status %><input type="hidden" name="status" value="<%= @status %>"><% end %>
+  <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+<% end %>
+
+<%# ── 分群 ── %>
+<div class="row mb-3">
+  <div class="col-6 col-lg">
+    <%= link_to manychat_leads_path(filter), class: "card mb-2 text-reset text-decoration-none #{'border-primary' unless @status}" do %>
+      <div class="card-body py-2 px-3">
+        <div class="small text-muted">全部互動的人</div>
+        <div class="h3 mb-0"><%= @report.leads.size %></div>
+      </div>
+    <% end %>
+  </div>
+  <% statuses.each do |key, s| %>
+    <div class="col-6 col-lg">
+      <%= link_to manychat_leads_path(filter.merge(status: key)), class: "card mb-2 text-reset text-decoration-none #{'border-primary' if @status == key}" do %>
+        <div class="card-body py-2 px-3">
+          <div class="small"><span class="badge badge-<%= s[:badge] %>"><%= s[:label] %></span></div>
+          <div class="h3 mb-0"><%= counts[key] || 0 %></div>
+          <div class="text-muted" style="font-size:0.75rem;"><%= s[:next_step] %></div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<%# ── 來源漏斗 ── %>
+<div class="panel">
+  <div class="panel-hdr"><h2>各來源成效（互動後 <%= Manychat::LeadReport::CONVERT_DAYS %> 天內）</h2></div>
+  <div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+    <table class="table table-sm table-hover small mb-0">
+      <thead class="thead-light">
+        <tr><th>來源</th><th class="text-right">互動人數</th><th class="text-right">對到顧客</th><th class="text-right">其中舊客</th>
+            <th class="text-right">7 天內下單</th><th class="text-right">下單率</th><th class="text-right">營收</th></tr>
+      </thead>
+      <tbody>
+        <% @report.funnel.each do |r| %>
+          <tr>
+            <td><%= link_to r[:source], manychat_leads_path(filter.merge(source: r[:source])) %></td>
+            <td class="text-right"><%= r[:people] %></td>
+            <td class="text-right"><%= r[:matched] %></td>
+            <td class="text-right"><%= r[:existing] %></td>
+            <td class="text-right"><%= r[:converted] %></td>
+            <td class="text-right"><%= r[:people].zero? ? "—" : number_to_percentage(r[:converted] * 100.0 / r[:people], precision: 1) %></td>
+            <td class="text-right"><%= number_to_currency(r[:revenue], unit: "$", precision: 0) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div></div>
+</div>
+
+<%# ── 名單 ── %>
+<div class="panel">
+  <div class="panel-hdr"><h2>名單<%= "・#{statuses[@status][:label]}" if @status %>（<%= @leads.size %> 人）</h2></div>
+  <div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+    <table class="table table-sm table-hover small mb-0">
+      <thead class="thead-light">
+        <tr><th>狀態</th><th>名字</th><th>IG</th><th>來源</th><th>第一次互動</th><th>最近互動</th>
+            <th>官網顧客</th><th>卡別</th><th class="text-right">互動後訂單</th><th class="text-right">互動後消費</th><th>下一步</th></tr>
+      </thead>
+      <tbody>
+        <% @leads.each do |l| %>
+          <% s = statuses[l.status] %>
+          <tr>
+            <td style="white-space:nowrap;"><span class="badge badge-<%= s[:badge] %>"><%= s[:label] %></span></td>
+            <td><%= l.subscriber.name %></td>
+            <td style="white-space:nowrap;">
+              <% if l.subscriber.ig_username.present? %>
+                <a href="https://www.instagram.com/<%= l.subscriber.ig_username %>/" target="_blank" rel="noopener">@<%= l.subscriber.ig_username %></a>
+              <% else %>—<% end %>
+            </td>
+            <td><% l.sources.each do |src| %><span class="badge badge-light border mr-1"><%= src %></span><% end %></td>
+            <td style="white-space:nowrap;"><%= l.first_at.in_time_zone.strftime("%m/%d %H:%M") %></td>
+            <td style="white-space:nowrap;"><%= l.last_at.in_time_zone.strftime("%m/%d %H:%M") %></td>
+            <td><%= l.customer ? link_to(l.customer.full_name.presence || "顧客", customer_path(l.customer)) : content_tag(:span, "對不到", class: "text-muted") %></td>
+            <td><%= l.customer&.membership_level.presence || (l.customer ? "一般會員" : "—") %></td>
+            <td class="text-right"><%= l.orders_after.zero? ? "—" : l.orders_after %></td>
+            <td class="text-right"><%= l.amount_after.zero? ? "—" : number_to_currency(l.amount_after, unit: "$", precision: 0) %></td>
+            <td class="text-muted" style="min-width:14em;"><%= s[:next_step] %></td>
+          </tr>
+        <% end %>
+        <% if @leads.empty? %>
+          <tr><td colspan="11" class="text-center text-muted py-4">這段期間沒有人</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div></div>
+</div>
+
+<% end %>

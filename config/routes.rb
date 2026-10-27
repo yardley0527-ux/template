@@ -37,6 +37,7 @@ Rails.application.routes.draw do
 
   resources :live_ad_tests, only: [:index, :new, :create, :edit, :update, :destroy]
   resources :manychat_checks, only: [:index, :update]
+  get '/manychat_leads', to: 'manychat_leads#index', as: :manychat_leads
   resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]
 
   get  '/group_buy_posts',              to: 'group_buy_posts#index',       as: :group_buy_posts

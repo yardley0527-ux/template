@@ -1,6 +1,7 @@
 # ManyChat 訂閱者對應表，見 CreateManychatSubscribers migration 說明。
 class ManychatSubscriber < ApplicationRecord
   belongs_to :shopline_customer, optional: true
+  has_many :manychat_interactions, dependent: :delete_all
 
   # account_key 用該 IG 帳號名稱（如 shengting.slim）；不設白名單，新開的產品帳號直接能接。
   ACCOUNT_KEY_FORMAT = /\A[a-z0-9._]{1,30}\z/
