@@ -22,4 +22,11 @@ class LineBotGroupsController < ApplicationController
     OrderBriefPreviewJob.perform_later(group.id, day.iso8601)
     redirect_to line_bot_groups_path, notice: "正在產生 #{day.strftime('%-m/%-d')} 訂單簡報，約 1–3 分鐘後會出現在「#{group.name || group.group_id}」"
   end
+
+  # 立即補發前一天的「匯入後」報告（訂單簡報、銷售日報、黑金卡回來）到這個群組，不用等下次匯入
+  def resend_reports
+    group = LineBotGroup.active.find(params[:id])
+    LineReportResendJob.perform_later(group.id)
+    redirect_to line_bot_groups_path, notice: "正在補發前一天的報告到「#{group.name || group.group_id}」，約 1–3 分鐘後會出現"
+  end
 end

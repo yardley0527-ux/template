@@ -43,13 +43,18 @@ module SalesDaily
       return 0 unless LineBot::Client.configured?
 
       groups = LineBotGroup.subscribed_to(TOPIC).to_a
-      return 0 if groups.empty? || report(@day).empty?
+      return 0 if groups.empty? || !pushable?
 
-      LineDigestDelivery.deliver_once(TOPIC, @day, force: force) do
-        texts = LineBot::Client.pack(sections)
-        groups.each { |group| @line.push_texts(group.group_id, texts) }
-        groups.size
-      end
+      LineDigestDelivery.deliver_once(TOPIC, @day, force: force) { push(groups) }
+    end
+
+    def pushable? = !report(@day).empty?
+
+    # 直接發給這些群組，不看也不記「已發送」（/line_bot_groups 補發單一群組用）；回傳群組數
+    def push(groups)
+      texts = LineBot::Client.pack(sections)
+      groups.each { |group| @line.push_texts(group.group_id, texts) }
+      groups.size
     end
 
     def message

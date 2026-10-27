@@ -32,15 +32,19 @@ module OrderBrief
       groups = LineBotGroup.subscribed_to(TOPIC).to_a
       return 0 if groups.empty?
 
-      report = Report.new(@day)
-      return 0 if report.empty?
+      return 0 unless pushable?
 
-      LineDigestDelivery.deliver_once(TOPIC, @day, force: force) do
-        msgs = messages(report, Highlights.call(report))
-        # LINE 一次 push 最多 5 則，超過就分批，群組裡順序不變
-        groups.each { |group| msgs.each_slice(LineBot::Client::MAX_MESSAGES) { |batch| @line.push_messages(group.group_id, batch) } }
-        groups.size
-      end
+      LineDigestDelivery.deliver_once(TOPIC, @day, force: force) { push(groups) }
+    end
+
+    def pushable? = !report.empty?
+
+    # 直接發給這些群組，不看也不記「已發送」（/line_bot_groups 補發單一群組用）；回傳群組數
+    def push(groups)
+      msgs = messages(report, Highlights.call(report))
+      # LINE 一次 push 最多 5 則，超過就分批，群組裡順序不變
+      groups.each { |group| msgs.each_slice(LineBot::Client::MAX_MESSAGES) { |batch| @line.push_messages(group.group_id, batch) } }
+      groups.size
     end
 
     # images: false 時表格不畫圖，只放標題（rake order_brief:print 預覽用）
@@ -54,6 +58,8 @@ module OrderBrief
     end
 
     private
+
+    def report = @report ||= Report.new(@day)
 
     def text(str) = { type: "text", text: str.truncate(LineBot::Client::MAX_TEXT) }
 

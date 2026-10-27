@@ -38,15 +38,25 @@ module CrmReturns
       return 0 unless LineBot::Client.configured?
 
       groups = LineBotGroup.subscribed_to(TOPIC).to_a
-      return 0 if groups.empty? || !ShoplineOrder.where(payment_status: "已付款").where("order_date::date = ?", @day).exists?
+      return 0 if groups.empty? || !imported?
 
       LineDigestDelivery.deliver_once(TOPIC, @day, force: force) do
         next 0 if returners.empty?
 
-        texts = LineBot::Client.pack(sections)
-        groups.each { |group| @line.push_texts(group.group_id, texts) }
-        groups.size
+        push(groups)
       end
+    end
+
+    def imported? = ShoplineOrder.where(payment_status: "已付款").where("order_date::date = ?", @day).exists?
+
+    # 沒有人回來就沒東西可發
+    def pushable? = imported? && returners.any?
+
+    # 直接發給這些群組，不看也不記「已發送」（/line_bot_groups 補發單一群組用）；回傳群組數
+    def push(groups)
+      texts = LineBot::Client.pack(sections)
+      groups.each { |group| @line.push_texts(group.group_id, texts) }
+      groups.size
     end
 
     def message

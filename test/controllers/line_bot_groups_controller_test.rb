@@ -30,4 +30,19 @@ class LineBotGroupsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_redirected_to line_bot_groups_path
   end
+
+  test "立即補發前一天報告：有勾匯入後報告才出現按鈕，按了在背景補發" do
+    sign_in @admin
+    get line_bot_groups_path
+    assert_not_includes response.body, "立即補發前一天報告"
+
+    @group.update!(subscriptions: ["sales_daily"])
+    get line_bot_groups_path
+    assert_includes response.body, "立即補發前一天報告"
+
+    assert_enqueued_with(job: LineReportResendJob, args: [@group.id]) do
+      post resend_reports_line_bot_group_path(@group)
+    end
+    assert_redirected_to line_bot_groups_path
+  end
 end
