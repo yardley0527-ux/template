@@ -31,6 +31,7 @@ class ImportsController < ApplicationController
         upserted_rows: run.upserted_rows,
         skipped_rows: run.skipped_rows,
         error_rows: run.error_rows,
+        duplicate_rows_skipped: run.meta["duplicate_rows_skipped"].to_i,
         error_messages: run.error_messages.first(5)
       }
     }

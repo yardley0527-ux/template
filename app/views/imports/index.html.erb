@@ -122,6 +122,8 @@
                       <span class="badge badge-warning">處理中</span>
                     <% elsif run.error_rows.to_i > 0 %>
                       <span class="badge badge-danger" title="<%= run.error_messages.first(5).join("; ") %>">有錯誤</span>
+                    <% elsif run.meta["duplicate_rows_skipped"].to_i > 0 %>
+                      <span class="badge badge-info" title="檔案裡同一批訂單出現兩次，重複的部分沒有寫入">完成（略過重複 <%= run.meta["duplicate_rows_skipped"] %> 筆）</span>
                     <% else %>
                       <span class="badge badge-success">完成</span>
                     <% end %>
@@ -191,6 +193,7 @@
     box.innerHTML =
       (ok ? "✓ " : "⚠ ") + escapeHtml(run.kind_label) + "匯入完成，寫入 " + numberWithDelimiter(run.upserted_rows) + " 筆" +
       (ok ? "" : "，其中 " + numberWithDelimiter(run.error_rows) + " 筆有錯誤") +
+      (run.duplicate_rows_skipped > 0 ? "，檔案內重複的 " + numberWithDelimiter(run.duplicate_rows_skipped) + " 筆已略過" : "") +
       '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>';
     container.appendChild(box);
   }
@@ -210,6 +213,8 @@
         statusBadge = '<span class="badge badge-warning">處理中</span>';
       } else if (run.error_rows > 0) {
         statusBadge = '<span class="badge badge-danger" title="' + escapeHtml((run.error_messages || []).join("; ")) + '">有錯誤</span>';
+      } else if (run.duplicate_rows_skipped > 0) {
+        statusBadge = '<span class="badge badge-info" title="檔案裡同一批訂單出現兩次，重複的部分沒有寫入">完成（略過重複 ' + numberWithDelimiter(run.duplicate_rows_skipped) + ' 筆）</span>';
       } else {
         statusBadge = '<span class="badge badge-success">完成</span>';
       }

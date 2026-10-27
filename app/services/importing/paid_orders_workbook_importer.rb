@@ -72,13 +72,26 @@ module Importing
       upserted = 0
       skipped = 0
       error_rows = 0
-      # (order_number, content signature) => how many times seen so far in
-      # this import run. Feeds ShoplineOrder.content_hash's `occurrence:` so
-      # two genuinely-identical line items within one order get distinct
-      # identities instead of collapsing into one. Scoped to the whole run
-      # (not per-sheet) since re-imports of the same file must reproduce the
-      # same counts to stay idempotent.
-      occurrence_counts = Hash.new(0)
+      duplicate_rows = 0
+      # Feeds ShoplineOrder.content_hash's `occurrence:` so two genuinely-
+      # identical line items within one order get distinct identities instead
+      # of collapsing into one.
+      #
+      # Occurrence is the position within a run of *consecutive* identical
+      # rows, not a running total over the file. Shopline lists a genuinely
+      # repeated line back to back (all 108 such groups on production were
+      # adjacent), while a block of orders pasted into the workbook twice
+      # shows the same line again after other rows in between. Counting the
+      # whole file treated that second copy as occurrence 2 and inserted it
+      # (6/17, 10/14, 10/24 incidents, 123 rows cleaned 2026-10-27). Now a
+      # signature that reappears after a gap is skipped as a duplicate unless
+      # its streak exceeds the longest streak already imported this run.
+      # max_streaks is scoped to the whole run (not per-sheet) since re-imports
+      # of the same file must reproduce the same counts to stay idempotent.
+      max_streaks = Hash.new(0)
+      prev_signature = nil
+      streak = 0
+      reappeared = false
       touched_months = Set.new
 
       book.sheets.each do |sheet_name|
@@ -95,6 +108,7 @@ module Importing
         headers = book.row(1).map { |h| h.to_s.strip }
         index = headers.each_with_index.to_h
         last = book.last_row || 1
+        prev_signature = nil
 
         log "[import] sheet=#{sheet_name} rows=#{[last - 1, 0].max}"
 
@@ -106,12 +120,14 @@ module Importing
           order_number = raw[:order_number].to_s.strip
 
           if order_number.empty?
+            prev_signature = nil
             skipped += 1
             progress(run, processed, upserted, skipped, error_rows, sheet_name) if (processed % PROGRESS_EVERY).zero?
             next
           end
 
           if @only_payment_status && raw[:payment_status].to_s.strip != @only_payment_status
+            prev_signature = nil
             skipped += 1
             progress(run, processed, upserted, skipped, error_rows, sheet_name) if (processed % PROGRESS_EVERY).zero?
             next
@@ -126,14 +142,28 @@ module Importing
             payload[:quantity].to_i,
             ShoplineOrder.format_decimal(payload[:checkout_amount])
           ]
-          occurrence_counts[signature] += 1
+          if signature == prev_signature
+            streak += 1
+          else
+            streak = 1
+            reappeared = max_streaks[signature].positive?
+          end
+          prev_signature = signature
+
+          if reappeared && streak <= max_streaks[signature]
+            duplicate_rows += 1
+            skipped += 1
+            progress(run, processed, upserted, skipped, error_rows, sheet_name) if (processed % PROGRESS_EVERY).zero?
+            next
+          end
+          max_streaks[signature] = streak
 
           row_hash = ShoplineOrder.content_hash(
             order_number: order_number,
             product_name: payload[:product_name],
             quantity: payload[:quantity],
             checkout_amount: payload[:checkout_amount],
-            occurrence: occurrence_counts[signature]
+            occurrence: streak
           )
 
           order = ShoplineOrder.find_or_initialize_by(source_row_hash: row_hash)
@@ -157,6 +187,11 @@ module Importing
         Importing::CanceledOrderCandidates.call(year: @source_year, month: month).to_a
       end
 
+      if duplicate_rows.positive?
+        log "[import] ⚠ skipped #{duplicate_rows} row(s) that repeat an order line already imported " \
+          "earlier in this file (the same orders appear twice in the workbook)"
+      end
+
       if canceled_candidates.any?
         log "[import] ⚠ #{canceled_candidates.size} order(s) still 已付款 in the DB for " \
           "#{touched_months.sort.join(',')}/#{@source_year} but absent from this file " \
@@ -175,6 +210,7 @@ module Importing
         error_rows: error_rows,
         error_messages: run.error_messages,
         meta: run.meta.merge(
+          "duplicate_rows_skipped" => duplicate_rows,
           "canceled_candidates" => canceled_candidates.map { |o|
             {
               order_number: o.order_number,

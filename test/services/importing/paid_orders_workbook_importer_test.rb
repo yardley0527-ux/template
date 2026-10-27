@@ -137,6 +137,57 @@ module Importing
       assert_equal 2, second_pass_ids.size
     end
 
+    test "orders pasted twice into the workbook are imported once" do
+      a = "#20261024120000001"
+      b = "#20261024120000002"
+      block = [
+        row(order_number: a, product_name: "預購-PDRN5", checkout_amount: 10800, quantity: 2),
+        row(order_number: b, product_name: "全能1", checkout_amount: 1880),
+        row(order_number: b, product_name: "預購-PDRN1", checkout_amount: 2750)
+      ]
+      run = import_csv(block + block)
+
+      assert_equal 1, ShoplineOrder.where(order_number: a).count
+      assert_equal 2, ShoplineOrder.where(order_number: b).count
+      assert_equal 3, run.meta["duplicate_rows_skipped"]
+    end
+
+    test "a multi-line order repeated right after itself is imported once" do
+      order_number = "#20261014120000001"
+      lines = [
+        row(order_number: order_number, product_name: "冰晶蕃茄1", checkout_amount: 2880),
+        row(order_number: order_number, product_name: "預購-PDRN1", checkout_amount: 2750)
+      ]
+      import_csv(lines + lines)
+
+      assert_equal 2, ShoplineOrder.where(order_number: order_number).count
+    end
+
+    test "genuinely repeated lines keep both rows even when the whole order is pasted twice" do
+      order_number = "#20260724120000001"
+      lines = [
+        row(order_number: order_number, product_name: "冰晶蕃茄10送1", checkout_amount: 22500),
+        row(order_number: order_number, product_name: "冰晶蕃茄1", checkout_amount: 0),
+        row(order_number: order_number, product_name: "冰晶蕃茄1", checkout_amount: 0)
+      ]
+      run = import_csv(lines + [row(order_number: "#20260724120000002", product_name: "全能1", checkout_amount: 1880)] + lines)
+
+      assert_equal 3, ShoplineOrder.where(order_number: order_number).count
+      assert_equal 3, run.meta["duplicate_rows_skipped"]
+    end
+
+    test "a file that later drops the pasted duplicate does not change existing rows" do
+      order_number = "#20261024120000003"
+      line = row(order_number: order_number, product_name: "預購-PDRN5", checkout_amount: 10800)
+      other = row(order_number: "#20261024120000004", product_name: "全能1", checkout_amount: 1880)
+      import_csv([line, other])
+      ids = ShoplineOrder.where(order_number: order_number).pluck(:id)
+
+      import_csv([line, other, line])
+
+      assert_equal ids, ShoplineOrder.where(order_number: order_number).pluck(:id)
+    end
+
     test "old pre-migration hash rows are not matched by the new formula (documents the compat gap)" do
       # 模擬正式站現有的舊資料：用「已移除」的舊公式（含 total_amount）算出的 hash。
       old_hash = Digest::SHA256.hexdigest(
