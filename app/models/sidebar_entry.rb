@@ -150,12 +150,6 @@ class SidebarEntry
           ]
         },
         {
-          group_title: "Omnichat 加 tag 名單",
-          children: [
-            { href: tag_extractions_path, title: "Omnichat 加 tag 名單", icon: "fa-tag" },
-          ]
-        },
-        {
           group_title: "客服支援",
           children: [
             { href: faqs_path, title: "常見問題", icon: "fa-question-circle" },
