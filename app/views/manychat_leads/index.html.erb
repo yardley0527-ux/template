@@ -61,6 +61,32 @@
   <% end %>
 </div>
 
+<%# ── 每日 ── %>
+<div class="panel">
+  <div class="panel-hdr"><h2>每日（點日期只看那一天）</h2></div>
+  <div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+    <table class="table table-sm table-hover small mb-0">
+      <thead class="thead-light">
+        <tr><th>日期</th><th class="text-right">互動人數</th><th class="text-right">對到顧客</th><th class="text-right">其中舊客</th>
+            <th class="text-right">7 天內下單</th><th class="text-right">下單率</th><th class="text-right">營收</th></tr>
+      </thead>
+      <tbody>
+        <% @report.daily.each do |r| %>
+          <tr class="<%= 'table-active' if @from == @to && @from == r[:date] %>">
+            <td><%= link_to "#{r[:date].strftime('%m/%d')}（#{%w[日 一 二 三 四 五 六][r[:date].wday]}）", manychat_leads_path(filter.merge(from: r[:date], to: r[:date], status: @status)) %></td>
+            <td class="text-right"><%= r[:people] %></td>
+            <td class="text-right"><%= r[:matched] %></td>
+            <td class="text-right"><%= r[:existing] %></td>
+            <td class="text-right"><%= r[:converted] %></td>
+            <td class="text-right"><%= r[:people].zero? ? "—" : number_to_percentage(r[:converted] * 100.0 / r[:people], precision: 1) %></td>
+            <td class="text-right"><%= number_to_currency(r[:revenue], unit: "$", precision: 0) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div></div>
+</div>
+
 <%# ── 來源漏斗 ── %>
 <div class="panel">
   <div class="panel-hdr"><h2>各來源成效（互動後 <%= Manychat::LeadReport::CONVERT_DAYS %> 天內）</h2></div>
@@ -97,7 +123,16 @@
             <th>官網顧客</th><th>卡別</th><th class="text-right">互動後訂單</th><th class="text-right">互動後消費</th><th>下一步</th></tr>
       </thead>
       <tbody>
-        <% @leads.each do |l| %>
+        <% @leads.group_by { |l| l.last_at.in_time_zone.to_date }.each do |day, day_leads| %>
+          <tr class="table-secondary">
+            <td colspan="11" class="font-weight-bold">
+              <%= day.strftime("%m/%d") %>（<%= %w[日 一 二 三 四 五 六][day.wday] %>）・<%= day_leads.size %> 人
+              <span class="font-weight-normal text-muted ml-2">
+                <%= day_leads.group_by(&:status).map { |k, v| "#{statuses[k][:label]} #{v.size}" }.join("、") %>
+              </span>
+            </td>
+          </tr>
+        <% day_leads.each do |l| %>
           <% s = statuses[l.status] %>
           <tr>
             <td style="white-space:nowrap;"><span class="badge badge-<%= s[:badge] %>"><%= s[:label] %></span></td>
@@ -116,6 +151,7 @@
             <td class="text-right"><%= l.amount_after.zero? ? "—" : number_to_currency(l.amount_after, unit: "$", precision: 0) %></td>
             <td class="text-muted" style="min-width:14em;"><%= s[:next_step] %></td>
           </tr>
+        <% end %>
         <% end %>
         <% if @leads.empty? %>
           <tr><td colspan="11" class="text-center text-muted py-4">這段期間沒有人</td></tr>

@@ -53,25 +53,36 @@ module Manychat
 
     # 每個來源：互動人數、對到顧客、舊客、互動後 7 天內下單人數與營收（從他第一次碰到這個來源起算，舊客下單也算）
     def funnel
-      by_source = Hash.new { |h, k| h[k] = {} }
+      funnel_by { |i| i.source.presence || NO_SOURCE }.map { |key, r| r.merge(source: key) }
+                                                       .sort_by { |r| -r[:people] }
+    end
+
+    # 每天：當天互動的人數與後續 7 天內下單（從他當天第一次互動起算），新的日期在上面
+    def daily
+      funnel_by { |i| i.interacted_at.in_time_zone.to_date }.map { |key, r| r.merge(date: key) }
+                                                            .sort_by { |r| r[:date] }.reverse
+    end
+
+    private
+
+    def funnel_by
+      groups = Hash.new { |h, k| h[k] = {} }
       period_interactions.each do |i|
-        firsts = by_source[i.source.presence || NO_SOURCE]
+        firsts = groups[yield(i)]
         firsts[i.manychat_subscriber_id] = [firsts[i.manychat_subscriber_id], i.interacted_at].compact.min
       end
       lead_by_sub = leads.index_by { |l| l.subscriber.id }
 
-      by_source.map do |src, firsts|
+      groups.transform_values do |firsts|
         rows = firsts.map { |sub_id, at| [lead_by_sub[sub_id], at] }
         bought = rows.map { |lead, at| orders_between(lead, at) }.reject(&:empty?)
                      .map { |os| os.sum { |o| o[:amount] } }
-        { source: src, people: rows.size,
+        { people: rows.size,
           matched: rows.count { |lead, _| lead.customer },
           existing: rows.count { |lead, _| lead.status == "existing" },
           converted: bought.size, revenue: bought.sum }
-      end.sort_by { |r| -r[:people] }
+      end
     end
-
-    private
 
     def period_interactions
       @period_interactions ||= begin
@@ -109,7 +120,7 @@ module Manychat
                         orders_after: after.size, amount_after: after.sum { |o| o[:amount] })
         lead.converted = orders_between(lead, first_at).any?
         lead
-      end.sort_by { |l| [STATUSES.keys.index(l.status), -l.last_at.to_i] }
+      end.sort_by { |l| -l.last_at.to_i }
     end
 
     def orders_between(lead, at)

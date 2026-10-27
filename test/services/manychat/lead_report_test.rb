@@ -27,7 +27,7 @@ class Manychat::LeadReportTest < ActiveSupport::TestCase
     lead(2, NOW - 2.days, source: "PDRN post1", customer: old)
     order(old, "B0", NOW - 60.days, 5000)
     lead(3, NOW - 2.hours, source: "b群 story2")
-    lead(4, NOW - 3.days, source: "")
+    lead(4, NOW - 3.days - 1.hour, source: "")
     lead(5, NOW - 12.days, source: "PDRN post1", customer: late)
     order(late, "C1", NOW - 1.day, 9000) # 互動 11 天後才買：算新客，但不算 7 天內下單
 
@@ -39,6 +39,11 @@ class Manychat::LeadReportTest < ActiveSupport::TestCase
     pdrn = report.funnel.find { |r| r[:source] == "PDRN post1" }
     assert_equal({ source: "PDRN post1", people: 3, matched: 3, existing: 1, converted: 1, revenue: 2650.0 }, pdrn)
     assert report.funnel.any? { |r| r[:source] == Manychat::LeadReport::NO_SOURCE }
+
+    days = report.daily.to_h { |r| [r[:date], r.slice(:people, :converted, :revenue)] }
+    assert_equal({ people: 2, converted: 1, revenue: 2650.0 }, days[(NOW - 3.days).to_date])
+    assert_equal (NOW - 2.hours).to_date, report.daily.first[:date]
+    assert_equal [3, 2, 1, 4, 5], report.leads.map { |l| l.subscriber.subscriber_id }
   end
 
   test "只看選的來源" do
