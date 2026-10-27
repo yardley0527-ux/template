@@ -67,10 +67,16 @@
                       <button type="submit" class="btn btn-sm btn-primary">儲存</button>
                     <% end %>
                     <% if (group.subscriptions & LineReportResendJob::DIGESTS.keys).any? %>
-                      <%= button_to "立即補發前一天報告", resend_reports_line_bot_group_path(group),
-                                    method: :post, class: "btn btn-sm btn-success mt-2 mr-2",
-                                    form_class: "d-inline-block",
-                                    form: { data: { confirm: "要把前一天的報告（訂單簡報／銷售日報／黑金卡回來，有勾的才發）補發到「#{group.name || group.group_id}」嗎？" } } %>
+                      <% days = LineReportResendJob.default_days %>
+                      <%= form_with url: resend_reports_line_bot_group_path(group), method: :post, local: true,
+                                    class: "form-inline mt-2 mr-2 d-inline-flex",
+                                    data: { confirm: "要把選的日期的報告（訂單簡報／銷售日報／黑金卡回來，有勾的才發）補發到「#{group.name || group.group_id}」嗎？已發過的日期會用現在的資料重發" } do %>
+                        <span class="mr-1">補發</span>
+                        <%= date_field_tag :from, days.first, max: Date.current - 1, class: "form-control form-control-sm", id: "from-#{group.id}" %>
+                        <span class="mx-1">到</span>
+                        <%= date_field_tag :to, days.last, max: Date.current - 1, class: "form-control form-control-sm mr-1", id: "to-#{group.id}" %>
+                        <button type="submit" class="btn btn-sm btn-success">補發報告</button>
+                      <% end %>
                     <% end %>
                     <%# 訂單簡報只給有勾的群組（目前是策略部），測試按鈕也只在這些群組出現 %>
                     <% if group.subscriptions.include?("order_brief") %>

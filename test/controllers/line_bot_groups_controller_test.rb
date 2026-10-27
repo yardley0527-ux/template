@@ -40,18 +40,28 @@ class LineBotGroupsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to line_bot_groups_path
   end
 
-  test "立即補發前一天報告：有勾匯入後報告才出現按鈕，按了在背景補發" do
+  test "補發報告：有勾匯入後報告才出現，選日期在背景補發，不合理的日期擋掉" do
     sign_in @admin
     get line_bot_groups_path
-    assert_not_includes response.body, "立即補發前一天報告"
+    assert_not_includes response.body, "補發報告"
 
     @group.update!(subscriptions: ["sales_daily"])
     get line_bot_groups_path
-    assert_includes response.body, "立即補發前一天報告"
+    assert_includes response.body, "補發報告"
 
-    assert_enqueued_with(job: LineReportResendJob, args: [@group.id]) do
-      post resend_reports_line_bot_group_path(@group)
+    travel_to Time.zone.local(2026, 10, 27, 11) do
+      assert_enqueued_with(job: LineReportResendJob, args: [@group.id, "2026-10-24", "2026-10-26"]) do
+        post resend_reports_line_bot_group_path(@group), params: { from: "2026-10-24", to: "2026-10-26" }
+      end
+      assert_redirected_to line_bot_groups_path
+      assert_match "10/24–10/26", flash[:notice]
+
+      assert_no_enqueued_jobs only: LineReportResendJob do
+        post resend_reports_line_bot_group_path(@group), params: { from: "2026-10-26", to: "2026-10-27" }
+        post resend_reports_line_bot_group_path(@group), params: { from: "2026-10-26", to: "2026-10-24" }
+        post resend_reports_line_bot_group_path(@group), params: { from: "2026-10-01", to: "2026-10-26" }
+      end
+      assert_match "一次最多補發 7 天", flash[:alert]
     end
-    assert_redirected_to line_bot_groups_path
   end
 end

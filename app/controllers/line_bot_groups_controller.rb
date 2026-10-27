@@ -32,10 +32,15 @@ class LineBotGroupsController < ApplicationController
     redirect_to line_bot_groups_path, notice: "正在產生 #{day.strftime('%-m/%-d')} 訂單簡報，約 1–3 分鐘後會出現在「#{group.name || group.group_id}」"
   end
 
-  # 立即補發前一天的「匯入後」報告（訂單簡報、銷售日報、黑金卡回來）到這個群組，不用等下次匯入
+  # 補發選定日期的「匯入後」報告（訂單簡報、銷售日報、黑金卡回來，有勾的才發）到這個群組，
+  # 每天一份；已發過的日期用現在的資料重發（例如重新匯入更新過的訂單）
   def resend_reports
     group = LineBotGroup.active.find(params[:id])
-    LineReportResendJob.perform_later(group.id)
-    redirect_to line_bot_groups_path, notice: "正在補發前一天的報告到「#{group.name || group.group_id}」，約 1–3 分鐘後會出現"
+    days = LineReportResendJob.parse_days(params[:from], params[:to])
+    return redirect_to(line_bot_groups_path, alert: "補發失敗：#{days}") if days.is_a?(String)
+
+    LineReportResendJob.perform_later(group.id, days.first.iso8601, days.last.iso8601)
+    label = days.count > 1 ? "#{days.first.strftime('%-m/%-d')}–#{days.last.strftime('%-m/%-d')}" : days.last.strftime("%-m/%-d")
+    redirect_to line_bot_groups_path, notice: "正在補發 #{label} 的報告到「#{group.name || group.group_id}」，每天一份，約 1–3 分鐘後會出現"
   end
 end
