@@ -1,8 +1,8 @@
-# 行銷機會頁：資料狀態、近期互動者、產品互動機會、回購機會、來源表現、AI 建議。
+# 行銷機會頁：資料狀態、近期互動者、產品互動機會、來源表現、AI 建議。
 # 客群都由 Marketing::Segments 依白名單參數計算；AI 建議手動觸發、背景產生。
 class MarketingOpportunitiesController < ApplicationController
   TABS = {
-    "interactors" => "近期互動者", "products" => "產品互動機會", "repurchase" => "回購機會",
+    "interactors" => "近期互動者", "products" => "產品互動機會",
     "sources" => "來源表現", "ai" => "AI 建議"
   }.freeze
 
@@ -46,13 +46,6 @@ class MarketingOpportunitiesController < ApplicationController
       request = @segments.build("product_explicit_request", "product_key" => p.key, "days" => @days)
       { product: p, mapped: mapped.include?(p.key), interest: interest, request: request }
     end
-  end
-
-  def load_repurchase
-    @params = Marketing::Segments.normalize_params("repurchase_due", params.permit(:product_key, :ahead).to_h)
-    @all = @segments.build("repurchase_due", @params)
-    @with_manychat = @segments.build("repurchase_due", @params.merge("manychat_only" => true))
-    @products = CrmProduct.where(status: "confirmed", include_in_analysis: true).order(:key)
   end
 
   def load_sources
