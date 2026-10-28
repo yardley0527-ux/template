@@ -15,7 +15,7 @@ class KocContractsControllerTest < ActionDispatch::IntegrationTest
     @finance = User.create!(email: "kc_finance@test.com", username: "kc_finance", password: "password123", role: finance_role)
     @social  = User.create!(email: "kc_social@test.com", username: "kc_social", password: "password123", role: social_role)
 
-    @koc = Koc.create!(ig_username: "koc_contract_test_#{SecureRandom.hex(4)}", source: "手動新增", status: "已合作")
+    @koc = Koc.create!(ig_username: "koc_contract_test_#{SecureRandom.hex(4)}", source: "手動新增", status: "合作中")
   end
 
   test "finance 能看到合約狀態頁" do
@@ -48,8 +48,8 @@ class KocContractsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
   end
 
-  test "只列出已合作的 KOC" do
-    other = Koc.create!(ig_username: "koc_contract_other_#{SecureRandom.hex(4)}", source: "手動新增", status: "合作中")
+  test "只列出合作中的 KOC" do
+    other = Koc.create!(ig_username: "koc_contract_other_#{SecureRandom.hex(4)}", source: "手動新增", status: "已接洽")
     sign_in @finance
     get koc_contracts_path
     assert_select "a", text: "@#{@koc.ig_username}"

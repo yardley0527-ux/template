@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_22_020000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_28_030000) do
   create_schema "group_buy_crm"
 
   # These are extensions that must be enabled in order to support this database
