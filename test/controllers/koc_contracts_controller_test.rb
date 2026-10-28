@@ -75,22 +75,40 @@ class KocContractsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
   end
 
-  test "只列出合作中的 KOC" do
+  test "列出合作中與已匯款但未完成的 KOC" do
     other = Koc.create!(ig_username: "koc_contract_other_#{SecureRandom.hex(4)}", source: "手動新增", status: "已接洽")
+    paid  = Koc.create!(ig_username: "koc_contract_paid_#{SecureRandom.hex(4)}", source: "手動新增", status: "已合作、已匯款")
+    done  = Koc.create!(ig_username: "koc_contract_done_#{SecureRandom.hex(4)}", source: "手動新增", status: "已合作、已匯款", contract_completed: true)
     sign_in @finance
     get koc_contracts_path
     assert_select "a", text: "@#{@koc.ig_username}"
+    assert_select "a", text: "@#{paid.ig_username}"
     assert_select "a", text: "@#{other.ig_username}", count: 0
+    assert_select "a", text: "@#{done.ig_username}", count: 0
   end
 
-  test "finance 勾已付款會把聯絡狀態改成已合作、已匯款並移出此頁" do
+  test "finance 勾已付款會把聯絡狀態改成已合作、已匯款，人還留在此頁" do
     @koc.update!(paid_at: Date.parse("2026-10-20"))
     sign_in @finance
     patch koc_contract_path(@koc), params: { koc: { paid: "1" } }
     assert_redirected_to koc_contracts_path
     assert_equal "已合作、已匯款", @koc.reload.status
     get koc_contracts_path
+    assert_select "a", text: "@#{@koc.ig_username}"
+  end
+
+  test "finance 勾已完成才移出此頁" do
+    sign_in @finance
+    patch koc_contract_path(@koc), params: { koc: { contract_completed: "1" } }
+    assert @koc.reload.contract_completed
+    get koc_contracts_path
     assert_select "a", text: "@#{@koc.ig_username}", count: 0
+  end
+
+  test "social 不能勾已完成" do
+    sign_in @social
+    patch koc_contract_path(@koc), params: { koc: { contract_completed: "1" } }
+    assert_not @koc.reload.contract_completed
   end
 
   test "social 不能勾已付款" do
