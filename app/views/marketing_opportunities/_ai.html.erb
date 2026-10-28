@@ -1,0 +1,92 @@
+<% kinds = Marketing::CardValidator::KINDS %>
+<% channels = Marketing::CardValidator::CHANNELS %>
+<div class="d-flex align-items-center mb-3" style="gap:10px;">
+  <%= button_to "產生 AI 建議", suggest_marketing_opportunities_path, method: :post, class: "btn btn-sm btn-primary",
+                disabled: suggestion&.in_progress?, form: { data: { turbo: false } } %>
+  <span class="small text-muted">
+    數字由系統計算，AI 只負責解讀與提案；只送彙總數據，不送姓名、電話、Email、私訊或健康資料。
+    每張卡引用的指標都經過後端檢查，對不回資料的卡會被擋下。
+  </span>
+</div>
+
+<% if suggestion.nil? %>
+  <div class="alert alert-light border">還沒有 AI 建議，按「產生 AI 建議」開始。</div>
+<% else %>
+  <div class="small text-muted mb-2">
+    <%= l(suggestion.created_at, format: "%m/%d %H:%M") %> 產生・規則版本 <%= suggestion.rule_version %>・模型 <%= suggestion.model || "—" %>・
+    ManyChat 資料到 <%= suggestion.input_snapshot.dig("data_as_of", "manychat_last_sync")&.then { |t| l(Time.zone.parse(t), format: "%m/%d %H:%M") } || "—" %>・
+    訂單資料到 <%= suggestion.input_snapshot.dig("data_as_of", "orders_to") || "—" %>
+  </div>
+  <% if suggestion.in_progress? %>
+    <div class="alert alert-info"><i class="fal fa-spinner fa-spin mr-1"></i>AI 建議產生中，約一兩分鐘後重新整理。</div>
+    <meta http-equiv="refresh" content="20">
+  <% elsif suggestion.status != "success" %>
+    <div class="alert alert-warning">這次沒有產生可用的建議：<%= suggestion.error_message %>。客群資料不受影響，可以稍後再試。</div>
+  <% end %>
+
+  <% suggestion.cards.each_with_index do |card, i| %>
+    <% seg = suggestion.segment(card["segment_id"]) %>
+    <div class="card mb-3">
+      <div class="card-header py-2">
+        <span class="badge badge-primary mr-1"><%= kinds[card["kind"]] %></span>
+        <strong><%= card["title"] %></strong>
+      </div>
+      <div class="card-body py-2 small">
+        <p class="mb-2"><strong>目標：</strong><%= card["goal"] %></p>
+        <% if seg %>
+          <p class="mb-2"><strong>目標客群：</strong><%= seg["label"] %>・<strong><%= seg["count"] %> 人</strong>（產生建議時的人數）<br>
+            <span class="text-muted">條件：<%= seg["conditions"] %>。<%= seg["reliability"] %></span>
+            <%= link_to "查看目前名單", segment_marketing_opportunities_path(key: seg["key"], filter: seg["params"]), class: "ml-1" %></p>
+        <% end %>
+        <p class="mb-2"><strong>為什麼現在做：</strong><%= card["why_now"] %></p>
+        <div class="mb-2"><strong>依據：</strong>
+          <% card["metric_ids"].each do |id| %>
+            <% m = suggestion.metric(id) %>
+            <span class="badge badge-light border mr-1" title="<%= id %>"><%= m["label"] %>：<%= m["value"] || m["count"] %><%= m["unit"] %></span>
+          <% end %>
+        </div>
+        <p class="mb-2"><strong>內容：</strong><%= card["content_theme"] %>　<strong>形式：</strong><%= card["format"] %></p>
+        <p class="mb-2"><strong>商品：</strong><%= card["product_keys"].map { |k| suggestion.product_label(k) }.join("、").presence || "—" %>
+          　<strong>優惠：</strong>
+          <% if (promo = suggestion.promotion(card["promotion_id"])) %>
+            <%= suggestion.product_label(promo["product_key"]) %> 現價 $<%= promo["sale_price"] %>（原價 $<%= promo["regular_price"] %>，<%= promo["scraped_at"].to_s[0, 10] %> 官網）
+          <% else %>
+            <span class="text-muted">沒有可引用的有效優惠</span>
+          <% end %></p>
+        <p class="mb-2"><strong>管道：</strong><%= card["channels"].map { |c| channels[c] }.join("、") %></p>
+        <% if card["pre_checks"].any? %>
+          <div class="mb-2"><strong>執行前待確認：</strong><ul class="mb-0 pl-3"><% card["pre_checks"].each do |c| %><li><%= c %></li><% end %></ul></div>
+        <% end %>
+        <p class="mb-2"><strong>成功指標：</strong><%= card["success_metric"] %>　<strong>評估方式：</strong><%= card["evaluation"] %></p>
+        <% if card["uncertainties"].any? %>
+          <div class="mb-2 text-muted"><strong>不確定性：</strong><ul class="mb-0 pl-3"><% card["uncertainties"].each do |u| %><li><%= u %></li><% end %></ul></div>
+        <% end %>
+        <% if seg %>
+          <%= form_with url: marketing_campaign_drafts_path, method: :post, local: true do %>
+            <%= hidden_field_tag :suggestion_id, suggestion.id %>
+            <%= hidden_field_tag :card_index, i %>
+            <button type="submit" class="btn btn-xs btn-outline-primary">用這張卡建立活動草稿</button>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if suggestion.rejected_cards.any? %>
+    <details class="small mb-3">
+      <summary class="text-muted">被系統擋下的建議（<%= suggestion.rejected_cards.size %>）</summary>
+      <ul class="pl-3"><% suggestion.rejected_cards.each do |r| %><li><%= r["title"] %>：<%= Array(r["reasons"] || r["reason"]).join("；") %></li><% end %></ul>
+    </details>
+  <% end %>
+<% end %>
+
+<% if history.size > 1 %>
+  <details class="small">
+    <summary class="text-muted">歷次產生紀錄</summary>
+    <table class="table table-sm small">
+      <% history.each do |h| %>
+        <tr><td><%= l(h.created_at, format: "%m/%d %H:%M") %></td><td><%= h.status %></td><td><%= h.cards.size %> 張</td><td><%= h.error_message %></td></tr>
+      <% end %>
+    </table>
+  </details>
+<% end %>

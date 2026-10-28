@@ -1,0 +1,37 @@
+<% content_for :page_title, "ManyChat 來源設定" %>
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-sitemap mr-2 text-primary"></i> ManyChat 來源設定
+    <small>穩定 ID、內容類型與對應商品；對應商品是人工設定，代表「內容相關」，不是客人的購買需求</small></h1>
+</div>
+<p><%= link_to "新增來源", new_manychat_source_path, class: "btn btn-sm btn-primary" %>　<%= link_to "← 行銷機會", marketing_opportunities_path, class: "small" %></p>
+
+<div class="panel"><div class="panel-hdr"><h2>已設定（<%= @sources.size %>）</h2></div>
+<div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+  <table class="table table-sm small mb-0">
+    <thead class="thead-light"><tr><th>source_id</th><th>名稱</th><th>帳號</th><th>類型</th><th>對應商品</th><th>主題／關鍵字</th><th>campaign</th><th>互動紀錄中的名稱</th><th></th></tr></thead>
+    <tbody>
+      <% @sources.each do |s| %>
+        <tr class="<%= 'text-muted' unless s.active %>">
+          <td><code><%= s.key %></code></td><td><%= s.name %></td><td>@<%= s.account_key %></td><td><%= s.content_type_label %></td>
+          <td><%= s.product_keys.map { |k| @products[k] || k }.join("、") %></td>
+          <td><%= [s.topic, s.trigger_keyword].compact_blank.join("／") %></td><td><%= s.campaign_key %></td>
+          <td><%= s.raw_names.join("、") %></td>
+          <td><%= link_to "編輯", edit_manychat_source_path(s) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div></div></div>
+
+<div class="panel"><div class="panel-hdr"><h2>互動紀錄中還沒設定的來源（<%= @unmapped.size %>）</h2></div>
+<div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+  <table class="table table-sm small mb-0">
+    <thead class="thead-light"><tr><th>來源字串</th><th class="text-right">互動次數</th><th>最近一次</th><th></th></tr></thead>
+    <tbody>
+      <% @unmapped.each do |name, count, last| %>
+        <tr><td><%= name %></td><td class="text-right"><%= count %></td><td><%= l(last.in_time_zone, format: "%m/%d %H:%M") %></td>
+            <td><%= link_to "建立設定", new_manychat_source_path(raw_name: name) %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div></div></div>

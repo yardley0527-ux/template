@@ -8,6 +8,7 @@ class Manychat::LeadReportTest < ActiveSupport::TestCase
   def lead(sid, at, source:, customer: nil)
     sub = ManychatSubscriber.create!(account_key: "chloe.chao", subscriber_id: sid, name: "客#{sid}",
                                      ig_username: customer&.instagram_account || "nobody#{sid}")
+    sub.confirm!(customer.id, user: nil) if customer # 只有人工確認過的關聯才算對到顧客
     sub.manychat_interactions.create!(interacted_at: at, source: source)
     sub
   end

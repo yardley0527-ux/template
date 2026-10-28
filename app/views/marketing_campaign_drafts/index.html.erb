@@ -1,0 +1,25 @@
+<% content_for :page_title, "活動草稿" %>
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-clipboard-list mr-2 text-primary"></i> 活動草稿 <small>草稿不代表已發送；系統不會自動發送或回寫標籤</small></h1>
+</div>
+<p class="small"><%= link_to "← 行銷機會", marketing_opportunities_path %></p>
+<div class="panel"><div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+  <table class="table table-sm table-hover small mb-0">
+    <thead class="thead-light"><tr><th>名稱</th><th>客群</th><th class="text-right">名單</th><th>管道</th><th>預計時間</th><th>來源</th><th>狀態</th><th>建立</th></tr></thead>
+    <tbody>
+      <% @drafts.each do |d| %>
+        <tr>
+          <td><%= link_to d.name, marketing_campaign_draft_path(d) %></td>
+          <td><%= d.segment_label %></td>
+          <td class="text-right"><%= d.member_count %></td>
+          <td><%= Marketing::CardValidator::CHANNELS[d.planned_channel] %></td>
+          <td><%= [d.planned_start_on, d.planned_end_on].compact.join(" ～ ") %></td>
+          <td><%= d.marketing_ai_suggestion_id ? "AI 建議" : "客群" %></td>
+          <td><%= MarketingCampaignDraft::STATUSES[d.status] %></td>
+          <td><%= l(d.created_at, format: "%m/%d %H:%M") %> <%= d.created_by&.username %></td>
+        </tr>
+      <% end %>
+      <% if @drafts.empty? %><tr><td colspan="8" class="text-muted text-center">還沒有草稿，到行銷機會頁從客群或 AI 建議卡建立</td></tr><% end %>
+    </tbody>
+  </table>
+</div></div></div>

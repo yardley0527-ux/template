@@ -35,6 +35,7 @@ module Manychat
 
       latest = {}
       row_counts = Hash.new(0)
+      rows_without_time = 0
       events = []
       @tabs.each do |gid, tab_account|
         default_account = ShoplineCustomer.normalize_ig(tab_account)
@@ -47,11 +48,15 @@ module Manychat
           latest[[account, subscriber_id.to_i]] = h
           row_counts[[account, subscriber_id.to_i]] += 1
           at = parse_time(h["time"])
-          events << [account, subscriber_id.to_i, at, h["source"].to_s.strip] if at
+          if at
+            events << [account, subscriber_id.to_i, at, h["source"].to_s.strip]
+          else
+            rows_without_time += 1
+          end
         end
       end
 
-      result = { rows: latest.size, created: 0, updated: 0, invalid: 0, interactions: 0 }
+      result = { rows: latest.size, created: 0, updated: 0, invalid: 0, interactions: 0, rows_without_time: rows_without_time }
       ids = {}
       latest.each do |(account, subscriber_id), h|
         record = ManychatSubscriber.find_or_initialize_by(account_key: account, subscriber_id: subscriber_id)
@@ -63,7 +68,7 @@ module Manychat
         # 多了新的列＝有新互動；Flow 不一定有填 time，交給 InteractionBackfill 用 API 補
         rows = row_counts[[account, subscriber_id]]
         record.assign_attributes(sheet_rows: rows, api_checked_at: nil) if rows != record.sheet_rows
-        if record.new_record? || record.changed? || record.shopline_customer_id.nil?
+        if record.new_record? || record.changed?
           was_new = record.new_record?
           if record.save
             result[was_new ? :created : :updated] += 1
@@ -90,13 +95,20 @@ module Manychat
       now = Time.current
       rows = events.filter_map do |account, subscriber_id, at, source|
         id = ids[[account, subscriber_id]]
-        id && { manychat_subscriber_id: id, interacted_at: at, source: source, created_at: now, updated_at: now }
+        id && { manychat_subscriber_id: id, interacted_at: at, source: source, event_type: "sheet_row",
+                created_at: now, updated_at: now }
       end.uniq { |r| r.values_at(:manychat_subscriber_id, :interacted_at, :source) }
       return 0 if rows.empty?
 
       before = ManychatInteraction.count
+      # 已存在的同一筆（例如先被 API 補入）改標成試算表記錄；重複同步不會多出新列
       rows.each_slice(1000) do |slice|
-        ManychatInteraction.insert_all(slice, unique_by: :index_manychat_interactions_uniqueness)
+        ManychatInteraction.upsert_all(slice, unique_by: :index_manychat_interactions_uniqueness,
+                                              update_only: [:event_type], record_timestamps: false)
+      end
+      rows.group_by { |r| r[:manychat_subscriber_id] }.each do |sub_id, sub_rows|
+        first = sub_rows.min_by { |r| r[:interacted_at] }
+        ManychatSubscriber.find(sub_id).observe_interaction!(first[:interacted_at], first[:source])
       end
       ManychatInteraction.count - before
     end

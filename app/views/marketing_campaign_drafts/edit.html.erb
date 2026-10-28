@@ -1,0 +1,28 @@
+<% content_for :page_title, "編輯活動草稿" %>
+<div class="subheader"><h1 class="subheader-title">編輯活動草稿 <small>名單快照 <%= @draft.member_count %> 人，不會因編輯改變</small></h1></div>
+<div class="panel"><div class="panel-container show"><div class="panel-content">
+  <%= form_with model: @draft, local: true do |f| %>
+    <% if @draft.errors.any? %><div class="alert alert-danger small"><%= @draft.errors.full_messages.join("；") %></div><% end %>
+    <div class="form-row">
+      <div class="form-group col-md-6"><%= f.label :name, "活動名稱" %><%= f.text_field :name, class: "form-control form-control-sm" %></div>
+      <div class="form-group col-md-3"><%= f.label :planned_channel, "預計管道" %>
+        <%= f.select :planned_channel, Marketing::CardValidator::CHANNELS.invert, { include_blank: "（未定）" }, class: "form-control form-control-sm" %></div>
+      <div class="form-group col-md-3"><%= f.label :status, "狀態" %><%= f.select :status, MarketingCampaignDraft::STATUSES.invert, {}, class: "form-control form-control-sm" %></div>
+    </div>
+    <div class="form-group"><%= f.label :goal, "目標" %><%= f.text_area :goal, rows: 2, class: "form-control form-control-sm" %></div>
+    <div class="form-row">
+      <div class="form-group col-md-3"><%= f.label :planned_start_on, "預計開始" %><%= f.date_field :planned_start_on, class: "form-control form-control-sm" %></div>
+      <div class="form-group col-md-3"><%= f.label :planned_end_on, "預計結束" %><%= f.date_field :planned_end_on, class: "form-control form-control-sm" %></div>
+      <div class="form-group col-md-6"><%= f.label :product_keys, "商品" %>
+        <%= f.select :product_keys, CrmProduct.where(status: "confirmed").order(:key).map { |p| [p.label, p.key] }, {}, multiple: true, size: 4, class: "form-control form-control-sm" %></div>
+    </div>
+    <div class="form-group"><%= f.label :promotion_snapshot_id, "引用優惠（只能選官網爬到的有效優惠）" %>
+      <%= f.select :promotion_snapshot_id,
+                   ProductPromotionSnapshot.where("discount_pct > 0").where("scraped_at > ?", 14.days.ago).order(scraped_at: :desc).limit(50)
+                                           .map { |p| ["#{p.product_name} $#{p.sale_price}（#{p.scraped_at.to_date}）", p.id] },
+                   { include_blank: "（不引用優惠）" }, class: "form-control form-control-sm" %></div>
+    <div class="form-group"><%= f.label :copy_text, "文案" %><%= f.text_area :copy_text, rows: 6, class: "form-control form-control-sm" %></div>
+    <div class="form-group"><%= f.label :success_metric, "衡量指標" %><%= f.text_area :success_metric, rows: 2, class: "form-control form-control-sm" %></div>
+    <%= f.submit "儲存", class: "btn btn-sm btn-primary" %> <%= link_to "取消", marketing_campaign_draft_path(@draft), class: "btn btn-sm btn-light" %>
+  <% end %>
+</div></div></div>

@@ -37,6 +37,21 @@ Rails.application.routes.draw do
 
   resources :live_ad_tests, only: [:index, :new, :create, :edit, :update, :destroy]
   get '/manychat_leads', to: 'manychat_leads#index', as: :manychat_leads
+  resources :marketing_opportunities, only: [:index] do
+    collection do
+      get :segment
+      post :suggest
+    end
+  end
+  resources :manychat_matches, only: [:index] do
+    member do
+      post :confirm
+      post :reject
+      post :unlink
+    end
+  end
+  resources :manychat_sources, only: [:index, :new, :create, :edit, :update]
+  resources :marketing_campaign_drafts, only: [:index, :show, :create, :edit, :update]
   resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]
 
   get  '/group_buy_posts',              to: 'group_buy_posts#index',       as: :group_buy_posts
@@ -144,6 +159,7 @@ Rails.application.routes.draw do
     post :resend_reports, on: :member
   end
   post '/manychat/webhook', to: 'manychat_webhook#create'
+  post '/manychat/events', to: 'manychat_webhook#event'
   get  '/koc_search', to: 'koc_search#index', as: :koc_search
   get  '/replied_contacts', to: 'replied_contacts#index', as: :replied_contacts
   resources :podcast_contacts, only: [:index, :create, :update, :destroy] do
