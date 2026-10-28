@@ -4,7 +4,7 @@
   def kol_status_badge_class(status)
     {
       "待接洽" => "badge-secondary", "已接洽" => "badge-info", "未回覆" => "badge-dark",
-      "已回覆" => "badge-primary", "合作中" => "badge-warning", "已合作" => "badge-success", "婉拒" => "badge-danger",
+      "已回覆" => "badge-primary", "合作中" => "badge-warning", "已合作、已匯款" => "badge-success", "婉拒" => "badge-danger",
     }[status] || "badge-secondary"
   end
   def kol_sentiment_badge_class(sentiment)

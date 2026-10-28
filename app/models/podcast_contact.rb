@@ -1,5 +1,5 @@
 class PodcastContact < ApplicationRecord
-  STATUSES = %w[待接洽 已接洽 未回覆 已回覆 合作中 已合作 婉拒].freeze
+  STATUSES = %w[待接洽 已接洽 未回覆 已回覆 合作中 已合作、已匯款 婉拒].freeze
 
   validates :ig_username, presence: true, uniqueness: true
 
