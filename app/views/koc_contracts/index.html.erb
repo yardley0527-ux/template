@@ -6,7 +6,7 @@
 <div class="row g-3 mb-3">
   <div class="col-12">
     <h4 class="fw-bold mb-0">合約狀態</h4>
-    <p class="text-muted small mb-0">合作中的 KOC，財務部登記合約寄出／收到日期，社群部登記影片上架時間／廣告區間；財務勾「已付款」後狀態改為「已合作、已匯款」並移出此頁</p>
+    <p class="text-muted small mb-0">合作中／已匯款但還沒完成的 KOC，財務部登記合約寄出／收到日期與付款時間，社群部登記影片上架時間／廣告區間；財務填付款時間後勾「已付款」，狀態改為「已合作、已匯款」；勾「已完成」才移出此頁</p>
   </div>
 </div>
 
@@ -21,7 +21,9 @@
             <th style="min-width:150px">已收合約</th>
             <th style="min-width:150px">影片上架時間</th>
             <th style="min-width:280px">廣告區間</th>
+            <th style="min-width:150px">付款時間</th>
             <th class="text-center">已付款</th>
+            <th class="text-center">已完成</th>
           </tr>
         </thead>
         <tbody>
@@ -58,16 +60,27 @@
                   <% end %>
                 </div>
               </td>
+              <td>
+                <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
+                  <%= f.date_field :paid_at, value: koc.paid_at, class: "form-control form-control-sm", disabled: !can_edit_contract, onchange: "this.form.requestSubmit()" %>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% paid = koc.status == "已合作、已匯款" %>
+                <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do %>
+                  <%= check_box_tag "koc[paid]", "1", paid, disabled: paid || !can_edit_contract || koc.paid_at.blank?, title: (koc.paid_at.blank? && !paid ? "請先填付款時間" : nil), onchange: "if (confirm('確定 @#{koc.ig_username} 已付款？聯絡狀態會改成「已合作、已匯款」')) { this.form.requestSubmit() } else { this.checked = false }" %>
+                <% end %>
+              </td>
               <td class="text-center">
                 <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do %>
-                  <%= check_box_tag "koc[paid]", "1", false, disabled: !can_edit_contract, onchange: "if (confirm('確定 @#{koc.ig_username} 已付款？聯絡狀態會改成「已合作、已匯款」，並從這頁移除')) { this.form.requestSubmit() } else { this.checked = false }" %>
+                  <%= check_box_tag "koc[contract_completed]", "1", false, disabled: !can_edit_contract, onchange: "if (confirm('確定 @#{koc.ig_username} 已完成？會從這頁移除')) { this.form.requestSubmit() } else { this.checked = false }" %>
                 <% end %>
               </td>
             </tr>
           <% end %>
           <% if @kocs.empty? %>
             <tr>
-              <td colspan="6" class="text-center text-muted py-4">目前沒有「合作中」的 KOC</td>
+              <td colspan="8" class="text-center text-muted py-4">目前沒有進行中的合約</td>
             </tr>
           <% end %>
         </tbody>
