@@ -1,8 +1,8 @@
-# 財務部合約狀態頁：從 KOC 業配名單拉出「合作中」的人，只給財務部打合約寄出／
+# 財務部合約狀態頁：從 KOC 業配名單拉出「已合作」的人，只給財務部打合約寄出／
 # 收到日期，不讓財務碰社群/物流部維護的其他 KOC 欄位（見 app/controllers/kocs_controller.rb）。
 class KocContractsController < ApplicationController
   def index
-    @kocs = Koc.visible.where(status: "合作中").order(:ig_username)
+    @kocs = Koc.visible.where(status: "已合作").order(:ig_username)
   end
 
   def update
