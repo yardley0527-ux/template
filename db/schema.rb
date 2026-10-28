@@ -772,7 +772,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_28_100000) do
     t.date "ad_start_at"
     t.date "ad_end_at"
     t.date "paid_at"
-    t.boolean "contract_completed", default: false, null: false
     t.index ["ig_username"], name: "index_kocs_on_ig_username", unique: true
   end
 
