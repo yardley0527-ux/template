@@ -8,6 +8,9 @@
 #   { "account": "shengting.slim", "subscriber": <Full Subscriber Data> }
 # account 是這個 Flow 所在的 IG 帳號名稱（如 shengting.slim），大小寫與 @ 不拘。
 # 回傳的 matched / membership_level 可在 Response mapping 存成自訂欄位，讓 Flow 分流。
+# matched 只看人工確認過的關聯（verified），候選比對不回傳任何會員資訊。
+#
+# POST <網域>/manychat/events：Flow 重要節點的事件（同一個 token），格式見 docs/manychat_data_plan.md。
 class ManychatWebhookController < ActionController::Base
   skip_forgery_protection
 
@@ -36,6 +39,17 @@ class ManychatWebhookController < ActionController::Base
       matched: record.shopline_customer_id.present?,
       membership_level: record.shopline_customer&.membership_level
     }
+  rescue JSON::ParserError
+    head :bad_request
+  end
+
+  def event
+    return head :unauthorized unless valid_token?
+
+    event, duplicate = Manychat::EventReceiver.call(JSON.parse(request.raw_post))
+    render json: { ok: true, duplicate: duplicate, event_id: event.event_id }
+  rescue Manychat::EventReceiver::Invalid => e
+    render json: { ok: false, error: e.message }, status: :unprocessable_entity
   rescue JSON::ParserError
     head :bad_request
   end

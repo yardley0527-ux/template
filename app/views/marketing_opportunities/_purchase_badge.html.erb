@@ -1,0 +1,2 @@
+<% ps = Marketing::Segments::PURCHASE_STATUSES[status] %>
+<span class="badge badge-<%= { 'verified_purchased' => 'success', 'verified_no_purchase' => 'info', 'candidate' => 'warning' }[status] || 'secondary' %>"><%= ps ? ps[:label] : status %></span>

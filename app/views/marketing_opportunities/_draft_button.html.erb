@@ -1,0 +1,5 @@
+<%= form_with url: marketing_campaign_drafts_path, method: :post, local: true, class: "d-inline" do %>
+  <%= hidden_field_tag :segment_key, result.key %>
+  <% result.params.each do |k, v| %><%= hidden_field_tag "segment_params[#{k}]", v %><% end %>
+  <button type="submit" class="btn btn-xs btn-outline-primary" <%= "disabled" if result.count.zero? %>>建立活動草稿（<%= result.count %> 人）</button>
+<% end %>

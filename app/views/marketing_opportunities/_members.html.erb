@@ -1,0 +1,23 @@
+<%# 客群名單（ManyChat 類）。members 是 Marketing::Segments 的 member hash %>
+<table class="table table-sm table-hover small mb-0">
+  <thead class="thead-light">
+    <tr><th>IG</th><th>身分／購買狀態</th><th>ManyChat</th><th>來源</th><th>最近互動</th><th class="text-right">互動次數</th><th>標籤</th><th>聯絡資格</th><th>排除</th></tr>
+  </thead>
+  <tbody>
+    <% members.first(limit || 500).each do |m| %>
+      <tr>
+        <td><%= m["ig_username"] ? link_to("@#{m['ig_username']}", "https://www.instagram.com/#{m['ig_username']}/", target: "_blank", rel: "noopener") : "—" %></td>
+        <td><%= render "marketing_opportunities/purchase_badge", status: m["purchase_status"] %></td>
+        <td><%= m["manychat_status"] || "—" %></td>
+        <td><%= Array(m["sources"]).join("、") %><% if m.key?("source_reliable") && !m["source_reliable"] %> <span class="text-muted" title="含 API 補入的互動，來源只是補入當下的欄位值">*</span><% end %>
+            <% if m["requests"] %><%= m["requests"].map { |r| ManychatEvent::EVENT_TYPES.dig(r, :label) }.join("、") %><% end %></td>
+        <td style="white-space:nowrap;"><%= m["last_at"] ? l(Time.zone.parse(m["last_at"]), format: "%m/%d %H:%M") : "—" %></td>
+        <td class="text-right"><%= m["interactions"] %></td>
+        <td><% Array(m["tags"]).each do |t| %><span class="badge badge-light border"><%= t %></span> <% end %></td>
+        <td><span class="text-muted"><%= m["contact"] %></span></td>
+        <td><%= m["excluded_reason"] %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+<% if members.size > (limit || 500) %><div class="small text-muted mt-1">只顯示前 <%= limit || 500 %> 人</div><% end %>

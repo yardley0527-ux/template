@@ -1,0 +1,73 @@
+<% content_for :page_title, "ManyChat 身分比對" %>
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-id-card mr-2 text-primary"></i> ManyChat 身分比對
+    <small>IG 帳號對到的官網顧客只列候選，人工確認後才算同一人</small></h1>
+</div>
+
+<div class="alert alert-light border small">
+  <ul class="mb-0 pl-3">
+    <li>系統不會替你挑選：同一個 IG 對到多位顧客時全部列出；空白、「無」等無效 IG 不比對。</li>
+    <li>確認後才會：算進轉換統計、寫 CRM 欄位回 ManyChat、在 webhook 回傳卡別。同步不會覆蓋人工決定。</li>
+    <li>客人自己輸入的 Email／手機與會員相符，不等於證明身分，請搭配訂單、對話內容判斷。</li>
+    <li>「舊程式自動選的」是上一版依消費最高自動關聯的結果，只供參考。</li>
+  </ul>
+</div>
+
+<ul class="nav nav-pills mb-3">
+  <% ManychatSubscriber::MATCH_STATUSES.each do |key, s| %>
+    <li class="nav-item"><%= link_to "#{s[:label]}（#{@counts[key].to_i}）", manychat_matches_path(status: key), class: "nav-link #{'active' if key == @status}" %></li>
+  <% end %>
+</ul>
+
+<div class="panel"><div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+  <table class="table table-sm small mb-0">
+    <thead class="thead-light"><tr><th>ManyChat</th><th>比對依據</th><th>候選／已確認顧客</th><th>操作紀錄</th></tr></thead>
+    <tbody>
+      <% @subscribers.each do |sub| %>
+        <tr>
+          <td style="white-space:nowrap;">
+            <%= sub.ig_username ? link_to("@#{sub.ig_username}", "https://www.instagram.com/#{sub.ig_username}/", target: "_blank", rel: "noopener") : "（沒有 IG）" %><br>
+            <span class="text-muted"><%= sub.name %>・<%= sub.status || "—" %></span>
+          </td>
+          <td><%= { "ig_exact" => "IG 完全相同（一位）", "ig_multiple" => "IG 相同（多位）", "legacy_auto" => "舊程式自動選的",
+                    "invalid_ig" => "IG 無效，不比對", "manual" => "人工確認" }[sub.match_method] || sub.match_method || "—" %></td>
+          <td>
+            <% if sub.verified? %>
+              <% c = @customers[sub.shopline_customer_id] %>
+              <strong><%= link_to c&.full_name || "##{sub.shopline_customer_id}", customer_path(sub.shopline_customer_id) %></strong>
+              <span class="text-muted"><%= c&.membership_level %></span>
+              <%= form_with url: unlink_manychat_match_path(sub), method: :post, local: true, class: "form-inline mt-1", html: { style: "gap:4px;" } do %>
+                <input type="text" name="note" class="form-control form-control-sm" placeholder="原因（選填）">
+                <button class="btn btn-xs btn-outline-danger" data-confirm="確定解除這個關聯？">解除關聯</button>
+              <% end %>
+            <% else %>
+              <% sub.candidate_customer_ids.each do |cid| %>
+                <% c = @customers[cid] %>
+                <div class="d-flex align-items-center mb-1" style="gap:6px;">
+                  <span><%= link_to c&.full_name || "##{cid}", customer_path(cid), target: "_blank" %>
+                    <span class="text-muted"><%= c&.membership_level %>・<%= c&.order_count.to_i %> 筆訂單<%= "・舊程式自動選的" if cid == sub.legacy_shopline_customer_id %></span></span>
+                  <%= form_with url: confirm_manychat_match_path(sub), method: :post, local: true, class: "d-inline" do %>
+                    <%= hidden_field_tag :customer_id, cid %>
+                    <button class="btn btn-xs btn-success" data-confirm="確認 @<%= sub.ig_username %> 就是 <%= c&.full_name %>？">是同一人</button>
+                  <% end %>
+                  <%= form_with url: reject_manychat_match_path(sub), method: :post, local: true, class: "d-inline" do %>
+                    <%= hidden_field_tag :customer_id, cid %>
+                    <button class="btn btn-xs btn-outline-secondary">不是</button>
+                  <% end %>
+                </div>
+              <% end %>
+              <% if sub.candidate_customer_ids.empty? %><span class="text-muted">沒有候選</span><% end %>
+              <% if sub.rejected_customer_ids.any? %><div class="text-muted">已排除 <%= sub.rejected_customer_ids.size %> 位</div><% end %>
+            <% end %>
+          </td>
+          <td>
+            <% Array(@logs[sub.id]).first(3).each do |log| %>
+              <div class="text-muted"><%= l(log.created_at, format: "%m/%d %H:%M") %> <%= log.user&.username %> <%= ManychatMatchLog::ACTIONS[log.action] %> #<%= log.shopline_customer_id %><%= "：#{log.note}" if log.note %></div>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+      <% if @subscribers.empty? %><tr><td colspan="4" class="text-muted text-center">沒有資料</td></tr><% end %>
+    </tbody>
+  </table>
+</div></div></div>

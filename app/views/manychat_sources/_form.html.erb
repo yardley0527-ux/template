@@ -1,0 +1,38 @@
+<%= form_with model: @source, local: true do |f| %>
+  <% if @source.errors.any? %>
+    <div class="alert alert-danger small"><%= @source.errors.full_messages.join("；") %></div>
+  <% end %>
+  <div class="form-row">
+    <div class="form-group col-md-4">
+      <%= f.label :key, "source_id（穩定 ID，建立後不能改）" %>
+      <%= f.text_field :key, class: "form-control form-control-sm", disabled: @source.persisted?, placeholder: "例：chloe-ig-pdrn-post1" %>
+      <small class="text-muted">小寫英數、- 或 _。Flow External Request 的 source_key 要填這個值。</small>
+    </div>
+    <div class="form-group col-md-4"><%= f.label :name, "顯示名稱" %><%= f.text_field :name, class: "form-control form-control-sm" %></div>
+    <div class="form-group col-md-4"><%= f.label :account_key, "IG 帳號" %><%= f.text_field :account_key, class: "form-control form-control-sm" %></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group col-md-3"><%= f.label :channel, "渠道" %><%= f.select :channel, ManychatSource::CHANNELS, {}, class: "form-control form-control-sm" %></div>
+    <div class="form-group col-md-3"><%= f.label :content_type, "內容類型" %>
+      <%= f.select :content_type, ManychatSource::CONTENT_TYPES.invert, { include_blank: "（未設定）" }, class: "form-control form-control-sm" %></div>
+    <div class="form-group col-md-6"><%= f.label :content_ref, "貼文／Reel 連結或 ID" %><%= f.text_field :content_ref, class: "form-control form-control-sm" %></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group col-md-4"><%= f.label :campaign_key, "campaign_id" %><%= f.text_field :campaign_key, class: "form-control form-control-sm", placeholder: "例：2026-11-pdrn-launch" %></div>
+    <div class="form-group col-md-4"><%= f.label :topic, "內容主題" %><%= f.text_field :topic, class: "form-control form-control-sm" %></div>
+    <div class="form-group col-md-4"><%= f.label :trigger_keyword, "觸發關鍵字" %><%= f.text_field :trigger_keyword, class: "form-control form-control-sm" %></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group col-md-4"><%= f.label :flow_ns, "Flow 識別碼（ns）" %><%= f.text_field :flow_ns, class: "form-control form-control-sm" %></div>
+    <div class="form-group col-md-2"><%= f.label :flow_version, "Flow 版本" %><%= f.text_field :flow_version, class: "form-control form-control-sm" %></div>
+    <div class="form-group col-md-6"><%= f.label :product_keys, "對應商品（內容相關，不是購買需求）" %>
+      <%= f.select :product_keys, CrmProduct.where(status: "confirmed").order(:key).map { |p| [p.label, p.key] }, {}, multiple: true, class: "form-control form-control-sm", size: 6 %></div>
+  </div>
+  <div class="form-group">
+    <%= label_tag "manychat_source_raw_names_text", "互動紀錄中的來源名稱（一行一個，例如試算表「來源」欄的值）" %>
+    <%= text_area_tag "manychat_source[raw_names_text]", @source.raw_names.join("\n"), rows: 3, class: "form-control form-control-sm" %>
+  </div>
+  <div class="form-group"><%= f.label :notes, "備註" %><%= f.text_area :notes, rows: 2, class: "form-control form-control-sm" %></div>
+  <div class="form-check mb-3"><%= f.check_box :active, class: "form-check-input" %><%= f.label :active, "使用中", class: "form-check-label" %></div>
+  <%= f.submit "儲存", class: "btn btn-sm btn-primary" %> <%= link_to "取消", manychat_sources_path, class: "btn btn-sm btn-light" %>
+<% end %>

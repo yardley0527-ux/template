@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 #
-# ManyChat 同步（Render Cron Job：bundle exec rake manychat:sync，建議每 15 分鐘 "*/15 * * * *"）。
+# ManyChat 同步（Render Cron Job：bundle exec rake manychat:sync，每小時 "0 * * * *"，在 Render 後台設定，不在 repo）。
 # 試算表每列另存成一次互動（含 source 來源欄），供 /manychat_leads 新客追蹤用。
 # 需要 ENV：MANYCHAT_SHEET_ID（Flow 寫入的 Google Sheet）、MANYCHAT_SHEET_TABS（{"分頁gid": "IG帳號"}）、MANYCHAT_API_KEYS（{"IG帳號": "金鑰"}）。
 namespace :manychat do
@@ -9,6 +9,9 @@ namespace :manychat do
     run = SyncRun.create!(source: "manychat", started_at: Time.current)
     imported = Manychat::SheetImporter.call
     puts "[manychat:sync] 試算表 #{imported}"
+
+    # 顧客資料會隨匯入更新，未經人工確認的人重算候選；人工確認過的不動
+    ManychatSubscriber.refresh_unverified_candidates!
 
     filled = Manychat::InteractionBackfill.call
     puts "[manychat:sync] API 補互動 checked=#{filled[:checked]} interactions=#{filled[:interactions]} errors=#{filled[:errors].size}"

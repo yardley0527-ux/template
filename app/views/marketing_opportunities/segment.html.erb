@@ -1,0 +1,26 @@
+<% content_for :page_title, @result.label %>
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-users mr-2"></i> <%= @result.label %> <small><%= @result.count %> 人</small></h1>
+</div>
+<p class="small"><%= link_to "← 行銷機會", marketing_opportunities_path %></p>
+<div class="alert alert-light border small">
+  <strong>條件：</strong><%= @result.conditions %><br>
+  <strong>可信度：</strong><%= @result.reliability %><br>
+  <strong>規則版本：</strong><%= Marketing::Segments::RULE_VERSION %>　<strong>聯絡資格：</strong>待確認（發送前請在 ManyChat 或各渠道確認）
+</div>
+<div class="mb-3"><%= render "draft_button", result: @result %></div>
+<div class="panel"><div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+  <% if @result.key == "repurchase_due" %>
+    <% labels = CrmProduct.pluck(:key, :label).to_h %>
+    <table class="table table-sm small">
+      <thead class="thead-light"><tr><th>顧客</th><th>產品</th><th>建議聯絡日</th><th>週期依據</th><th>ManyChat 互動</th></tr></thead>
+      <% @result.members.each do |m| %>
+        <tr><td><%= m["shopline_customer_id"] ? link_to("##{m['shopline_customer_id']}", customer_path(m["shopline_customer_id"])) : "—" %></td>
+            <td><%= labels[m["product_key"]] %></td><td><%= m["suggested_contact_date"] %></td>
+            <td><%= m["cycle_basis"] == "historical" ? "實際資料推估" : "固定週期假設" %></td><td><%= "有" if m["has_manychat"] %></td></tr>
+      <% end %>
+    </table>
+  <% else %>
+    <%= render "members", members: @result.members, limit: 1000 %>
+  <% end %>
+</div></div></div>

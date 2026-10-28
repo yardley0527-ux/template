@@ -1,0 +1,215 @@
+<% content_for :page_title, "行銷機會" %>
+<% tabs = MarketingOpportunitiesController::TABS %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="fal fa-bullseye-arrow mr-2 text-danger"></i> 行銷機會
+    <small>ManyChat 互動 × CRM 訂單：看客群、取得 AI 建議、存成活動草稿（不會自動發送）</small>
+  </h1>
+</div>
+
+<%= render "data_status", status: @status %>
+
+<ul class="nav nav-tabs mb-3">
+  <% tabs.each do |key, label| %>
+    <li class="nav-item"><%= link_to label, marketing_opportunities_path(tab: key), class: "nav-link #{'active' if @tab == key}" %></li>
+  <% end %>
+  <li class="nav-item ml-auto"><%= link_to "活動草稿", marketing_campaign_drafts_path, class: "nav-link" %></li>
+</ul>
+
+<% case @tab %>
+<% when "interactors" %>
+  <%= form_with url: marketing_opportunities_path, method: :get, local: true, class: "form-inline mb-3", html: { style: "gap:8px;" } do %>
+    <input type="hidden" name="tab" value="interactors">
+    <select name="days" class="form-control form-control-sm">
+      <% Marketing::Segments::DAYS.each do |d| %><option value="<%= d %>" <%= "selected" if d == @params["days"] %>>最近 <%= d %> 天</option><% end %>
+    </select>
+    <select name="source" class="form-control form-control-sm">
+      <option value="">全部來源</option>
+      <% @source_options.each do |label, value| %><option value="<%= value %>" <%= "selected" if value == @params["source"] %>><%= label %></option><% end %>
+    </select>
+    <select name="tag" class="form-control form-control-sm">
+      <option value="">全部標籤</option>
+      <% @tags.each do |t| %><option value="<%= t %>" <%= "selected" if t == @params["tag"] %>><%= t %></option><% end %>
+    </select>
+    <select name="identity" class="form-control form-control-sm">
+      <option value="all">全部身分狀態</option>
+      <% ManychatSubscriber::MATCH_STATUSES.each do |k, s| %><option value="<%= k %>" <%= "selected" if k == @params["identity"] %>><%= s[:label] %></option><% end %>
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+  <% end %>
+
+  <% known, unknown = @result.members.partition { |m| Marketing::Segments::PURCHASE_STATUSES.dig(m["purchase_status"], :known) } %>
+  <div class="row mb-2">
+    <% Marketing::Segments::PURCHASE_STATUSES.each do |key, s| %>
+      <div class="col-6 col-lg-3">
+        <div class="card mb-2"><div class="card-body py-2 px-3">
+          <div class="small"><%= render "purchase_badge", status: key %></div>
+          <div class="h3 mb-0"><%= @result.breakdown.dig("purchase_status", key) || 0 %></div>
+        </div></div>
+      </div>
+    <% end %>
+  </div>
+  <p class="small text-muted mb-2">條件：<%= @result.conditions %>。<%= @result.reliability %>。標 * 的來源含 API 補入的互動，只是補入當下的欄位值。</p>
+
+  <div class="panel">
+    <div class="panel-hdr"><h2>購買狀態已知（已確認身分）<span class="fw-300 ml-1"><%= known.size %> 人</span></h2>
+      <div class="panel-toolbar">
+        <% %w[interacted_not_ordered never_purchased].each do |k| %>
+          <% r = @segments.build(k, @params.slice("days", "source")) %>
+          <span class="mr-2 small"><%= link_to "#{r.label} #{r.count}", segment_marketing_opportunities_path(key: k, filter: r.params) %></span>
+        <% end %>
+      </div>
+    </div>
+    <div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+      <%= render "members", members: known, limit: 200 %>
+    </div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-hdr"><h2>購買狀態未知（候選／未比對）<span class="fw-300 ml-1"><%= unknown.size %> 人</span></h2></div>
+    <div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+      <p class="small text-muted">這些人不是「沒買過」，只是還沒確認身分；仍可用於來源與內容分析。<%= link_to "到身分比對確認候選", manychat_matches_path %></p>
+      <%= render "members", members: unknown, limit: 200 %>
+    </div></div>
+  </div>
+  <div class="mb-3"><%= render "draft_button", result: @result %></div>
+
+<% when "products" %>
+  <%= form_with url: marketing_opportunities_path, method: :get, local: true, class: "form-inline mb-3", html: { style: "gap:8px;" } do %>
+    <input type="hidden" name="tab" value="products">
+    <select name="days" class="form-control form-control-sm">
+      <% Marketing::Segments::DAYS.each do |d| %><option value="<%= d %>" <%= "selected" if d == @days %>>最近 <%= d %> 天</option><% end %>
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+  <% end %>
+  <div class="alert alert-light border small">
+    「互動來源關聯到產品」依 <%= link_to "來源設定", manychat_sources_path %> 的人工對應，代表客人看過相關內容，<strong>不代表有購買需求</strong>；
+    沒設定對應的來源不會用名稱猜測。「明確表達需求」只來自 Flow 回傳的索取資訊／優惠／購買協助事件（Flow 尚未加事件前都是 0）。
+  </div>
+  <div class="panel"><div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+    <table class="table table-sm table-hover small mb-0">
+      <thead class="thead-light">
+        <tr><th>產品</th><th>庫存</th><th class="text-right">互動來源關聯</th><th class="text-right">其中已確認・沒買過此產品</th>
+            <th class="text-right">已確認・買過</th><th class="text-right">購買狀態未知</th><th class="text-right">明確表達需求</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% @rows.each do |r| %>
+          <% pp = r[:interest]&.breakdown&.dig("product_purchase") || {} %>
+          <tr>
+            <td><%= r[:product].label %></td>
+            <td><%= CrmProduct::AVAILABILITY_STATUS_LABELS[r[:product].availability_status] %></td>
+            <% if r[:mapped] %>
+              <td class="text-right"><%= link_to r[:interest].count, segment_marketing_opportunities_path(key: "product_source_interest", filter: r[:interest].params) %></td>
+              <td class="text-right"><%= pp["not_bought"] || 0 %></td>
+              <td class="text-right"><%= pp["bought"] || 0 %></td>
+              <td class="text-right"><%= pp["unknown"] || 0 %></td>
+            <% else %>
+              <td colspan="4" class="text-muted text-center">沒有來源對應到這個產品</td>
+            <% end %>
+            <td class="text-right"><%= link_to r[:request].count, segment_marketing_opportunities_path(key: "product_explicit_request", filter: r[:request].params) %></td>
+            <td><%= render "draft_button", result: r[:interest] if r[:interest] %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div></div></div>
+
+<% when "repurchase" %>
+  <%= form_with url: marketing_opportunities_path, method: :get, local: true, class: "form-inline mb-3", html: { style: "gap:8px;" } do %>
+    <input type="hidden" name="tab" value="repurchase">
+    <select name="product_key" class="form-control form-control-sm">
+      <option value="">全部產品</option>
+      <% @products.each do |p| %><option value="<%= p.key %>" <%= "selected" if p.key == @params["product_key"] %>><%= p.label %></option><% end %>
+    </select>
+    <select name="ahead" class="form-control form-control-sm">
+      <% Marketing::Segments::AHEAD_DAYS.each do |d| %><option value="<%= d %>" <%= "selected" if d == @params["ahead"] %>>未來 <%= d %> 天內該聯絡</option><% end %>
+    </select>
+    <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+  <% end %>
+  <p class="small text-muted">條件：<%= @all.conditions %>。沿用 CRM 回購週期（與 <%= link_to "回購追蹤", crm_repurchase_dashboard_path %> 同一份資料），不受 ManyChat 比對率影響。</p>
+  <div class="row mb-2">
+    <div class="col-6 col-lg-3"><div class="card mb-2"><div class="card-body py-2 px-3">
+      <div class="small text-muted">CRM 全部回購客群</div><div class="h3 mb-0"><%= @all.count %></div>
+      <%= render "draft_button", result: @all %>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card mb-2"><div class="card-body py-2 px-3">
+      <div class="small text-muted">其中有 ManyChat 互動（已確認身分）</div><div class="h3 mb-0"><%= @with_manychat.count %></div>
+      <%= render "draft_button", result: @with_manychat %>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card mb-2"><div class="card-body py-2 px-3">
+      <div class="small text-muted">週期依據：實際資料推估</div><div class="h3 mb-0"><%= @all.breakdown.dig("cycle_basis", "historical") || 0 %></div>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card mb-2"><div class="card-body py-2 px-3">
+      <div class="small text-muted">週期依據：固定週期假設</div><div class="h3 mb-0"><%= @all.breakdown.dig("cycle_basis", "assumption") || 0 %></div>
+    </div></div></div>
+  </div>
+  <div class="panel"><div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+    <% labels = CrmProduct.pluck(:key, :label).to_h %>
+    <% customers = ShoplineCustomer.where(id: @all.members.map { |m| m["shopline_customer_id"] }.compact).pluck(:id, :full_name, :membership_level).to_h { |id, n, lv| [id, [n, lv]] } %>
+    <table class="table table-sm table-hover small mb-0">
+      <thead class="thead-light"><tr><th>顧客</th><th>卡別</th><th>產品</th><th class="text-right">瓶數</th><th>建議聯絡日</th><th>週期依據</th><th>ManyChat 互動</th><th>聯絡資格</th></tr></thead>
+      <tbody>
+        <% @all.members.sort_by { |m| m["suggested_contact_date"].to_s }.first(300).each do |m| %>
+          <% name, level = customers[m["shopline_customer_id"]] %>
+          <tr>
+            <td><%= m["shopline_customer_id"] ? link_to(name || "##{m['shopline_customer_id']}", customer_path(m["shopline_customer_id"])) : "（對不到官網顧客）" %></td>
+            <td><%= level %></td>
+            <td><%= labels[m["product_key"]] || m["product_key"] %></td>
+            <td class="text-right"><%= m["bottle_count"] %></td>
+            <td><%= m["suggested_contact_date"] %></td>
+            <td><%= m["cycle_basis"] == "historical" ? tag.span("實際資料推估", class: "badge badge-success") : tag.span("固定週期假設", class: "badge badge-warning") %></td>
+            <td><%= "有" if m["has_manychat"] %></td>
+            <td class="text-muted"><%= m["contact"] %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <% if @all.count > 300 %><div class="small text-muted mt-1">只顯示前 300 筆，完整名單請建立草稿</div><% end %>
+  </div></div></div>
+
+<% when "sources" %>
+  <%= form_with url: marketing_opportunities_path, method: :get, local: true, class: "form-inline mb-3", html: { style: "gap:8px;" } do %>
+    <input type="hidden" name="tab" value="sources">
+    <input type="date" name="from" value="<%= @from.iso8601 %>" class="form-control form-control-sm">
+    <span class="small text-muted">到</span>
+    <input type="date" name="to" value="<%= @to.iso8601 %>" class="form-control form-control-sm">
+    <button type="submit" class="btn btn-sm btn-primary">查詢</button>
+  <% end %>
+  <div class="alert alert-light border small">
+    <strong>怎麼看：</strong>下單率分母是「已確認身分、而且訂單資料已涵蓋他互動後滿 <%= Marketing::SourcePerformance::OBSERVE_DAYS %> 天」的人
+    （訂單資料到 <%= @perf.orders_to || "—" %>）；未滿 7 天的人另外列，不算進下單率。
+    分母少於 <%= Marketing::SourcePerformance::MIN_SAMPLE %> 人標「樣本不足」，不比較高低。
+    金額是<strong>觀察期內關聯訂單金額</strong>（互動後 7 天內的已付款訂單），不是活動帶來的增量營收，也沒扣退款。
+    同一人可能出現在多個來源，最後一列是去重後的合計。
+  </div>
+  <div class="panel"><div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+    <table class="table table-sm table-hover small mb-0">
+      <thead class="thead-light">
+        <tr><th>來源</th><th class="text-right">互動人數</th><th class="text-right">已確認身分</th><th class="text-right">覆蓋率</th>
+            <th class="text-right">已滿觀察期（分母）</th><th class="text-right">未滿 7 天</th><th class="text-right">7 天內下單</th>
+            <th class="text-right">下單率</th><th class="text-right">觀察期內關聯訂單金額</th><th>來源可信度</th></tr>
+      </thead>
+      <tbody>
+        <% (@perf.rows + [@perf.total]).each_with_index do |r, i| %>
+          <% total = i == @perf.rows.size %>
+          <tr class="<%= 'font-weight-bold table-secondary' if total %>">
+            <td><%= total ? r.label : link_to(r.label, marketing_opportunities_path(tab: "interactors", source: r.source, days: 30)) %>
+                <% if !total && !r.mapped %><%= link_to "設定", new_manychat_source_path(raw_name: r.source), class: "small ml-1" %><% end %></td>
+            <td class="text-right"><%= r.people %></td>
+            <td class="text-right"><%= r.verified %></td>
+            <td class="text-right"><%= r.coverage ? number_to_percentage(r.coverage * 100, precision: 0) : "—" %></td>
+            <td class="text-right"><%= r.matured %></td>
+            <td class="text-right"><%= r.immature %></td>
+            <td class="text-right"><%= r.converted %></td>
+            <td class="text-right"><%= r.sample_ok? ? number_to_percentage(r.rate * 100, precision: 1) : tag.span("樣本不足", class: "text-muted") %></td>
+            <td class="text-right"><%= number_to_currency(r.linked_amount, unit: "$", precision: 0) %></td>
+            <td><%= r.reliable_share && r.reliable_share < 1 ? "#{number_to_percentage((1 - r.reliable_share) * 100, precision: 0)} 為 API 補入" : "記錄" %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div></div></div>
+
+<% when "ai" %>
+  <%= render "ai", suggestion: @suggestion, history: @history %>
+<% end %>

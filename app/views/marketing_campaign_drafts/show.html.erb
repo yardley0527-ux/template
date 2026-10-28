@@ -1,0 +1,50 @@
+<% content_for :page_title, @draft.name %>
+<% labels = CrmProduct.pluck(:key, :label).to_h %>
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-clipboard-list mr-2"></i> <%= @draft.name %>
+    <small><span class="badge badge-secondary"><%= MarketingCampaignDraft::STATUSES[@draft.status] %></span> 尚未發送</small></h1>
+</div>
+<p class="small"><%= link_to "← 活動草稿", marketing_campaign_drafts_path %>　<%= link_to "編輯", edit_marketing_campaign_draft_path(@draft) %></p>
+<div class="row">
+  <div class="col-lg-6"><div class="panel"><div class="panel-container show"><div class="panel-content small">
+    <p><strong>目標：</strong><%= @draft.goal.presence || "—" %></p>
+    <p><strong>客群：</strong><%= @draft.segment_label %>・<%= @draft.member_count %> 人（建立時的快照）<br>
+       <span class="text-muted">條件參數：<%= @draft.segment_params.map { |k, v| "#{k}=#{v}" }.join("、") %>・規則版本 <%= @draft.rule_version %></span></p>
+    <p><strong>商品：</strong><%= @draft.product_keys.map { |k| labels[k] || k }.join("、").presence || "—" %></p>
+    <p><strong>優惠：</strong><% if (promo = ProductPromotionSnapshot.find_by(id: @draft.promotion_snapshot_id)) %>
+      <%= promo.product_name %> $<%= promo.sale_price %>（<%= promo.scraped_at.to_date %> 官網）<% else %><span class="text-muted">無</span><% end %></p>
+    <p><strong>管道：</strong><%= Marketing::CardValidator::CHANNELS[@draft.planned_channel] || "—" %>　
+       <strong>預計時間：</strong><%= [@draft.planned_start_on, @draft.planned_end_on].compact.join(" ～ ").presence || "—" %></p>
+    <p><strong>衡量指標：</strong><%= @draft.success_metric.presence || "—" %></p>
+    <p class="mb-0"><strong>文案：</strong><br><%= simple_format(@draft.copy_text.presence || "—") %></p>
+  </div></div></div></div>
+  <div class="col-lg-6">
+    <% if @draft.card_snapshot.present? %>
+      <div class="panel"><div class="panel-hdr"><h2>來源 AI 建議卡（建立時的內容）</h2></div><div class="panel-container show"><div class="panel-content small">
+        <p><strong><%= @draft.card_snapshot["title"] %></strong></p>
+        <p><%= @draft.card_snapshot["why_now"] %></p>
+        <% if Array(@draft.card_snapshot["pre_checks"]).any? %><p class="mb-1"><strong>執行前待確認：</strong></p>
+          <ul class="pl-3"><% @draft.card_snapshot["pre_checks"].each do |c| %><li><%= c %></li><% end %></ul><% end %>
+        <% if Array(@draft.card_snapshot["uncertainties"]).any? %><p class="mb-1 text-muted"><strong>不確定性：</strong></p>
+          <ul class="pl-3 text-muted"><% @draft.card_snapshot["uncertainties"].each do |c| %><li><%= c %></li><% end %></ul><% end %>
+      </div></div></div>
+    <% end %>
+  </div>
+</div>
+<div class="panel"><div class="panel-hdr"><h2>名單快照（<%= @draft.member_count %> 人）</h2></div>
+<div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
+  <p class="small text-muted">建立草稿當下的資料；之後身分比對、訂單變動都不會改這份名單。聯絡資格一律待確認。</p>
+  <table class="table table-sm small mb-0">
+    <thead class="thead-light"><tr><th>識別</th><th>IG</th><th>身分／購買狀態</th><th>產品</th><th>建議聯絡日</th><th>來源</th></tr></thead>
+    <tbody>
+      <% @members.each do |m| %>
+        <% s = m.snapshot %>
+        <tr><td><%= m.shopline_customer_id ? link_to("顧客 ##{m.shopline_customer_id}", customer_path(m.shopline_customer_id)) : m.identity_key %></td>
+            <td><%= s["ig_username"] && "@#{s['ig_username']}" %></td>
+            <td><%= s["purchase_status"] ? render("marketing_opportunities/purchase_badge", status: s["purchase_status"]) : "—" %></td>
+            <td><%= labels[s["product_key"]] %></td><td><%= s["suggested_contact_date"] %></td><td><%= Array(s["sources"]).join("、") %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @draft.member_count > 500 %><div class="small text-muted">只顯示前 500 人</div><% end %>
+</div></div></div>

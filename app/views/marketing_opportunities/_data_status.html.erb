@@ -1,0 +1,27 @@
+<% h = status.to_h %>
+<div class="card mb-3 border">
+  <div class="card-body py-2 px-3 small">
+    <div class="d-flex flex-wrap" style="gap:18px;">
+      <div><span class="text-muted">ManyChat 最後成功同步</span><br><strong><%= h[:manychat_last_success_at] ? l(h[:manychat_last_success_at], format: "%m/%d %H:%M") : "—" %></strong></div>
+      <div><span class="text-muted">訂單資料到</span><br><strong><%= h[:orders_to]&.strftime("%Y/%m/%d") || "—" %></strong></div>
+      <div><span class="text-muted">互動追蹤起始</span><br><strong><%= h[:manychat_sync_started_on]&.strftime("%Y/%m/%d") || "—" %></strong></div>
+      <div><span class="text-muted">已確認身分</span><br>
+        <strong><%= h[:verified] %> / <%= h[:subscribers] %></strong>
+        <span class="text-muted">（<%= h[:verified_rate] ? number_to_percentage(h[:verified_rate] * 100, precision: 1) : "—" %>）</span>
+        <%= link_to "候選 #{h[:candidate]} 待確認", manychat_matches_path, class: "ml-1" %>
+      </div>
+      <div><span class="text-muted">近 30 天來源已設定</span><br><strong><%= h[:sources_30d_mapped] %> / <%= h[:sources_30d] %></strong>
+        <%= link_to "設定", manychat_sources_path, class: "ml-1" %></div>
+      <div><span class="text-muted">互動紀錄類型</span><br>
+        <% h[:interactions_by_type].each do |type, n| %>
+          <span class="badge badge-light border"><%= ManychatInteraction::EVENT_TYPES.dig(type, :label) || type %> <%= n %></span>
+        <% end %>
+      </div>
+    </div>
+    <details class="mt-2">
+      <summary class="text-muted">資料缺口（<%= status.gaps.size %>）</summary>
+      <ul class="mb-0 pl-3"><% status.gaps.each do |g| %><li><%= g %></li><% end %></ul>
+      <div class="text-muted mt-1"><i class="fal fa-comment-alt-exclamation mr-1"></i><%= h[:contact_note] %></div>
+    </details>
+  </div>
+</div>

@@ -3,7 +3,7 @@
 require "test_helper"
 
 class Manychat::SheetImporterTest < ActiveSupport::TestCase
-  test "同一人取最後一列、對到客人、略過缺欄位的列" do
+  test "同一人取最後一列、IG 對到的客人列為候選（不自動關聯）、略過缺欄位的列" do
     customer = ShoplineCustomer.create!(full_name: "王小美", instagram_account: "anyu.wang")
     csv = <<~CSV
       account,subscriber_id,ig_username,name,time
@@ -15,12 +15,13 @@ class Manychat::SheetImporterTest < ActiveSupport::TestCase
     CSV
 
     result = Manychat::SheetImporter.new(nil, csv: { nil => csv }).call
-    assert_equal({ rows: 2, created: 2, updated: 0, invalid: 0, interactions: 2 }, result)
+    assert_equal({ rows: 2, created: 2, updated: 0, invalid: 0, interactions: 2, rows_without_time: 1 }, result)
 
     sub = ManychatSubscriber.find_by(account_key: "chloe.chao", subscriber_id: 149562575)
     assert_equal "Anyu W", sub.name
-    assert_equal customer.id, sub.shopline_customer_id
-    assert_nil ManychatSubscriber.find_by(subscriber_id: 999).shopline_customer_id
+    assert_nil sub.shopline_customer_id
+    assert_equal ["candidate", [customer.id]], [sub.match_status, sub.candidate_customer_ids]
+    assert_equal "unmatched", ManychatSubscriber.find_by(subscriber_id: 999).match_status
 
     again = Manychat::SheetImporter.new(nil, csv: { nil => csv }).call
     assert_equal 0, again[:created]
@@ -58,6 +59,19 @@ class Manychat::SheetImporterTest < ActiveSupport::TestCase
   test "沒有 source 欄的舊試算表照樣匯入" do
     csv = "account,subscriber_id,ig_username,name,time\nchloe.chao,5,x,X,2026-10-24 10:00\n"
     assert_equal 1, Manychat::SheetImporter.new(nil, csv: { nil => csv }).call[:interactions]
+  end
+
+  test "重複同步不新增互動；先被 API 補入的同一筆改標成試算表記錄" do
+    csv = "account,subscriber_id,ig_username,name,time,source\nchloe.chao,7,x7,X,2026-10-24 10:00,PDRN post1\n"
+    Manychat::SheetImporter.new(nil, csv: { nil => csv }).call
+    i = ManychatInteraction.sole
+    i.update_columns(event_type: "api_last_interaction")
+
+    assert_no_difference -> { ManychatInteraction.count } do
+      3.times { Manychat::SheetImporter.new(nil, csv: { nil => csv }).call }
+    end
+    assert_equal "sheet_row", i.reload.event_type
+    assert_equal "PDRN post1", ManychatSubscriber.find_by(subscriber_id: 7).first_observed_source
   end
 
   test "rake manychat:sync 用的 SyncRun source 是合法值" do

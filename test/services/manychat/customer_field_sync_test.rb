@@ -25,6 +25,7 @@ class Manychat::CustomerFieldSyncTest < ActiveSupport::TestCase
     ShoplineOrder.create!(shopline_customer_id: @customer.id, order_number: "B2", product_name: "全能",
                           quantity: 3, order_date: Time.zone.parse("2026-09-22 10:00"))
     @sub = ManychatSubscriber.create!(account_key: "chloe.chao", subscriber_id: 1, ig_username: "anyu.wang")
+    @sub.confirm!(@customer.id, user: nil)
     ManychatSubscriber.create!(account_key: "chloe.chao", subscriber_id: 2, ig_username: "nobody")
   end
 

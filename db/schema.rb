@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_28_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_29_100200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1021,15 +1021,71 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_28_100000) do
     t.index ["date", "account_key", "time_slot"], name: "index_manychat_checks_on_date_account_slot", unique: true
   end
 
+  create_table "manychat_events", force: :cascade do |t|
+    t.string "account_key", null: false
+    t.bigint "subscriber_id", null: false
+    t.bigint "manychat_subscriber_id"
+    t.string "event_id", null: false
+    t.string "event_type", null: false
+    t.string "source_key"
+    t.string "campaign_key"
+    t.string "flow_ns"
+    t.string "flow_version"
+    t.jsonb "properties", default: {}, null: false
+    t.datetime "event_time", null: false
+    t.datetime "received_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_key", "event_id"], name: "index_manychat_events_on_account_key_and_event_id", unique: true
+    t.index ["event_type", "event_time"], name: "index_manychat_events_on_event_type_and_event_time"
+    t.index ["manychat_subscriber_id"], name: "index_manychat_events_on_manychat_subscriber_id"
+  end
+
   create_table "manychat_interactions", force: :cascade do |t|
     t.bigint "manychat_subscriber_id", null: false
     t.string "source", default: "", null: false
     t.datetime "interacted_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "event_type", default: "sheet_row", null: false
     t.index ["interacted_at"], name: "index_manychat_interactions_on_interacted_at"
     t.index ["manychat_subscriber_id", "interacted_at", "source"], name: "index_manychat_interactions_uniqueness", unique: true
     t.index ["manychat_subscriber_id"], name: "index_manychat_interactions_on_manychat_subscriber_id"
+  end
+
+  create_table "manychat_match_logs", force: :cascade do |t|
+    t.bigint "manychat_subscriber_id", null: false
+    t.bigint "user_id"
+    t.string "action", null: false
+    t.bigint "shopline_customer_id"
+    t.string "from_status", null: false
+    t.string "to_status", null: false
+    t.text "note"
+    t.datetime "created_at", null: false
+    t.index ["manychat_subscriber_id"], name: "index_manychat_match_logs_on_manychat_subscriber_id"
+  end
+
+  create_table "manychat_sources", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "name", null: false
+    t.string "account_key", null: false
+    t.string "channel", default: "instagram", null: false
+    t.string "content_type"
+    t.string "content_ref"
+    t.string "campaign_key"
+    t.string "topic"
+    t.string "trigger_keyword"
+    t.string "flow_ns"
+    t.string "flow_version"
+    t.string "raw_names", default: [], null: false, array: true
+    t.string "product_keys", default: [], null: false, array: true
+    t.boolean "active", default: true, null: false
+    t.text "notes"
+    t.bigint "updated_by_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_manychat_sources_on_key", unique: true
+    t.index ["raw_names"], name: "index_manychat_sources_on_raw_names", using: :gin
   end
 
   create_table "manychat_subscribers", force: :cascade do |t|
@@ -1051,9 +1107,73 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_28_100000) do
     t.string "source"
     t.integer "sheet_rows", default: 0, null: false
     t.datetime "api_checked_at"
+    t.string "match_status", default: "unmatched", null: false
+    t.string "match_method"
+    t.bigint "candidate_customer_ids", default: [], null: false, array: true
+    t.bigint "rejected_customer_ids", default: [], null: false, array: true
+    t.bigint "legacy_shopline_customer_id"
+    t.bigint "match_decided_by_user_id"
+    t.datetime "match_decided_at"
+    t.jsonb "tags", default: [], null: false
+    t.datetime "tags_synced_at"
+    t.string "first_observed_source"
+    t.datetime "first_observed_at"
     t.index ["account_key", "subscriber_id"], name: "index_manychat_subscribers_on_account_key_and_subscriber_id", unique: true
     t.index ["ig_username"], name: "index_manychat_subscribers_on_ig_username"
+    t.index ["match_status"], name: "index_manychat_subscribers_on_match_status"
     t.index ["shopline_customer_id"], name: "index_manychat_subscribers_on_shopline_customer_id"
+  end
+
+  create_table "marketing_ai_suggestions", force: :cascade do |t|
+    t.string "status", default: "pending", null: false
+    t.jsonb "input_snapshot", default: {}, null: false
+    t.jsonb "cards", default: [], null: false
+    t.jsonb "rejected_cards", default: [], null: false
+    t.text "raw_output"
+    t.string "error_message"
+    t.string "model"
+    t.string "rule_version"
+    t.datetime "data_as_of"
+    t.integer "attempts", default: 0, null: false
+    t.datetime "started_at"
+    t.datetime "finished_at"
+    t.bigint "requested_by_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_marketing_ai_suggestions_on_created_at"
+  end
+
+  create_table "marketing_campaign_draft_members", force: :cascade do |t|
+    t.bigint "marketing_campaign_draft_id", null: false
+    t.bigint "manychat_subscriber_id"
+    t.bigint "shopline_customer_id"
+    t.string "identity_key", null: false
+    t.jsonb "snapshot", default: {}, null: false
+    t.index ["marketing_campaign_draft_id"], name: "idx_campaign_draft_members_on_draft"
+  end
+
+  create_table "marketing_campaign_drafts", force: :cascade do |t|
+    t.string "name", null: false
+    t.text "goal"
+    t.string "status", default: "draft", null: false
+    t.bigint "marketing_ai_suggestion_id"
+    t.integer "card_index"
+    t.jsonb "card_snapshot", default: {}, null: false
+    t.string "segment_key", null: false
+    t.jsonb "segment_params", default: {}, null: false
+    t.string "rule_version", null: false
+    t.integer "member_count", default: 0, null: false
+    t.string "product_keys", default: [], null: false, array: true
+    t.bigint "promotion_snapshot_id"
+    t.text "copy_text"
+    t.string "planned_channel"
+    t.date "planned_start_on"
+    t.date "planned_end_on"
+    t.text "success_metric"
+    t.bigint "created_by_user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["marketing_ai_suggestion_id"], name: "index_marketing_campaign_drafts_on_marketing_ai_suggestion_id"
   end
 
   create_table "membership_level_changes", force: :cascade do |t|
@@ -1905,8 +2025,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_28_100000) do
   add_foreign_key "livestream_products", "livestreams"
   add_foreign_key "livestreams", "users", column: "owner_user_id"
   add_foreign_key "livestreams", "users", column: "review_completed_by_user_id"
+  add_foreign_key "manychat_events", "manychat_subscribers"
   add_foreign_key "manychat_interactions", "manychat_subscribers"
+  add_foreign_key "manychat_match_logs", "manychat_subscribers"
   add_foreign_key "manychat_subscribers", "shopline_customers"
+  add_foreign_key "marketing_campaign_draft_members", "marketing_campaign_drafts"
+  add_foreign_key "marketing_campaign_drafts", "marketing_ai_suggestions"
   add_foreign_key "membership_level_changes", "import_runs"
   add_foreign_key "message_list_recipients", "message_lists"
   add_foreign_key "message_template_blocks", "message_templates"
