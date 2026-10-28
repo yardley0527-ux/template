@@ -34,6 +34,7 @@ module Manychat
       raise ArgumentError, "MANYCHAT_SHEET_ID 未設定" if @sheet_id.blank? && @csv.nil?
 
       latest = {}
+      row_counts = Hash.new(0)
       events = []
       @tabs.each do |gid, tab_account|
         default_account = ShoplineCustomer.normalize_ig(tab_account)
@@ -44,6 +45,7 @@ module Manychat
           next if account.blank? || subscriber_id !~ /\A\d+\z/
 
           latest[[account, subscriber_id.to_i]] = h
+          row_counts[[account, subscriber_id.to_i]] += 1
           at = parse_time(h["time"])
           events << [account, subscriber_id.to_i, at, h["source"].to_s.strip] if at
         end
@@ -58,6 +60,9 @@ module Manychat
           name: h["name"].presence || record.name,
           last_interaction_at: parse_time(h["time"]) || record.last_interaction_at
         )
+        # 多了新的列＝有新互動；Flow 不一定有填 time，交給 InteractionBackfill 用 API 補
+        rows = row_counts[[account, subscriber_id]]
+        record.assign_attributes(sheet_rows: rows, api_checked_at: nil) if rows != record.sheet_rows
         if record.new_record? || record.changed? || record.shopline_customer_id.nil?
           was_new = record.new_record?
           if record.save
