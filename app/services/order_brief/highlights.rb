@@ -3,7 +3,7 @@
 require "net/http"
 
 module OrderBrief
-  # 訂單簡報的「今天的重點」：把當天數字、前 6 天走勢、每位買家的完整購買歷史交給 Claude，
+  # 訂單簡報的「日期＋重點」：把當天數字、前 6 天走勢、每位買家的完整購買歷史交給 Claude，
   # 寫 5–7 條給策略部看的觀察。原本是人工寫的，最常見的錯誤是只看上一單就下因果結論，
   # 所以每位客人都附完整歷史，並在 prompt 裡要求先看歷史再寫。
   # AI 失敗時回 nil，簡報照樣發（只是少了重點）。
@@ -51,7 +51,7 @@ module OrderBrief
     # LINE 純文字，照使用者的格式：「1. 結論」，補充一行一個「- 」
     # start：第一條的編號（分成好幾則發時，後面幾則要接著編號）
     def self.to_text(day, highlights, start: 1)
-      lines = ["📝 #{day.month}/#{day.day} 今天的重點"]
+      lines = ["📝 #{day.month}/#{day.day} 重點"]
       highlights.each.with_index(start) do |h, i|
         lines += ["", "#{i}. #{h['title']}"]
         Array(h["details"]).each { |d| lines << "- #{d}" }

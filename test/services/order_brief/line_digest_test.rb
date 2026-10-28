@@ -122,7 +122,7 @@ module OrderBrief
       msgs = LineDigest.new(DAY, line: FakeLine.new).messages(report, highlights)
       assert msgs.all? { |m| m[:type] == "text" } # 測試環境沒有 Cloudinary，表格改發說明
       assert msgs.all? { |m| LineBot::Client.visual_lines(m[:text]) <= LineBot::Client::READABLE_LINES }, "每則都要能直接看完"
-      assert_equal "📝 10/22 今天的重點\n\n1. PDRN 回購都升級\n- Amy 從 3 瓶升到 6 瓶", msgs[0][:text]
+      assert_equal "📝 10/22 重點\n\n1. PDRN 回購都升級\n- Amy 從 3 瓶升到 6 瓶", msgs[0][:text]
       assert msgs[1][:text].start_with?("📦 10/22 訂單簡報")
       assert msgs.any? { |m| m[:text].include?("表格圖片產生失敗") }
 
@@ -139,7 +139,7 @@ module OrderBrief
       highlights = Array.new(7) { |i| { "title" => "結論#{i + 1}", "details" => ["補充#{i + 1}"] } }
       msgs = LineDigest.new(DAY, line: FakeLine.new).messages(Report.new(DAY), highlights).first(3).map { |m| m[:text] }
 
-      assert_equal "📝 10/22 今天的重點\n\n1. 結論1\n- 補充1\n\n2. 結論2\n- 補充2\n\n3. 結論3\n- 補充3", msgs[0]
+      assert_equal "📝 10/22 重點\n\n1. 結論1\n- 補充1\n\n2. 結論2\n- 補充2\n\n3. 結論3\n- 補充3", msgs[0]
       assert_equal "4. 結論4\n- 補充4\n\n5. 結論5\n- 補充5\n\n6. 結論6\n- 補充6", msgs[1]
       assert_equal "7. 結論7\n- 補充7", msgs[2]
     end
@@ -158,7 +158,7 @@ module OrderBrief
       replace(Highlights, :call, ->(_) { highlights }) { LineDigest.new(DAY, line: line).call }
       assert line.sent.size > 1
       assert line.sent.all? { |_, batch| batch.size <= 5 }
-      assert_equal "📝 10/22 今天的重點\n\n1. 重點", line.sent.first[1].first[:text]
+      assert_equal "📝 10/22 重點\n\n1. 重點", line.sent.first[1].first[:text]
     end
 
     test "只發給有訂閱的群組，同一天只發一次" do
