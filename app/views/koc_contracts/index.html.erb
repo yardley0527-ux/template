@@ -6,7 +6,7 @@
 <div class="row g-3 mb-3">
   <div class="col-12">
     <h4 class="fw-bold mb-0">合約狀態</h4>
-    <p class="text-muted small mb-0">合作中的 KOC，財務部登記合約寄出／收到日期與付款時間，社群部登記影片上架時間／廣告區間；財務勾「已付款」後狀態改為「已合作、已匯款」並移出此頁</p>
+    <p class="text-muted small mb-0">合作中的 KOC，財務部登記合約寄出／收到日期與付款時間，社群部登記影片上架時間／廣告區間；財務填好付款時間並勾「已付款」後，狀態改為「已合作、已匯款」並移出此頁</p>
   </div>
 </div>
 
@@ -66,7 +66,7 @@
               </td>
               <td class="text-center">
                 <%= form_with model: koc, url: koc_contract_path(koc), method: :patch, local: true, class: "mb-0" do %>
-                  <%= check_box_tag "koc[paid]", "1", false, disabled: !can_edit_contract, onchange: "if (confirm('確定 @#{koc.ig_username} 已付款？聯絡狀態會改成「已合作、已匯款」，並從這頁移除')) { this.form.requestSubmit() } else { this.checked = false }" %>
+                  <%= check_box_tag "koc[paid]", "1", false, disabled: !can_edit_contract || koc.paid_at.blank?, title: (koc.paid_at.blank? ? "請先填付款時間" : nil), onchange: "if (confirm('確定 @#{koc.ig_username} 已付款？聯絡狀態會改成「已合作、已匯款」，並從這頁移除')) { this.form.requestSubmit() } else { this.checked = false }" %>
                 <% end %>
               </td>
             </tr>

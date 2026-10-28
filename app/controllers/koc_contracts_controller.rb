@@ -10,9 +10,12 @@ class KocContractsController < ApplicationController
   def update
     @koc = Koc.find(params[:id])
     if params.dig(:koc, :paid) == "1"
-      # 財務勾「已付款」＝這筆合作結案，聯絡狀態直接推進到「已合作、已匯款」，人就會離開這頁
-      # 沒填付款時間就當作今天付款
-      @koc.update(status: "已合作、已匯款", paid_at: @koc.paid_at || Date.current) if can_mark_paid?
+      # 財務勾「已付款」＝這筆合作結案，聯絡狀態直接推進到「已合作、已匯款」，人就會離開這頁；
+      # 一定要先填付款時間，不然人消失後就查不到哪天付的
+      if @koc.paid_at.blank?
+        return redirect_back fallback_location: koc_contracts_path, allow_other_host: false, alert: "請先填 #{@koc.ig_username} 的付款時間，再勾已付款"
+      end
+      @koc.update(status: "已合作、已匯款") if can_mark_paid?
     else
       @koc.update(koc_contract_params)
     end

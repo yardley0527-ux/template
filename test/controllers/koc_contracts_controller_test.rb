@@ -84,6 +84,7 @@ class KocContractsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "finance 勾已付款會把聯絡狀態改成已合作、已匯款並移出此頁" do
+    @koc.update!(paid_at: Date.parse("2026-10-20"))
     sign_in @finance
     patch koc_contract_path(@koc), params: { koc: { paid: "1" } }
     assert_redirected_to koc_contracts_path
@@ -93,12 +94,13 @@ class KocContractsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "social 不能勾已付款" do
+    @koc.update!(paid_at: Date.parse("2026-10-20"))
     sign_in @social
     patch koc_contract_path(@koc), params: { koc: { paid: "1" } }
     assert_equal "合作中", @koc.reload.status
   end
 
-  test "finance 能更新付款時間，勾已付款時保留已填的付款時間" do
+  test "finance 能更新付款時間，勾已付款後保留付款時間" do
     sign_in @finance
     patch koc_contract_path(@koc), params: { koc: { paid_at: "2026-10-20" } }
     assert_equal Date.parse("2026-10-20"), @koc.reload.paid_at
@@ -106,10 +108,13 @@ class KocContractsControllerTest < ActionDispatch::IntegrationTest
     assert_equal Date.parse("2026-10-20"), @koc.reload.paid_at
   end
 
-  test "勾已付款時沒填付款時間就記今天" do
+  test "沒填付款時間不能勾已付款，人留在此頁" do
     sign_in @finance
     patch koc_contract_path(@koc), params: { koc: { paid: "1" } }
-    assert_equal Date.current, @koc.reload.paid_at
+    assert_equal "合作中", @koc.reload.status
+    assert_nil @koc.paid_at
+    get koc_contracts_path
+    assert_select "a", text: "@#{@koc.ig_username}"
   end
 
   test "social 不能更新付款時間" do
