@@ -118,7 +118,7 @@ module Marketing
       subs = subs.where(match_status: identity) unless identity == "all"
       subs = subs.where("tags @> ?", [tag].to_json) if tag
       subs = subs.to_a
-      orders = OrderIndex.new(subs.filter_map(&:shopline_customer_id))
+      orders = OrderIndex.new(subs.filter_map(&:shopline_customer_id) + subs.reject(&:verified?).flat_map(&:candidate_customer_ids))
       excluded = excluded_customer_ids(subs.filter_map(&:shopline_customer_id))
 
       subs.map do |sub|
@@ -137,6 +137,16 @@ module Marketing
       { "identity_key" => "ms:#{sub.id}", "manychat_subscriber_id" => sub.id, "shopline_customer_id" => sub.shopline_customer_id,
         "ig_username" => sub.ig_username, "match_status" => sub.match_status, "purchase_status" => status,
         "manychat_status" => sub.status, "tags" => sub.tags, "contact" => "待確認" }
+        .merge(candidate_hint(sub, orders))
+    end
+
+    # 候選只有一位時，附上那位顧客的訂單摘要供人工確認參考（確認前仍算「購買狀態未知」）
+    def candidate_hint(sub, orders)
+      return {} unless sub.match_status == "candidate" && sub.candidate_customer_ids.size == 1
+
+      id = sub.candidate_customer_ids.first
+      list = orders.orders_for(id)
+      { "candidate_customer_id" => id, "candidate_orders" => list.size, "candidate_last_order_on" => list.map(&:at).max&.to_date&.iso8601 }
     end
 
     def purchase_status(sub, orders)

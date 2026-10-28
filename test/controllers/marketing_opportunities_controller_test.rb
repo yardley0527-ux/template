@@ -25,6 +25,7 @@ class MarketingOpportunitiesControllerTest < ActionDispatch::IntegrationTest
     get marketing_opportunities_path(tab: "interactors")
     assert_includes response.body, "候選待確認・購買狀態未知"
     assert_includes response.body, "@may.lin"
+    assert_includes response.body, "確認是同一人"
     get marketing_opportunities_path(tab: "sources")
     assert_includes response.body, "樣本不足"
     get segment_marketing_opportunities_path(key: "product_source_interest", filter: { product_key: "pdrn", days: 14 })
