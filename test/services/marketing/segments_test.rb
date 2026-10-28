@@ -39,6 +39,8 @@ class Marketing::SegmentsTest < ActiveSupport::TestCase
     assert_equal({ "verified_purchased" => 1, "verified_no_purchase" => 1, "candidate" => 1, "unmatched" => 1 }, r.breakdown["purchase_status"])
     assert_equal [2], @segments.build("never_purchased", "days" => 7).members.map { |m| ManychatSubscriber.find(m["manychat_subscriber_id"]).subscriber_id }
     assert(r.members.all? { |m| m["contact"] == "待確認" })
+    cand = r.members.find { |m| m["match_status"] == "candidate" }
+    assert_equal ["candidate", 0], [cand["purchase_status"], cand["candidate_orders"]] # 有提示，但仍是未知
   end
 
   test "互動後未下單 ≠ 從未購買：之前買過、互動後沒買的人只在前者" do

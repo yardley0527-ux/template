@@ -7,7 +7,17 @@
     <% members.first(limit || 500).each do |m| %>
       <tr>
         <td><%= m["ig_username"] ? link_to("@#{m['ig_username']}", "https://www.instagram.com/#{m['ig_username']}/", target: "_blank", rel: "noopener") : "—" %></td>
-        <td><%= render "marketing_opportunities/purchase_badge", status: m["purchase_status"] %></td>
+        <td><%= render "marketing_opportunities/purchase_badge", status: m["purchase_status"] %>
+          <% if m["candidate_customer_id"] %>
+            <div class="mt-1" style="white-space:nowrap;">
+              <%= link_to "候選顧客", customer_path(m["candidate_customer_id"]), target: "_blank" %>
+              <%= m["candidate_orders"].to_i.positive? ? "有 #{m['candidate_orders']} 筆訂單（最近 #{m['candidate_last_order_on']}）" : "查無訂單" %>
+              <%= form_with url: confirm_manychat_match_path(m["manychat_subscriber_id"]), method: :post, local: true, class: "d-inline" do %>
+                <%= hidden_field_tag :customer_id, m["candidate_customer_id"] %>
+                <button class="btn btn-xs btn-outline-success" data-confirm="確認 @<%= m['ig_username'] %> 就是這位顧客？">確認是同一人</button>
+              <% end %>
+            </div>
+          <% end %></td>
         <td><%= m["manychat_status"] || "—" %></td>
         <td><%= Array(m["sources"]).join("、") %><% if m.key?("source_reliable") && !m["source_reliable"] %> <span class="text-muted" title="含 API 補入的互動，來源只是補入當下的欄位值">*</span><% end %>
             <% if m["requests"] %><%= m["requests"].map { |r| ManychatEvent::EVENT_TYPES.dig(r, :label) }.join("、") %><% end %></td>
