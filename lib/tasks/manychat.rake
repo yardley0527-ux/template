@@ -10,13 +10,17 @@ namespace :manychat do
     imported = Manychat::SheetImporter.call
     puts "[manychat:sync] 試算表 #{imported}"
 
+    filled = Manychat::InteractionBackfill.call
+    puts "[manychat:sync] API 補互動 checked=#{filled[:checked]} interactions=#{filled[:interactions]} errors=#{filled[:errors].size}"
+
     pushed = Manychat::CustomerFieldSync.call
     puts "[manychat:sync] 寫回欄位 synced=#{pushed[:synced]} skipped=#{pushed[:skipped]} errors=#{pushed[:errors].size}"
     pushed[:errors].first(20).each { |e| puts "  #{e}" }
 
-    run.update!(status: pushed[:errors].empty? ? "success" : "partial", finished_at: Time.current,
-                meta: { imported: imported, pushed: pushed.except(:errors) },
-                error_messages: pushed[:errors].first(50))
+    errors = filled[:errors] + pushed[:errors]
+    run.update!(status: errors.empty? ? "success" : "partial", finished_at: Time.current,
+                meta: { imported: imported, backfilled: filled.except(:errors), pushed: pushed.except(:errors) },
+                error_messages: errors.first(50))
   rescue StandardError => e
     run&.update!(status: "failed", finished_at: Time.current, error_messages: ["#{e.class}: #{e.message}"])
     raise

@@ -34,6 +34,10 @@ module Manychat
       post("/fb/page/createCustomField", { caption: caption, type: type, description: description.to_s })
     end
 
+    def subscriber_info(subscriber_id)
+      get("/fb/subscriber/getInfo?subscriber_id=#{subscriber_id.to_i}")
+    end
+
     # fields: { "欄位名稱" => 值 }，一次最多 20 個
     def set_custom_fields(subscriber_id, fields)
       post("/fb/subscriber/setCustomFields",

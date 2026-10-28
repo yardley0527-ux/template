@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_28_060000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_28_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1047,6 +1047,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_28_060000) do
     t.datetime "updated_at", null: false
     t.string "fields_digest"
     t.datetime "fields_synced_at"
+    t.string "status"
+    t.datetime "subscribed_at"
+    t.string "source"
+    t.integer "sheet_rows", default: 0, null: false
+    t.datetime "api_checked_at"
     t.index ["account_key", "subscriber_id"], name: "index_manychat_subscribers_on_account_key_and_subscriber_id", unique: true
     t.index ["ig_username"], name: "index_manychat_subscribers_on_ig_username"
     t.index ["shopline_customer_id"], name: "index_manychat_subscribers_on_shopline_customer_id"
