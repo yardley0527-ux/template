@@ -10,8 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_28_030000) do
-
+ActiveRecord::Schema[7.1].define(version: 2026_10_28_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -772,6 +771,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_28_030000) do
     t.date "video_posted_at"
     t.date "ad_start_at"
     t.date "ad_end_at"
+    t.date "paid_at"
     t.index ["ig_username"], name: "index_kocs_on_ig_username", unique: true
   end
 

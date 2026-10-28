@@ -97,4 +97,24 @@ class KocContractsControllerTest < ActionDispatch::IntegrationTest
     patch koc_contract_path(@koc), params: { koc: { paid: "1" } }
     assert_equal "合作中", @koc.reload.status
   end
+
+  test "finance 能更新付款時間，勾已付款時保留已填的付款時間" do
+    sign_in @finance
+    patch koc_contract_path(@koc), params: { koc: { paid_at: "2026-10-20" } }
+    assert_equal Date.parse("2026-10-20"), @koc.reload.paid_at
+    patch koc_contract_path(@koc), params: { koc: { paid: "1" } }
+    assert_equal Date.parse("2026-10-20"), @koc.reload.paid_at
+  end
+
+  test "勾已付款時沒填付款時間就記今天" do
+    sign_in @finance
+    patch koc_contract_path(@koc), params: { koc: { paid: "1" } }
+    assert_equal Date.current, @koc.reload.paid_at
+  end
+
+  test "social 不能更新付款時間" do
+    sign_in @social
+    patch koc_contract_path(@koc), params: { koc: { paid_at: "2026-10-20" } }
+    assert_nil @koc.reload.paid_at
+  end
 end

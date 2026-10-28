@@ -11,7 +11,8 @@ class KocContractsController < ApplicationController
     @koc = Koc.find(params[:id])
     if params.dig(:koc, :paid) == "1"
       # 財務勾「已付款」＝這筆合作結案，聯絡狀態直接推進到「已合作、已匯款」，人就會離開這頁
-      @koc.update(status: "已合作、已匯款") if can_mark_paid?
+      # 沒填付款時間就當作今天付款
+      @koc.update(status: "已合作、已匯款", paid_at: @koc.paid_at || Date.current) if can_mark_paid?
     else
       @koc.update(koc_contract_params)
     end
@@ -25,8 +26,8 @@ class KocContractsController < ApplicationController
   end
 
   def koc_contract_params
-    permitted = params.require(:koc).permit(:contract_sent_at, :contract_received_at, :video_posted_at, :ad_start_at, :ad_end_at)
-    return permitted.slice(:contract_sent_at, :contract_received_at) if current_user.role&.key == "finance"
+    permitted = params.require(:koc).permit(:contract_sent_at, :contract_received_at, :video_posted_at, :ad_start_at, :ad_end_at, :paid_at)
+    return permitted.slice(:contract_sent_at, :contract_received_at, :paid_at) if current_user.role&.key == "finance"
     return permitted.slice(:video_posted_at, :ad_start_at, :ad_end_at) if current_user.role&.key == "social"
 
     permitted
