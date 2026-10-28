@@ -82,4 +82,19 @@ class KocContractsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a", text: "@#{@koc.ig_username}"
     assert_select "a", text: "@#{other.ig_username}", count: 0
   end
+
+  test "finance 勾已付款會把聯絡狀態改成已合作、已匯款並移出此頁" do
+    sign_in @finance
+    patch koc_contract_path(@koc), params: { koc: { paid: "1" } }
+    assert_redirected_to koc_contracts_path
+    assert_equal "已合作、已匯款", @koc.reload.status
+    get koc_contracts_path
+    assert_select "a", text: "@#{@koc.ig_username}", count: 0
+  end
+
+  test "social 不能勾已付款" do
+    sign_in @social
+    patch koc_contract_path(@koc), params: { koc: { paid: "1" } }
+    assert_equal "合作中", @koc.reload.status
+  end
 end

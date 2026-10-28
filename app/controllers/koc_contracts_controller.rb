@@ -9,11 +9,20 @@ class KocContractsController < ApplicationController
 
   def update
     @koc = Koc.find(params[:id])
-    @koc.update(koc_contract_params)
+    if params.dig(:koc, :paid) == "1"
+      # 財務勾「已付款」＝這筆合作結案，聯絡狀態直接推進到「已合作、已匯款」，人就會離開這頁
+      @koc.update(status: "已合作、已匯款") if can_mark_paid?
+    else
+      @koc.update(koc_contract_params)
+    end
     redirect_back fallback_location: koc_contracts_path, allow_other_host: false, notice: "已更新 #{@koc.ig_username}"
   end
 
   private
+
+  def can_mark_paid?
+    current_user.admin? || current_user.role&.key == "finance"
+  end
 
   def koc_contract_params
     permitted = params.require(:koc).permit(:contract_sent_at, :contract_received_at, :video_posted_at, :ad_start_at, :ad_end_at)
