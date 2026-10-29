@@ -1,4 +1,6 @@
 class KocsController < ApplicationController
+  include KocGiftShipmentActions
+
   PER_PAGE = 10
   LOGISTICS_USERNAME = "crmdata".freeze
 
@@ -23,8 +25,7 @@ class KocsController < ApplicationController
     @status_counts = Koc.group(:status).count
     @shipped_by_status = Koc.pr_gift_shipped.group(:status).count
     @shipped_count = @shipped_by_status.values.sum
-    @shipment_total = KocGiftShipment.count
-    @repeat_shipped_count = KocGiftShipment.group(:koc_id).having("COUNT(*) > 1").count.size
+    load_gift_shipment_stats
 
     @page = [params[:page].to_i, 1].max
     @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max
@@ -71,28 +72,6 @@ class KocsController < ApplicationController
     @koc.update!(hidden: !@koc.hidden?)
     redirect_back fallback_location: kocs_path, allow_other_host: false,
                    notice: @koc.hidden? ? "已隱藏 #{@koc.ig_username}" : "已取消隱藏 #{@koc.ig_username}"
-  end
-
-  # 公關品可能分多次寄出，每次一筆紀錄；跟寄出日期同一組權限（物流部 crmdata、admin）
-  def create_gift_shipment
-    return head :forbidden unless can_edit_logistics_fields?
-
-    @koc = Koc.find(params[:id])
-    shipment = @koc.gift_shipments.new(params.require(:gift_shipment).permit(:shipped_on, :items, :notes))
-    shipment.created_by_user_id = current_user.id
-    if shipment.save
-      redirect_back fallback_location: kocs_path, allow_other_host: false, notice: "已新增 #{@koc.ig_username} 的公關品寄送紀錄"
-    else
-      redirect_back fallback_location: kocs_path, allow_other_host: false, alert: "請填寄出日期"
-    end
-  end
-
-  def destroy_gift_shipment
-    return head :forbidden unless can_edit_logistics_fields?
-
-    @koc = Koc.find(params[:id])
-    @koc.gift_shipments.find(params[:shipment_id]).destroy!
-    redirect_back fallback_location: kocs_path, allow_other_host: false, notice: "已刪除 #{@koc.ig_username} 的一筆公關品寄送紀錄"
   end
 
   private

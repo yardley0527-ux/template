@@ -1,17 +1,20 @@
-# KOC 公關品寄送紀錄，一次寄出一筆，見 CreateKocGiftShipments migration 說明。
+# KOC 公關品寄送紀錄，一次寄出一筆；Koc 與各品牌 KOC 名單共用，
+# 見 CreateKocGiftShipments / MakeKocGiftShipmentsPolymorphic migration 說明。
 class KocGiftShipment < ApplicationRecord
-  belongs_to :koc
+  RECIPIENT_TYPES = %w[Koc ReloveKoc BodyGoalsKoc BetterbioKoc DianbopopoKoc AkimiaKoc MiraeKoc DecopopKoc].freeze
+
+  belongs_to :recipient, polymorphic: true
 
   validates :shipped_on, presence: true
+  validates :recipient_type, inclusion: { in: RECIPIENT_TYPES }
 
-  after_commit :sync_koc_latest_date
+  after_commit :sync_recipient_latest_date
 
   private
 
-  # kocs.pr_gift_shipped_at 存最近一次寄出日期，供「已寄公關品」篩選與統計使用
-  def sync_koc_latest_date
-    return unless Koc.exists?(koc_id)
-
-    Koc.where(id: koc_id).update_all(pr_gift_shipped_at: KocGiftShipment.where(koc_id: koc_id).maximum(:shipped_on))
+  # 名單上的 pr_gift_shipped_at 存最近一次寄出日期，供「已寄公關品」篩選與統計使用
+  def sync_recipient_latest_date
+    latest = KocGiftShipment.where(recipient_type: recipient_type, recipient_id: recipient_id).maximum(:shipped_on)
+    recipient_type.constantize.where(id: recipient_id).update_all(pr_gift_shipped_at: latest)
   end
 end

@@ -78,6 +78,9 @@
           <% shipped_parts = BetterbioKoc::STATUSES.select { |s| @shipped_by_status[s].to_i.positive? }.map { |s| "#{s} #{@shipped_by_status[s]}" } %>
           <%= shipped_parts.any? ? shipped_parts.join("・") : "尚未有人填寄出日期" %>
         </div>
+        <% if @repeat_shipped_count.positive? %>
+          <div class="text-muted small">共寄 <%= @shipment_total %> 次，其中 <%= @repeat_shipped_count %> 人寄過 2 次以上</div>
+        <% end %>
       </div>
     </div>
   </div>
@@ -139,7 +142,7 @@
             <th style="min-width:120px">拍影片狀態</th>
             <th>社群聯絡備註</th>
             <th>物流部備註</th>
-            <th style="min-width:150px">公關品寄出日期</th>
+            <th style="min-width:260px">公關品寄送紀錄</th>
             <th></th>
           </tr>
         </thead>
@@ -248,15 +251,7 @@
                   <span class="small"><%= koc.logistics_notes.presence || "—" %></span>
                 <% end %>
               </td>
-              <td>
-                <% if can_edit_logistics_fields? %>
-                  <%= form_with model: koc, url: betterbio_koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.date_field :pr_gift_shipped_at, value: koc.pr_gift_shipped_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
-                  <% end %>
-                <% else %>
-                  <span class="small"><%= koc.pr_gift_shipped_at&.strftime("%Y-%m-%d") || "—" %></span>
-                <% end %>
-              </td>
+              <%= render "shared/koc_gift_shipments_cell", koc: koc %>
               <td class="text-nowrap">
                 <% if current_user.admin? || current_user.role&.key == "social" %>
                   <%= link_to toggle_hidden_betterbio_koc_path(koc), method: :patch, class: "btn btn-sm btn-outline-secondary", title: koc.hidden? ? "取消隱藏" : "隱藏" do %>

@@ -1,4 +1,6 @@
 class AkimiaKocsController < ApplicationController
+  include KocGiftShipmentActions
+
   PER_PAGE = 10
   LOGISTICS_USERNAME = "crmdata".freeze
 
@@ -22,11 +24,12 @@ class AkimiaKocsController < ApplicationController
     @status_counts = AkimiaKoc.group(:status).count
     @shipped_by_status = AkimiaKoc.pr_gift_shipped.group(:status).count
     @shipped_count = @shipped_by_status.values.sum
+    load_gift_shipment_stats
 
     @page = [params[:page].to_i, 1].max
     @total_pages = [(@kocs.count.to_f / PER_PAGE).ceil, 1].max
     @page = @total_pages if @page > @total_pages
-    @kocs = @kocs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
+    @kocs = @kocs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE).includes(:gift_shipments)
   end
 
   def update_message_template
@@ -74,19 +77,19 @@ class AkimiaKocsController < ApplicationController
     current_user.admin? || current_user.role&.key == "social"
   end
 
-  # 物流部備註／公關品寄出日期只有 crmdata 帳號（物流部）能編輯，admin 維持全權限。
+  # 物流部備註／公關品寄送紀錄只有 crmdata 帳號（物流部）能編輯，admin 維持全權限。
   def can_edit_logistics_fields?
     current_user.admin? || current_user.username == LOGISTICS_USERNAME
   end
 
-  # crmdata（物流部）只能編輯物流部備註／公關品寄出日期，其他欄位一律不能碰。
+  # crmdata（物流部）只能編輯物流部備註／公關品寄送紀錄，其他欄位一律不能碰。
   def can_edit_social_fields?
     current_user.username != LOGISTICS_USERNAME
   end
 
   def koc_params
     permitted = can_edit_social_fields? ? %i[ig_username ig_full_name alias email profile_url status notes follows_chloe_ig follows_official_ig video_shoot_status email_sent] : []
-    permitted += %i[logistics_notes pr_gift_shipped_at] if can_edit_logistics_fields?
+    permitted += %i[logistics_notes] if can_edit_logistics_fields?
 
     params.require(:akimia_koc).permit(*permitted)
   end
