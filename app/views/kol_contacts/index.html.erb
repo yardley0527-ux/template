@@ -140,7 +140,7 @@
               <td class="text-center">
                 <% if can_edit_social_fields? %>
                   <%= form_with model: contact, url: kol_contact_path(contact), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.check_box :follows_chloe_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                    <%= f.check_box :follows_chloe_ig, { class: "form-check-input", style: "position:static;width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                   <% end %>
                 <% else %>
                   <span class="small"><%= contact.follows_chloe_ig? ? "✓" : "—" %></span>
@@ -149,7 +149,7 @@
               <td class="text-center">
                 <% if can_edit_social_fields? %>
                   <%= form_with model: contact, url: kol_contact_path(contact), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.check_box :follows_official_ig, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                    <%= f.check_box :follows_official_ig, { class: "form-check-input", style: "position:static;width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                   <% end %>
                 <% else %>
                   <span class="small"><%= contact.follows_official_ig? ? "✓" : "—" %></span>
@@ -158,7 +158,7 @@
               <td class="text-center">
                 <% if can_edit_social_fields? %>
                   <%= form_with model: contact, url: kol_contact_path(contact), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.check_box :email_sent, { class: "form-check-input", style: "width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
+                    <%= f.check_box :email_sent, { class: "form-check-input", style: "position:static;width:18px;height:18px;cursor:pointer;margin:0;", onchange: "this.form.requestSubmit()" }, "1", "0" %>
                   <% end %>
                 <% else %>
                   <span class="small"><%= contact.email_sent? ? "✓" : "—" %></span>
