@@ -78,6 +78,9 @@
           <% shipped_parts = Koc::STATUSES.select { |s| @shipped_by_status[s].to_i.positive? }.map { |s| "#{s} #{@shipped_by_status[s]}" } %>
           <%= shipped_parts.any? ? shipped_parts.join("・") : "尚未有人填寄出日期" %>
         </div>
+        <% if @repeat_shipped_count.positive? %>
+          <div class="text-muted small">共寄 <%= @shipment_total %> 次，其中 <%= @repeat_shipped_count %> 人寄過 2 次以上</div>
+        <% end %>
       </div>
     </div>
   </div>
@@ -139,7 +142,7 @@
             <th style="min-width:120px">拍影片狀態</th>
             <th>社群聯絡備註</th>
             <th>物流部備註</th>
-            <th style="min-width:150px">公關品寄出日期</th>
+            <th style="min-width:260px">公關品寄送紀錄</th>
             <th></th>
           </tr>
         </thead>
@@ -254,13 +257,35 @@
                   <span class="small"><%= koc.logistics_notes.presence || "—" %></span>
                 <% end %>
               </td>
-              <td>
+              <td style="min-width:260px">
+                <% koc.gift_shipments.each_with_index do |shipment, i| %>
+                  <div class="d-flex align-items-start gap-1 small mb-1">
+                    <span class="badge badge-light border">第 <%= i + 1 %> 次</span>
+                    <div class="flex-grow-1">
+                      <%= shipment.shipped_on.strftime("%Y-%m-%d") %>
+                      <% if shipment.items.present? %><span class="text-muted">・<%= shipment.items %></span><% end %>
+                      <% if shipment.notes.present? %><div class="text-muted"><%= shipment.notes %></div><% end %>
+                    </div>
+                    <% if can_edit_logistics_fields? %>
+                      <%= link_to gift_shipment_koc_path(koc, shipment_id: shipment.id), method: :delete,
+                            data: { confirm: "確定刪除 #{shipment.shipped_on.strftime('%Y-%m-%d')} 這筆寄送紀錄？" },
+                            class: "text-danger", title: "刪除這筆" do %><i class="fal fa-times"></i><% end %>
+                    <% end %>
+                  </div>
+                <% end %>
                 <% if can_edit_logistics_fields? %>
-                  <%= form_with model: koc, url: koc_path(koc), method: :patch, local: true, class: "mb-0" do |f| %>
-                    <%= f.date_field :pr_gift_shipped_at, value: koc.pr_gift_shipped_at, class: "form-control form-control-sm", onchange: "this.form.requestSubmit()" %>
+                  <%= form_with scope: :gift_shipment, url: gift_shipments_koc_path(koc), method: :post, local: true, class: "mb-0 mt-1" do |f| %>
+                    <div class="d-flex gap-1 mb-1">
+                      <%= f.date_field :shipped_on, value: Date.current, class: "form-control form-control-sm", required: true %>
+                      <%= f.text_field :items, class: "form-control form-control-sm", placeholder: "品項，如 代謝錠x1" %>
+                    </div>
+                    <div class="d-flex gap-1">
+                      <%= f.text_field :notes, class: "form-control form-control-sm", placeholder: "備註（選填），如 看成效後加寄" %>
+                      <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"><i class="fal fa-plus"></i> 新增</button>
+                    </div>
                   <% end %>
-                <% else %>
-                  <span class="small"><%= koc.pr_gift_shipped_at&.strftime("%Y-%m-%d") || "—" %></span>
+                <% elsif koc.gift_shipments.empty? %>
+                  <span class="small text-muted">—</span>
                 <% end %>
               </td>
               <td class="text-nowrap">

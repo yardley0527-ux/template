@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_29_100200) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_29_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -732,6 +732,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_29_100200) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["kind", "file_checksum"], name: "index_import_runs_on_kind_and_file_checksum"
+  end
+
+  create_table "koc_gift_shipments", force: :cascade do |t|
+    t.bigint "koc_id", null: false
+    t.date "shipped_on", null: false
+    t.string "items"
+    t.text "notes"
+    t.bigint "created_by_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["koc_id", "shipped_on"], name: "index_koc_gift_shipments_on_koc_id_and_shipped_on"
+    t.index ["koc_id"], name: "index_koc_gift_shipments_on_koc_id"
   end
 
   create_table "koc_message_templates", force: :cascade do |t|
@@ -2017,6 +2029,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_29_100200) do
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"
   add_foreign_key "ig_posts", "ig_profiles"
   add_foreign_key "ig_snapshots", "ig_profiles"
+  add_foreign_key "koc_gift_shipments", "kocs", on_delete: :cascade
   add_foreign_key "kol_buzz_checks", "kol_candidates"
   add_foreign_key "kol_metric_snapshots", "kol_candidates"
   add_foreign_key "kol_quote_items", "kol_candidates"
