@@ -118,37 +118,42 @@ Rails.application.routes.draw do
   get  '/ig_followers',             to: 'ig_followers#index',         as: :ig_followers
   post '/ig_followers/update_now',  to: 'ig_followers#update_now',     as: :update_now_ig_followers
   get  '/ads_dashboard',            to: 'ads_dashboard#index',        as: :ads_dashboard
-  resources :kocs, only: [:index, :create, :update, :destroy] do
-    patch :message_template, on: :collection, action: :update_message_template
-    patch :toggle_hidden, on: :member
-    post :gift_shipments, on: :member, action: :create_gift_shipment
-    delete 'gift_shipments/:shipment_id', on: :member, action: :destroy_gift_shipment, as: :gift_shipment
+  # KOC 名單（/kocs 與各品牌）共用的公關品寄送紀錄，見 KocGiftShipmentActions
+  concern :gift_shippable do
+    member do
+      post :gift_shipments, action: :create_gift_shipment
+      delete 'gift_shipments/:shipment_id', action: :destroy_gift_shipment, as: :gift_shipment
+    end
   end
-  resources :relove_kocs, only: [:index, :create, :update, :destroy] do
-    patch :message_template, on: :collection, action: :update_message_template
-    patch :toggle_hidden, on: :member
-  end
-  resources :body_goals_kocs, only: [:index, :create, :update, :destroy] do
+  resources :kocs, only: [:index, :create, :update, :destroy], concerns: :gift_shippable do
     patch :message_template, on: :collection, action: :update_message_template
     patch :toggle_hidden, on: :member
   end
-  resources :betterbio_kocs, only: [:index, :create, :update, :destroy] do
+  resources :relove_kocs, only: [:index, :create, :update, :destroy], concerns: :gift_shippable do
     patch :message_template, on: :collection, action: :update_message_template
     patch :toggle_hidden, on: :member
   end
-  resources :dianbopopo_kocs, only: [:index, :create, :update, :destroy] do
+  resources :body_goals_kocs, only: [:index, :create, :update, :destroy], concerns: :gift_shippable do
     patch :message_template, on: :collection, action: :update_message_template
     patch :toggle_hidden, on: :member
   end
-  resources :akimia_kocs, only: [:index, :create, :update, :destroy] do
+  resources :betterbio_kocs, only: [:index, :create, :update, :destroy], concerns: :gift_shippable do
     patch :message_template, on: :collection, action: :update_message_template
     patch :toggle_hidden, on: :member
   end
-  resources :mirae_kocs, only: [:index, :create, :update, :destroy] do
+  resources :dianbopopo_kocs, only: [:index, :create, :update, :destroy], concerns: :gift_shippable do
     patch :message_template, on: :collection, action: :update_message_template
     patch :toggle_hidden, on: :member
   end
-  resources :decopop_kocs, only: [:index, :create, :update, :destroy] do
+  resources :akimia_kocs, only: [:index, :create, :update, :destroy], concerns: :gift_shippable do
+    patch :message_template, on: :collection, action: :update_message_template
+    patch :toggle_hidden, on: :member
+  end
+  resources :mirae_kocs, only: [:index, :create, :update, :destroy], concerns: :gift_shippable do
+    patch :message_template, on: :collection, action: :update_message_template
+    patch :toggle_hidden, on: :member
+  end
+  resources :decopop_kocs, only: [:index, :create, :update, :destroy], concerns: :gift_shippable do
     patch :message_template, on: :collection, action: :update_message_template
     patch :toggle_hidden, on: :member
   end

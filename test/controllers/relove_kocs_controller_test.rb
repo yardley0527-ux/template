@@ -59,4 +59,28 @@ class ReloveKocsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, @koc.ig_username
     assert_not_includes response.body, visible_koc.ig_username
   end
+
+  test "品牌 KOC 公關品可以分多次寄出，紀錄跟 /kocs 的同名 id 分開" do
+    sign_in @admin
+    other = Koc.create!(ig_username: "koc_same_id_#{SecureRandom.hex(4)}", source: "手動新增")
+    post gift_shipments_relove_koc_path(@koc), params: { gift_shipment: { shipped_on: "2026-08-21", items: "代謝錠x1" } }
+    post gift_shipments_relove_koc_path(@koc), params: { gift_shipment: { shipped_on: "2026-09-30", notes: "成效好加寄" } }
+
+    assert_equal 2, @koc.reload.gift_shipments.size
+    assert_equal Date.new(2026, 9, 30), @koc.pr_gift_shipped_at
+    assert_empty other.gift_shipments
+    assert_nil other.reload.pr_gift_shipped_at
+
+    get relove_kocs_path(shipped: "1")
+    assert_includes response.body, "第 2 次"
+
+    delete gift_shipment_relove_koc_path(@koc, shipment_id: @koc.gift_shipments.last.id)
+    assert_equal Date.new(2026, 8, 21), @koc.reload.pr_gift_shipped_at
+  end
+
+  test "社群部不能新增品牌 KOC 公關品寄送紀錄" do
+    sign_in @social
+    post gift_shipments_relove_koc_path(@koc), params: { gift_shipment: { shipped_on: "2026-08-21" } }
+    assert_response :forbidden
+  end
 end
