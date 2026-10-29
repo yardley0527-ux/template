@@ -1,13 +1,13 @@
-<% content_for :page_title, "訂單簡報／銷售日報預覽" %>
+<% content_for :page_title, "訂單簡報／銷售日報／SEO 日報預覽" %>
 
 <div class="subheader">
-  <h1 class="subheader-title"><i class="fal fa-file-alt mr-2 text-success"></i> 訂單簡報／銷售日報預覽</h1>
+  <h1 class="subheader-title"><i class="fal fa-file-alt mr-2 text-success"></i> 訂單簡報／銷售日報／SEO 日報預覽</h1>
 </div>
 
 <div class="alert alert-light border small mb-3">
   <i class="fal fa-info-circle mr-1"></i>
   跟 LINE 小幫手發的是同一份報告，但不經過 LINE、不用推播額度。文字按「複製」貼到群組，表格用截圖。
-  訂單簡報給策略部、銷售日報給銷售後台。
+  訂單簡報給策略部、銷售日報給銷售後台、SEO 日報給苼莛國際-總編輯。
 </div>
 
 <div class="panel">
@@ -21,13 +21,33 @@
         </div>
         <button type="submit" name="report" value="brief" class="btn btn-sm btn-primary mr-2" data-disable-with="產生中，請稍等…">產生簡報</button>
         <%# 不加 data-disable-with：按鈕被停用後瀏覽器不會送出它的 report=sales（銷售日報很快，不用防連按） %>
-        <button type="submit" name="report" value="sales" class="btn btn-sm btn-success">產生銷售日報</button>
+        <button type="submit" name="report" value="sales" class="btn btn-sm btn-success mr-2">產生銷售日報</button>
+        <%# SEO 日報同理不加 data-disable-with；勾 AI 重點時也要等約 1 分鐘 %>
+        <button type="submit" name="report" value="seo" class="btn btn-sm btn-info">產生 SEO 日報</button>
       <% end %>
     </div>
   </div>
 </div>
 
-<% if @report&.empty? %>
+<% if params[:report] == "seo" && params[:date].present? %>
+  <% if @seo_text %>
+    <div class="panel">
+      <div class="panel-hdr">
+        <h2><%= @seo_report.report_date.strftime("%-m/%-d") %> SEO 日報</h2>
+        <div class="panel-toolbar">
+          <button type="button" class="btn btn-xs btn-success js-copy" data-target="seo-text">複製</button>
+        </div>
+      </div>
+      <div class="panel-container show">
+        <div class="panel-content">
+          <div id="seo-text" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"><%= @seo_text %></div>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="alert alert-warning"><%= (@day + 1).strftime("%-m/%-d") %> 以前沒有成功的 SEO 報告</div>
+  <% end %>
+<% elsif @report&.empty? %>
   <div class="alert alert-warning"><%= @day.strftime("%-m/%-d") %> 沒有已付款訂單（可能還沒匯入）</div>
 <% elsif @sales %>
   <div class="panel">

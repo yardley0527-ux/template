@@ -51,4 +51,19 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     get order_briefs_path, params: { date: "2026-10-01" }
     assert_includes response.body, "10/1 沒有已付款訂單"
   end
+
+  test "產生 SEO 日報：選昨天會拿到今天早上那份，不需要有訂單" do
+    SeoReport.create!(report_date: Date.new(2026, 10, 2), status: "success", data: {
+      "sites" => { "yardley" => { "data_through" => "2026-09-29", "summary" => { "clicks" => 708 } } }
+    })
+    sign_in @admin
+    get order_briefs_path, params: { date: "2026-10-01", report: "seo", ai: "1" }
+    assert_response :ok
+    assert_includes response.body, "10/2 SEO 日報"
+    assert_includes response.body, "yardley.tw 本週點擊 708"
+    assert_not_includes response.body, "沒有已付款訂單"
+
+    get order_briefs_path, params: { date: "2026-09-01", report: "seo" }
+    assert_includes response.body, "9/2 以前沒有成功的 SEO 報告"
+  end
 end

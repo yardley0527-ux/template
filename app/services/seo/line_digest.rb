@@ -52,8 +52,9 @@ module Seo
       groups.size
     end
 
-    def message
-      ai = ai_commentary
+    # ai: false 給網頁預覽用（不勾 AI 重點時不打 API，只出數字）
+    def message(ai: true)
+      ai = ai ? ai_commentary : nil
       lines = ["📊 SEO 日報 #{@report.report_date.strftime('%-m/%-d')}（資料到 #{data_through_label}）", ""]
       Sites::ALL.each_key do |site|
         lines << site_line(site)
