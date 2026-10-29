@@ -110,4 +110,42 @@ class KocsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, @koc.ig_username
     assert_not_includes response.body, visible_koc.ig_username
   end
+
+  test "公關品可以分多次寄出，最近一次日期同步到 KOC，刪除後退回前一次" do
+    sign_in @admin
+    post gift_shipments_koc_path(@koc), params: { gift_shipment: { shipped_on: "2026-08-21", items: "代謝錠x1" } }
+    post gift_shipments_koc_path(@koc), params: { gift_shipment: { shipped_on: "2026-09-30", items: "代謝錠x2", notes: "成效好加寄" } }
+
+    @koc.reload
+    assert_equal 2, @koc.gift_shipments.size
+    assert_equal Date.new(2026, 9, 30), @koc.pr_gift_shipped_at
+
+    get kocs_path(shipped: "1")
+    assert_includes response.body, "第 2 次"
+    assert_includes response.body, "成效好加寄"
+
+    delete gift_shipment_koc_path(@koc, shipment_id: @koc.gift_shipments.last.id)
+    assert_equal Date.new(2026, 8, 21), @koc.reload.pr_gift_shipped_at
+  end
+
+  test "沒填寄出日期不會新增紀錄" do
+    sign_in @admin
+    assert_no_difference -> { KocGiftShipment.count } do
+      post gift_shipments_koc_path(@koc), params: { gift_shipment: { shipped_on: "", items: "代謝錠x1" } }
+    end
+  end
+
+  test "社群部不能新增公關品寄送紀錄，物流部 crmdata 可以" do
+    sign_in @social
+    post gift_shipments_koc_path(@koc), params: { gift_shipment: { shipped_on: "2026-08-21" } }
+    assert_response :forbidden
+
+    logistics_role = Role.find_or_create_by!(key: "logistics") { |r| r.name = "物流部" }
+    PagePermission.find_or_create_by!(role: logistics_role, controller_name: "kocs")
+    crmdata = User.create!(email: "koc_crmdata@test.com", username: "crmdata", password: "password123", role: logistics_role)
+    sign_in crmdata
+    assert_difference -> { KocGiftShipment.count }, 1 do
+      post gift_shipments_koc_path(@koc), params: { gift_shipment: { shipped_on: "2026-08-21" } }
+    end
+  end
 end

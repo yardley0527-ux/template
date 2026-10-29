@@ -121,6 +121,8 @@ Rails.application.routes.draw do
   resources :kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
     patch :toggle_hidden, on: :member
+    post :gift_shipments, on: :member, action: :create_gift_shipment
+    delete 'gift_shipments/:shipment_id', on: :member, action: :destroy_gift_shipment, as: :gift_shipment
   end
   resources :relove_kocs, only: [:index, :create, :update, :destroy] do
     patch :message_template, on: :collection, action: :update_message_template
