@@ -30,7 +30,7 @@ namespace :ig_inbox do
 
   # 設定用：Graph API Explorer 拿到的使用者權杖（1–2 小時就過期）→ 長效使用者權杖 → 不會過期的 Page token，
   # 印出 META_IG_ACCOUNTS 要填的 JSON。需要 META_APP_ID、META_APP_SECRET。
-  desc "把使用者權杖換成 Page token，印出 META_IG_ACCOUNTS（USER_TOKEN=...）"
+  desc "把使用者權杖換成 Page token，印出 META_IG_ACCOUNTS（USER_TOKEN=... ONLY=chloechao0527）"
   task page_tokens: :environment do
     require "net/http"
     get = ->(path, params) do
@@ -50,6 +50,9 @@ namespace :ig_inbox do
 
       { key: ig["username"], page_id: p["id"], ig_user_id: ig["id"], token: p["access_token"] }
     end
+    # ONLY=chloechao0527：只留這個帳號（逗號分隔可多個）
+    only = ENV["ONLY"].to_s.split(",").map { |k| k.strip.delete_prefix("@").downcase }.compact_blank
+    accounts.select! { |a| only.include?(a[:key].downcase) } if only.any?
     puts "\n找到 #{accounts.size} 個 IG 帳號：#{accounts.map { |a| "@#{a[:key]}" }.join('、')}"
     puts "只留要用的帳號，整串貼到 Render 的 META_IG_ACCOUNTS：\n\n#{accounts.to_json}"
   end
