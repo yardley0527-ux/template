@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_10_29_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_02_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -704,6 +704,37 @@ ActiveRecord::Schema[7.1].define(version: 2026_10_29_130000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["username"], name: "index_ig_profiles_on_username", unique: true
+  end
+
+  create_table "ig_question_digests", force: :cascade do |t|
+    t.date "day", null: false
+    t.string "status", default: "pending", null: false
+    t.text "overview"
+    t.jsonb "suggestions", default: [], null: false
+    t.text "error_message"
+    t.datetime "generated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["day"], name: "index_ig_question_digests_on_day", unique: true
+  end
+
+  create_table "ig_questions", force: :cascade do |t|
+    t.string "account_key", null: false
+    t.string "sheet_gid", default: "", null: false
+    t.integer "sheet_row", null: false
+    t.bigint "subscriber_id"
+    t.string "ig_username"
+    t.string "name"
+    t.text "question", null: false
+    t.datetime "asked_at", null: false
+    t.string "category"
+    t.boolean "sensitive", default: false, null: false
+    t.string "sensitive_reason"
+    t.string "status", default: "open", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_key", "sheet_gid", "sheet_row"], name: "index_ig_questions_uniqueness", unique: true
+    t.index ["asked_at"], name: "index_ig_questions_on_asked_at"
   end
 
   create_table "ig_snapshots", force: :cascade do |t|

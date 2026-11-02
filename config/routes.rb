@@ -51,6 +51,9 @@ Rails.application.routes.draw do
     end
   end
   resources :manychat_sources, only: [:index, :new, :create, :edit, :update]
+  resources :ig_questions, only: [:index, :update] do
+    post :regenerate, on: :collection
+  end
   resources :marketing_campaign_drafts, only: [:index, :show, :create, :edit, :update]
   resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]
 

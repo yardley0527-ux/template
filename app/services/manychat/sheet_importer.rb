@@ -85,11 +85,7 @@ module Manychat
 
     private
 
-    def download(gid)
-      url = "https://docs.google.com/spreadsheets/d/#{@sheet_id}/export?format=csv"
-      url += "&gid=#{gid}" if gid
-      URI.parse(url).open(open_timeout: 15, read_timeout: 60).read.force_encoding("UTF-8")
-    end
+    def download(gid) = self.class.download(@sheet_id, gid)
 
     def save_interactions(events, ids)
       now = Time.current
@@ -113,10 +109,19 @@ module Manychat
       ManychatInteraction.count - before
     end
 
+    def parse_time(value) = self.class.parse_time(value)
+
+    # 下面兩個 QuestionImporter 也會用（同一份試算表的另一個分頁）
+    def self.download(sheet_id, gid)
+      url = "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=csv"
+      url += "&gid=#{gid}" if gid
+      URI.parse(url).open(open_timeout: 15, read_timeout: 60).read.force_encoding("UTF-8")
+    end
+
     # 試算表偶爾把時間存成 Google Sheets 的日期序號（如 46319.3442 = 從 1899/12/30 起算的天數）
     SHEET_EPOCH = Date.new(1899, 12, 30)
 
-    def parse_time(value)
+    def self.parse_time(value)
       v = value.to_s.strip
       return nil if v.blank?
       if v.match?(/\A\d+(\.\d+)?\z/)
