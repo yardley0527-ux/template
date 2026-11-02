@@ -154,7 +154,6 @@ class SidebarEntry
           children: [
             { href: faqs_path, title: "常見問題", icon: "fa-question-circle" },
             { href: manychat_leads_path, title: "ManyChat 新客追蹤", icon: "fa-user-tag" },
-            { href: ig_inbox_index_path, title: "IG 收件匣（待回覆）", icon: "fa-inbox" },
             { href: marketing_opportunities_path, title: "行銷機會", icon: "fa-bullseye-arrow" },
             { href: marketing_campaign_drafts_path, title: "活動草稿", icon: "fa-clipboard-list" },
             { href: manychat_matches_path, title: "ManyChat 身分比對", icon: "fa-id-card" },
