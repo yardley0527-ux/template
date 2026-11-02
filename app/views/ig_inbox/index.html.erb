@@ -1,0 +1,146 @@
+<% content_for :page_title, "IG 收件匣" %>
+<% content_for :head_block do %>
+<style>
+  .ig-bubble { display:inline-block; max-width:85%; padding:6px 10px; border-radius:12px; white-space:pre-line; word-break:break-word; }
+  .ig-customer .ig-bubble { background:#f1f1f1; }
+  .ig-ours { text-align:right; }
+  .ig-ours .ig-bubble { background:#e7f0ff; text-align:left; }
+</style>
+<% end %>
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-inbox mr-2 text-primary"></i> IG 收件匣
+    <small>客人在 IG 私訊、最後一句還沒人回的對話；在這裡回覆會直接從官方 IG 帳號送出</small></h1>
+</div>
+
+<% [:notice, :alert].each do |k| %>
+  <% if flash[k] %><div class="alert alert-<%= k == :notice ? 'success' : 'danger' %>"><%= flash[k] %></div><% end %>
+<% end %>
+
+<% unless @configured %>
+  <div class="alert alert-warning">還沒連上 Meta：Render 需要設定 <code>META_IG_ACCOUNTS</code>，設定好之後這頁會自動開始抓私訊。</div>
+<% end %>
+
+<div class="d-flex align-items-center flex-wrap mb-3" style="gap:12px;">
+  <span class="text-muted small">
+    <% if @last_sync %>
+      上次同步 <%= l(@last_sync.started_at, format: "%m/%d %H:%M") %>
+      <%= { "running" => "（同步中）", "failed" => "（失敗）", "partial" => "（部分失敗）" }[@last_sync.status] %>
+      <% if @last_sync.error_messages.present? %><span class="text-danger"><%= @last_sync.error_messages.first.to_s.truncate(120) %></span><% end %>
+    <% else %>
+      還沒同步過
+    <% end %>
+  </span>
+  <%= button_to "立即同步", sync_ig_inbox_index_path, method: :post, class: "btn btn-sm btn-outline-primary", form: { class: "mb-0" } %>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <ul class="nav nav-tabs mb-3">
+      <% IgInboxController::TABS.each do |key, label| %>
+        <li class="nav-item">
+          <%= link_to ig_inbox_index_path(tab: key), class: "nav-link #{'active' if @tab == key}" do %>
+            <%= label %><% if @counts[key] %> <span class="badge badge-<%= key == 'waiting' ? 'danger' : 'secondary' %>"><%= @counts[key] %></span><% end %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+
+    <% if params[:category].present? %>
+      <p class="small">只看「<%= params[:category] %>」 <%= link_to "顯示全部", ig_inbox_index_path(tab: @tab) %></p>
+    <% end %>
+
+    <% @conversations.each do |c| %>
+      <% window = c.reply_window %>
+      <div class="panel mb-3" id="conversation-<%= c.id %>">
+        <div class="panel-hdr">
+          <h2>
+            <a href="https://www.instagram.com/<%= c.customer_username %>/" target="_blank" rel="noopener"><%= c.display_name %></a>
+            <% if c.category %><span class="badge badge-light ml-2"><%= c.category %></span><% end %>
+            <% if c.sensitive %><span class="badge badge-danger ml-1">⚠️ <%= c.sensitive_reason || "敏感" %></span><% end %>
+          </h2>
+          <div class="panel-toolbar small text-muted">
+            <% if c.last_customer_message_at %>客人 <%= time_ago_in_words(c.last_customer_message_at) %>前傳的<% end %>
+          </div>
+        </div>
+        <div class="panel-container show"><div class="panel-content">
+          <% c.ig_messages.sort_by(&:sent_at).last(6).each do |m| %>
+            <div class="mb-2 <%= m.from_customer ? 'ig-customer' : 'ig-ours' %>">
+              <div class="ig-bubble"><%= m.text %></div>
+              <div class="text-muted" style="font-size:11px;">
+                <%= l(m.sent_at, format: "%m/%d %H:%M") %><%= " · #{m.sent_by_user.username} 從 CRM 回" if m.sent_by_user %>
+              </div>
+            </div>
+          <% end %>
+
+          <% if @tab == "waiting" || @tab == "ignored" %>
+            <% if window == :closed %>
+              <div class="alert alert-secondary small mb-2">客人最後一則訊息超過 7 天，Meta 不允許從系統回覆，請到 IG App 回。</div>
+            <% else %>
+              <%= form_with url: reply_ig_inbox_path(c), method: :post, local: true, class: "mt-2" do %>
+                <textarea name="text" rows="3" class="form-control mb-2" placeholder="輸入回覆，送出後會從官方 IG 帳號傳給客人" required></textarea>
+                <div class="d-flex align-items-center flex-wrap" style="gap:8px;">
+                  <button type="submit" class="btn btn-sm btn-primary" data-disable-with="送出中…">送出回覆</button>
+                  <% if window == :human_agent %>
+                    <span class="small text-muted">已超過 24 小時，會用「真人客服」標記送出（7 天內有效）</span>
+                  <% end %>
+                </div>
+              <% end %>
+            <% end %>
+            <div class="mt-2">
+              <% if c.status == "open" %>
+                <%= button_to "不用回", ig_inbox_path(c), method: :patch, params: { status: "ignored" }, class: "btn btn-xs btn-outline-secondary", form: { class: "d-inline" } %>
+              <% else %>
+                <%= button_to "改回待處理", ig_inbox_path(c), method: :patch, params: { status: "open" }, class: "btn btn-xs btn-outline-secondary", form: { class: "d-inline" } %>
+              <% end %>
+            </div>
+          <% end %>
+        </div></div>
+      </div>
+    <% end %>
+    <% if @conversations.empty? %>
+      <p class="text-muted"><%= @tab == "waiting" ? "目前沒有待回覆的私訊 🎉" : "沒有資料" %></p>
+    <% end %>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="panel"><div class="panel-hdr"><h2>待回覆：依問題類別</h2></div>
+    <div class="panel-container show"><div class="panel-content">
+      <% if @category_counts.any? %>
+        <table class="table table-sm mb-0">
+          <% @category_counts.each do |category, n| %>
+            <tr>
+              <td><%= category ? link_to(category, ig_inbox_index_path(tab: "waiting", category: category)) : "還沒分類" %></td>
+              <td class="text-right fw-700"><%= n %></td>
+            </tr>
+          <% end %>
+        </table>
+      <% else %>
+        <p class="text-muted mb-0">沒有待回覆的私訊</p>
+      <% end %>
+    </div></div></div>
+
+    <div class="panel"><div class="panel-hdr"><h2>每日總結<%= " · #{@digest.day.strftime('%-m/%-d')}" if @digest %></h2></div>
+    <div class="panel-container show"><div class="panel-content">
+      <% if @digest.nil? %>
+        <p class="text-muted mb-0">每天早上 8 點後整理前一天的私訊。</p>
+      <% elsif @digest.status == "pending" %>
+        <p class="text-muted mb-0"><i class="fal fa-spinner fa-spin mr-1"></i> 整理中，約 1–2 分鐘後重新整理頁面。</p>
+      <% elsif @digest.status == "failed" %>
+        <p class="text-danger mb-0">整理失敗：<%= @digest.error_message %></p>
+      <% else %>
+        <p style="white-space:pre-line;"><%= @digest.overview %></p>
+        <% if @digest.suggestions.any? %>
+          <div class="fw-700 mb-1">建議新增的自動回覆／FAQ</div>
+          <ol class="pl-3 mb-2">
+            <% @digest.suggestions.each do |s| %>
+              <li class="mb-2"><strong><%= s["title"] %></strong><br><span class="text-muted small"><%= s["detail"] %></span></li>
+            <% end %>
+          </ol>
+        <% end %>
+      <% end %>
+      <% day = @digest&.day || Date.current - 1 %>
+      <%= button_to "重新整理 #{day.strftime('%-m/%-d')} 總結", regenerate_digest_ig_inbox_index_path(day: day.iso8601), method: :post,
+            class: "btn btn-xs btn-outline-secondary mt-2", form: { class: "mb-0" } %>
+    </div></div></div>
+  </div>
+</div>

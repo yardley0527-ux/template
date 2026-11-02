@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_02_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_02_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -663,6 +663,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_120000) do
     t.index ["identity_key"], name: "index_high_spender_follow_ups_on_identity_key"
   end
 
+  create_table "ig_conversations", force: :cascade do |t|
+    t.string "account_key", null: false
+    t.string "conversation_id", null: false
+    t.string "customer_igsid", null: false
+    t.string "customer_username"
+    t.datetime "last_message_at"
+    t.boolean "awaiting_reply", default: false, null: false
+    t.datetime "last_customer_message_at"
+    t.string "status", default: "open", null: false
+    t.string "category"
+    t.boolean "sensitive", default: false, null: false
+    t.string "sensitive_reason"
+    t.datetime "classified_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_key", "conversation_id"], name: "index_ig_conversations_on_account_key_and_conversation_id", unique: true
+    t.index ["awaiting_reply", "last_customer_message_at"], name: "idx_on_awaiting_reply_last_customer_message_at_1b804402a4"
+  end
+
   create_table "ig_follower_snapshots", force: :cascade do |t|
     t.string "account", null: false
     t.date "snapshot_date", null: false
@@ -670,6 +689,33 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account", "snapshot_date"], name: "index_ig_follower_snapshots_on_account_and_snapshot_date", unique: true
+  end
+
+  create_table "ig_inbox_digests", force: :cascade do |t|
+    t.date "day", null: false
+    t.string "status", default: "pending", null: false
+    t.text "overview"
+    t.jsonb "suggestions", default: [], null: false
+    t.text "error_message"
+    t.datetime "generated_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["day"], name: "index_ig_inbox_digests_on_day", unique: true
+  end
+
+  create_table "ig_messages", force: :cascade do |t|
+    t.bigint "ig_conversation_id", null: false
+    t.string "message_id", null: false
+    t.boolean "from_customer", null: false
+    t.text "text"
+    t.datetime "sent_at", null: false
+    t.bigint "sent_by_user_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ig_conversation_id", "sent_at"], name: "index_ig_messages_on_ig_conversation_id_and_sent_at"
+    t.index ["ig_conversation_id"], name: "index_ig_messages_on_ig_conversation_id"
+    t.index ["message_id"], name: "index_ig_messages_on_message_id", unique: true
+    t.index ["sent_by_user_id"], name: "index_ig_messages_on_sent_by_user_id"
   end
 
   create_table "ig_posts", force: :cascade do |t|
@@ -704,37 +750,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["username"], name: "index_ig_profiles_on_username", unique: true
-  end
-
-  create_table "ig_question_digests", force: :cascade do |t|
-    t.date "day", null: false
-    t.string "status", default: "pending", null: false
-    t.text "overview"
-    t.jsonb "suggestions", default: [], null: false
-    t.text "error_message"
-    t.datetime "generated_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["day"], name: "index_ig_question_digests_on_day", unique: true
-  end
-
-  create_table "ig_questions", force: :cascade do |t|
-    t.string "account_key", null: false
-    t.string "sheet_gid", default: "", null: false
-    t.integer "sheet_row", null: false
-    t.bigint "subscriber_id"
-    t.string "ig_username"
-    t.string "name"
-    t.text "question", null: false
-    t.datetime "asked_at", null: false
-    t.string "category"
-    t.boolean "sensitive", default: false, null: false
-    t.string "sensitive_reason"
-    t.string "status", default: "open", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_key", "sheet_gid", "sheet_row"], name: "index_ig_questions_uniqueness", unique: true
-    t.index ["asked_at"], name: "index_ig_questions_on_asked_at"
   end
 
   create_table "ig_snapshots", force: :cascade do |t|
@@ -2058,6 +2073,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_120000) do
   add_foreign_key "group_buy_detections", "ig_posts"
   add_foreign_key "health_assessment_products", "products"
   add_foreign_key "health_assessment_products", "shopline_customer_health_assessments"
+  add_foreign_key "ig_messages", "ig_conversations"
+  add_foreign_key "ig_messages", "users", column: "sent_by_user_id"
   add_foreign_key "ig_posts", "ig_profiles"
   add_foreign_key "ig_snapshots", "ig_profiles"
   add_foreign_key "kol_buzz_checks", "kol_candidates"
