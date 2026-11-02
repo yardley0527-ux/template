@@ -10,15 +10,25 @@ class LineDigestDeliveryTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 10, 23)..SUNDAY, LineDigestDelivery.pending_days("sales_daily", through: SUNDAY)
   end
 
-  test "從沒發過、或已經發到那天，只報那一天" do
-    assert_equal SUNDAY..SUNDAY, LineDigestDelivery.pending_days("sales_daily", through: SUNDAY)
+  test "平日從沒發過、或已經發到那天，只報那一天" do
+    thursday = Date.new(2026, 10, 22)
+    assert_equal thursday..thursday, LineDigestDelivery.pending_days("sales_daily", through: thursday)
+    LineDigestDelivery.create!(topic: "sales_daily", report_date: thursday)
+    assert_equal thursday..thursday, LineDigestDelivery.pending_days("sales_daily", through: thursday)
     LineDigestDelivery.create!(topic: "sales_daily", report_date: SUNDAY)
     assert_equal SUNDAY..SUNDAY, LineDigestDelivery.pending_days("sales_daily", through: SUNDAY)
   end
 
-  test "很久沒發最多往回 7 天，其他 topic 不影響" do
+  test "之前漏發的不補：上次發到很久以前，平日只報昨天、星期一只報五～日" do
     LineDigestDelivery.create!(topic: "sales_daily", report_date: Date.new(2026, 9, 1))
     LineDigestDelivery.create!(topic: "order_brief", report_date: Date.new(2026, 10, 24))
-    assert_equal Date.new(2026, 10, 19)..SUNDAY, LineDigestDelivery.pending_days("sales_daily", through: SUNDAY)
+    assert_equal Date.new(2026, 10, 23)..SUNDAY, LineDigestDelivery.pending_days("sales_daily", through: SUNDAY)
+    wednesday = Date.new(2026, 10, 28)
+    assert_equal wednesday..wednesday, LineDigestDelivery.pending_days("sales_daily", through: wednesday)
+  end
+
+  test "星期一：五六已經發過就只報日" do
+    LineDigestDelivery.create!(topic: "order_brief", report_date: Date.new(2026, 10, 24))
+    assert_equal SUNDAY..SUNDAY, LineDigestDelivery.pending_days("order_brief", through: SUNDAY)
   end
 end

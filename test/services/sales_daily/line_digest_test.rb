@@ -58,12 +58,13 @@ module SalesDaily
       assert_includes text, "1. PDRN1\n  4 個／3 單｜$10,500"
     end
 
-    test "從上次發的隔天報到昨天（after_import 的算法），記在最後一天" do
+    test "上次發到 10/1、10/2 漏發也不補，只報昨天（after_import 的算法）" do
       LineDigestDelivery.create!(topic: "sales_daily", report_date: Date.new(2026, 10, 1))
       line = FakeLine.new
       assert_equal 1, LineDigest.new(LineDigestDelivery.pending_days("sales_daily", through: DAY), line: line).call
-      assert_includes line.sent.first.last.first, "📊 10/2（五）–10/3（六） SL 訂單"
+      assert line.sent.first.last.first.start_with?("📊 10/3（六） SL 訂單")
       assert LineDigestDelivery.exists?(topic: "sales_daily", report_date: DAY)
+      assert_not LineDigestDelivery.exists?(topic: "sales_daily", report_date: Date.new(2026, 10, 2))
     end
 
     test "只發給有訂閱的群組，同一天只發一次；當天沒訂單不發" do
