@@ -40,21 +40,12 @@ class ReplyAssistantController < ApplicationController
     redirect_to reply_assistant_index_path, notice: "已核准並存入知識庫"
   end
 
-  # 知識庫問答：可修改，過期或不適用的可移除，移除後機器人不再使用。
-  def update_item
+  # 知識庫問答不能修改；過期或不適用的可移除，移除後機器人不再使用。
+  def remove_item
     item = ReplyKnowledgeItem.approved.find(params[:id])
-    back = reply_assistant_index_path(q: params[:q].presence, product: params[:product].presence, topic: params[:topic].presence, anchor: "knowledge")
-
-    if params[:decision] == "reject"
-      item.update!(status: "rejected", reviewed_by_user_id: current_user.id, reviewed_at: Time.current)
-      return redirect_to(back, notice: "已移除，機器人不會再使用這筆答案")
-    end
-
-    item.update!(question: params[:question].to_s.strip, answer: params[:answer].to_s.strip,
-                 reviewed_by_user_id: current_user.id, reviewed_at: Time.current)
-    redirect_to back, notice: "已儲存"
-  rescue ActiveRecord::RecordInvalid
-    redirect_to back, alert: "問題和答案都不能空白"
+    item.update!(status: "rejected", reviewed_by_user_id: current_user.id, reviewed_at: Time.current)
+    redirect_to reply_assistant_index_path(q: params[:q].presence, product: params[:product].presence, topic: params[:topic].presence, anchor: "knowledge"),
+                notice: "已移除，機器人不會再使用這筆答案"
   end
 
   private

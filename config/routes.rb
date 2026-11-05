@@ -59,7 +59,7 @@ Rails.application.routes.draw do
     end
   end
   resources :reply_assistant, only: [:index, :create, :update], controller: "reply_assistant" do
-    patch :update_item, on: :member
+    patch :remove_item, on: :member
   end
   resources :marketing_campaign_drafts, only: [:index, :show, :create, :edit, :update]
   resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]

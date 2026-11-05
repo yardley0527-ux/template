@@ -84,7 +84,7 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     assert_equal "pending", ReplyDraft.last.status
   end
 
-  test "知識庫可以用產品和主題交叉篩選，篩選後仍可修改" do
+  test "知識庫可以用產品和主題交叉篩選，移除後留在原條件" do
     item = ReplyKnowledgeItem.create!(question: "有肌瘤可以吃全能嗎", answer: "可以喔", source: "instagram", status: "approved")
     ReplyKnowledgeItem.create!(question: "有肌瘤可以吃 PDRN 嗎", answer: "可以", source: "instagram", status: "approved")
     ReplyKnowledgeItem.create!(question: "全能可以分期嗎", answer: "可以", source: "instagram", status: "approved")
@@ -94,9 +94,10 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "有肌瘤可以吃 PDRN 嗎"
     assert_not_includes response.body, "全能可以分期嗎"
     assert_includes response.body, "PDRN 1"
+    assert_not_includes response.body, "修改"
 
-    patch update_item_reply_assistant_path(item), params: { decision: "save", question: item.question, answer: "可以，飯後吃", topic: "婦科", product: "全能膠囊" }
-    assert_equal "可以，飯後吃", item.reload.answer
+    patch remove_item_reply_assistant_path(item), params: { topic: "婦科", product: "全能膠囊" }
+    assert_equal "rejected", item.reload.status
     assert_includes response.location, "topic="
   end
 
@@ -119,11 +120,9 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "全能怎麼吃"
   end
 
-  test "移除後機器人不再使用，空白答案不能儲存" do
+  test "移除後機器人不再使用" do
     item = ReplyKnowledgeItem.create!(question: "舊活動", answer: "舊答案", source: "instagram", status: "approved")
-    patch update_item_reply_assistant_path(item), params: { decision: "save", question: "舊活動", answer: "" }
-    assert_equal "舊答案", item.reload.answer
-    patch update_item_reply_assistant_path(item), params: { decision: "reject" }
+    patch remove_item_reply_assistant_path(item)
     assert_equal "rejected", item.reload.status
     assert_not_includes ReplyAssistant::Knowledge.all.map(&:ref), "item:#{item.id}"
   end
