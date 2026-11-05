@@ -65,12 +65,16 @@ class OrderBriefsController < ApplicationController
   end
 
   def returns_report
-    return unless valid_range?(@from, @to)
+    days = returns_days
+    @result_title = ["久未消費黑金卡回來了", range_label(days.first, days.last)]
+    @sales = CrmReturns::LineDigest.new(days).sections
+    @sales_title = "#{range_label(days.first, days.last)} 久未消費黑金卡回來了"
+  end
 
-    @result_title = ["久未消費黑金卡回來了", range_label(@from, @to)]
-    digest = CrmReturns::LineDigest.new(@from..@to)
-    @sales = digest.sections
-    @sales_title = "#{range_label(@from, @to)} 久未消費黑金卡回來了"
+  # 跟 LINE 一樣：星期一選昨天就看五到日（週末不匯入），其他日期看當天
+  def returns_days
+    default = LineReportResendJob.default_days
+    @day == default.last ? default : @day..@day
   end
 
   # 生日名單以週為單位：選「昨天」要拿到今天這週（星期一的昨天是上一週）

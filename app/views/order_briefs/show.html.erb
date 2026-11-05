@@ -21,7 +21,8 @@
     ["brief", "產生簡報", "新舊客、卡別、產品、回購明細；勾 AI 重點要多等約 1 分鐘"],
     ["sales", "產生銷售日報", "當日訂單、月累計、卡別、年齡、熱銷商品"],
     ["seo", "產生 SEO 日報", "點擊、排名與文章健檢；抓選定日隔天以前最新一份"],
-    ["birthdays", "生日名單（本週）", "黑金卡本週生日、3 週內生日的高消費客人"]
+    ["birthdays", "生日名單（本週）", "黑金卡本週生日、3 週內生日的高消費客人"],
+    ["returns", "黑金卡回來了", "上次購買隔 180 天以上的黑金卡；星期一選昨天會看五到日"]
   ]
   range_reports = [
     ["hours", "業績時段＋新舊客", "每個時段的張數、營收、新舊客"],
@@ -64,7 +65,7 @@
             </div>
             <div class="row">
               <% daily_reports.each do |value, label, hint| %>
-                <div class="col-sm-6 col-xl-3 mb-3">
+                <div class="col-sm-6 col-xl mb-3">
                   <%# 只有簡報防連按：按鈕被停用後瀏覽器不會送出它的 report 值，簡報剛好是預設報告 %>
                   <button type="submit" name="report" value="<%= value %>" class="btn btn-sm btn-primary btn-block" <%= 'data-disable-with=產生中，請稍等…' if value == "brief" %>><%= label %></button>
                   <div class="small text-muted mt-1"><%= hint %></div>
@@ -72,19 +73,6 @@
               <% end %>
             </div>
           <% end %>
-
-          <div class="border-top pt-3">
-            <div class="font-weight-bold mb-2">久未消費黑金卡回來了</div>
-            <%= form_with url: order_briefs_path, method: :get, local: true, class: "form-inline" do %>
-              <%= keep_fields.call(:range) %>
-              <%= hidden_field_tag :product, params[:product], id: nil if params[:product].present? %>
-              <%= date_field_tag :from, @from, id: "returns_from", max: Date.current - 1, class: "form-control form-control-sm mr-1 mb-2", "aria-label": "開始日期" %>
-              <span class="mr-1 mb-2">到</span>
-              <%= date_field_tag :to, @to, id: "returns_to", max: Date.current - 1, class: "form-control form-control-sm mr-2 mb-2", "aria-label": "結束日期" %>
-              <button type="submit" name="report" value="returns" class="btn btn-sm btn-primary mr-2 mb-2">產生通知</button>
-              <span class="small text-muted mb-2">上次購買隔 180 天以上的黑金卡；星期一預設五到日</span>
-            <% end %>
-          </div>
         </div>
 
         <div class="tab-pane fade <%= 'show active' if @tab == 'range' %>" id="report-tab-range" role="tabpanel">

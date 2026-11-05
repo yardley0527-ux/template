@@ -69,7 +69,7 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
 
   test "黑金卡回來了、生日名單可以直接在網頁產生" do
     sign_in @admin
-    get order_briefs_path, params: { from: DAY.iso8601, to: DAY.iso8601, report: "returns" }
+    get order_briefs_path, params: { date: DAY.iso8601, report: "returns" }
     assert_response :ok
     assert_includes response.body, "10/22 久未消費黑金卡回來了"
     assert_includes response.body, "這天沒有符合的客人"
@@ -129,7 +129,19 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     get order_briefs_path, params: { report: "unrepurchased", product_list: "PDRN", list_from: "2026-10-01", list_to: DAY.iso8601 }
     assert_select "#report-tab-list.active"
 
-    get order_briefs_path, params: { from: DAY.iso8601, to: DAY.iso8601, report: "returns" }
+    get order_briefs_path, params: { date: DAY.iso8601, report: "returns" }
     assert_select "#report-tab-daily.active"
+  end
+
+  test "黑金卡回來了是每日報告的按鈕；星期一選昨天看五到日" do
+    sign_in @admin
+    get order_briefs_path
+    assert_select "#report-tab-daily button[value=returns]", text: "黑金卡回來了"
+    assert_not_includes response.body, "產生通知"
+
+    travel_to Time.zone.local(2026, 11, 2, 11) do
+      get order_briefs_path, params: { date: "2026-11-01", report: "returns" }
+      assert_includes response.body, "10/30–11/1 久未消費黑金卡回來了"
+    end
   end
 end
