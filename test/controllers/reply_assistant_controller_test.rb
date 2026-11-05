@@ -71,4 +71,25 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     get reply_assistant_index_path
     assert_includes response.body, "API 錯誤"
   end
+
+  test "歷史問答核准前不是候選，核准後才會被使用" do
+    item = ReplyKnowledgeItem.create!(question: "早餐可以吃嗎", answer: "可以喔", source: "instagram", status: "pending")
+    assert_not_includes ReplyAssistant::Knowledge.all.map(&:ref), "item:#{item.id}"
+    get reply_assistant_index_path
+    assert_includes response.body, "待核准的歷史問答"
+
+    patch review_item_reply_assistant_path(item), params: { decision: "approve", question: "早餐可以吃嗎", answer: "可以，飯後吃" }
+    assert_equal "approved", item.reload.status
+    assert_equal "可以，飯後吃", item.answer
+    assert_includes ReplyAssistant::Knowledge.all.map(&:ref), "item:#{item.id}"
+  end
+
+  test "歷史問答不採用後不會被使用，空白答案不能核准" do
+    item = ReplyKnowledgeItem.create!(question: "舊活動", answer: "舊答案", source: "instagram", status: "pending")
+    patch review_item_reply_assistant_path(item), params: { decision: "approve", question: "舊活動", answer: "" }
+    assert_equal "pending", item.reload.status
+    patch review_item_reply_assistant_path(item), params: { decision: "reject" }
+    assert_equal "rejected", item.reload.status
+    assert_not_includes ReplyAssistant::Knowledge.all.map(&:ref), "item:#{item.id}"
+  end
 end

@@ -18,6 +18,23 @@
   <% end %>
 </div></div>
 
+<% if @pending_items.any? %>
+  <h2 class="h5 mt-4">待核准的歷史問答（剩 <%= @pending_count %> 筆）</h2>
+  <p class="text-muted small">來自 Chloe 過去的回覆。核准前機器人不會使用，過期活動或不確定的說法請按不採用。</p>
+  <% @pending_items.each do |item| %>
+    <div class="card mb-3"><div class="card-body">
+      <%= form_with url: review_item_reply_assistant_path(item), method: :patch, local: true do %>
+        <label class="small text-muted mb-1" for="q<%= item.id %>">客人問題</label>
+        <textarea id="q<%= item.id %>" name="question" class="form-control mb-2" rows="2"><%= item.question %></textarea>
+        <label class="small text-muted mb-1" for="a<%= item.id %>">Chloe 回答</label>
+        <textarea id="a<%= item.id %>" name="answer" class="form-control mb-2" rows="4"><%= item.answer %></textarea>
+        <button class="btn btn-success btn-sm" name="decision" value="approve" type="submit">核准</button>
+        <button class="btn btn-outline-secondary btn-sm" name="decision" value="reject" type="submit">不採用</button>
+      <% end %>
+    </div></div>
+  <% end %>
+<% end %>
+
 <% if @drafts.empty? %>
   <p class="text-muted">還沒有測試紀錄。</p>
 <% end %>
