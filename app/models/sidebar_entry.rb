@@ -168,7 +168,7 @@ class SidebarEntry
             { href: users_path,                           title: "使用者管理",       icon: "fa-users" },
             { href: imports_path,                         title: "資料匯入",         icon: "fa-file-upload" },
             { href: line_bot_groups_path,                 title: "LINE 小幫手群組",  icon: "fa-comment-dots" },
-            { href: order_briefs_path,                    title: "簡報／日報預覽",   icon: "fa-file-alt" },
+            { href: order_briefs_path,                    title: "報告中心",        icon: "fa-file-alt" },
           ]
         },
       ]

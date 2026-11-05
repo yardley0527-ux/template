@@ -66,4 +66,50 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     get order_briefs_path, params: { date: "2026-09-01", report: "seo" }
     assert_includes response.body, "9/2 以前沒有成功的 SEO 報告"
   end
+
+  test "黑金卡回來了、生日名單可以直接在網頁產生" do
+    sign_in @admin
+    get order_briefs_path, params: { from: DAY.iso8601, to: DAY.iso8601, report: "returns" }
+    assert_response :ok
+    assert_includes response.body, "10/22 久未消費黑金卡回來了"
+    assert_includes response.body, "這天沒有符合的客人"
+
+    get order_briefs_path, params: { date: DAY.iso8601, report: "birthdays" }
+    assert_response :ok
+    assert_includes response.body, "生日名單"
+    assert_includes response.body, "黑金卡本週生日"
+  end
+
+  test "區間報告都跑得出來；表格可複製" do
+    sign_in @admin
+    { "hours" => "業績時段分佈", "profile" => "客群輪廓", "products" => "產品銷售", "payments" => "付款方式" }.each do |report, title|
+      get order_briefs_path, params: { from: "2026-10-01", to: DAY.iso8601, report: report }
+      assert_response :ok
+      assert_includes response.body, "10/1–10/22 #{title}"
+      assert_includes response.body, "複製表格"
+    end
+  end
+
+  test "區間報告：沒訂單、日期相反、區間太長都提示" do
+    sign_in @admin
+    get order_briefs_path, params: { from: "2026-08-01", to: "2026-08-02", report: "hours" }
+    assert_includes response.body, "8/1–8/2 沒有符合的已付款訂單"
+    get order_briefs_path, params: { from: "2026-10-02", to: "2026-10-01", report: "hours" }
+    assert_includes response.body, "結束日期不能早於開始日期"
+    get order_briefs_path, params: { from: "2024-01-01", to: "2026-10-01", report: "hours" }
+    assert_includes response.body, "一次最多跑 400 天"
+  end
+
+  test "沒回來名單要有產品，結果回報黑名單" do
+    sign_in @admin
+    get order_briefs_path, params: { report: "unrepurchased", product_list: " " }
+    assert_includes response.body, "請輸入產品關鍵字"
+
+    get order_briefs_path, params: { report: "unrepurchased", product_list: "PDRN", list_from: "2026-10-01", list_to: DAY.iso8601,
+                                     audience: "all", min_amount: "0", skip_days: "0" }
+    assert_response :ok
+    assert_includes response.body, "PDRN 買家沒回來名單"
+    assert_includes response.body, "已檢查黑名單，0 人命中"
+    assert_includes response.body, "Amy"
+  end
 end

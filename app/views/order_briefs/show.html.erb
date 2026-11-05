@@ -1,33 +1,86 @@
-<% content_for :page_title, "訂單簡報／銷售日報／SEO 日報預覽" %>
+<% content_for :page_title, "報告中心" %>
 
 <div class="subheader">
-  <h1 class="subheader-title"><i class="fal fa-file-alt mr-2 text-success"></i> 訂單簡報／銷售日報／SEO 日報預覽</h1>
+  <h1 class="subheader-title"><i class="fal fa-file-alt mr-2 text-success"></i> 報告中心</h1>
 </div>
 
 <div class="alert alert-light border small mb-3">
   <i class="fal fa-info-circle mr-1"></i>
-  跟 LINE 小幫手發的是同一份報告，但不經過 LINE、不用推播額度。文字按「複製」貼到群組，表格用截圖。
-  訂單簡報給策略部、銷售日報給銷售後台、SEO 日報給苼莛國際-總編輯。
+  選日期按一下就跑。每日報告跟 LINE 小幫手發的是同一份，但不經過 LINE、不用推播額度；文字按「複製」，表格可複製或截圖。
+  新舊客都看 2024/1 起全部歷史＋IG 分身。
 </div>
 
 <div class="panel">
+  <div class="panel-hdr"><h2>每日報告</h2></div>
   <div class="panel-container show">
     <div class="panel-content">
       <%= form_with url: order_briefs_path, method: :get, local: true, class: "form-inline" do %>
-        <%= date_field_tag :date, @day, max: Date.current - 1, class: "form-control form-control-sm mr-2" %>
-        <div class="custom-control custom-checkbox mr-3">
+        <%= date_field_tag :date, @day, max: Date.current - 1, class: "form-control form-control-sm mr-2 mb-2" %>
+        <div class="custom-control custom-checkbox mr-3 mb-2">
           <%= check_box_tag :ai, "1", params[:date].blank? || params[:ai] == "1", class: "custom-control-input" %>
           <label class="custom-control-label" for="ai">加 AI 重點（多等約 1 分鐘）</label>
         </div>
-        <button type="submit" name="report" value="brief" class="btn btn-sm btn-primary mr-2" data-disable-with="產生中，請稍等…">產生簡報</button>
-        <%# 不加 data-disable-with：按鈕被停用後瀏覽器不會送出它的 report=sales（銷售日報很快，不用防連按） %>
-        <button type="submit" name="report" value="sales" class="btn btn-sm btn-success mr-2">產生銷售日報</button>
+        <button type="submit" name="report" value="brief" class="btn btn-sm btn-primary mr-2 mb-2" data-disable-with="產生中，請稍等…">產生簡報</button>
+        <%# 不加 data-disable-with：按鈕被停用後瀏覽器不會送出它的 report 值（這些報告很快，不用防連按） %>
+        <button type="submit" name="report" value="sales" class="btn btn-sm btn-success mr-2 mb-2">產生銷售日報</button>
         <%# SEO 日報同理不加 data-disable-with；勾 AI 重點時也要等約 1 分鐘 %>
-        <button type="submit" name="report" value="seo" class="btn btn-sm btn-info">產生 SEO 日報</button>
+        <button type="submit" name="report" value="seo" class="btn btn-sm btn-info mr-2 mb-2">產生 SEO 日報</button>
+        <button type="submit" name="report" value="birthdays" class="btn btn-sm btn-outline-primary mb-2">生日名單（本週）</button>
       <% end %>
     </div>
   </div>
 </div>
+
+<div class="panel">
+  <div class="panel-hdr"><h2>區間報告</h2></div>
+  <div class="panel-container show">
+    <div class="panel-content">
+      <%= form_with url: order_briefs_path, method: :get, local: true, class: "form-inline" do %>
+        <%= date_field_tag :from, @from, max: Date.current - 1, class: "form-control form-control-sm mr-1 mb-2", "aria-label": "開始日期" %>
+        <span class="mr-1 mb-2">到</span>
+        <%= date_field_tag :to, @to, max: Date.current - 1, class: "form-control form-control-sm mr-2 mb-2", "aria-label": "結束日期" %>
+        <%= text_field_tag :product, params[:product], placeholder: "只看某產品（可空白）", class: "form-control form-control-sm mr-3 mb-2" %>
+        <button type="submit" name="report" value="returns" class="btn btn-sm btn-dark mr-2 mb-2">黑金卡回來了</button>
+        <button type="submit" name="report" value="hours" class="btn btn-sm btn-primary mr-2 mb-2">業績時段＋新舊客</button>
+        <button type="submit" name="report" value="profile" class="btn btn-sm btn-primary mr-2 mb-2">客群輪廓</button>
+        <button type="submit" name="report" value="products" class="btn btn-sm btn-primary mr-2 mb-2">產品＋組合比例</button>
+        <button type="submit" name="report" value="payments" class="btn btn-sm btn-primary mb-2">付款方式</button>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr"><h2>買了沒回來名單</h2></div>
+  <div class="panel-container show">
+    <div class="panel-content">
+      <%= form_with url: order_briefs_path, method: :get, local: true, class: "form-inline" do %>
+        <%= text_field_tag :product_list, params[:product_list].presence || "PDRN", "aria-label": "產品關鍵字", class: "form-control form-control-sm mr-2 mb-2", style: "width: 110px;" %>
+        <span class="mr-1 mb-2">購買日</span>
+        <%= date_field_tag :list_from, @list_from, max: Date.current - 1, class: "form-control form-control-sm mr-1 mb-2", "aria-label": "購買日開始" %>
+        <span class="mr-1 mb-2">到</span>
+        <%= date_field_tag :list_to, @list_to, max: Date.current - 1, class: "form-control form-control-sm mr-2 mb-2", "aria-label": "購買日結束" %>
+        <%= select_tag :audience, options_for_select([["新客", "new"], ["全部買家", "all"]], params[:audience] || "new"), class: "form-control form-control-sm mr-2 mb-2", "aria-label": "客群" %>
+        <span class="mr-1 mb-2">該次</span>
+        <%= number_field_tag :min_amount, params[:min_amount].presence || 20_000, min: 0, step: 1000, class: "form-control form-control-sm mr-1 mb-2", style: "width: 100px;", "aria-label": "金額門檻" %>
+        <span class="mr-2 mb-2">元以上</span>
+        <span class="mr-1 mb-2">排除近</span>
+        <%= number_field_tag :skip_days, params[:skip_days].presence || 30, min: 0, class: "form-control form-control-sm mr-1 mb-2", style: "width: 70px;", "aria-label": "排除近幾天" %>
+        <span class="mr-3 mb-2">天</span>
+        <div class="custom-control custom-checkbox mr-3 mb-2">
+          <%= check_box_tag :exclude_preorder, "1", params[:exclude_preorder] == "1", class: "custom-control-input" %>
+          <label class="custom-control-label" for="exclude_preorder">排除預購</label>
+        </div>
+        <button type="submit" name="report" value="unrepurchased" class="btn btn-sm btn-warning mb-2">產生名單</button>
+      <% end %>
+      <div class="small text-muted">自動排除黑名單；之後買任何產品都算回來了；只看不灌名單。</div>
+    </div>
+  </div>
+</div>
+
+<% if @error %>
+  <div class="alert alert-warning"><%= @error %></div>
+<% end %>
 
 <% if params[:report] == "seo" && params[:date].present? %>
   <% if @seo_text %>
@@ -52,7 +105,7 @@
 <% elsif @sales %>
   <div class="panel">
     <div class="panel-hdr">
-      <h2><%= @day.strftime("%-m/%-d") %> 銷售日報</h2>
+      <h2><%= @sales_title %></h2>
       <div class="panel-toolbar">
         <button type="button" class="btn btn-xs btn-success js-copy" data-target="sales-all">全部複製</button>
       </div>
@@ -88,8 +141,10 @@
                 <h5 class="mt-2 mb-2 font-weight-bold"><%= bargs[0] %> <small class="text-muted ml-1"><%= bargs[1] %></small></h5>
               <% when :table %>
                 <% header, rows, bold_cols = bargs %>
+                <% table_id = "brief-table-#{i}-#{header.object_id}" %>
+                <div class="text-right mb-1"><button type="button" class="btn btn-xs btn-outline-success js-copy" data-target="<%= table_id %>">複製表格</button></div>
                 <div style="overflow-x:auto;">
-                  <table class="table table-bordered table-sm small mb-3">
+                  <table id="<%= table_id %>" class="table table-bordered table-sm small mb-3">
                     <thead class="thead-light"><tr><% header.each do |h| %><th class="text-nowrap"><%= h %></th><% end %></tr></thead>
                     <tbody>
                       <% rows.each do |row| %>

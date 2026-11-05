@@ -1,32 +1,102 @@
 # frozen_string_literal: true
 
-# 訂單簡報／銷售日報／SEO 日報預覽：選日期在網頁上看整份報告（跟 LINE 發的同一份），自己複製文字、截表格貼到群組。
+# 報告中心：選日期按一下就跑常用報告。訂單簡報／銷售日報／SEO 日報／黑金卡回來了／生日名單跟 LINE 發的是同一份，
+# 另外有區間報告（時段、客群、付款、產品）和沒回來名單。文字自己複製、表格截圖或複製貼到群組。
 # 不經過 LINE，不用推播額度（小幫手免費方案額度用完時也能用）。
 # 沒加進任何角色的 page_permissions，限 admin（同 line_bot_groups）。
 class OrderBriefsController < ApplicationController
+  RANGE_REPORTS = {
+    "hours" => ReportCenter::Hours,
+    "profile" => ReportCenter::Profile,
+    "payments" => ReportCenter::Payments,
+    "products" => ReportCenter::Products
+  }.freeze
+  MAX_RANGE_DAYS = 400 # 區間報告會把訂單載進記憶體，避免選太長把 web 撐爆
+
   def show
     @day = parse_date(params[:date]) || Date.current - 1
-    return if params[:date].blank? # 第一次進來只顯示表單，按「產生簡報」才算（AI 重點要等約 1 分鐘）
+    default = LineReportResendJob.default_days # 星期一預設五～日，其他天昨天
+    @from = parse_date(params[:from]) || default.first
+    @to = parse_date(params[:to]) || default.last
+    @list_from = parse_date(params[:list_from]) || Date.current - 90
+    @list_to = parse_date(params[:list_to]) || Date.current - 1
+    return if params[:date].blank? && params[:report].blank? # 第一次進來只顯示表單，按按鈕才算（AI 重點要等約 1 分鐘）
 
-    if params[:report] == "seo"
-      # SEO 日報是平日早上跑、日期記當天，選「昨天」時要能拿到今天早上那份，所以抓選定日隔天以前最新一份
-      @seo_report = SeoReport.where(status: %w[success partial], report_date: ..(@day + 1)).order(report_date: :desc).first
-      @seo_text = Seo::LineDigest.new(@seo_report).message(ai: params[:ai] == "1") if @seo_report
-      return
+    case params[:report]
+    when "seo" then seo_report
+    when "returns" then returns_report
+    when "birthdays" then birthdays_report
+    when "unrepurchased" then unrepurchased_report
+    when *RANGE_REPORTS.keys then range_report
+    else daily_report
     end
+  end
 
+  private
+
+  def daily_report
     @report = OrderBrief::Report.new(@day)
     return if @report.empty?
 
     if params[:report] == "sales"
       @sales = SalesDaily::LineDigest.new(@day).sections
+      @sales_title = "#{md(@day)} 銷售日報"
     else
       @highlights = OrderBrief::Highlights.call(@report) if params[:ai] == "1"
       @parts = OrderBrief::Sections.new(@report).parts
     end
   end
 
-  private
+  # SEO 日報是平日早上跑、日期記當天，選「昨天」時要能拿到今天早上那份，所以抓選定日隔天以前最新一份
+  def seo_report
+    @seo_report = SeoReport.where(status: %w[success partial], report_date: ..(@day + 1)).order(report_date: :desc).first
+    @seo_text = Seo::LineDigest.new(@seo_report).message(ai: params[:ai] == "1") if @seo_report
+  end
+
+  def returns_report
+    return unless valid_range?(@from, @to)
+
+    digest = CrmReturns::LineDigest.new(@from..@to)
+    @sales = digest.sections
+    @sales_title = "#{range_label(@from, @to)} 久未消費黑金卡回來了"
+  end
+
+  # 生日名單以週為單位：選「昨天」要拿到今天這週（星期一的昨天是上一週）
+  def birthdays_report
+    week = (@day + 1).beginning_of_week
+    @sales = CrmBirthdays::LineDigest.new(week).sections
+    @sales_title = "#{range_label(week, week + 6)} 生日名單"
+  end
+
+  def range_report
+    return unless valid_range?(@from, @to)
+
+    data = ReportCenter::Orders.new(@from..@to, product: params[:product])
+    if data.empty?
+      @error = "#{range_label(@from, @to)} 沒有符合的已付款訂單（可能還沒匯入）"
+    else
+      @parts = RANGE_REPORTS.fetch(params[:report]).new(data).parts
+    end
+  end
+
+  def unrepurchased_report
+    return unless valid_range?(@list_from, @list_to)
+    return @error = "請輸入產品關鍵字，例如 PDRN" if params[:product_list].to_s.strip.blank?
+
+    @parts = ReportCenter::Unrepurchased.new(product: params[:product_list], range: @list_from..@list_to,
+                                             audience: params[:audience], min_amount: params[:min_amount],
+                                             exclude_preorder: params[:exclude_preorder] == "1",
+                                             skip_days: params[:skip_days]).parts
+  end
+
+  def valid_range?(from, to)
+    @error = "結束日期不能早於開始日期" if from > to
+    @error = "一次最多跑 #{MAX_RANGE_DAYS} 天" if (to - from).to_i >= MAX_RANGE_DAYS
+    @error.nil?
+  end
+
+  def range_label(from, to) = from == to ? md(from) : "#{md(from)}–#{md(to)}"
+  def md(date) = "#{date.month}/#{date.day}"
 
   def parse_date(str)
     Date.parse(str.to_s)
