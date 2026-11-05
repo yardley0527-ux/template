@@ -2,7 +2,7 @@
 <% if @refreshing %><% content_for(:head_block) { tag.meta("http-equiv": "refresh", content: "5") } %><% end %>
 <div class="subheader">
   <h1 class="subheader-title"><i class="fal fa-comment-dots mr-2 text-primary"></i> Chloe 回覆助手
-    <small>測試版：不會發訊息給客人。貼上問題後，先找已核准答案，沒有才寫草稿</small></h1>
+    <small>測試版：不會發訊息給客人。有舊答案就直接帶入，沒有才寫草稿等核准</small></h1>
 </div>
 
 <% [:notice, :alert].each do |k| %>
@@ -17,23 +17,6 @@
     <span class="text-muted small ml-2">知識庫：FAQ <%= @faq_count %> 筆、核准問答 <%= @approved_count %> 筆</span>
   <% end %>
 </div></div>
-
-<% if @pending_items.any? %>
-  <h2 class="h5 mt-4">待核准的歷史問答（剩 <%= @pending_count %> 筆）</h2>
-  <p class="text-muted small">來自 Chloe 過去的回覆。核准前機器人不會使用，過期活動或不確定的說法請按不採用。</p>
-  <% @pending_items.each do |item| %>
-    <div class="card mb-3"><div class="card-body">
-      <%= form_with url: review_item_reply_assistant_path(item), method: :patch, local: true do %>
-        <label class="small text-muted mb-1" for="q<%= item.id %>">客人問題</label>
-        <textarea id="q<%= item.id %>" name="question" class="form-control mb-2" rows="2"><%= item.question %></textarea>
-        <label class="small text-muted mb-1" for="a<%= item.id %>">Chloe 回答</label>
-        <textarea id="a<%= item.id %>" name="answer" class="form-control mb-2" rows="4"><%= item.answer %></textarea>
-        <button class="btn btn-success btn-sm" name="decision" value="approve" type="submit">核准</button>
-        <button class="btn btn-outline-secondary btn-sm" name="decision" value="reject" type="submit">不採用</button>
-      <% end %>
-    </div></div>
-  <% end %>
-<% end %>
 
 <% if @drafts.empty? %>
   <p class="text-muted">還沒有測試紀錄。</p>
@@ -53,17 +36,69 @@
     <% when "failed" %>
       <div class="alert alert-danger mb-0">產生失敗：<%= d.error_message %></div>
     <% when "pending" %>
-      <p class="small text-muted mb-1"><%= d.direct_match? ? "已核准答案（原文帶入，來源 #{d.match_ref}）" : (d.match_ref.present? ? "找到舊答案，因敏感問題待確認（來源 #{d.match_ref}）" : "AI 草稿") %></p>
+      <p class="small text-muted mb-1"><%= d.match_ref.present? ? "找到舊答案，因敏感問題待確認（來源 #{d.match_ref}）" : "AI 草稿，待核准" %></p>
       <%= form_with url: reply_assistant_path(d), method: :patch, local: true do %>
         <textarea name="final_answer" class="form-control mb-2" rows="5" aria-label="回覆內容"><%= d.answer %></textarea>
         <button class="btn btn-success btn-sm" name="decision" value="approve" type="submit">核准並存入</button>
         <button class="btn btn-outline-secondary btn-sm" name="decision" value="reject" type="submit">不採用</button>
       <% end %>
     <% when "approved" %>
-      <p class="small text-success mb-1">已核准</p>
+      <p class="small text-success mb-1"><%= d.direct_match? ? "已核准答案（原文帶入，來源 #{d.match_ref}）" : "已核准" %></p>
       <p class="mb-0" style="white-space:pre-line;"><%= d.final_answer %></p>
     <% else %>
       <p class="text-muted mb-0">不採用</p>
     <% end %>
   </div></div>
+<% end %>
+
+<% if @knowledge_total.positive? %>
+  <h2 class="h5 mt-4" id="knowledge">知識庫問答（共 <%= @knowledge_total %> 筆）</h2>
+  <p class="text-muted small">機器人已可使用這些答案。過期活動或只適用單一客人的回答，可以修改或移除。產品和問題可以一起選，一筆可能同時屬於多類，標籤由關鍵字判斷。</p>
+  <% filter_link = lambda do |label, product, topic, active|
+       link_to label, reply_assistant_index_path(product: product, topic: topic, anchor: "knowledge"), class: "btn btn-xs mb-1 #{active ? 'btn-primary' : 'btn-outline-secondary'}"
+     end %>
+  <p class="mb-1 small font-weight-bold">產品</p>
+  <div class="mb-2">
+    <%= filter_link.call("全部", nil, @topic, @product.nil?) %>
+    <% @product_counts.each do |name, count| %>
+      <%= filter_link.call("#{name} #{count}", name, @topic, name == @product) %>
+    <% end %>
+  </div>
+  <p class="mb-1 small font-weight-bold">身體與需求</p>
+  <div class="mb-2">
+    <%= filter_link.call("全部", @product, nil, @topic.nil?) %>
+    <% ReplyAssistant::Category::HEALTH_TOPICS.each do |name| %>
+      <% if @topic_counts[name] %><%= filter_link.call("#{name} #{@topic_counts[name]}", @product, name, name == @topic) %><% end %>
+    <% end %>
+  </div>
+  <p class="mb-1 small font-weight-bold">購買與使用</p>
+  <div class="mb-3">
+    <% (ReplyAssistant::Category::TOPICS.keys - ReplyAssistant::Category::HEALTH_TOPICS).each do |name| %>
+      <% if @topic_counts[name] %><%= filter_link.call("#{name} #{@topic_counts[name]}", @product, name, name == @topic) %><% end %>
+    <% end %>
+  </div>
+  <p class="text-muted small"><%= @knowledge_rows.size > 100 ? "符合 #{@knowledge_rows.size} 筆，顯示前 100 筆，請再選條件" : "符合 #{@knowledge_rows.size} 筆" %></p>
+  <% @knowledge_rows.first(100).each do |item, products, topics| %>
+    <div class="card mb-2"><div class="card-body py-3">
+      <p class="mb-1">
+        <% products.each do |name| %><span class="badge badge-primary"><%= name %></span><% end %>
+        <% topics.each do |name| %><span class="badge badge-secondary"><%= name %></span><% end %>
+      </p>
+      <p class="font-weight-bold mb-1" style="white-space:pre-line;"><%= item.question %></p>
+      <p class="mb-2" style="white-space:pre-line;"><%= item.answer %></p>
+      <details>
+        <summary class="small text-muted">修改或移除</summary>
+        <%= form_with url: update_item_reply_assistant_path(item), method: :patch, local: true, class: "mt-2" do %>
+          <%= hidden_field_tag :product, @product, id: nil %>
+          <%= hidden_field_tag :topic, @topic, id: nil %>
+          <label class="small text-muted mb-1" for="q<%= item.id %>">客人問題</label>
+          <textarea id="q<%= item.id %>" name="question" class="form-control mb-2" rows="2"><%= item.question %></textarea>
+          <label class="small text-muted mb-1" for="a<%= item.id %>">Chloe 回答</label>
+          <textarea id="a<%= item.id %>" name="answer" class="form-control mb-2" rows="4"><%= item.answer %></textarea>
+          <button class="btn btn-primary btn-sm" name="decision" value="save" type="submit">儲存</button>
+          <button class="btn btn-outline-secondary btn-sm" name="decision" value="reject" type="submit">移除</button>
+        <% end %>
+      </details>
+    </div></div>
+  <% end %>
 <% end %>

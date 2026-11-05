@@ -5,8 +5,7 @@ class ReplyAssistantController < ApplicationController
     @refreshing = @drafts.any? { |d| d.status == "generating" }
     @approved_count = ReplyKnowledgeItem.approved.count
     @faq_count = Faq.where.not(answer: [nil, ""]).count
-    @pending_count = ReplyKnowledgeItem.where(status: "pending").count
-    @pending_items = ReplyKnowledgeItem.where(status: "pending").order(:id).limit(10)
+    load_knowledge
   end
 
   def create
@@ -41,20 +40,35 @@ class ReplyAssistantController < ApplicationController
     redirect_to reply_assistant_index_path, notice: "已核准並存入知識庫"
   end
 
-  # 歷史問答：核准後機器人才會使用，可先修改問題和答案。
-  def review_item
-    item = ReplyKnowledgeItem.find(params[:id])
-    return redirect_to(reply_assistant_index_path, alert: "這筆已處理過") unless item.status == "pending"
+  # 知識庫問答：可修改，過期或不適用的可移除，移除後機器人不再使用。
+  def update_item
+    item = ReplyKnowledgeItem.approved.find(params[:id])
+    back = reply_assistant_index_path(product: params[:product].presence, topic: params[:topic].presence, anchor: "knowledge")
 
     if params[:decision] == "reject"
       item.update!(status: "rejected", reviewed_by_user_id: current_user.id, reviewed_at: Time.current)
-      return redirect_to(reply_assistant_index_path, notice: "已標記不採用")
+      return redirect_to(back, notice: "已移除，機器人不會再使用這筆答案")
     end
 
-    item.update!(question: params[:question].to_s.strip, answer: params[:answer].to_s.strip, status: "approved",
+    item.update!(question: params[:question].to_s.strip, answer: params[:answer].to_s.strip,
                  reviewed_by_user_id: current_user.id, reviewed_at: Time.current)
-    redirect_to reply_assistant_index_path, notice: "已核准，機器人之後可以使用這筆答案"
+    redirect_to back, notice: "已儲存"
   rescue ActiveRecord::RecordInvalid
-    redirect_to reply_assistant_index_path, alert: "問題和答案都不能空白"
+    redirect_to back, alert: "問題和答案都不能空白"
+  end
+
+  private
+
+  # 產品和主題可以交叉篩選；每排的數字是套用另一排條件後的筆數。
+  def load_knowledge
+    items = ReplyKnowledgeItem.approved.order(:id).map { |i| [i, i.products, i.topics] }
+    @product = params[:product].presence_in(ReplyAssistant::Category::PRODUCTS.keys)
+    @topic = params[:topic].presence_in(ReplyAssistant::Category::TOPICS.keys)
+    by_topic = @topic ? items.select { |_, _, topics| topics.include?(@topic) } : items
+    by_product = @product ? items.select { |_, products, _| products.include?(@product) } : items
+    @knowledge_total = items.size
+    @product_counts = by_topic.flat_map { |_, products, _| products }.tally.sort_by { |_, n| -n }
+    @topic_counts = by_product.flat_map { |_, _, topics| topics }.tally
+    @knowledge_rows = by_topic & by_product
   end
 end

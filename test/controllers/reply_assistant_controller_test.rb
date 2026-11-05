@@ -72,24 +72,51 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "API 錯誤"
   end
 
-  test "歷史問答核准前不是候選，核准後才會被使用" do
-    item = ReplyKnowledgeItem.create!(question: "早餐可以吃嗎", answer: "可以喔", source: "instagram", status: "pending")
-    assert_not_includes ReplyAssistant::Knowledge.all.map(&:ref), "item:#{item.id}"
-    get reply_assistant_index_path
-    assert_includes response.body, "待核准的歷史問答"
+  test "原文帶入已核准答案不用再核准，AI 草稿仍待核准" do
+    post reply_assistant_index_path, params: { question: "PDRN 一天要吃幾顆" }
+    run_job("match_ref" => "faq:#{@faq.id}", "draft" => "", "needs_human" => false, "human_reason" => "")
+    direct = ReplyDraft.last
+    assert_equal "approved", direct.status
+    assert_equal "每天 6 顆喔", direct.final_answer
 
-    patch review_item_reply_assistant_path(item), params: { decision: "approve", question: "早餐可以吃嗎", answer: "可以，飯後吃" }
-    assert_equal "approved", item.reload.status
-    assert_equal "可以，飯後吃", item.answer
-    assert_includes ReplyAssistant::Knowledge.all.map(&:ref), "item:#{item.id}"
+    post reply_assistant_index_path, params: { question: "可以配咖啡嗎" }
+    run_job("match_ref" => "", "draft" => "草稿", "needs_human" => false, "human_reason" => "")
+    assert_equal "pending", ReplyDraft.last.status
   end
 
-  test "歷史問答不採用後不會被使用，空白答案不能核准" do
-    item = ReplyKnowledgeItem.create!(question: "舊活動", answer: "舊答案", source: "instagram", status: "pending")
-    patch review_item_reply_assistant_path(item), params: { decision: "approve", question: "舊活動", answer: "" }
-    assert_equal "pending", item.reload.status
-    patch review_item_reply_assistant_path(item), params: { decision: "reject" }
+  test "知識庫可以用產品和主題交叉篩選，篩選後仍可修改" do
+    item = ReplyKnowledgeItem.create!(question: "有肌瘤可以吃全能嗎", answer: "可以喔", source: "instagram", status: "approved")
+    ReplyKnowledgeItem.create!(question: "有肌瘤可以吃 PDRN 嗎", answer: "可以", source: "instagram", status: "approved")
+    ReplyKnowledgeItem.create!(question: "全能可以分期嗎", answer: "可以", source: "instagram", status: "approved")
+
+    get reply_assistant_index_path(topic: "婦科", product: "全能膠囊")
+    assert_includes response.body, "有肌瘤可以吃全能嗎"
+    assert_not_includes response.body, "有肌瘤可以吃 PDRN 嗎"
+    assert_not_includes response.body, "全能可以分期嗎"
+    assert_includes response.body, "PDRN 1"
+
+    patch update_item_reply_assistant_path(item), params: { decision: "save", question: item.question, answer: "可以，飯後吃", topic: "婦科", product: "全能膠囊" }
+    assert_equal "可以，飯後吃", item.reload.answer
+    assert_includes response.location, "topic="
+  end
+
+  test "移除後機器人不再使用，空白答案不能儲存" do
+    item = ReplyKnowledgeItem.create!(question: "舊活動", answer: "舊答案", source: "instagram", status: "approved")
+    patch update_item_reply_assistant_path(item), params: { decision: "save", question: "舊活動", answer: "" }
+    assert_equal "舊答案", item.reload.answer
+    patch update_item_reply_assistant_path(item), params: { decision: "reject" }
     assert_equal "rejected", item.reload.status
     assert_not_includes ReplyAssistant::Knowledge.all.map(&:ref), "item:#{item.id}"
+  end
+
+  test "標籤先看問題，健康主題不看答案，一筆可以有多個標籤" do
+    c = ReplyAssistant::Category
+    assert_equal %w[PDRN 全能膠囊], c.products("PDRN 跟全能可以一起吃嗎")
+    assert_includes c.topics("有肌瘤可以吃嗎"), "婦科"
+    assert_includes c.topics("有變瘦的產品嗎"), "瘦身體重"
+    assert_includes c.topics("好的", "放在白天第一餐的飯後"), "吃法與搭配"
+    assert_not_includes c.topics("好的", "我們沒有雌激素"), "婦科"
+    assert_not_includes c.topics("低密度脂肪超標"), "瘦身體重"
+    assert_empty c.topics("哈哈", "謝謝")
   end
 end
