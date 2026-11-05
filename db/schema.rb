@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_02_150000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_05_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1609,6 +1609,35 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_02_150000) do
     t.date "pr_gift_shipped_at"
     t.boolean "hidden", default: false, null: false
     t.index ["ig_username"], name: "index_relove_kocs_on_ig_username", unique: true
+  end
+
+  create_table "reply_drafts", force: :cascade do |t|
+    t.text "question", null: false
+    t.text "answer"
+    t.text "final_answer"
+    t.string "status", default: "generating", null: false
+    t.string "match_ref"
+    t.boolean "needs_human", default: false, null: false
+    t.string "human_reason"
+    t.string "error_message"
+    t.bigint "created_by_user_id"
+    t.bigint "reviewed_by_user_id"
+    t.datetime "reviewed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status", "created_at"], name: "index_reply_drafts_on_status_and_created_at"
+  end
+
+  create_table "reply_knowledge_items", force: :cascade do |t|
+    t.text "question", null: false
+    t.text "answer", null: false
+    t.string "source", default: "chloe", null: false
+    t.string "status", default: "approved", null: false
+    t.bigint "reviewed_by_user_id"
+    t.datetime "reviewed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_reply_knowledge_items_on_status"
   end
 
   create_table "roles", force: :cascade do |t|

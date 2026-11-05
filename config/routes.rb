@@ -58,6 +58,7 @@ Rails.application.routes.draw do
       post :regenerate_digest
     end
   end
+  resources :reply_assistant, only: [:index, :create, :update], controller: "reply_assistant"
   resources :marketing_campaign_drafts, only: [:index, :show, :create, :edit, :update]
   resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]
 
