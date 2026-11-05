@@ -54,8 +54,17 @@
 <% if @knowledge_total.positive? %>
   <h2 class="h5 mt-4" id="knowledge">知識庫問答（共 <%= @knowledge_total %> 筆）</h2>
   <p class="text-muted small">機器人已可使用這些答案。過期活動或只適用單一客人的回答，可以修改或移除。產品和問題可以一起選，一筆可能同時屬於多類，標籤由關鍵字判斷。</p>
+  <%= form_with url: reply_assistant_index_path(anchor: "knowledge"), method: :get, local: true, class: "mb-3" do %>
+    <%= hidden_field_tag :product, @product, id: nil if @product %>
+    <%= hidden_field_tag :topic, @topic, id: nil if @topic %>
+    <div class="input-group">
+      <input type="search" name="q" value="<%= @q %>" class="form-control" placeholder="搜尋問題或答案，例如 淚溝、乳癌、分期" aria-label="搜尋知識庫問答">
+      <div class="input-group-append"><button class="btn btn-primary" type="submit">搜尋</button></div>
+    </div>
+    <% if @q.present? %><%= link_to "清除搜尋", reply_assistant_index_path(product: @product, topic: @topic, anchor: "knowledge"), class: "small" %><% end %>
+  <% end %>
   <% filter_link = lambda do |label, product, topic, active|
-       link_to label, reply_assistant_index_path(product: product, topic: topic, anchor: "knowledge"), class: "btn btn-xs mb-1 #{active ? 'btn-primary' : 'btn-outline-secondary'}"
+       link_to label, reply_assistant_index_path(q: @q.presence, product: product, topic: topic, anchor: "knowledge"), class: "btn btn-xs mb-1 #{active ? 'btn-primary' : 'btn-outline-secondary'}"
      end %>
   <p class="mb-1 small font-weight-bold">產品</p>
   <div class="mb-2">
@@ -84,13 +93,14 @@
         <% products.each do |name| %><span class="badge badge-primary"><%= name %></span><% end %>
         <% topics.each do |name| %><span class="badge badge-secondary"><%= name %></span><% end %>
       </p>
-      <p class="font-weight-bold mb-1" style="white-space:pre-line;"><%= item.question %></p>
-      <p class="mb-2" style="white-space:pre-line;"><%= item.answer %></p>
+      <p class="font-weight-bold mb-1" style="white-space:pre-line;color:#2b2b2b;"><%= item.question %></p>
+      <p class="mb-2" style="white-space:pre-line;color:#14706a;"><%= item.answer %></p>
       <details>
         <summary class="small text-muted">修改或移除</summary>
         <%= form_with url: update_item_reply_assistant_path(item), method: :patch, local: true, class: "mt-2" do %>
           <%= hidden_field_tag :product, @product, id: nil %>
           <%= hidden_field_tag :topic, @topic, id: nil %>
+          <%= hidden_field_tag :q, @q, id: nil %>
           <label class="small text-muted mb-1" for="q<%= item.id %>">客人問題</label>
           <textarea id="q<%= item.id %>" name="question" class="form-control mb-2" rows="2"><%= item.question %></textarea>
           <label class="small text-muted mb-1" for="a<%= item.id %>">Chloe 回答</label>

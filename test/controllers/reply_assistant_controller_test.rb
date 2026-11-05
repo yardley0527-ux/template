@@ -100,6 +100,25 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.location, "topic="
   end
 
+  test "關鍵字搜尋問題和答案，忽略空白大小寫，可搭配篩選" do
+    ReplyKnowledgeItem.create!(question: "淚溝可以改善嗎", answer: "可以參考 P D R N", source: "instagram", status: "approved")
+    ReplyKnowledgeItem.create!(question: "全能怎麼吃", answer: "飯後吃", source: "instagram", status: "approved")
+
+    get reply_assistant_index_path(q: "淚溝")
+    assert_includes response.body, "淚溝可以改善嗎"
+    assert_not_includes response.body, "全能怎麼吃"
+    assert_includes response.body, "清除搜尋"
+
+    get reply_assistant_index_path(q: "pdrn")
+    assert_includes response.body, "淚溝可以改善嗎"
+
+    get reply_assistant_index_path(q: "淚溝 飯後")
+    assert_includes response.body, "符合 0 筆"
+
+    get reply_assistant_index_path(q: "飯後", product: "全能膠囊")
+    assert_includes response.body, "全能怎麼吃"
+  end
+
   test "移除後機器人不再使用，空白答案不能儲存" do
     item = ReplyKnowledgeItem.create!(question: "舊活動", answer: "舊答案", source: "instagram", status: "approved")
     patch update_item_reply_assistant_path(item), params: { decision: "save", question: "舊活動", answer: "" }

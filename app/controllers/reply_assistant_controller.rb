@@ -43,7 +43,7 @@ class ReplyAssistantController < ApplicationController
   # 知識庫問答：可修改，過期或不適用的可移除，移除後機器人不再使用。
   def update_item
     item = ReplyKnowledgeItem.approved.find(params[:id])
-    back = reply_assistant_index_path(product: params[:product].presence, topic: params[:topic].presence, anchor: "knowledge")
+    back = reply_assistant_index_path(q: params[:q].presence, product: params[:product].presence, topic: params[:topic].presence, anchor: "knowledge")
 
     if params[:decision] == "reject"
       item.update!(status: "rejected", reviewed_by_user_id: current_user.id, reviewed_at: Time.current)
@@ -59,16 +59,28 @@ class ReplyAssistantController < ApplicationController
 
   private
 
-  # 產品和主題可以交叉篩選；每排的數字是套用另一排條件後的筆數。
+  # 關鍵字、產品和主題可以一起篩選；每排的數字是套用其他條件後的筆數。
   def load_knowledge
-    items = ReplyKnowledgeItem.approved.order(:id).map { |i| [i, i.products, i.topics] }
+    @q = params[:q].to_s.strip
+    all_items = ReplyKnowledgeItem.approved.order(:id).to_a
+    @knowledge_total = all_items.size
+    items = all_items.select { |i| keyword_match?(i) }.map { |i| [i, i.products, i.topics] }
     @product = params[:product].presence_in(ReplyAssistant::Category::PRODUCTS.keys)
     @topic = params[:topic].presence_in(ReplyAssistant::Category::TOPICS.keys)
     by_topic = @topic ? items.select { |_, _, topics| topics.include?(@topic) } : items
     by_product = @product ? items.select { |_, products, _| products.include?(@product) } : items
-    @knowledge_total = items.size
     @product_counts = by_topic.flat_map { |_, products, _| products }.tally.sort_by { |_, n| -n }
     @topic_counts = by_product.flat_map { |_, _, topics| topics }.tally
     @knowledge_rows = by_topic & by_product
+  end
+
+  # 空白分開的關鍵字都要出現，比對時忽略空白和大小寫（答案常寫成 P D R N）。
+  def keyword_match?(item)
+    text = compact_text("#{item.question}#{item.answer}")
+    @q.split.all? { |word| text.include?(compact_text(word)) }
+  end
+
+  def compact_text(text)
+    text.gsub(/[[:space:]]/, "").downcase
   end
 end
