@@ -10,76 +10,144 @@
   新舊客都看 2024/1 起全部歷史＋IG 分身。
 </div>
 
+<%
+  # 切換分頁再跑別的報告時，其他分頁填過的條件不要被清掉
+  form_fields = { daily: %i[date ai], range: %i[from to product], list: %i[product_list list_from list_to audience min_amount skip_days exclude_preorder] }
+  keep_fields = lambda do |tab|
+    safe_join(form_fields.except(tab).values.flatten.filter_map { |name| hidden_field_tag(name, params[name], id: nil) if params[name].present? })
+  end
+  tabs = { "daily" => "每日報告", "range" => "區間報告", "list" => "沒回來名單" }
+  daily_reports = [
+    ["brief", "產生簡報", "新舊客、卡別、產品、回購明細；勾 AI 重點要多等約 1 分鐘"],
+    ["sales", "產生銷售日報", "當日訂單、月累計、卡別、年齡、熱銷商品"],
+    ["seo", "產生 SEO 日報", "點擊、排名與文章健檢；抓選定日隔天以前最新一份"],
+    ["birthdays", "生日名單（本週）", "黑金卡本週生日、3 週內生日的高消費客人"]
+  ]
+  range_reports = [
+    ["hours", "業績時段＋新舊客", "每個時段的張數、營收、新舊客"],
+    ["profile", "客群輪廓", "新舊客的年齡、縣市、消費級距，舊客卡別"],
+    ["products", "產品＋組合比例", "各產品買家與營收，1/3/5/10 組合佔比、同單加購"],
+    ["payments", "付款方式", "各付款方式佔比、中租期數；跨月有每月佔比"]
+  ]
+%>
+
+<style>
+  .report-table-wrap { overflow-x: auto; }
+  @media (min-width: 992px) {
+    /* 桌機讓表格跟著整頁捲、欄位標題固定在上方（有 overflow 的容器 sticky 會失效）；手機維持左右滑 */
+    .report-table-wrap { overflow-x: visible; }
+    .report-table-wrap thead th { position: sticky; top: var(--report-sticky-top, 0); z-index: 2; }
+  }
+</style>
+
 <div class="panel">
-  <div class="panel-hdr"><h2>每日報告</h2></div>
   <div class="panel-container show">
     <div class="panel-content">
-      <%= form_with url: order_briefs_path, method: :get, local: true, class: "form-inline" do %>
-        <%= date_field_tag :date, @day, max: Date.current - 1, class: "form-control form-control-sm mr-2 mb-2" %>
-        <div class="custom-control custom-checkbox mr-3 mb-2">
-          <%= check_box_tag :ai, "1", params[:date].blank? || params[:ai] == "1", class: "custom-control-input" %>
-          <label class="custom-control-label" for="ai">加 AI 重點（多等約 1 分鐘）</label>
+      <ul class="nav nav-tabs mb-3" role="tablist">
+        <% tabs.each do |key, title| %>
+          <li class="nav-item">
+            <a class="nav-link <%= 'active' if @tab == key %>" data-toggle="tab" href="#report-tab-<%= key %>" role="tab"><%= title %></a>
+          </li>
+        <% end %>
+      </ul>
+
+      <div class="tab-content">
+        <div class="tab-pane fade <%= 'show active' if @tab == 'daily' %>" id="report-tab-daily" role="tabpanel">
+          <%= form_with url: order_briefs_path, method: :get, local: true do %>
+            <%= keep_fields.call(:daily) %>
+            <div class="form-inline mb-3">
+              <%= date_field_tag :date, @day, max: Date.current - 1, class: "form-control form-control-sm mr-3", "aria-label": "日期" %>
+              <div class="custom-control custom-checkbox">
+                <%= check_box_tag :ai, "1", params[:date].blank? || params[:ai] == "1", class: "custom-control-input" %>
+                <label class="custom-control-label" for="ai">加 AI 重點</label>
+              </div>
+            </div>
+            <div class="row">
+              <% daily_reports.each do |value, label, hint| %>
+                <div class="col-sm-6 col-xl-3 mb-3">
+                  <%# 只有簡報防連按：按鈕被停用後瀏覽器不會送出它的 report 值，簡報剛好是預設報告 %>
+                  <button type="submit" name="report" value="<%= value %>" class="btn btn-sm btn-primary btn-block" <%= 'data-disable-with=產生中，請稍等…' if value == "brief" %>><%= label %></button>
+                  <div class="small text-muted mt-1"><%= hint %></div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <div class="border-top pt-3">
+            <div class="font-weight-bold mb-2">久未消費黑金卡回來了</div>
+            <%= form_with url: order_briefs_path, method: :get, local: true, class: "form-inline" do %>
+              <%= keep_fields.call(:range) %>
+              <%= hidden_field_tag :product, params[:product], id: nil if params[:product].present? %>
+              <%= date_field_tag :from, @from, id: "returns_from", max: Date.current - 1, class: "form-control form-control-sm mr-1 mb-2", "aria-label": "開始日期" %>
+              <span class="mr-1 mb-2">到</span>
+              <%= date_field_tag :to, @to, id: "returns_to", max: Date.current - 1, class: "form-control form-control-sm mr-2 mb-2", "aria-label": "結束日期" %>
+              <button type="submit" name="report" value="returns" class="btn btn-sm btn-primary mr-2 mb-2">產生通知</button>
+              <span class="small text-muted mb-2">上次購買隔 180 天以上的黑金卡；星期一預設五到日</span>
+            <% end %>
+          </div>
         </div>
-        <button type="submit" name="report" value="brief" class="btn btn-sm btn-primary mr-2 mb-2" data-disable-with="產生中，請稍等…">產生簡報</button>
-        <%# 不加 data-disable-with：按鈕被停用後瀏覽器不會送出它的 report 值（這些報告很快，不用防連按） %>
-        <button type="submit" name="report" value="sales" class="btn btn-sm btn-success mr-2 mb-2">產生銷售日報</button>
-        <%# SEO 日報同理不加 data-disable-with；勾 AI 重點時也要等約 1 分鐘 %>
-        <button type="submit" name="report" value="seo" class="btn btn-sm btn-info mr-2 mb-2">產生 SEO 日報</button>
-        <button type="submit" name="report" value="birthdays" class="btn btn-sm btn-outline-primary mb-2">生日名單（本週）</button>
-      <% end %>
-    </div>
-  </div>
-</div>
 
-<div class="panel">
-  <div class="panel-hdr"><h2>區間報告</h2></div>
-  <div class="panel-container show">
-    <div class="panel-content">
-      <%= form_with url: order_briefs_path, method: :get, local: true, class: "form-inline" do %>
-        <%= date_field_tag :from, @from, max: Date.current - 1, class: "form-control form-control-sm mr-1 mb-2", "aria-label": "開始日期" %>
-        <span class="mr-1 mb-2">到</span>
-        <%= date_field_tag :to, @to, max: Date.current - 1, class: "form-control form-control-sm mr-2 mb-2", "aria-label": "結束日期" %>
-        <%= text_field_tag :product, params[:product], placeholder: "只看某產品（可空白）", class: "form-control form-control-sm mr-3 mb-2" %>
-        <button type="submit" name="report" value="returns" class="btn btn-sm btn-dark mr-2 mb-2">黑金卡回來了</button>
-        <button type="submit" name="report" value="hours" class="btn btn-sm btn-primary mr-2 mb-2">業績時段＋新舊客</button>
-        <button type="submit" name="report" value="profile" class="btn btn-sm btn-primary mr-2 mb-2">客群輪廓</button>
-        <button type="submit" name="report" value="products" class="btn btn-sm btn-primary mr-2 mb-2">產品＋組合比例</button>
-        <button type="submit" name="report" value="payments" class="btn btn-sm btn-primary mb-2">付款方式</button>
-      <% end %>
-    </div>
-  </div>
-</div>
-
-<div class="panel">
-  <div class="panel-hdr"><h2>買了沒回來名單</h2></div>
-  <div class="panel-container show">
-    <div class="panel-content">
-      <%= form_with url: order_briefs_path, method: :get, local: true, class: "form-inline" do %>
-        <%= text_field_tag :product_list, params[:product_list].presence || "PDRN", "aria-label": "產品關鍵字", class: "form-control form-control-sm mr-2 mb-2", style: "width: 110px;" %>
-        <span class="mr-1 mb-2">購買日</span>
-        <%= date_field_tag :list_from, @list_from, max: Date.current - 1, class: "form-control form-control-sm mr-1 mb-2", "aria-label": "購買日開始" %>
-        <span class="mr-1 mb-2">到</span>
-        <%= date_field_tag :list_to, @list_to, max: Date.current - 1, class: "form-control form-control-sm mr-2 mb-2", "aria-label": "購買日結束" %>
-        <%= select_tag :audience, options_for_select([["新客", "new"], ["全部買家", "all"]], params[:audience] || "new"), class: "form-control form-control-sm mr-2 mb-2", "aria-label": "客群" %>
-        <span class="mr-1 mb-2">該次</span>
-        <%= number_field_tag :min_amount, params[:min_amount].presence || 20_000, min: 0, step: 1000, class: "form-control form-control-sm mr-1 mb-2", style: "width: 100px;", "aria-label": "金額門檻" %>
-        <span class="mr-2 mb-2">元以上</span>
-        <span class="mr-1 mb-2">排除近</span>
-        <%= number_field_tag :skip_days, params[:skip_days].presence || 30, min: 0, class: "form-control form-control-sm mr-1 mb-2", style: "width: 70px;", "aria-label": "排除近幾天" %>
-        <span class="mr-3 mb-2">天</span>
-        <div class="custom-control custom-checkbox mr-3 mb-2">
-          <%= check_box_tag :exclude_preorder, "1", params[:exclude_preorder] == "1", class: "custom-control-input" %>
-          <label class="custom-control-label" for="exclude_preorder">排除預購</label>
+        <div class="tab-pane fade <%= 'show active' if @tab == 'range' %>" id="report-tab-range" role="tabpanel">
+          <%= form_with url: order_briefs_path, method: :get, local: true do %>
+            <%= keep_fields.call(:range) %>
+            <div class="form-inline mb-3">
+              <%= date_field_tag :from, @from, max: Date.current - 1, class: "form-control form-control-sm mr-1", "aria-label": "開始日期" %>
+              <span class="mr-1">到</span>
+              <%= date_field_tag :to, @to, max: Date.current - 1, class: "form-control form-control-sm mr-2", "aria-label": "結束日期" %>
+              <%= text_field_tag :product, params[:product], placeholder: "只看某產品（可空白）", class: "form-control form-control-sm" %>
+            </div>
+            <div class="row">
+              <% range_reports.each do |value, label, hint| %>
+                <div class="col-sm-6 col-xl-3 mb-3">
+                  <button type="submit" name="report" value="<%= value %>" class="btn btn-sm btn-primary btn-block"><%= label %></button>
+                  <div class="small text-muted mt-1"><%= hint %></div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
         </div>
-        <button type="submit" name="report" value="unrepurchased" class="btn btn-sm btn-warning mb-2">產生名單</button>
-      <% end %>
-      <div class="small text-muted">自動排除黑名單；之後買任何產品都算回來了；只看不灌名單。</div>
+
+        <div class="tab-pane fade <%= 'show active' if @tab == 'list' %>" id="report-tab-list" role="tabpanel">
+          <%= form_with url: order_briefs_path, method: :get, local: true do %>
+            <%= keep_fields.call(:list) %>
+            <div class="form-inline">
+              <%= text_field_tag :product_list, params[:product_list].presence || "PDRN", "aria-label": "產品關鍵字", class: "form-control form-control-sm mr-2 mb-2", style: "width: 110px;" %>
+              <span class="mr-1 mb-2">購買日</span>
+              <%= date_field_tag :list_from, @list_from, max: Date.current - 1, class: "form-control form-control-sm mr-1 mb-2", "aria-label": "購買日開始" %>
+              <span class="mr-1 mb-2">到</span>
+              <%= date_field_tag :list_to, @list_to, max: Date.current - 1, class: "form-control form-control-sm mr-2 mb-2", "aria-label": "購買日結束" %>
+              <%= select_tag :audience, options_for_select([["新客", "new"], ["全部買家", "all"]], params[:audience] || "new"), class: "form-control form-control-sm mr-2 mb-2", "aria-label": "客群" %>
+            </div>
+            <div class="form-inline">
+              <span class="mr-1 mb-2">該次</span>
+              <%= number_field_tag :min_amount, params[:min_amount].presence || 20_000, min: 0, step: 1000, class: "form-control form-control-sm mr-1 mb-2", style: "width: 100px;", "aria-label": "金額門檻" %>
+              <span class="mr-3 mb-2">元以上</span>
+              <span class="mr-1 mb-2">排除近</span>
+              <%= number_field_tag :skip_days, params[:skip_days].presence || 30, min: 0, class: "form-control form-control-sm mr-1 mb-2", style: "width: 70px;", "aria-label": "排除近幾天" %>
+              <span class="mr-3 mb-2">天</span>
+              <div class="custom-control custom-checkbox mr-3 mb-2">
+                <%= check_box_tag :exclude_preorder, "1", params[:exclude_preorder] == "1", class: "custom-control-input" %>
+                <label class="custom-control-label" for="exclude_preorder">排除預購</label>
+              </div>
+              <button type="submit" name="report" value="unrepurchased" class="btn btn-sm btn-primary mb-2">產生名單</button>
+            </div>
+            <div class="small text-muted">自動排除黑名單；之後買任何產品都算回來了；同一天多張單算一次購買；只看不灌名單。</div>
+          <% end %>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
+<% if @error || @result_title %>
+  <div id="report-result"></div>
+<% end %>
 <% if @error %>
   <div class="alert alert-warning"><%= @error %></div>
+<% elsif @result_title %>
+  <div class="alert alert-primary py-2 mb-3">
+    目前報告：<strong><%= @result_title.first %></strong>｜<%= @result_title.last %>
+  </div>
 <% end %>
 
 <% if params[:report] == "seo" && params[:date].present? %>
@@ -143,7 +211,7 @@
                 <% header, rows, bold_cols = bargs %>
                 <% table_id = "brief-table-#{i}-#{header.object_id}" %>
                 <div class="text-right mb-1"><button type="button" class="btn btn-xs btn-outline-success js-copy" data-target="<%= table_id %>">複製表格</button></div>
-                <div style="overflow-x:auto;">
+                <div class="report-table-wrap">
                   <table id="<%= table_id %>" class="table table-bordered table-sm small mb-3">
                     <thead class="thead-light"><tr><% header.each do |h| %><th class="text-nowrap"><%= h %></th><% end %></tr></thead>
                     <tbody>
@@ -165,6 +233,19 @@
 <% end %>
 
 <script>
+  (function () {
+    // 跑完直接看到報告；固定的頂部列高度算進欄位標題的黏住位置
+    var header = document.querySelector(".page-header");
+    var fixed = header && getComputedStyle(header).position === "fixed";
+    var top = fixed ? header.offsetHeight : 0;
+    document.documentElement.style.setProperty("--report-sticky-top", top + "px");
+    var result = document.getElementById("report-result");
+    if (result) {
+      result.style.scrollMarginTop = top + 16 + "px";
+      requestAnimationFrame(function () { result.scrollIntoView(); });
+    }
+  })();
+
   if (!window.orderBriefCopyBound) {
     window.orderBriefCopyBound = true;
     document.addEventListener("click", function (e) {

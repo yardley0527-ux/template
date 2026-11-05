@@ -112,4 +112,24 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "已檢查黑名單，0 人命中"
     assert_includes response.body, "Amy"
   end
+
+  test "分頁：跑完留在同一頁，顯示目前報告，其他分頁的條件不清掉" do
+    sign_in @admin
+    get order_briefs_path
+    assert_select "#report-tab-daily.active"
+    assert_select "#report-result", 0
+
+    get order_briefs_path, params: { from: "2026-10-01", to: DAY.iso8601, product: "PDRN", report: "hours", list_from: "2026-09-01" }
+    assert_select "#report-tab-range.active"
+    assert_select "#report-result"
+    assert_includes response.body, "目前報告：<strong>業績時段＋新舊客</strong>｜10/1–10/22｜只看 PDRN"
+    assert_select "#report-tab-daily form input[type=hidden][name=product][value=PDRN]"
+    assert_select "#report-tab-range form input[type=hidden][name=list_from][value=?]", "2026-09-01"
+
+    get order_briefs_path, params: { report: "unrepurchased", product_list: "PDRN", list_from: "2026-10-01", list_to: DAY.iso8601 }
+    assert_select "#report-tab-list.active"
+
+    get order_briefs_path, params: { from: DAY.iso8601, to: DAY.iso8601, report: "returns" }
+    assert_select "#report-tab-daily.active"
+  end
 end

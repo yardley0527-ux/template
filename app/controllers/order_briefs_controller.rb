@@ -11,6 +11,7 @@ class OrderBriefsController < ApplicationController
     "payments" => ReportCenter::Payments,
     "products" => ReportCenter::Products
   }.freeze
+  RANGE_TITLES = { "hours" => "業績時段＋新舊客", "profile" => "客群輪廓", "payments" => "付款方式", "products" => "產品＋組合比例" }.freeze
   MAX_RANGE_DAYS = 400 # 區間報告會把訂單載進記憶體，避免選太長把 web 撐爆
 
   def show
@@ -20,6 +21,7 @@ class OrderBriefsController < ApplicationController
     @to = parse_date(params[:to]) || default.last
     @list_from = parse_date(params[:list_from]) || Date.current - 90
     @list_to = parse_date(params[:list_to]) || Date.current - 1
+    @tab = tab_for(params[:report])
     return if params[:date].blank? && params[:report].blank? # 第一次進來只顯示表單，按按鈕才算（AI 重點要等約 1 分鐘）
 
     case params[:report]
@@ -34,7 +36,15 @@ class OrderBriefsController < ApplicationController
 
   private
 
+  # 跑完留在同一個分頁
+  def tab_for(report)
+    return "range" if RANGE_REPORTS.key?(report)
+
+    report == "unrepurchased" ? "list" : "daily"
+  end
+
   def daily_report
+    @result_title = [params[:report] == "sales" ? "銷售日報" : "訂單簡報", md(@day)]
     @report = OrderBrief::Report.new(@day)
     return if @report.empty?
 
@@ -51,11 +61,13 @@ class OrderBriefsController < ApplicationController
   def seo_report
     @seo_report = SeoReport.where(status: %w[success partial], report_date: ..(@day + 1)).order(report_date: :desc).first
     @seo_text = Seo::LineDigest.new(@seo_report).message(ai: params[:ai] == "1") if @seo_report
+    @result_title = ["SEO 日報", md(@seo_report&.report_date || @day)]
   end
 
   def returns_report
     return unless valid_range?(@from, @to)
 
+    @result_title = ["久未消費黑金卡回來了", range_label(@from, @to)]
     digest = CrmReturns::LineDigest.new(@from..@to)
     @sales = digest.sections
     @sales_title = "#{range_label(@from, @to)} 久未消費黑金卡回來了"
@@ -64,6 +76,7 @@ class OrderBriefsController < ApplicationController
   # 生日名單以週為單位：選「昨天」要拿到今天這週（星期一的昨天是上一週）
   def birthdays_report
     week = (@day + 1).beginning_of_week
+    @result_title = ["生日名單", range_label(week, week + 6)]
     @sales = CrmBirthdays::LineDigest.new(week).sections
     @sales_title = "#{range_label(week, week + 6)} 生日名單"
   end
@@ -71,6 +84,7 @@ class OrderBriefsController < ApplicationController
   def range_report
     return unless valid_range?(@from, @to)
 
+    @result_title = [RANGE_TITLES.fetch(params[:report]), [range_label(@from, @to), params[:product].to_s.strip.presence].compact.join("｜只看 ")]
     data = ReportCenter::Orders.new(@from..@to, product: params[:product])
     if data.empty?
       @error = "#{range_label(@from, @to)} 沒有符合的已付款訂單（可能還沒匯入）"
@@ -83,6 +97,7 @@ class OrderBriefsController < ApplicationController
     return unless valid_range?(@list_from, @list_to)
     return @error = "請輸入產品關鍵字，例如 PDRN" if params[:product_list].to_s.strip.blank?
 
+    @result_title = ["買了沒回來名單", "#{params[:product_list].strip}｜#{range_label(@list_from, @list_to)}"]
     @parts = ReportCenter::Unrepurchased.new(product: params[:product_list], range: @list_from..@list_to,
                                              audience: params[:audience], min_amount: params[:min_amount],
                                              exclude_preorder: params[:exclude_preorder] == "1",
