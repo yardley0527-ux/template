@@ -1,7 +1,7 @@
 # 回覆助手的知識。Chloe 的歷史回覆視為已核准；status=rejected 的不再使用。
 class ReplyKnowledgeItem < ApplicationRecord
   STATUSES = %w[pending approved rejected].freeze
-  SOURCES = %w[chloe voice instagram].freeze
+  SOURCES = %w[chloe voice instagram ig_history].freeze
 
   validates :question, :answer, presence: true
   validates :status, inclusion: { in: STATUSES }

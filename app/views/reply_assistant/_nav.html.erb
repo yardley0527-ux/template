@@ -1,0 +1,5 @@
+<% open_count = IgReviewItem.where(status: "open", kind: IgReviewItem::ACTIONABLE).count %>
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item"><%= link_to "回覆助手與知識庫", reply_assistant_index_path, class: "nav-link #{'active' if active == :assistant}" %></li>
+  <li class="nav-item"><%= link_to ig_reviews_path, class: "nav-link #{'active' if active == :reviews}" do %>IG 私訊整理<% if open_count.positive? %> <span class="badge badge-danger"><%= open_count %></span><% end %><% end %></li>
+</ul>

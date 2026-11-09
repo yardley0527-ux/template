@@ -5,6 +5,8 @@
     <small>測試版：不會發訊息給客人。有舊答案就直接帶入，沒有才寫草稿等核准</small></h1>
 </div>
 
+<%= render "reply_assistant/nav", active: :assistant %>
+
 <% [:notice, :alert].each do |k| %>
   <% if flash[k] %><div class="alert alert-<%= k == :notice ? 'success' : 'danger' %>"><%= flash[k] %></div><% end %>
 <% end %>

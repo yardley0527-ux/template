@@ -137,4 +137,13 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes c.topics("低密度脂肪超標"), "瘦身體重"
     assert_empty c.topics("哈哈", "謝謝")
   end
+
+  test "IG 歷史問答可當知識使用，頁面可切換到 IG 私訊整理" do
+    item = ReplyKnowledgeItem.create!(question: "代謝錠可以泡水嗎（2026-01-28）", answer: "冷水，至少 500cc", source: "ig_history", status: "approved")
+    assert_includes ReplyAssistant::Knowledge.all.map(&:ref), "item:#{item.id}"
+
+    get reply_assistant_index_path
+    assert_response :success
+    assert_includes response.body, ig_reviews_path
+  end
 end
