@@ -23,12 +23,19 @@ class MessageListsController < ApplicationController
   # 每天早上 ops:notifications 自動依「今日待處理」記錄的名單快照，
   # 上面加一個依產品彙總的本週回購成效，跟人工名單（#index）分開顯示。
   def daily
-    @lists = MessageList.daily_snapshot.order(sent_on: :desc, id: :desc).to_a
-    @recipient_counts = MessageListRecipient.group(:message_list_id).count
-    @stats = @lists.to_h { |list| [list.id, build_stats(list, repurchases_for(list))] }
+    all_lists = MessageList.daily_snapshot.order(sent_on: :desc, id: :desc).to_a
+    by_month = all_lists.group_by { |list| list.sent_on.strftime("%Y-%m") }
+    @month_counts = by_month.transform_values(&:size)
+    @month = @month_counts.key?(params[:month]) ? params[:month] : @month_counts.keys.first
+    @lists = by_month.fetch(@month, [])
 
     @week_range = (Date.current - 6)..Date.current
-    @weekly_summary = weekly_summary(@lists, @week_range)
+    week_lists = all_lists.select { |list| @week_range.cover?(list.sent_on) }
+
+    @recipient_counts = MessageListRecipient.group(:message_list_id).count
+    # 本週彙總可能跨月，所以只算「目前月份＋本週」的名單，不用整個歷史都算
+    @stats = (@lists | week_lists).to_h { |list| [list.id, build_stats(list, repurchases_for(list))] }
+    @weekly_summary = weekly_summary(week_lists, @week_range)
   end
 
   def show
