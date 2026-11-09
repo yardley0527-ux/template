@@ -139,6 +139,13 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "IG 私訊整理",
+          group_icon: "fa-clipboard-list-check",
+          children: [
+            { href: ig_reviews_path, title: "待審與知識整理", icon: "fa-clipboard-list-check" },
+          ]
+        },
+        {
           group_title: "業配評估",
           group_icon: "fa-star",
           children: [

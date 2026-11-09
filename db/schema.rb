@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_05_180000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_09_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -750,6 +750,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_05_180000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["username"], name: "index_ig_profiles_on_username", unique: true
+  end
+
+  create_table "ig_review_items", force: :cascade do |t|
+    t.string "source_key", null: false
+    t.string "kind", null: false
+    t.string "severity"
+    t.text "title", null: false
+    t.jsonb "detail", default: {}, null: false
+    t.string "event_codes", default: [], null: false, array: true
+    t.string "customer_name"
+    t.string "customer_email"
+    t.date "as_of"
+    t.string "status", default: "open", null: false
+    t.text "note"
+    t.bigint "handled_by_user_id"
+    t.datetime "handled_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["kind", "status"], name: "index_ig_review_items_on_kind_and_status"
+    t.index ["source_key"], name: "index_ig_review_items_on_source_key", unique: true
   end
 
   create_table "ig_snapshots", force: :cascade do |t|
