@@ -3,7 +3,8 @@ class LivestreamsController < ApplicationController
 
   def index
     @years  = Livestream.pluck(:date).map(&:year).uniq.sort.reverse
-    @selected_year    = params[:year].presence&.to_i
+    @show_all_years   = params[:year] == "all"
+    @selected_year    = selected_year
     @selected_month   = params[:month].presence&.to_i
     @selected_product = params[:product].presence
     @product_options  = CrmProduct.for_analysis.order(:label).pluck(:key, :label)
@@ -77,6 +78,14 @@ class LivestreamsController < ApplicationController
 
   def set_livestream
     @livestream = Livestream.find(params[:id])
+  end
+
+  # 沒指定年份時開今年（今年還沒有場次就開最新一年）；year=all 才看全部。
+  def selected_year
+    return nil if @show_all_years
+    return params[:year].to_i if params[:year].present?
+
+    @years.include?(Date.current.year) ? Date.current.year : @years.first
   end
 
   def filtered_scope

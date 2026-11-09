@@ -20,11 +20,21 @@
   <div class="panel-container show">
     <div class="panel-content">
 
+      <% tab_filters = { month: @selected_month, product: @selected_product }.compact %>
+      <% current_year_param = @show_all_years ? "all" : @selected_year %>
+      <ul class="nav nav-tabs mb-3">
+        <% @years.each do |y| %>
+          <li class="nav-item">
+            <%= link_to "#{y} 年", livestreams_path(tab_filters.merge(year: y)), class: "nav-link #{'active' if @selected_year == y}" %>
+          </li>
+        <% end %>
+        <li class="nav-item">
+          <%= link_to "全部", livestreams_path(tab_filters.merge(year: "all")), class: "nav-link #{'active' if @show_all_years}" %>
+        </li>
+      </ul>
+
       <%= form_with url: livestreams_path, method: :get, local: true, class: "form-inline mb-3" do %>
-        <label class="mr-2 mb-2">年份
-          <%= select_tag :year, options_for_select([["全部", ""]] + @years.map { |y| ["#{y} 年", y] }, @selected_year),
-                class: "form-control form-control-sm ml-1" %>
-        </label>
+        <%= hidden_field_tag :year, current_year_param, id: nil %>
         <label class="mr-2 mb-2">月份
           <%= select_tag :month, options_for_select([["全部", ""]] + (1..12).map { |m| ["#{m} 月", m] }, @selected_month),
                 class: "form-control form-control-sm ml-1" %>
@@ -36,13 +46,13 @@
         <button type="submit" class="btn btn-sm btn-outline-primary mb-2 mr-1">
           <i class="fal fa-search mr-1"></i>篩選
         </button>
-        <%= link_to "清除", livestreams_path, class: "btn btn-sm btn-outline-secondary mb-2" %>
+        <%= link_to "清除", livestreams_path(year: current_year_param), class: "btn btn-sm btn-outline-secondary mb-2" %>
       <% end %>
 
       <% if @livestreams.empty? %>
         <div class="text-center py-5 text-muted">
           <i class="fal fa-video fa-3x mb-3 d-block opacity-25"></i>
-          <% if @selected_year || @selected_month || @selected_product %>
+          <% if @years.any? %>
             篩選條件下沒有場次，<%= link_to "清除篩選", livestreams_path %>
           <% else %>
             尚無直播紀錄，<%= link_to "新增第一場", new_livestream_path %>

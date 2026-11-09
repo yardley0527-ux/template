@@ -61,6 +61,29 @@ class LivestreamsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes @response.body, "品牌之夜：全能"
   end
 
+  test "index 預設只開今年，year=all 才顯示全部年份" do
+    Livestream.create!(date: Date.new(Date.current.year, 1, 2), title: "今年場次", product_keys: ["turmeric"], window_days: 3)
+    sign_in @admin
+
+    get livestreams_path
+    assert_response :success
+    assert_includes @response.body, "今年場次"
+    assert_not_includes @response.body, "品牌之夜：全能"
+
+    get livestreams_path(year: "all")
+    assert_response :success
+    assert_includes @response.body, "今年場次"
+    assert_includes @response.body, "品牌之夜：全能"
+  end
+
+  test "切換年份 tab 會保留產品篩選" do
+    sign_in @admin
+    get livestreams_path(year: 1998, product: "omnipotent")
+    assert_response :success
+    assert_select "a.nav-link.active[href*='year=1998']"
+    assert_select "a.nav-link[href*='year=all'][href*='product=omnipotent']"
+  end
+
   test "index filters by product_keys via GIN-compatible contains query" do
     sign_in @admin
     get livestreams_path(product: "omnipotent")
