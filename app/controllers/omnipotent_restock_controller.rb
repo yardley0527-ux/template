@@ -2,50 +2,11 @@ class OmnipotentRestockController < ApplicationController
   include JourneyProducts
   include MembershipLevels
 
-  REMINDER_BUFFER_DAYS = 7
-
-  CUSTOMER_TYPES = [
-    { key: :vip,    label: "VIP常購客", emoji: "🔵", color: "#1d4ed8", rank: 4, desc: "連續兩波進貨都有回購，且累計 6 瓶以上" },
-    { key: :big,    label: "大套組客",  emoji: "🟠", color: "#ea580c", rank: 3, desc: "累計 6 瓶以上" },
-    { key: :small,  label: "小套組客",  emoji: "🟡", color: "#ca8a04", rank: 2, desc: "累計 3–5 瓶" },
-    { key: :single, label: "單瓶客",    emoji: "🟢", color: "#6b7280", rank: 1, desc: "累計 1–2 瓶" }
-  ].freeze
-
   ATTRIBUTION_WINDOW = 45
 
   before_action :set_product
 
   # ── Main actions ──────────────────────────────────────────────────
-
-  def customer_journey
-    @customer    = ShoplineCustomer.find(params[:id])
-    @omni_orders = ShoplineOrder.where(@product[:sql]).where(email: @customer.email)
-      .order(order_date: :desc)
-      .pluck(:product_name, :order_date, :order_number)
-      .map { |pn, od, on_| { product_name: pn, order_date: od&.to_date, order_number: on_,
-                              bottles: extract_bottles(pn, @product), source_event: source_event_label(od&.to_date) } }
-    @contact_history = OmnipotentNotificationStatus
-      .where(email: @customer.email, product_key: @product_key).order(reference_date: :desc)
-    if @omni_orders.any?
-      latest = @omni_orders.first
-      b = latest[:bottles]; bought = latest[:order_date]; exp = expected_days(b, @product)
-      @journey = {
-        bought_date:             bought,             bottles:      b,
-        product_name:            latest[:product_name],
-        source_event:            latest[:source_event],
-        estimated_finish_date:   bought + b * 30,
-        expected_return_date:    bought + exp,
-        suggested_reminder_date: bought + exp - REMINDER_BUFFER_DAYS,
-        days_left:               (bought + exp - Date.today).to_i,
-        days_until_reminder:     (bought + exp - REMINDER_BUFFER_DAYS - Date.today).to_i
-      }
-      tb = @omni_orders.sum { |o| o[:bottles] }
-      cross_wave_repeat   = WaveRepeatCalculator.call(@product[:sql]).fetch(@customer.email, false)
-      @customer_type      = resolve_customer_type(cross_wave_repeat, tb)
-      @total_omni_bottles = tb
-      @omni_count         = @omni_orders.size
-    end
-  end
 
   # ── Analytics ─────────────────────────────────────────────────────
 
@@ -179,36 +140,7 @@ class OmnipotentRestockController < ApplicationController
 
   private
 
-  # 沒帶 ?product= 時：合併所有 in_stock: true 產品的「今日應聯絡」名單。
-  #
-  # 篩選/名單產生仍以 JourneyProducts.in_stock（手動維護旗標）為準——
-  # crm_products.availability_status 這 13 個產品目前全部是 unknown（Gate 3
-  # 2026-07-21 查證），尚未有任何一個經人工確認，若這時把「是否要不要產生名單」
-  # 這種判斷切到 crm_products，等於用一個全新表全部都是「未確認」的訊號去關掉
-  # 現在正常運作的名單產生（等同一次靜默 regression）。crm_availability_status
-  # 只做「附加顯示」用──在名單上多秀一個徽章，讓使用者知道 CRM 庫存表對這個
-
   # ── Helpers ────────────────────────────────────────────────────────
-
-  def resolve_customer_type(cross_wave_repeat, total_bottles)
-    if cross_wave_repeat && total_bottles >= 6
-      CUSTOMER_TYPES.find { |t| t[:key] == :vip }
-    elsif total_bottles >= 6
-      CUSTOMER_TYPES.find { |t| t[:key] == :big }
-    elsif total_bottles >= 3
-      CUSTOMER_TYPES.find { |t| t[:key] == :small }
-    else
-      CUSTOMER_TYPES.find { |t| t[:key] == :single }
-    end
-  end
-
-  def source_event_label(bought_date)
-    return "一般購買" unless bought_date
-    event = OmnipotentAnalysisController::OMNI_EVENTS.find do |e|
-      (e[:date]..(e[:date] + 3)).cover?(bought_date)
-    end
-    event ? "#{event[:year]}/#{event[:label]}" : "一般購買"
-  end
 
   def extract_bottles(product_name, product)
     return 1 if product_name.nil?

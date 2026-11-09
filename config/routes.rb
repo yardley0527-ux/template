@@ -228,14 +228,12 @@ Rails.application.routes.draw do
   get   '/crm/analytics/broadcasts',   to: redirect { |_params, req|
     ["/livestream_strategy/sources", req.query_string.presence].compact.join("?")
   }, as: :crm_broadcasts
-  get   '/crm/customer/:id',           to: 'omnipotent_restock#customer_journey',      as: :crm_customer_journey
 
   # ── 舊路由保留（向後相容）────────────────────────────────────────────
   get   '/omnipotent_restock/roi_dashboard',           to: 'omnipotent_restock#roi_dashboard',        as: :omnipotent_restock_roi_dashboard
   get   '/omnipotent_restock/journey_accuracy',        to: 'omnipotent_restock#journey_accuracy',     as: :omnipotent_restock_journey_accuracy
   get   '/omnipotent_restock/crm_analysis',            to: 'omnipotent_restock#crm_analysis',         as: :omnipotent_restock_crm_analysis
   get   '/omnipotent_restock/broadcast_performance',   to: 'omnipotent_restock#broadcast_performance', as: :omnipotent_restock_broadcast_performance
-  get   '/omnipotent_restock/customer_journey/:id',    to: 'omnipotent_restock#customer_journey',     as: :omnipotent_restock_customer_journey
   get 'customers/export_inactive',         to: 'customers#export_inactive',         as: :export_inactive_customers
   get 'customers/export_credits_expiring', to: 'customers#export_credits_expiring', as: :export_credits_expiring_customers
 
