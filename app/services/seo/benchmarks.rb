@@ -53,9 +53,13 @@ module Seo
     end
 
     def self.ga_sum(rows)
-      { sessions: rows.sum(:ga_sessions).to_i, purchases: rows.sum(:ga_purchases).to_i, revenue: rows.sum(:ga_revenue).to_f.round,
-        referred_sessions: rows.sum(:referred_sessions).to_i, referred_purchases: rows.sum(:referred_purchases).to_i,
-        referred_revenue: rows.sum(:referred_revenue).to_f.round }
+      sessions, purchases, revenue, referred_sessions, referred_purchases, referred_revenue = rows.pick(
+        Arel.sql("SUM(ga_sessions)"), Arel.sql("SUM(ga_purchases)"), Arel.sql("SUM(ga_revenue)"),
+        Arel.sql("SUM(referred_sessions)"), Arel.sql("SUM(referred_purchases)"), Arel.sql("SUM(referred_revenue)")
+      )
+      { sessions: sessions.to_i, purchases: purchases.to_i, revenue: revenue.to_f.round,
+        referred_sessions: referred_sessions.to_i, referred_purchases: referred_purchases.to_i,
+        referred_revenue: referred_revenue.to_f.round }
     end
 
     def baselines
@@ -85,13 +89,17 @@ module Seo
     private
 
     def window(range)
-      rows = SeoDailyMetric.for_site(@site).where(date: range)
-      clicks = rows.sum(:clicks)
-      impressions = rows.sum(:impressions)
-      { clicks: clicks, impressions: impressions,
-        ctr: impressions.positive? ? (clicks.to_f / impressions).round(4) : nil,
-        position: impressions.positive? ? (rows.sum("position * impressions").to_f / impressions).round(1) : nil,
-        days: rows.count }
+      @windows ||= {}
+      @windows[range] ||= begin
+        clicks, impressions, weighted_position, days = SeoDailyMetric.for_site(@site).where(date: range).pick(
+          Arel.sql("COALESCE(SUM(clicks), 0)"), Arel.sql("COALESCE(SUM(impressions), 0)"),
+          Arel.sql("SUM(position * impressions)"), Arel.sql("COUNT(*)")
+        )
+        { clicks: clicks, impressions: impressions,
+          ctr: impressions.positive? ? (clicks.to_f / impressions).round(4) : nil,
+          position: impressions.positive? ? (weighted_position.to_f / impressions).round(1) : nil,
+          days: days }
+      end
     end
 
     def weekly_average(range)

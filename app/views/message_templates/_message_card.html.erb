@@ -1,5 +1,5 @@
 <%
-  blocks_data = template.message_template_blocks.includes(:message_template_images).map do |blk|
+  blocks_data = template.message_template_blocks.map do |blk|
     {
       id:      blk.id,
       type:    blk.block_type,
@@ -24,7 +24,7 @@
           <div class="text-muted small font-weight-bold mb-1"><%= template.title %></div>
         <% end %>
 
-        <% template.message_template_blocks.includes(:message_template_images).each do |blk| %>
+        <% template.message_template_blocks.each do |blk| %>
           <% if blk.block_type == "text" %>
             <div class="d-flex align-items-start mb-1">
               <pre class="flex-grow-1 mb-0"

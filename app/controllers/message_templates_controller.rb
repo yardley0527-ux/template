@@ -43,18 +43,24 @@ class MessageTemplatesController < ApplicationController
     @template = MessageTemplate.find(params[:id])
   end
 
+  # 所有範本（含區塊、圖片）一次載入再分組，不要每個分類各查一次。
   def build_categories
+    grouped = MessageTemplate.where(category_key: MessageTemplate::CATEGORY_ORDER)
+      .includes(message_template_blocks: :message_template_images)
+      .order(:position)
+      .group_by { |t| [t.category_key, t.subcategory] }
+
     MessageTemplate::CATEGORY_ORDER.map do |key|
       meta = MessageTemplate::CATEGORY_META[key]
       next unless meta
 
       if (sub_names = MessageTemplate::SUBCATEGORY_MAP[key])
         subcategories = sub_names.map do |sub_name|
-          { name: sub_name, templates: MessageTemplate.in_category(key, sub_name) }
+          { name: sub_name, templates: grouped.fetch([key, sub_name], []) }
         end
         { key: key, title: meta[:title], icon: meta[:icon], description: meta[:description], subcategories: subcategories }
       else
-        { key: key, title: meta[:title], icon: meta[:icon], description: meta[:description], templates: MessageTemplate.in_category(key) }
+        { key: key, title: meta[:title], icon: meta[:icon], description: meta[:description], templates: grouped.fetch([key, nil], []) }
       end
     end.compact
   end
