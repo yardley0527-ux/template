@@ -10,7 +10,7 @@ module OrderBrief
 
     def overview_text
       s = @r.summary
-      lines = ["#{md(@r.day)} 全天共 #{s[:people]} 人下單、#{s[:orders]} 張單，營收 #{money(s[:revenue])}",
+      lines = ["#{@r.label} #{'全天' unless @r.multi_day?}共 #{s[:people]} 人下單、#{s[:orders]} 張單，營收 #{money(s[:revenue])}",
                "新客 #{s[:new_people]} 人、#{s[:new_orders]} 張單，營收 #{money(s[:new_revenue])}，占 #{s[:new_share]}%",
                "舊客 #{s[:old_people]} 人、#{s[:old_orders]} 張單，營收 #{money(s[:old_revenue])}",
                "", "依卡別分："]
@@ -33,7 +33,7 @@ module OrderBrief
     def parts
       images = image_sections
       long = images.pop if @r.long_gap.any?
-      list = [[:text, "📦 #{md(@r.day)} 訂單簡報\n\n#{overview_text}"]]
+      list = [[:text, "📦 #{@r.label} 訂單簡報\n\n#{overview_text}"]]
       images.each_with_index { |(title, blocks), i| list << [:image, "focus#{i}", title, blocks] }
       list << [:text, others_text] if others_text
       list << [:image, "long_gap", *long] if long
@@ -53,7 +53,7 @@ module OrderBrief
         list << ["很久沒回來買的（≥#{Report::LONG_GAP} 天）（#{long.size} 人次）", [
           [:heading, "很久沒回來買的（≥#{Report::LONG_GAP} 天）（#{long.size} 人次）", "隔幾天＝距離任何品項的上一單"],
           [:table, %w[下單日 客人 卡別 這次買 整單 上次消費 隔幾天 上次買什麼 以前買過],
-           long.map { |e| [md(@r.day), e[:name], e[:level], e[:today], money(e[:amount]), md(e[:last_date]), "#{e[:gap]} 天", e[:last_items], "#{e[:times]} 次"] }, [6]]
+           long.map { |e| [md(e[:order_date]), e[:name], e[:level], e[:today], money(e[:amount]), md(e[:last_date]), "#{e[:gap]} 天", e[:last_items], "#{e[:times]} 次"] }, [6]]
         ]]
       end
       list
@@ -81,12 +81,12 @@ module OrderBrief
       if f[:repeat].any?
         last_col = series == "PDRN" ? "備註" : "最近一次消費"
         blocks << [:heading, "回購 #{series}（#{f[:repeat].size} 人）", "依「多久沒回來」排序"]
-        blocks << [:table, ["客人", "卡別", "今天買", "整單", "上次買 #{series}", "隔幾天", last_col],
+        blocks << [:table, ["客人", "卡別", bought_col, "整單", "上次買 #{series}", "隔幾天", last_col],
                    f[:repeat].map { |e| [e[:name], e[:level], e[:today], money(e[:amount]), "#{md(e[:last_date])}（#{e[:last_items]}）", "#{e[:gap]} 天", e[:note]] }, [5]]
       end
       if f[:first].any?
         blocks << [:heading, "舊客第一次買 #{series}（#{f[:first].size} 人）", "依「多久沒來」排序"]
-        blocks << [:table, %w[客人 卡別 今天買 整單 上次消費 隔幾天 上次買什麼],
+        blocks << [:table, ["客人", "卡別", bought_col, "整單", "上次消費", "隔幾天", "上次買什麼"],
                    f[:first].map { |e| [e[:name], e[:level], e[:today], money(e[:amount]), md(e[:last_date]), "#{e[:gap]} 天", e[:last_items]] }, [5]]
       end
       if f[:fresh].any?
@@ -95,6 +95,7 @@ module OrderBrief
       blocks
     end
 
+    def bought_col = @r.multi_day? ? "這段期間買" : "今天買"
     def md(date) = @r.md(date)
     def money(x) = "$#{ActiveSupport::NumberHelper.number_to_delimited(x.round)}"
   end

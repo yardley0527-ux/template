@@ -21,9 +21,10 @@ module OrderBrief
       def items = orders.flat_map(&:items)
       def new_customer? = history.empty?
       def last_order = history.last
+      def first_date = orders.map(&:date).min
     end
 
-    attr_reader :day
+    attr_reader :day, :days
 
     # 「預購-全能12送1」→ ["全能", 12, 1]
     def self.parse(name)
@@ -32,9 +33,16 @@ module OrderBrief
       m ? [m[1], m[2].to_i, m[3].to_i] : [base, 0, 0]
     end
 
+    # day：一天（Date）或連續幾天（Range，合併成一份）。
+    # 合併時新舊客、「隔幾天」都以這個人在這段期間的第一張單為準，這段期間內的多張單算同一次。
     def initialize(day)
-      @day = day.to_date
+      range = day.is_a?(Range) ? day : day..day
+      @days = range.first.to_date..range.last.to_date
+      @day = @days.last
     end
+
+    def multi_day? = days.first != days.last
+    def label = multi_day? ? "#{days.first.month}/#{days.first.day}–#{day.month}/#{day.day}" : "#{day.month}/#{day.day}"
 
     def empty?
       rows.empty?
@@ -138,15 +146,16 @@ module OrderBrief
     # ---- 資料 ----
 
     def build_rows
-      emails = paid_orders.where("order_date::date = ?", day).distinct.pluck(Arel.sql("lower(trim(email))")).compact
+      emails = paid_orders.where("order_date::date BETWEEN ? AND ?", days.first, days.last).distinct.pluck(Arel.sql("lower(trim(email))")).compact
       return [] if emails.empty?
 
       load_customers(emails)
       orders = load_orders(emails.flat_map { |e| siblings(e) }.uniq)
 
       emails.map do |email|
-        todays = orders.fetch(email, []).select { |o| o.date == day }
-        history = siblings(email).flat_map { |e| orders.fetch(e, []) }.select { |o| o.date < day }.sort_by { |o| [o.date, o.number] }
+        todays = orders.fetch(email, []).select { |o| days.cover?(o.date) }
+        first_date = todays.map(&:date).min
+        history = first_date ? siblings(email).flat_map { |e| orders.fetch(e, []) }.select { |o| o.date < first_date }.sort_by { |o| [o.date, o.number] } : []
         Row.new(email: email, orders: todays, history: history)
       end.reject { |r| r.orders.empty? }
     end
@@ -214,12 +223,12 @@ module OrderBrief
     # ---- 明細列 ----
 
     def base_entry(row)
-      { name: name(row.email), level: level(row.email), today: today_items(row), amount: row.amount }
+      { name: name(row.email), level: level(row.email), order_date: row.first_date, today: today_items(row), amount: row.amount }
     end
 
     def first_entry(row)
       lo = row.last_order
-      base_entry(row).merge(last_date: lo.date, gap: gap(lo.date), last_items: disp(lo.items), times: row.history.size)
+      base_entry(row).merge(last_date: lo.date, gap: gap(row, lo.date), last_items: disp(lo.items), times: row.history.size)
     end
 
     def repeat_entry(row, series)
@@ -237,7 +246,7 @@ module OrderBrief
         note = lo.equal?(last) ? "上次就是#{series}" : "#{md(lo.date)} #{disp(lo.items)}"
         note += "（以前買過 #{past.size} 次#{series}）" if past.size > 1
       end
-      base_entry(row).merge(last_date: last.date, gap: gap(last.date), note: note,
+      base_entry(row).merge(last_date: last.date, gap: gap(row, last.date), note: note,
                             last_items: disp(last.items.select { |n, _| parse(n).first == series }))
     end
 
@@ -252,10 +261,13 @@ module OrderBrief
     def level(email) = SHORT_LEVEL.fetch(level_full(email), "一般")
     def name(email) = (@customers.dig(email, :name).presence || email.split("@").first).strip
     def order_count(rs) = rs.sum { |r| r.orders.size }
-    def gap(date) = (day - date).to_i
+    def gap(row, date) = (row.first_date - date).to_i
 
     def today_items(row)
-      disp(row.items) + (row.orders.size > 1 ? "（#{row.orders.size} 張單）" : "")
+      notes = []
+      notes << row.orders.map(&:date).uniq.sort.map { |d| "#{d.month}/#{d.day}" }.join("、") if multi_day?
+      notes << "#{row.orders.size} 張單" if row.orders.size > 1
+      disp(row.items) + (notes.any? ? "（#{notes.join('，')}）" : "")
     end
   end
 end

@@ -46,6 +46,34 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "回購 PDRN" # 不是訂單簡報
   end
 
+  test "每日報告選區間：多天合併成一份，新舊客和隔幾天看區間內第一張單" do
+    ShoplineCustomer.create!(email: "bea@example.com", full_name: "Bea")
+    ShoplineOrder.create!(order_number: "#B1", email: "bea@example.com", product_name: "PDRN1", quantity: 1, total_amount: 3000,
+                          checkout_amount: 3000, payment_status: "已付款", order_date: Time.zone.local(2026, 10, 20, 12))
+    ShoplineOrder.create!(order_number: "#B2", email: "bea@example.com", product_name: "PDRN3", quantity: 1, total_amount: 9000,
+                          checkout_amount: 9000, payment_status: "已付款", order_date: Time.zone.local(2026, 10, 21, 12))
+    sign_in @admin
+
+    get order_briefs_path, params: { date_from: "2026-10-20", date: "2026-10-22" }
+    assert_response :ok
+    assert_includes response.body, "10/20–10/22 訂單簡報"
+    assert_includes response.body, "共 2 人下單、3 張單，營收 $32,000"
+    assert_includes response.body, "新客 1 人、2 張單" # Bea 兩張單都在區間內，仍是新客
+    assert_includes response.body, "這段期間買"
+    assert_includes response.body, "32 天" # Amy 從 10/22 往回算到 9/20
+
+    get order_briefs_path, params: { date_from: "2026-10-20", date: "2026-10-22", report: "sales" }
+    assert_includes response.body, "10/20–10/22 銷售日報"
+  end
+
+  test "區間開始晚於結束、或超過 31 天會提示" do
+    sign_in @admin
+    get order_briefs_path, params: { date_from: "2026-10-23", date: "2026-10-22" }
+    assert_includes response.body, "結束日期不能早於開始日期"
+    get order_briefs_path, params: { date_from: "2026-09-01", date: "2026-10-22" }
+    assert_includes response.body, "一次最多跑 31 天"
+  end
+
   test "那天沒有訂單就說沒有" do
     sign_in @admin
     get order_briefs_path, params: { date: "2026-10-01" }

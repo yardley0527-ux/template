@@ -13,10 +13,12 @@ class OrderBriefsController < ApplicationController
   }.freeze
   RANGE_TITLES = { "hours" => "業績時段＋新舊客", "profile" => "客群輪廓", "payments" => "付款方式", "products" => "產品＋組合比例" }.freeze
   MAX_RANGE_DAYS = 400 # 區間報告會把訂單載進記憶體，避免選太長把 web 撐爆
+  MAX_DAILY_RANGE_DAYS = 31 # 每日報告要載每位買家的完整歷史，長區間請用區間報告
 
   def show
     @day = parse_date(params[:date]) || Date.current - 1
     default = LineReportResendJob.default_days # 星期一預設五～日，其他天昨天
+    @day_from = parse_date(params[:date_from]) || (params[:date].present? ? @day : default.first)
     @from = parse_date(params[:from]) || default.first
     @to = parse_date(params[:to]) || default.last
     @list_from = parse_date(params[:list_from]) || Date.current - 90
@@ -26,11 +28,11 @@ class OrderBriefsController < ApplicationController
 
     case params[:report]
     when "seo" then seo_report
-    when "returns" then returns_report
+    when "returns" then returns_report if valid_range?(@day_from, @day, max: MAX_DAILY_RANGE_DAYS)
     when "birthdays" then birthdays_report
     when "unrepurchased" then unrepurchased_report
     when *RANGE_REPORTS.keys then range_report
-    else daily_report
+    else daily_report if valid_range?(@day_from, @day, max: MAX_DAILY_RANGE_DAYS)
     end
   end
 
@@ -44,13 +46,14 @@ class OrderBriefsController < ApplicationController
   end
 
   def daily_report
-    @result_title = [params[:report] == "sales" ? "銷售日報" : "訂單簡報", md(@day)]
-    @report = OrderBrief::Report.new(@day)
+    days = @day_from..@day
+    @report = OrderBrief::Report.new(days)
+    @result_title = [params[:report] == "sales" ? "銷售日報" : "訂單簡報", @report.label]
     return if @report.empty?
 
     if params[:report] == "sales"
-      @sales = SalesDaily::LineDigest.new(@day).sections
-      @sales_title = "#{md(@day)} 銷售日報"
+      @sales = SalesDaily::LineDigest.new(days).sections
+      @sales_title = "#{@report.label} 銷售日報"
     else
       @highlights = OrderBrief::Highlights.call(@report) if params[:ai] == "1"
       @parts = OrderBrief::Sections.new(@report).parts
@@ -71,8 +74,10 @@ class OrderBriefsController < ApplicationController
     @sales_title = "#{range_label(days.first, days.last)} 久未消費黑金卡回來了"
   end
 
-  # 跟 LINE 一樣：星期一選昨天就看五到日（週末不匯入），其他日期看當天
+  # 表單選的區間為準；網址只帶 date 時跟 LINE 一樣：星期一選昨天就看五到日（週末不匯入），其他日期看當天
   def returns_days
+    return @day_from..@day if params[:date_from].present?
+
     default = LineReportResendJob.default_days
     @day == default.last ? default : @day..@day
   end
@@ -108,9 +113,9 @@ class OrderBriefsController < ApplicationController
                                              skip_days: params[:skip_days]).parts
   end
 
-  def valid_range?(from, to)
+  def valid_range?(from, to, max: MAX_RANGE_DAYS)
     @error = "結束日期不能早於開始日期" if from > to
-    @error = "一次最多跑 #{MAX_RANGE_DAYS} 天" if (to - from).to_i >= MAX_RANGE_DAYS
+    @error = "一次最多跑 #{max} 天" if (to - from).to_i >= max
     @error.nil?
   end
 

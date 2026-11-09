@@ -51,7 +51,8 @@ module OrderBrief
     # LINE 純文字，照使用者的格式：「1. 結論」，補充一行一個「- 」
     # start：第一條的編號（分成好幾則發時，後面幾則要接著編號）
     def self.to_text(day, highlights, start: 1)
-      lines = ["📝 #{day.month}/#{day.day} 重點"]
+      label = day.respond_to?(:month) ? "#{day.month}/#{day.day}" : day # 區間傳字串（Report#label）
+      lines = ["📝 #{label} 重點"]
       highlights.each.with_index(start) do |h, i|
         lines += ["", "#{i}. #{h['title']}"]
         Array(h["details"]).each { |d| lines << "- #{d}" }
@@ -93,7 +94,7 @@ module OrderBrief
     def prompt
       <<~PROMPT
         你是保健食品電商「苼莛國際生技」的 CRM 分析幕僚，要替策略部寫每日訂單簡報的「今天的重點」。
-        以下是 #{@report.day}（台灣日期）的已付款訂單資料（JSON）：
+        以下是 #{period}（台灣日期）的已付款訂單資料（JSON）：
         #{facts.to_json}
 
         下面是策略部主管自己寫的一份重點（10/22），請照這個寫法寫今天的：
@@ -130,7 +131,7 @@ module OrderBrief
                 "新客" => f[:fresh].map { |e| compact(e) } }]
         end,
         "很久沒回來（≥#{Report::LONG_GAP} 天）" => @report.long_gap.map { |e| compact(e) },
-        "前 #{TREND_DAYS} 天走勢" => trend,
+        (@report.multi_day? ? "前 #{TREND_DAYS} 天＋這段期間每天走勢" : "前 #{TREND_DAYS} 天走勢") => trend,
         "每位買家的完整購買歷史" => @report.customer_histories
       }
     end
@@ -141,7 +142,7 @@ module OrderBrief
       people: "人數", orders: "張單", revenue: "營收", new_people: "新客人數", new_orders: "新客張單",
       new_revenue: "新客營收", new_share: "新客占營收%", old_people: "舊客人數", old_orders: "舊客張單",
       old_revenue: "舊客營收", level: "卡別", amount: "營收", series: "產品", paid: "付費瓶數", gift: "另送瓶數",
-      pre: "其中預購瓶數", name: "客人", today: "今天買", last_date: "上次日期", gap: "隔幾天", note: "備註",
+      pre: "其中預購瓶數", name: "客人", order_date: "下單日", today: "今天買", last_date: "上次日期", gap: "隔幾天", note: "備註",
       last_items: "上次買什麼", times: "以前買過幾次", same_item_date: "上次買同品項日期", low_amount: "實付很低",
       repurchased: "回購品項", first_time: "第一次買的品項"
     }.freeze
@@ -153,8 +154,16 @@ module OrderBrief
 
     def compact(entry) = zh(entry)
 
+    def period
+      return @report.day.to_s unless @report.multi_day?
+
+      "#{@report.days.first} 到 #{@report.day} 共 #{@report.days.count} 天合併的資料（下面「今天」都是指這段期間，請寫這段期間的重點）"
+    end
+
     def trend
-      (1..TREND_DAYS).map { |i| @report.day - i }.reverse.filter_map do |d|
+      dates = ((@report.days.first - TREND_DAYS)...@report.days.first).to_a
+      dates += @report.days.to_a if @report.multi_day?
+      dates.filter_map do |d|
         r = Report.new(d)
         next if r.empty?
 
