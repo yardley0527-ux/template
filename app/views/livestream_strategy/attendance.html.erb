@@ -53,19 +53,21 @@
       <div class="panel h-100">
         <div class="panel-hdr"><h2>連場回流率</h2></div>
         <div class="panel-container show">
-          <div class="panel-content" style="max-height:320px; overflow:auto;">
-            <% if @return_rates.empty? %>
-              <p class="text-muted small mb-0">無資料</p>
-            <% else %>
-              <table class="table table-sm table-bordered text-center small mb-0">
-                <thead class="thead-light" style="position:sticky; top:0; z-index:1;"><tr><th>從</th><th>到</th><th>回流</th><th>回流率</th></tr></thead>
-                <tbody>
-                  <% @return_rates.reverse_each do |r| %>
-                    <tr><td><%= r[:from] %></td><td><%= r[:to] %></td><td><%= r[:count] %>/<%= r[:from_total] %></td><td><%= r[:rate] %>%</td></tr>
-                  <% end %>
-                </tbody>
-              </table>
-            <% end %>
+          <div class="panel-content">
+            <div style="max-height:320px; overflow:auto;">
+              <% if @return_rates.empty? %>
+                <p class="text-muted small mb-0">無資料</p>
+              <% else %>
+                <table class="table table-sm table-bordered text-center small mb-0">
+                  <thead class="thead-light" style="position:sticky; top:0; z-index:1;"><tr><th>從</th><th>到</th><th>回流</th><th>回流率</th></tr></thead>
+                  <tbody>
+                    <% @return_rates.reverse_each do |r| %>
+                      <tr><td><%= r[:from] %></td><td><%= r[:to] %></td><td><%= r[:count] %>/<%= r[:from_total] %></td><td><%= r[:rate] %>%</td></tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              <% end %>
+            </div>
           </div>
         </div>
       </div>
