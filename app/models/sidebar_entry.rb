@@ -13,16 +13,18 @@ class SidebarEntry
       [
         {
           group_title: "營運提醒",
+          group_icon: "fa-bell",
           children: [
             { href: notification_board_path, title: "營運提醒", icon: "fa-bell",
               subtitle: (unread_notifications.positive? ? unread_notifications.to_s : nil),
               subtitle_class: "badge badge-danger" },
             { href: tracked_customers_path, title: "營運追蹤名單", icon: "fa-badge-check" },
-            { href: daily_message_lists_path, title: "每日名單回購成效", icon: "fa-comment-check" },
+            { href: daily_message_lists_path, title: "每日名單回購成效", icon: "fa-comments" },
           ]
         },
         {
           group_title: "會員管理",
+          group_icon: "fa-users",
           children: [
             { href: customers_path,          title: "客人資料庫",     icon: "fa-address-book" },
             { href: upgraded_members_path,   title: "升級名單",       icon: "fa-arrow-up" },
@@ -37,6 +39,7 @@ class SidebarEntry
         },
         {
           group_title: "高消費分析",
+          group_icon: "fa-gem",
           children: [
             { href: daily_dashboard_path,             title: "每日營收儀表板", icon: "fa-tachometer-alt" },
             { href: daily_orders_path,               title: "每日訂單明細",   icon: "fa-list-alt", children: [
@@ -60,6 +63,7 @@ class SidebarEntry
         },
         {
           group_title: "直播管理",
+          group_icon: "fa-video",
           children: [
             { href: livestream_overview_path,          title: "直播成效總覽", icon: "fa-signal" },
             { href: livestreams_path,                  title: "直播場次",     icon: "fa-film" },
@@ -70,6 +74,7 @@ class SidebarEntry
         },
         {
           group_title: "CRM",
+          group_icon: "fa-comments",
           children: [
             { href: message_lists_path, title: "訊息名單追蹤", icon: "fa-envelope-open" },
             { href: "#", title: "CRM 效益分析", icon: "fa-chart-bar", children: [
@@ -81,6 +86,7 @@ class SidebarEntry
         },
         {
           group_title: "產品 & 策略",
+          group_icon: "fa-box",
           children: [
             { href: product_strategy_path,      title: "產品策略報表",   icon: "fa-chart-line" },
             { href: products_path,              title: "年度 Top 產品排行", icon: "fa-trophy" },
@@ -90,8 +96,9 @@ class SidebarEntry
         },
         {
           group_title: "報告",
+          group_icon: "fa-file-alt",
           children: [
-            { href: weekly_briefing_path(week_start: "current"), title: "每週檢討報告", icon: "fa-calendar-week" },
+            { href: weekly_briefing_path(week_start: "current"), title: "每週檢討報告", icon: "fa-calendar-alt" },
             { href: livestream_reports_path,    title: "分產品檢討報告", icon: "fa-file-alt" },
             { href: product_reports_path,       title: "產品報告",       icon: "fa-file-alt" },
             { href: new_customer_reports_path,  title: "新客月報",       icon: "fa-user-plus" },
@@ -100,6 +107,7 @@ class SidebarEntry
         },
         {
           group_title: "社群 & 廣告",
+          group_icon: "fa-bullhorn",
           children: [
             { href: ads_dashboard_path,       title: "廣告成效面板",   icon: "fa-chart-bar" },
             { href: live_ad_tests_path,       title: "直播廣告測試",   icon: "fa-bullhorn" },
@@ -139,29 +147,31 @@ class SidebarEntry
         },
         {
           group_title: "財務",
-          group_icon: "fa-file-contract",
+          group_icon: "fa-file-alt",
           children: [
-            { href: koc_contracts_path, title: "合約狀態", icon: "fa-file-contract" },
+            { href: koc_contracts_path, title: "合約狀態", icon: "fa-file-alt" },
           ]
         },
         {
           group_title: "客服支援",
+          group_icon: "fa-life-ring",
           children: [
             { href: faqs_path, title: "常見問題", icon: "fa-question-circle" },
-            { href: manychat_leads_path, title: "ManyChat 新客追蹤", icon: "fa-user-tag" },
-            { href: marketing_opportunities_path, title: "行銷機會", icon: "fa-bullseye-arrow" },
+            { href: manychat_leads_path, title: "ManyChat 新客追蹤", icon: "fa-tag" },
+            { href: marketing_opportunities_path, title: "行銷機會", icon: "fa-bullseye" },
             { href: manychat_matches_path, title: "ManyChat 身分比對", icon: "fa-id-card" },
             { href: manychat_sources_path, title: "ManyChat 來源設定", icon: "fa-sitemap" },
           ]
         },
         {
           group_title: "工具 & 系統",
+          group_icon: "fa-cogs",
           children: [
             { href: monitoring_path,                     title: "功能使用監控",     icon: "fa-chart-line" },
             { href: canceled_order_candidates_path,       title: "已取消訂單候選名單", icon: "fa-ban" },
             { href: users_path,                           title: "使用者管理",       icon: "fa-users" },
-            { href: imports_path,                         title: "資料匯入",         icon: "fa-file-upload" },
-            { href: line_bot_groups_path,                 title: "LINE 小幫手群組",  icon: "fa-comment-dots" },
+            { href: imports_path,                         title: "資料匯入",         icon: "fa-upload" },
+            { href: line_bot_groups_path,                 title: "LINE 小幫手群組",  icon: "fa-comments" },
             { href: order_briefs_path,                    title: "報告中心",        icon: "fa-file-alt" },
           ]
         },
