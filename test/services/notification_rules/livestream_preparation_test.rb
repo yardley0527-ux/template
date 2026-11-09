@@ -31,17 +31,6 @@ module NotificationRules
       event = CalendarEvent.create!(title: "膠原直播", event_type: "livestream", event_date: 3.days.from_now.to_date)
       livestream = Livestream.create!(date: event.event_date, product_keys: ["collagen"], owner_user_id: u.id)
       livestream.livestream_products.create!(name: "膠原蛋白（6盒）", price: 17600)
-      cycle = CrmCustomerProductCycle.create!(
-        identity_key: "a@example.com", email: "a@example.com", product_key: "collagen",
-        cycle_started_at: 40.days.ago.to_date, bottle_count: 1, estimated_usage_days: 30,
-        estimated_finish_date: 10.days.ago.to_date, suggested_contact_date: 5.days.ago.to_date,
-        match_status: "not_yet_repurchased", refreshed_at: Time.current
-      )
-      CrmLivestreamOutreachTask.create!(
-        livestream: livestream, cycle: cycle, identity_key: cycle.identity_key,
-        assigned_to: u, created_by: u, scheduled_date: Date.current, status: "pending",
-        candidate_reason: "replenish"
-      )
 
       assert_empty LivestreamPreparation.call
     end

@@ -2,9 +2,7 @@ class OmnipotentRestockController < ApplicationController
   include JourneyProducts
   include MembershipLevels
 
-  LOYAL_THRESHOLD      = 2
   REMINDER_BUFFER_DAYS = 7
-  CHURN_THRESHOLD_DAYS = -60
 
   CUSTOMER_TYPES = [
     { key: :vip,    label: "VIP常購客", emoji: "🔵", color: "#1d4ed8", rank: 4, desc: "連續兩波進貨都有回購，且累計 6 瓶以上" },
@@ -13,54 +11,11 @@ class OmnipotentRestockController < ApplicationController
     { key: :single, label: "單瓶客",    emoji: "🟢", color: "#6b7280", rank: 1, desc: "累計 1–2 瓶" }
   ].freeze
 
-  CRM_SCORE = {
-    type:           { vip: 40, big: 20, small: 10, single: 0 },
-    from_broadcast: 10,
-    repeat_buyer:   20,
-    overdue_mild:   10,
-    overdue_severe: 20
-  }.freeze
-
   ATTRIBUTION_WINDOW = 45
 
   before_action :set_product
-  before_action :build_restock_data, only: [:index, :export, :export_at_risk], if: :single_product_view?
-  before_action :build_loyal_buyers,  only: [:index, :export_loyal], if: :single_product_view?
-  before_action :build_daily_combined_list, only: [:index], unless: :single_product_view?
 
   # ── Main actions ──────────────────────────────────────────────────
-
-  # 沒帶 ?product= 時顯示「今日待辦」：合併所有有庫存產品的可聯絡名單。
-  # 帶了 ?product=X 時維持原本單一產品的旅程頁籤畫面。
-  def index
-    render(single_product_view? ? :index : :daily)
-  end
-
-  def single_product_view?
-    action_name != "index" || params[:product].present?
-  end
-
-  def boss_dashboard
-    load_daily_snapshot
-    @month_start      = Date.today.beginning_of_month
-    @month_new_buyers = ShoplineOrder.where(@product[:sql])
-      .where("order_date >= ?", @month_start).distinct.count(:email)
-    month_ns          = OmnipotentNotificationStatus
-      .where(product_key: @product_key, notified_at: @month_start..)
-    @month_notified   = month_ns.where.not(status: "未通知").count
-    @month_replied    = month_ns.where(status: "已回覆").count
-    @month_ordered    = OmnipotentNotificationStatus
-      .where(product_key: @product_key)
-      .where("contacted_at >= ?", @month_start).where(result: "已訂購").count
-    @monthly_trend    = 5.downto(0).map do |i|
-      m  = Date.today << i
-      ms = m.beginning_of_month; me = m.end_of_month
-      ns = OmnipotentNotificationStatus.where(product_key: @product_key, notified_at: ms..me)
-      { label: m.strftime("%m月"), notified: ns.count,
-        ordered: OmnipotentNotificationStatus
-          .where(product_key: @product_key, contacted_at: ms..me, result: "已訂購").count }
-    end
-  end
 
   def customer_journey
     @customer    = ShoplineCustomer.find(params[:id])
@@ -222,105 +177,7 @@ class OmnipotentRestockController < ApplicationController
 
   # ── Exports ────────────────────────────────────────────────────────
 
-  def export
-    send_data "\xEF\xBB\xBF" + restock_csv(@today),
-              filename: "#{@product[:label]}_維護名單_#{Date.today}.csv",
-              type: "text/csv; charset=utf-8"
-  end
-
-  def export_at_risk
-    send_data "\xEF\xBB\xBF" + restock_csv(@at_risk),
-              filename: "#{@product[:label]}_流失喚醒名單_#{Date.today}.csv",
-              type: "text/csv; charset=utf-8"
-  end
-
-  def export_loyal
-    send_data "\xEF\xBB\xBF" + loyal_csv,
-              filename: "#{@product[:label]}_常購名單_#{Date.today}.csv",
-              type: "text/csv; charset=utf-8"
-  end
-
-  # 「今日待辦」合併名單（所有有庫存產品），含優先序與 CRM 分數。
-  def export_daily
-    build_daily_combined_list
-    send_data "\xEF\xBB\xBF" + daily_csv(@combined_today),
-              filename: "今日待辦名單_#{Date.today}.csv",
-              type: "text/csv; charset=utf-8"
-  end
-
-  def update_status
-    ns = OmnipotentNotificationStatus.find_or_initialize_by(
-      email:          params[:email],
-      reference_date: params[:reference_date],
-      product_key:    params[:product_key].presence || "omnipotent"
-    )
-    ns.status      = params[:status]      if params[:status].present?
-    ns.notified_at = Time.current         if params[:status] == "已通知" && ns.notified_at.nil?
-    ns.channel     = params[:channel]     if params[:channel].present?
-    ns.result      = params[:result]      if params[:result].present?
-    if params[:contacted_at].present?
-      ns.contacted_at = Date.parse(params[:contacted_at])
-    elsif ns.contacted_at.nil? && params[:status].present? && params[:status] != "未通知"
-      ns.contacted_at = Date.today
-    end
-    ns.save!
-    render json: { success: true, status: ns.status, channel: ns.channel,
-                   result: ns.result, contacted_at: ns.contacted_at&.strftime("%m/%d") }
-  rescue => e
-    render json: { success: false, error: e.message }, status: :unprocessable_entity
-  end
-
   private
-
-  # Stage 1 cutover (boss_dashboard only): reads today's crm_product_daily_stats
-  # row instead of recomputing build_restock_data on every request. Falls back to
-  # the live computation when the rollup row hasn't been refreshed yet for today,
-  # so the dashboard is always correct even if crm_rollup:refresh_all didn't run.
-  def load_daily_snapshot
-    conn = ActiveRecord::Base.connection
-    row = conn.select_one(<<~SQL)
-      SELECT * FROM crm_product_daily_stats
-      WHERE product_key = #{conn.quote(@product_key)}
-        AND stat_date = CURRENT_DATE
-    SQL
-
-    @daily_snapshot = if row
-      {
-        tracking_count:   row["not_urgent_count"] + row["remind_now_count"] + row["overdue_count"] + row["at_risk_count"],
-        vip_count:        row["vip_count"],
-        big_count:        row["big_count"],
-        small_count:      row["small_count"],
-        single_count:     row["single_count"],
-        today_to_contact: row["remind_now_count"] + row["overdue_count"],
-        overdue_count:    row["overdue_count"],
-        at_risk_count:    row["at_risk_count"]
-      }
-    else
-      build_restock_data
-      type_counts = @restock_list.group_by { |r| r[:customer_type][:key] }.transform_values(&:size)
-      {
-        tracking_count:   @restock_list.size,
-        vip_count:        type_counts[:vip]    || 0,
-        big_count:        type_counts[:big]    || 0,
-        small_count:      type_counts[:small]  || 0,
-        single_count:     type_counts[:single] || 0,
-        today_to_contact: @today.size,
-        overdue_count:    @overdue.size,
-        at_risk_count:    @at_risk.size
-      }
-    end
-  end
-
-  def build_restock_data
-    data = compute_restock_rows(@product)
-    @restock_list      = data[:restock_list]
-    @remind_now        = data[:remind_now]
-    @overdue           = data[:overdue]
-    @at_risk           = data[:at_risk]
-    @not_urgent        = data[:not_urgent]
-    @today             = data[:today]
-    @high_value_count  = data[:high_value_count]
-  end
 
   # 沒帶 ?product= 時：合併所有 in_stock: true 產品的「今日應聯絡」名單。
   #
@@ -330,167 +187,8 @@ class OmnipotentRestockController < ApplicationController
   # 這種判斷切到 crm_products，等於用一個全新表全部都是「未確認」的訊號去關掉
   # 現在正常運作的名單產生（等同一次靜默 regression）。crm_availability_status
   # 只做「附加顯示」用──在名單上多秀一個徽章，讓使用者知道 CRM 庫存表對這個
-  # 產品「還沒確認」，但不影響這份名單原本該不該存在、該不該顯示這一列。
-  def build_daily_combined_list
-    @in_stock_products = JourneyProducts::PRODUCTS.values.select { |p| p[:in_stock] }
-
-    @combined_today = @in_stock_products.flat_map do |product|
-      crm_product = NotificationRules::ProductKeyMapping.crm_product_for(product[:key])
-      compute_restock_rows(product)[:today].each do |r|
-        r[:product_key]              = product[:key]
-        r[:product_label]            = product[:label]
-        r[:product_icon]             = product[:icon]
-        r[:product_color]            = product[:color]
-        r[:crm_availability_status]  = crm_product&.availability_status || "unknown"
-        r[:crm_availability_label]   = CrmProduct::AVAILABILITY_STATUS_LABELS.fetch(r[:crm_availability_status], "未確認")
-      end
-    end.sort_by { |r| [-r[:crm_score], r[:days_left]] }
-
-    @combined_by_product   = @combined_today.group_by { |r| r[:product_label] }.transform_values(&:size)
-    @high_value_combined   = @combined_today.count { |r| [:vip, :big].include?(r[:customer_type][:key]) }
-  end
-
-  def compute_restock_rows(product)
-    today      = Date.today
-    since_date = today - 365
-    sql        = product[:sql]
-
-    empty_result = { restock_list: [], remind_now: [], overdue: [], at_risk: [], not_urgent: [], today: [], high_value_count: 0 }
-
-    orders_raw = ShoplineOrder
-      .where(sql).where("order_date >= ?", since_date.beginning_of_day)
-      .where.not(email: [nil, ""])
-      .order(:email, order_date: :desc)
-      .pluck(:email, :product_name, :order_date)
-
-    last_order_by_email = {}
-    orders_raw.each do |email, product_name, order_date|
-      last_order_by_email[email] ||= { product_name: product_name, order_date: order_date.to_date }
-    end
-
-    return empty_result if last_order_by_email.empty?
-
-    all_emails = last_order_by_email.keys
-
-    omni_counts = ShoplineOrder.where(sql).where(email: all_emails).group(:email).count
-
-    bottle_totals = Hash.new(0)
-    ShoplineOrder.where(sql).where(email: all_emails).pluck(:email, :product_name).each do |email, pn|
-      bottle_totals[email] += extract_bottles(pn, product)
-    end
-
-    wave_repeats = WaveRepeatCalculator.call(sql)
-
-    notif_map = {}
-    OmnipotentNotificationStatus.where(email: all_emails, product_key: product[:key]).each do |n|
-      notif_map[[n.email, n.reference_date]] = n
-    end
-
-    customers = ShoplineCustomer
-      .where(email: all_emails)
-      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account, :total_amount)
-
-    restock_list = customers.map do |c|
-      order   = last_order_by_email[c.email]
-      bought  = order[:order_date]
-      bottles = extract_bottles(order[:product_name], product)
-
-      estimated_finish_date   = bought + bottles * 30
-      expected_return_date    = bought + expected_days(bottles, product)
-      suggested_reminder_date = expected_return_date - REMINDER_BUFFER_DAYS
-      days_left               = (expected_return_date   - today).to_i
-      days_until_reminder     = (suggested_reminder_date - today).to_i
-      count                   = omni_counts[c.email]   || 0
-      total_bottles           = bottle_totals[c.email] || 0
-
-      {
-        customer:                c,
-        product_name:            order[:product_name],
-        bought_date:             bought,
-        bottles:                 bottles,
-        estimated_finish_date:   estimated_finish_date,
-        expected_return_date:    expected_return_date,
-        suggested_reminder_date: suggested_reminder_date,
-        days_left:               days_left,
-        days_until_reminder:     days_until_reminder,
-        source_event:            source_event_label(bought),
-        omni_count:              count,
-        total_omni_bottles:      total_bottles,
-        customer_type:           resolve_customer_type(wave_repeats.fetch(c.email, false), total_bottles),
-        notification:            notif_map[[c.email, bought]]
-      }
-    end.tap do |list|
-      list.each { |r| r[:crm_score] = calc_crm_score(r) }
-    end.sort_by { |r| [-r[:crm_score], r[:days_left]] }
-
-    remind_now = restock_list.select { |r| r[:days_until_reminder] <= 0 && r[:days_left] > 0 }
-    overdue    = restock_list.select { |r| r[:days_left] < 0 && r[:days_left] >= CHURN_THRESHOLD_DAYS }
-    at_risk    = restock_list.select { |r| r[:days_left] < CHURN_THRESHOLD_DAYS }
-    not_urgent = restock_list.select { |r| r[:days_until_reminder] > 0 }
-    today_list = (remind_now + overdue).sort_by { |r| -r[:crm_score] }
-
-    {
-      restock_list:      restock_list,
-      remind_now:        remind_now,
-      overdue:           overdue,
-      at_risk:           at_risk,
-      not_urgent:        not_urgent,
-      today:             today_list,
-      high_value_count:  today_list.count { |r| [:vip, :big].include?(r[:customer_type][:key]) }
-    }
-  end
-
-  def build_loyal_buyers
-    sql   = @product[:sql]
-    order_counts = ShoplineOrder.where(sql).where.not(email: [nil, ""]).group(:email).count
-    loyal_emails = order_counts.select { |_, n| n >= LOYAL_THRESHOLD }.keys
-    return (@loyal_buyers = []) if loyal_emails.empty?
-
-    bottle_totals = Hash.new(0)
-    ShoplineOrder.where(sql).where(email: loyal_emails).pluck(:email, :product_name).each do |email, pn|
-      bottle_totals[email] += extract_bottles(pn, @product)
-    end
-
-    wave_repeats = WaveRepeatCalculator.call(sql)
-
-    last_dates = {}
-    ShoplineOrder.where(sql).where(email: loyal_emails)
-      .order(:email, order_date: :desc).pluck(:email, :order_date)
-      .each { |email, date| last_dates[email] ||= date&.to_date }
-
-    amounts = Hash.new(0.0)
-    ShoplineOrder.where(sql).where(email: loyal_emails)
-      .group(:email, :order_number)
-      .pluck(:email,
-             Arel.sql("MAX(NULLIF(total_amount, 0))"),
-             Arel.sql("SUM(COALESCE(checkout_amount, 0))"))
-      .each { |email, max_total, sum_checkout| amounts[email] += (max_total || sum_checkout).to_f }
-
-    customers = ShoplineCustomer
-      .where(email: loyal_emails)
-      .select(:id, :full_name, :email, :mobile_phone, :membership_level, :instagram_account)
-
-    @loyal_buyers = customers.map do |c|
-      count         = order_counts[c.email]  || 0
-      total_bottles = bottle_totals[c.email] || 0
-      { customer: c, order_count: count, total_spend: amounts[c.email] || 0,
-        last_date: last_dates[c.email], total_bottles: total_bottles,
-        customer_type: resolve_customer_type(wave_repeats.fetch(c.email, false), total_bottles) }
-    end.sort_by { |r| [-r[:customer_type][:rank], -MEMBERSHIP_RANK.fetch(r[:customer].membership_level, 0), -r[:order_count], -r[:total_spend]] }
-  end
 
   # ── Helpers ────────────────────────────────────────────────────────
-
-  def calc_crm_score(row)
-    score  = CRM_SCORE[:type][row[:customer_type][:key]] || 0
-    score += CRM_SCORE[:from_broadcast] if row[:source_event] != "一般購買"
-    score += CRM_SCORE[:repeat_buyer]   if row[:omni_count] > 1
-    dl = row[:days_left]
-    score += if dl < -60 then CRM_SCORE[:overdue_severe]
-               elsif dl < -30 then CRM_SCORE[:overdue_mild]
-               else 0 end
-    score
-  end
 
   def resolve_customer_type(cross_wave_repeat, total_bottles)
     if cross_wave_repeat && total_bottles >= 6
@@ -536,71 +234,4 @@ class OmnipotentRestockController < ApplicationController
     (lo_v + (hi_v - lo_v).to_f * (bottles - lo) / (hi - lo)).round
   end
 
-  def restock_csv(rows)
-    require "csv"
-    CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["狀態", "客戶類型", "姓名", "卡別", "手機", "IG", "來源場次",
-              "上次購買", "瓶數", "累計瓶數", "累計次數",
-              "吃完日", "建議提醒日", "預計回購日", "距今天數", "通知狀態"]
-      rows.each do |r|
-        c  = r[:customer]
-        ig = c.instagram_account&.gsub('@', '')&.strip
-        seg = if r[:days_left] < CHURN_THRESHOLD_DAYS then "可能流失"
-               elsif r[:days_left] < 0 then "逾期未回購"
-               elsif r[:days_until_reminder] <= 0 then "提醒中"
-               else "尚早" end
-        csv << [
-          seg, r[:customer_type][:label], c.full_name, c.membership_level, c.mobile_phone, ig,
-          r[:source_event],
-          r[:bought_date]&.strftime("%Y/%m/%d"), r[:bottles], r[:total_omni_bottles], r[:omni_count],
-          r[:estimated_finish_date]&.strftime("%Y/%m/%d"),
-          r[:suggested_reminder_date]&.strftime("%Y/%m/%d"),
-          r[:expected_return_date]&.strftime("%Y/%m/%d"),
-          r[:days_left],
-          r[:notification]&.status || "未通知"
-        ]
-      end
-    end
-  end
-
-  def daily_csv(rows)
-    require "csv"
-    CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["優先序", "產品", "狀態", "客戶類型", "優先分數", "姓名", "卡別", "手機", "IG",
-              "來源場次", "上次購買", "該次瓶數", "累計瓶數", "購買次數",
-              "預估吃完日", "建議提醒日", "預計回購日", "逾期天數", "通知狀態", "聯絡結果"]
-      rows.each_with_index do |r, i|
-        c  = r[:customer]
-        ig = c.instagram_account&.gsub('@', '')&.strip
-        csv << [
-          i + 1, "#{r[:product_icon]} #{r[:product_label]}",
-          r[:days_left] > 0 ? "提醒中" : "逾期",
-          r[:customer_type][:label], r[:crm_score],
-          c.full_name, c.membership_level, c.mobile_phone, ig,
-          r[:source_event],
-          r[:bought_date]&.strftime("%Y/%m/%d"), r[:bottles], r[:total_omni_bottles], r[:omni_count],
-          r[:estimated_finish_date]&.strftime("%Y/%m/%d"),
-          r[:suggested_reminder_date]&.strftime("%Y/%m/%d"),
-          r[:expected_return_date]&.strftime("%Y/%m/%d"),
-          r[:days_left] < 0 ? -r[:days_left] : "尚未逾期",
-          r[:notification]&.status || "未通知",
-          r[:notification]&.result
-        ]
-      end
-    end
-  end
-
-  def loyal_csv
-    require "csv"
-    CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["客戶類型", "姓名", "卡別", "手機", "IG", "購買次數", "累計瓶數", "累計消費(NT$)", "上次購買"]
-      @loyal_buyers.each do |r|
-        c  = r[:customer]
-        ig = c.instagram_account&.gsub('@', '')&.strip
-        csv << [r[:customer_type][:label], c.full_name, c.membership_level, c.mobile_phone, ig,
-                r[:order_count], r[:total_bottles], r[:total_spend].to_i,
-                r[:last_date]&.strftime("%Y/%m/%d")]
-      end
-    end
-  end
 end

@@ -8,7 +8,6 @@
   <strong>可信度：</strong><%= @result.reliability %><br>
   <strong>規則版本：</strong><%= Marketing::Segments::RULE_VERSION %>　<strong>聯絡資格：</strong>待確認（發送前請在 ManyChat 或各渠道確認）
 </div>
-<div class="mb-3"><%= render "draft_button", result: @result %></div>
 <div class="panel"><div class="panel-container show"><div class="panel-content" style="overflow-x:auto;">
   <% if @result.key == "repurchase_due" %>
     <% labels = CrmProduct.pluck(:key, :label).to_h %>

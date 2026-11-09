@@ -61,7 +61,6 @@ Rails.application.routes.draw do
   resources :reply_assistant, only: [:index, :create, :update], controller: "reply_assistant" do
     patch :remove_item, on: :member
   end
-  resources :marketing_campaign_drafts, only: [:index, :show, :create, :edit, :update]
   resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]
 
   get  '/group_buy_posts',              to: 'group_buy_posts#index',       as: :group_buy_posts
@@ -222,8 +221,6 @@ Rails.application.routes.draw do
   get '/omnipotent_analysis/export_event',     to: 'omnipotent_analysis#export_event',      as: :omnipotent_export_event
   get '/omnipotent_analysis/export_whitening', to: 'omnipotent_analysis#export_whitening',  as: :omnipotent_export_whitening
   # ── CRM 功能模組（通用 URL，不綁定產品名稱）────────────────────────
-  get   '/crm',                        to: 'omnipotent_restock#boss_dashboard',        as: :crm_home
-  get   '/crm/journey',                to: 'omnipotent_restock#index',                 as: :crm_journey
   get   '/crm/analytics/roi',          to: 'omnipotent_restock#roi_dashboard',         as: :crm_roi
   get   '/crm/analytics/accuracy',     to: 'omnipotent_restock#journey_accuracy',      as: :crm_accuracy
   get   '/crm/analytics/operations',   to: 'omnipotent_restock#crm_analysis',          as: :crm_operations
@@ -232,36 +229,8 @@ Rails.application.routes.draw do
     ["/livestream_strategy/sources", req.query_string.presence].compact.join("?")
   }, as: :crm_broadcasts
   get   '/crm/customer/:id',           to: 'omnipotent_restock#customer_journey',      as: :crm_customer_journey
-  get   '/crm/export',                 to: 'omnipotent_restock#export',                as: :crm_export
-  get   '/crm/export_daily',           to: 'omnipotent_restock#export_daily',          as: :crm_export_daily
-  get   '/crm/export_at_risk',         to: 'omnipotent_restock#export_at_risk',        as: :crm_export_at_risk
-  get   '/crm/export_loyal',           to: 'omnipotent_restock#export_loyal',          as: :crm_export_loyal
-  patch '/crm/update_status',          to: 'omnipotent_restock#update_status',         as: :crm_update_status
-
-  # ── 回購追蹤 Dashboard（Phase 2）────────────────────────────────────
-  get   '/crm/repurchase_dashboard',        to: 'crm_repurchase_follow_ups#index',  as: :crm_repurchase_dashboard
-  patch '/crm/repurchase_dashboard/:id',    to: 'crm_repurchase_follow_ups#update', as: :crm_repurchase_follow_up
-
-  # ── 直播回購候選名單（Phase 3）──────────────────────────────────────
-  get   '/crm/livestreams/candidates',                            to: 'livestream_repurchase_candidates#index',  as: :livestream_repurchase_candidates
-  patch '/crm/livestreams/:livestream_id/candidates/:cycle_id',   to: 'livestream_repurchase_candidates#update', as: :livestream_repurchase_candidate
-
-  # ── 客服排程（Phase 4）──────────────────────────────────────────────
-  get   '/crm/livestreams/:livestream_id/schedule/new',      to: 'crm_livestream_schedules#new',     as: :new_crm_livestream_schedule
-  post  '/crm/livestreams/:livestream_id/schedule/preview',  to: 'crm_livestream_schedules#preview', as: :preview_crm_livestream_schedule
-  post  '/crm/livestreams/:livestream_id/schedule',          to: 'crm_livestream_schedules#create',  as: :crm_livestream_schedule
-
-  get   '/crm/outreach_tasks',                to: 'crm_outreach_tasks#index',      as: :crm_outreach_tasks
-  patch '/crm/outreach_tasks/:id',            to: 'crm_outreach_tasks#update',     as: :crm_outreach_task
-  patch '/crm/outreach_tasks/:id/reschedule', to: 'crm_outreach_tasks#reschedule', as: :reschedule_crm_outreach_task
 
   # ── 舊路由保留（向後相容）────────────────────────────────────────────
-  get   '/omnipotent_restock',                         to: 'omnipotent_restock#index',                as: :omnipotent_restock
-  get   '/omnipotent_restock/export',                  to: 'omnipotent_restock#export',               as: :omnipotent_restock_export
-  get   '/omnipotent_restock/export_at_risk',          to: 'omnipotent_restock#export_at_risk',       as: :omnipotent_restock_export_at_risk
-  get   '/omnipotent_restock/export_loyal',            to: 'omnipotent_restock#export_loyal',         as: :omnipotent_restock_export_loyal
-  patch '/omnipotent_restock/update_status',           to: 'omnipotent_restock#update_status',        as: :omnipotent_restock_update_status
-  get   '/omnipotent_restock/boss_dashboard',          to: 'omnipotent_restock#boss_dashboard',       as: :omnipotent_restock_boss_dashboard
   get   '/omnipotent_restock/roi_dashboard',           to: 'omnipotent_restock#roi_dashboard',        as: :omnipotent_restock_roi_dashboard
   get   '/omnipotent_restock/journey_accuracy',        to: 'omnipotent_restock#journey_accuracy',     as: :omnipotent_restock_journey_accuracy
   get   '/omnipotent_restock/crm_analysis',            to: 'omnipotent_restock#crm_analysis',         as: :omnipotent_restock_crm_analysis

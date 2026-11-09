@@ -54,30 +54,6 @@ class MarketingOpportunitiesControllerTest < ActionDispatch::IntegrationTest
     assert_equal [@admin.id], @sub.manychat_match_logs.pluck(:user_id).uniq
   end
 
-  test "從客群建立草稿；從 AI 卡建立時客群條件取自快照" do
-    sign_in @admin
-    post marketing_campaign_drafts_path, params: { segment_key: "recent_interactors", segment_params: { days: 7 } }
-    draft = MarketingCampaignDraft.last
-    assert_redirected_to edit_marketing_campaign_draft_path(draft)
-    assert_equal 1, draft.member_count
-
-    snapshot = Marketing::SnapshotBuilder.new.call
-    seg = snapshot["segments"].find { |s| s["key"] == "product_source_interest" }
-    suggestion = MarketingAiSuggestion.create!(status: "success", input_snapshot: snapshot, cards: [
-      { "kind" => "segment_ops", "title" => "PDRN 跟進", "goal" => "跟進", "segment_id" => seg["id"], "metric_ids" => [seg["id"]],
-        "product_keys" => ["pdrn"], "channels" => ["ig_dm_manual"], "pre_checks" => [], "uncertainties" => [] }
-    ])
-    post marketing_campaign_drafts_path, params: { suggestion_id: suggestion.id, card_index: 0, segment_params: { days: 30 } }
-    draft = MarketingCampaignDraft.last
-    assert_equal ["PDRN 跟進", "product_source_interest", seg["params"]], [draft.name, draft.segment_key, draft.segment_params]
-
-    get marketing_campaign_draft_path(draft)
-    assert_response :success
-    assert_includes response.body, "尚未發送"
-    patch marketing_campaign_draft_path(draft), params: { marketing_campaign_draft: { copy_text: "嗨～", planned_channel: "ig_story" } }
-    assert_equal "嗨～", draft.reload.copy_text
-  end
-
   test "AI 建議：按鈕觸發背景工作，產生中重按不重複" do
     sign_in @admin
     assert_difference -> { MarketingAiSuggestion.count }, 1 do

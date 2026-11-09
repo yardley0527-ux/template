@@ -53,8 +53,6 @@ class PageView < ApplicationRecord
     "probiotic_analysis#index"              => "直播分析 - 益生菌",
     "probiotic_analysis#export_missing"     => "益生菌未回購匯出",
     "probiotic_analysis#export_event"       => "益生菌本場匯出",
-    "omnipotent_restock#index"              => "全能補貨提醒名單",
-    "omnipotent_restock#export"             => "補貨名單匯出",
     "albums#index"                          => "相冊列表",
     "albums#show"                           => "相冊詳細頁",
     "ads_dashboard#index"                   => "廣告面板",

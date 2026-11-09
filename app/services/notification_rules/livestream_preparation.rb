@@ -55,7 +55,6 @@ module NotificationRules
         { key: "featured_products", label: "主推商品尚未設定", done: livestream.present? && livestream.product_keys.any? },
         { key: "bundle_pricing", label: "優惠組合尚未確認", done: livestream.present? && livestream.livestream_products.any? },
         { key: "products_purchasable", label: "商品頁不可購買或庫存狀態未知", done: products_purchasable?(livestream) },
-        { key: "outreach_candidates", label: "客服候選名單尚未產生", done: livestream.present? && CrmLivestreamOutreachTask.where(livestream_id: livestream.id).exists? },
         { key: "owner_assigned", label: "尚未指派負責人", done: livestream&.owner_user_id.present? }
       ]
     end

@@ -17,10 +17,6 @@ class CrmRepurchasePreflightCheck
     "crm_livestream_outreach_tasks" => %w[idx_outreach_tasks_on_livestream_cycle idx_outreach_tasks_on_livestream_identity]
   }.freeze
 
-  OUTREACH_CONTROLLERS = %w[
-    crm_repurchase_follow_ups livestream_repurchase_candidates crm_livestream_schedules crm_outreach_tasks
-  ].freeze
-
   Result = Struct.new(:label, :value, :level, keyword_init: true) # level: :pass/:warning/:blocker
 
   def self.call
@@ -37,7 +33,7 @@ class CrmRepurchasePreflightCheck
     results << cycle_totals_check
     results << active_task_status_check
     results << livestream_product_keys_check
-    results << permission_check
+    results << admin_check
     results << identity_key_check
     results << refresh_capability_check
 
@@ -172,23 +168,11 @@ class CrmRepurchasePreflightCheck
     ]
   end
 
-  def permission_check
-    admin_role_keys = Role.where(key: "admin").pluck(:id)
-    admin_count = User.where(role_id: admin_role_keys).count
-
-    granted_role_ids = PagePermission.where(controller_name: OUTREACH_CONTROLLERS).distinct.pluck(:role_id)
-    non_admin_granted_users = User.where(role_id: granted_role_ids).where.not(role_id: admin_role_keys).count
-
-    out = [Result.new(label: "可開啟回購頁面的使用者/角色數",
-                       value: "管理者 #{admin_count} 人；另有 PagePermission 授權的一般角色使用者 #{non_admin_granted_users} 人",
-                       level: admin_count.positive? ? :pass : :blocker)]
-
-    out << Result.new(
-      label: "客服 PagePermission",
-      value: non_admin_granted_users.positive? ? "已有 #{non_admin_granted_users} 位非管理者可存取" : "目前只有管理者能存取，客服尚未取得 PagePermission",
-      level: non_admin_granted_users.positive? ? :pass : :warning
-    )
-    out
+  def admin_check
+    admin_count = User.where(role_id: Role.where(key: "admin").select(:id)).count
+    [Result.new(label: "可開啟回購頁面的使用者/角色數",
+                value: "管理者 #{admin_count} 人",
+                level: admin_count.positive? ? :pass : :blocker)]
   end
 
   # 唯讀 smoke check：確認 identity_key 的組成邏輯（手機優先、否則 email）

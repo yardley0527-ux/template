@@ -71,11 +71,6 @@ class SidebarEntry
         {
           group_title: "CRM",
           children: [
-            { href: crm_home_path(product: effective_key),      title: "CRM 首頁",    icon: "fa-chart-pie" },
-            { href: crm_journey_path(product: effective_key),   title: "客戶旅程管理", icon: "fa-map-signs" },
-            { href: crm_repurchase_dashboard_path,               title: "回購追蹤 Dashboard", icon: "fa-tasks" },
-            { href: livestream_repurchase_candidates_path,       title: "直播回購候選名單", icon: "fa-signal" },
-            { href: crm_outreach_tasks_path,                     title: "我的今日任務", icon: "fa-calendar-check" },
             { href: message_lists_path, title: "訊息名單追蹤", icon: "fa-envelope-open" },
             { href: "#", title: "CRM 效益分析", icon: "fa-chart-bar", children: [
               { href: crm_roi_path(product: effective_key),        title: "ROI Dashboard",  icon: "fa-dollar-sign" },
@@ -155,7 +150,6 @@ class SidebarEntry
             { href: faqs_path, title: "常見問題", icon: "fa-question-circle" },
             { href: manychat_leads_path, title: "ManyChat 新客追蹤", icon: "fa-user-tag" },
             { href: marketing_opportunities_path, title: "行銷機會", icon: "fa-bullseye-arrow" },
-            { href: marketing_campaign_drafts_path, title: "活動草稿", icon: "fa-clipboard-list" },
             { href: manychat_matches_path, title: "ManyChat 身分比對", icon: "fa-id-card" },
             { href: manychat_sources_path, title: "ManyChat 來源設定", icon: "fa-sitemap" },
           ]

@@ -53,29 +53,6 @@ class CrmCustomerProductCycleActiveFollowUpTest < ActiveSupport::TestCase
     assert_not_includes ids, original.id
   end
 
-  test "follow_up_status 為 nil（多數 cycle 的預設狀態）不會被預設隱藏清單排除" do
-    # 這條測試專門攔截 where.not(hash) 對 NULL 欄位的 SQL 三值邏輯陷阱
-    cycle = build_cycle(follow_up_status: nil)
-    query = CrmRepurchaseDashboardQuery.new({})
-    assert_includes query.cycles.map(&:id), cycle.id
-  end
-
-  test "paused／repurchased 預設被隱藏，但用狀態篩選找得到" do
-    paused = build_cycle(identity_key: "paused_#{SecureRandom.hex(4)}", follow_up_status: "paused")
-    repurchased = build_cycle(identity_key: "repurchased_#{SecureRandom.hex(4)}", follow_up_status: "repurchased")
-
-    default_query = CrmRepurchaseDashboardQuery.new({})
-    default_ids = default_query.cycles.map(&:id)
-    assert_not_includes default_ids, paused.id
-    assert_not_includes default_ids, repurchased.id
-
-    paused_query = CrmRepurchaseDashboardQuery.new({ status: "paused" })
-    assert_includes paused_query.cycles.map(&:id), paused.id
-
-    repurchased_query = CrmRepurchaseDashboardQuery.new({ status: "repurchased" })
-    assert_includes repurchased_query.cycles.map(&:id), repurchased.id
-  end
-
   test "remaining_days_sql（SQL）跟 effective_remaining_days（Ruby）在有／無人工覆寫時結果一致" do
     travel_to Date.new(2026, 2, 1) do
       plain    = build_cycle(estimated_finish_date: Date.new(2026, 2, 20))

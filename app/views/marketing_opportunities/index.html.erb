@@ -4,7 +4,7 @@
 <div class="subheader">
   <h1 class="subheader-title">
     <i class="fal fa-bullseye-arrow mr-2 text-danger"></i> 行銷機會
-    <small>ManyChat 互動 × CRM 訂單：看客群、取得 AI 建議、存成活動草稿（不會自動發送）</small>
+    <small>ManyChat 互動 × CRM 訂單：看客群、取得 AI 建議</small>
   </h1>
 </div>
 
@@ -14,7 +14,6 @@
   <% tabs.each do |key, label| %>
     <li class="nav-item"><%= link_to label, marketing_opportunities_path(tab: key), class: "nav-link #{'active' if @tab == key}" %></li>
   <% end %>
-  <li class="nav-item ml-auto"><%= link_to "活動草稿", marketing_campaign_drafts_path, class: "nav-link" %></li>
 </ul>
 
 <% case @tab %>
@@ -72,7 +71,6 @@
       <%= render "members", members: unknown, limit: 200 %>
     </div></div>
   </div>
-  <div class="mb-3"><%= render "draft_button", result: @result %></div>
 
 <% when "products" %>
   <%= form_with url: marketing_opportunities_path, method: :get, local: true, class: "form-inline mb-3", html: { style: "gap:8px;" } do %>
@@ -90,7 +88,7 @@
     <table class="table table-sm table-hover small mb-0">
       <thead class="thead-light">
         <tr><th>產品</th><th>庫存</th><th class="text-right">互動來源關聯</th><th class="text-right">其中已確認・沒買過此產品</th>
-            <th class="text-right">已確認・買過</th><th class="text-right">購買狀態未知</th><th class="text-right">明確表達需求</th><th></th></tr>
+            <th class="text-right">已確認・買過</th><th class="text-right">購買狀態未知</th><th class="text-right">明確表達需求</th></tr>
       </thead>
       <tbody>
         <% @rows.each do |r| %>
@@ -107,7 +105,6 @@
               <td colspan="4" class="text-muted text-center">沒有來源對應到這個產品</td>
             <% end %>
             <td class="text-right"><%= link_to r[:request].count, segment_marketing_opportunities_path(key: "product_explicit_request", filter: r[:request].params) %></td>
-            <td><%= render "draft_button", result: r[:interest] if r[:interest] %></td>
           </tr>
         <% end %>
       </tbody>
