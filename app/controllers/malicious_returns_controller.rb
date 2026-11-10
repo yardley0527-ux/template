@@ -11,7 +11,14 @@ class MaliciousReturnsController < ApplicationController
     ids = @entries.flat_map { |e| e["customer_ids"] }.uniq
     @customers = ShoplineCustomer.where(id: ids).includes(:customer_profile).index_by(&:id)
     @auto_logged = CustomerEditLog.where(customer_id: ids, section: MaliciousReturnSync::LOG_SECTION)
-                                  .pluck(:customer_id, :created_at).to_h
+                                  .order(:created_at).pluck(:customer_id, :created_at).reverse.to_h
+    # 現在還在幾份訊息名單裡（應該都是 0；同步會把黑名單客人從所有名單刪掉）
+    emails = @customers.values.to_h { |c| [c.email.to_s.strip.downcase, c.id] }
+    @list_counts = Hash.new(0)
+    scope = MessageListRecipient.where(shopline_customer_id: ids)
+    scope = scope.or(MessageListRecipient.where("LOWER(TRIM(email)) IN (?)", emails.keys)) if emails.any?
+    scope.pluck(:message_list_id, :shopline_customer_id, :email).uniq
+                        .each { |_, cid, email| @list_counts[cid || emails[email.to_s.strip.downcase]] += 1 }
   end
 
   def sync

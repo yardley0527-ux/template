@@ -92,7 +92,6 @@ class MessageListBuilder
     v = ig.to_s.strip.downcase.delete_prefix("@")
     v.presence unless %w[無 - none].include?(v)
   end
-  private_class_method :normalize_ig
 
   def self.customer_snapshots(emails)
     ShoplineCustomer

@@ -8,6 +8,7 @@
     <p class="text-muted small mb-0">
       <a href="<%= MaliciousReturnSync::SHEET_URL %>" target="_blank" rel="noopener">財務退貨表</a>上標「惡意退貨」的客人自動加入黑名單（之後不會出現在訊息名單）。
       每次匯入已付款訂單後會自動同步；用訂單號碼或 email 對客人，對不到的（訂單還沒匯入）下次同步會再試。
+      還在黑名單的客人每次同步也會拿掉退貨產品的標籤，並從所有訊息名單（含舊名單）刪掉本人和同 IG 的其他帳號。
       手動取消黑名單的客人不會被勾回去。
     </p>
   </div>
@@ -51,8 +52,10 @@
               <th>發票日期</th>
               <th>表上訂購人</th>
               <th>訂單號碼</th>
+              <th>退貨產品</th>
               <th>對到的 CRM 客人</th>
               <th>黑名單</th>
+              <th>訊息名單</th>
             </tr>
           </thead>
           <tbody>
@@ -65,6 +68,7 @@
                   <% e["orders"].each do |o| %><div class="text-nowrap"><%= o %></div><% end %>
                   <% if e["orders"].empty? %><span class="text-muted"><%= e["emails"].join("、") %></span><% end %>
                 </td>
+                <td class="small"><%= e["tags"].to_a.join("、").presence || "—" %></td>
                 <td>
                   <% if customers.empty? %>
                     <span class="text-danger small">對不到（訂單還沒匯入？）</span>
@@ -86,6 +90,15 @@
                       <% else %>
                         <span class="badge bg-secondary">已手動移出</span>
                       <% end %>
+                    </div>
+                  <% end %>
+                </td>
+                <td class="text-nowrap">
+                  <% customers.each do |c| %>
+                    <div>
+                      <% n = @list_counts[c.id] %>
+                      <% if n.zero? %><span class="text-success small">已全部移除</span>
+                      <% else %><span class="text-danger small">還在 <%= n %> 份</span><% end %>
                     </div>
                   <% end %>
                 </td>
