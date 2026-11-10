@@ -33,4 +33,26 @@ class DailyOrdersControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
     assert_not @customer.reload.customer_profile&.skip_follow_up
   end
+  test "黑名單客人的訂單標示不要傳訊（email 或同 IG 都算）" do
+    day = Date.new(2026, 11, 9)
+    bl = ShoplineCustomer.create!(email: "bl@example.com", full_name: "黑名單客", instagram_account: "bl_ig_test")
+    bl.create_customer_profile!(blacklisted: true)
+    ShoplineCustomer.create!(email: "ok@example.com", full_name: "一般客")
+    ShoplineOrder.create!(order_number: "BL1", email: "bl@example.com", customer_name: "黑名單客", product_name: "薑黃1", quantity: 1, total_amount: 1000, payment_status: "已付款", order_date: day.noon, source_row_hash: "bl1")
+    ShoplineOrder.create!(order_number: "BL2", email: "other@example.com", customer_name: "分身帳號", instagram_account: "@BL_IG_test", product_name: "薑黃1", quantity: 1, total_amount: 900, payment_status: "已付款", order_date: day.noon, source_row_hash: "bl2")
+    ShoplineOrder.create!(order_number: "OK1", email: "ok@example.com", customer_name: "一般客", product_name: "薑黃1", quantity: 1, total_amount: 800, payment_status: "已付款", order_date: day.noon, source_row_hash: "ok1")
+
+    sign_in @owner
+    get daily_orders_path(start_date: day.to_s, tab: "new")
+    assert_response :success
+    assert_select "tr", text: /黑名單客/ do
+      assert_select "span.badge", text: "不要傳訊"
+    end
+    assert_select "tr", text: /分身帳號/ do
+      assert_select "span.badge", text: "不要傳訊"
+    end
+    assert_select "tr", text: /一般客/ do
+      assert_select "span.badge", text: "不要傳訊", count: 0
+    end
+  end
 end

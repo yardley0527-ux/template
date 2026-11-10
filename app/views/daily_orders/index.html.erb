@@ -163,6 +163,9 @@
                 <% else %>
                   <%= row.customer_name %>
                 <% end %>
+                <% if row.blacklisted %>
+                  <span class="badge bg-danger ms-1" title="黑名單客人">不要傳訊</span>
+                <% end %>
               </td>
               <td style="overflow:hidden;">
                 <% if url %>

@@ -78,6 +78,16 @@ class MessageListBuilder
     end
   end
 
+  # 黑名單客人的 IG（小寫、去掉 @）。用來比對 email 對不到、但 IG 是同一人的訂單。
+  def self.blacklisted_igs
+    ShoplineCustomer.joins(:customer_profile)
+                    .where("customer_profiles.brand_ambassador_blacklisted OR customer_profiles.blacklisted")
+                    .pluck(:instagram_account)
+                    .filter_map { |ig| normalize_ig(ig) }
+                    .reject { |ig| ig.length < 3 || %w[nil null n/a].include?(ig) }
+                    .to_set
+  end
+
   def self.normalize_ig(ig)
     v = ig.to_s.strip.downcase.delete_prefix("@")
     v.presence unless %w[無 - none].include?(v)

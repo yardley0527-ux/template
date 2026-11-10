@@ -29,7 +29,7 @@ class DailyOrdersController < ApplicationController
     :is_new_customer, :membership_level, :products_list, :health_profile, :health_tags,
     :follows_chloe_ig, :invited_to_follow_product_ig, :shopline_customer_id,
     :line_bound, :total_quantity, :health_inquiry_declined, :recipe_message_sent,
-    :has_repurchased, :skip_follow_up,
+    :has_repurchased, :skip_follow_up, :blacklisted,
     keyword_init: true
   )
 
@@ -129,7 +129,7 @@ class DailyOrdersController < ApplicationController
     groups = build_groups(@start_date, @end_date)
 
     csv_data = CSV.generate(encoding: "UTF-8") do |csv|
-      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "購買商品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG", "綁定 LINE", "已傳送吃法訊息"]
+      csv << ["分類", "訂單號碼", "姓名", "IG", "消費金額", "購買商品", "健康狀況", "健康標籤", "是否追蹤 Chloe IG", "是否已私訊邀請追蹤產品IG", "綁定 LINE", "已傳送吃法訊息", "不要傳訊（黑名單）"]
       groups.each do |label, rows|
         rows.each do |row|
           csv << [
@@ -144,7 +144,8 @@ class DailyOrdersController < ApplicationController
             row.follows_chloe_ig ? "是" : "否",
             row.invited_to_follow_product_ig ? "是" : "否",
             row.line_bound ? "是" : "否",
-            row.recipe_message_sent ? "是" : "否"
+            row.recipe_message_sent ? "是" : "否",
+            row.blacklisted ? "不要傳訊" : ""
           ]
         end
       end
@@ -239,6 +240,10 @@ class DailyOrdersController < ApplicationController
     customers_by_email = ShoplineCustomer.where(email: emails).includes(:customer_profile).index_by(&:email)
     summaries_by_email = CustomerPurchaseSummary.where(email: emails).index_by(&:email)
 
+    # 黑名單客人要在畫面上標「不要傳訊」。同一人常用好幾個 email，所以也比對 IG（跟訊息名單排除黑名單同一套）
+    blacklisted_emails = MessageListBuilder.blacklisted_emails.keys.to_set
+    blacklisted_igs    = MessageListBuilder.blacklisted_igs
+
     rows = raw_orders.map do |o|
       customer = customers_by_email[o.email_val]
       profile  = customer&.customer_profile
@@ -270,7 +275,9 @@ class DailyOrdersController < ApplicationController
         health_inquiry_declined: profile&.health_inquiry_declined || false,
         recipe_message_sent: profile&.recipe_message_sent || false,
         has_repurchased: all_first_purchases_repurchased,
-        skip_follow_up: profile&.skip_follow_up || false
+        skip_follow_up: profile&.skip_follow_up || false,
+        blacklisted: blacklisted_emails.include?(o.email_val.to_s.strip.downcase) ||
+                     blacklisted_igs.include?(o.ig_account.to_s.strip.downcase.delete_prefix("@"))
       )
     end
 
