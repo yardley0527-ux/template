@@ -61,7 +61,7 @@ Rails.application.routes.draw do
   resources :reply_assistant, only: [:index, :create, :update], controller: "reply_assistant" do
     patch :remove_item, on: :member
   end
-  resources :ig_reviews, only: [:index, :update]
+  resources :ig_reviews, only: [:index]
   resources :group_buy_contacts, only: [:index, :new, :create, :edit, :update, :destroy]
 
   get  '/group_buy_posts',              to: 'group_buy_posts#index',       as: :group_buy_posts

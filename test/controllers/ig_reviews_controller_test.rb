@@ -13,18 +13,15 @@ class IgReviewsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
   end
 
-  test "admin sees items and can mark contacted" do
+  test "admin sees items as a read-only list" do
     sign_in_admin
     get ig_reviews_path(kind: "risk")
     assert_response :success
     assert_includes response.body, "孕期建議"
     assert_includes response.body, "測試客人"
-
-    patch ig_review_path(@item), params: { status: "contacted", note: "已電話聯絡" }
-    assert_redirected_to ig_reviews_path(kind: "risk")
-    @item.reload
-    assert_equal "contacted", @item.status
-    assert_equal "已電話聯絡", @item.note
+    assert_includes response.body, "需修正的說法"
+    assert_not_includes response.body, "待處理"
+    assert_not_includes response.body, "處理備註"
   end
 
   test "search filters by customer name" do

@@ -1,34 +1,28 @@
 <% content_for :page_title, "IG 私訊整理" %>
 <div class="subheader">
   <h1 class="subheader-title"><i class="fal fa-clipboard-list-check mr-2 text-primary"></i> IG 私訊整理
-    <small>Chloe 帳號歷史私訊的人工閱讀結果。都是歷史紀錄，未經專業審閱，不可直接對外使用</small></h1>
+    <small>Chloe 帳號歷史私訊的整理結果。私訊都已回覆過，這裡只供查詢，不需逐筆處理；內容未經專業審閱，不可直接對外使用</small></h1>
 </div>
 <%= render "reply_assistant/nav", active: :reviews %>
-<% if flash[:notice] %><div class="alert alert-success"><%= flash[:notice] %></div><% end %>
 
 <ul class="nav nav-tabs mb-3">
   <% IgReviewItem::KINDS.each do |k, label| %>
     <li class="nav-item">
       <%= link_to ig_reviews_path(kind: k), class: "nav-link #{'active' if k == @kind}" do %>
         <%= label %> <span class="badge badge-secondary"><%= @kind_counts[k].to_i %></span>
-        <% if IgReviewItem::ACTIONABLE.include?(k) && @open_counts[k].to_i > 0 %><span class="badge badge-danger"><%= @open_counts[k] %> 待處理</span><% end %>
       <% end %>
     </li>
   <% end %>
 </ul>
+<% if @kind == "risk" %>
+  <p class="text-muted small">Chloe 當時的回答不適合當標準答案的說法。等級代表說法的風險程度：最高＞高＞中。</p>
+<% end %>
 
 <%= form_with url: ig_reviews_path, method: :get, local: true, class: "form-inline mb-3" do %>
   <input type="hidden" name="kind" value="<%= @kind %>">
   <label class="sr-only" for="q">搜尋</label>
   <input id="q" name="q" value="<%= @q %>" class="form-control mr-2" placeholder="搜尋內容、客人、事件代碼">
-  <% if IgReviewItem::ACTIONABLE.include?(@kind) %>
-    <label class="sr-only" for="status">狀態</label>
-    <select id="status" name="status" class="form-control mr-2">
-      <option value="">全部狀態</option>
-      <% IgReviewItem::STATUSES.each do |v, l| %><option value="<%= v %>" <%= "selected" if v == @status %>><%= l %></option><% end %>
-    </select>
-  <% end %>
-  <button class="btn btn-primary" type="submit">篩選</button>
+  <button class="btn btn-primary" type="submit">搜尋</button>
 <% end %>
 
 <% if @items.empty? %>
@@ -36,33 +30,18 @@
 <% else %>
   <div class="table-responsive"><table class="table table-bordered table-hover bg-white">
     <thead><tr>
-      <% if %w[risk].include?(@kind) %><th>等級</th><% end %>
+      <% if @kind == "risk" %><th>等級</th><% end %>
       <th>日期</th><th>內容</th><th>客人</th><th>事件</th>
-      <% if IgReviewItem::ACTIONABLE.include?(@kind) %><th style="min-width:260px">處理</th><% end %>
     </tr></thead>
     <tbody>
       <% @items.each do |item| %>
         <tr>
-          <% if @kind == "risk" %><td class="text-nowrap"><span class="badge badge-<%= item.severity_rank < 3 ? 'danger' : 'warning' %>"><%= item.severity %></span></td><% end %>
+          <% if @kind == "risk" %><td class="text-nowrap"><span class="badge badge-<%= item.severity_rank < 2 ? 'danger' : 'warning' %>"><%= item.severity %></span></td><% end %>
           <td class="text-nowrap"><%= item.as_of&.strftime("%Y/%m/%d") || "—" %></td>
           <td style="white-space:pre-line"><%= item.title %><% item.detail.each do |k, v| %><% next if v.blank? %>
 <small class="text-muted"><%= k %>：<%= v %></small><% end %></td>
-          <td><%= item.customer_name.presence || "—" %><% if item.customer_email.present? %><br><small><%= item.customer_email %></small><% end %></td>
+          <td><%= item.customer_name.presence || "—" %></td>
           <td><% item.event_codes.each do |c| %><code class="d-block small"><%= c %></code><% end %></td>
-          <% if item.actionable? %>
-            <td>
-              <%= form_with url: ig_review_path(item), method: :patch, local: true do %>
-                <input type="hidden" name="filter_status" value="<%= @status %>"><input type="hidden" name="q" value="<%= @q %>">
-                <label class="sr-only" for="st<%= item.id %>">狀態</label>
-                <select id="st<%= item.id %>" name="status" class="form-control form-control-sm mb-1">
-                  <% IgReviewItem::STATUSES.each do |v, l| %><option value="<%= v %>" <%= "selected" if v == item.status %>><%= l %></option><% end %>
-                </select>
-                <label class="sr-only" for="n<%= item.id %>">備註</label>
-                <textarea id="n<%= item.id %>" name="note" rows="2" class="form-control form-control-sm mb-1" placeholder="處理備註"><%= item.note %></textarea>
-                <button class="btn btn-sm btn-outline-primary" type="submit">儲存</button>
-              <% end %>
-            </td>
-          <% end %>
         </tr>
       <% end %>
     </tbody>
