@@ -48,6 +48,23 @@ class DepartmentSheetSyncTest < ActiveSupport::TestCase
     assert_equal "failed", SyncRun.latest_for("department_sheets").status
   end
 
+  test "recent_sheets keeps only current and previous month tabs" do
+    travel_to Date.new(2026, 7, 15) do
+      assert_equal %w[6 7], DepartmentSheetSync.new.send(:recent_sheets, %w[1 2 3 4 5 6 7 12])
+    end
+  end
+
+  test "recent_sheets spans the year boundary in January" do
+    travel_to Date.new(2026, 1, 5) do
+      assert_equal %w[12 1], DepartmentSheetSync.new.send(:recent_sheets, %w[10 11 12 1])
+    end
+  end
+
+  test "recent_sheets falls back to all tabs when names are not month numbers" do
+    tabs = %w[工作日誌 備註]
+    assert_equal tabs, DepartmentSheetSync.new.send(:recent_sheets, tabs)
+  end
+
   test "last_run_at falls back to durable SyncRun records" do
     DepartmentSheetSync.memory_last_run_at = nil
     Rails.cache.delete(DepartmentSheetSync::LAST_RUN_CACHE_KEY)

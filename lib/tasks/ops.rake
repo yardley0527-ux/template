@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 # 營運資料同步（給 Render Cron Job 用；本機也可手動跑）。
-# Render 設定：Cron Job 服務 → command: bundle exec rake ops:sync
-# 建議排程：每小時（"0 * * * *"，UTC）。頁面上的背景同步保留為備援。
+# 排程：Render「Daily Brief」cron 每天 UTC 23:30 跑 ops:sync ops:briefing。
+# 頁面上的背景備援同步已移除（曾在 512MB web instance 觸發 OOM）；
+# 臨時要更新用首頁的手動同步按鈕。
 namespace :ops do
   desc "同步部門日誌 Google Sheets 與年度行事曆 Excel"
   task sync: :environment do

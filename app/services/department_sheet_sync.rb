@@ -4,6 +4,7 @@ require "open-uri"
 
 # 從各部門的 Google Sheet（開啟「知道連結的人可檢視」）下載 xlsx，
 # 解析每日工作日誌後 upsert 進 department_updates。
+# 排程：Render「Daily Brief」cron 每天跑 rake ops:sync；手動補抓用首頁的同步按鈕。
 #
 # 工作表格式慣例：
 # - 每月一個分頁（分頁名稱為月份數字，例如 "7"）
@@ -70,17 +71,13 @@ class DepartmentSheetSync
     Rails.cache.write(LAST_RUN_CACHE_KEY, time)
   end
 
-  def self.stale?
-    last = last_run_at
-    last.nil? || last < 1.hour.ago
-  end
-
   private
 
   def sync_department(department, sheet_id)
-    xlsx = download_workbook(sheet_id)
+    file = download_workbook(sheet_id)
+    xlsx = Roo::Excelx.new(file.path)
     days = {}
-    xlsx.sheets.each do |sheet_name|
+    recent_sheets(xlsx.sheets).each do |sheet_name|
       parse_sheet(xlsx.sheet(sheet_name), days)
     end
 
@@ -97,15 +94,25 @@ class DepartmentSheetSync
   rescue StandardError => e
     Rails.logger.error("[DepartmentSheetSync] #{department}: #{e.class} #{e.message}")
     { dates: 0, error: "#{e.class}: #{e.message}" }
+  ensure
+    xlsx&.close
+    file&.close!
+  end
+
+  # 只解析最近兩個月的分頁（分頁名為月份數字）——舊月份早已入庫，
+  # 每次重讀整年會讓記憶體隨月份數累積（512MB instance 曾因此 OOM）。
+  # 分頁命名不符慣例時退回解析全部，寧可吃記憶體也不要漏資料。
+  def recent_sheets(sheet_names)
+    wanted = [Date.current.month, Date.current.prev_month.month]
+    recent = sheet_names.select { |name| wanted.include?(name[/\d+/].to_i) }
+    recent.presence || sheet_names
   end
 
   def download_workbook(sheet_id)
     url = "https://docs.google.com/spreadsheets/d/#{sheet_id}/export?format=xlsx"
-    io = URI.parse(url).open(open_timeout: 15, read_timeout: 60)
     file = Tempfile.new(["dept_sheet", ".xlsx"], binmode: true)
-    file.write(io.read)
-    file.rewind
-    Roo::Excelx.new(file.path)
+    URI.parse(url).open(open_timeout: 15, read_timeout: 60) { |io| file.write(io.read) }
+    file.tap(&:rewind)
   end
 
   def parse_sheet(sheet, days)
