@@ -17,6 +17,7 @@ require "open-uri"
 class MaliciousReturnSync
   FILE_ID = "1h2xZeaiAqTXCB8-t33W85yTHHl2pidn_"
   URL = "https://docs.google.com/spreadsheets/d/#{FILE_ID}/export?format=xlsx"
+  SHEET_URL = "https://docs.google.com/spreadsheets/d/#{FILE_ID}/edit"
   MARK = "惡意退貨"
   LOG_SECTION = "malicious_return"
   ORDER_RE = /#?\s*(\d{17})/
@@ -47,9 +48,13 @@ class MaliciousReturnSync
       emails = text.scan(EMAIL_RE).map(&:downcase).uniq
       next if orders.empty? && emails.empty?
 
-      { orders: orders, emails: emails, label: (orders + emails).join(" ") }
+      { orders: orders, emails: emails, label: (orders + emails).join(" "),
+        name: row[4].to_s.strip.presence, date: row.find { |c| c.is_a?(Date) }&.iso8601 }
     end
   end
+
+  # 頁面用：最後一次成功同步的逐列結果
+  def self.latest_run = SyncRun.where(source: "malicious_returns", status: %w[success partial]).order(:created_at).last
 
   private
 
@@ -70,9 +75,11 @@ class MaliciousReturnSync
     added = []
     already = 0
     unmatched = []
+    details = []
 
     entries.each do |entry|
       customers = customers_for(entry)
+      details << entry.except(:label).merge(customer_ids: customers.map(&:id))
       if customers.empty?
         unmatched << entry[:label]
         next
@@ -93,7 +100,7 @@ class MaliciousReturnSync
       end
     end
 
-    { rows: entries.size, added: added, already_blacklisted: already, unmatched: unmatched }
+    { rows: entries.size, added: added, already_blacklisted: already, unmatched: unmatched, entries: details }
   end
 
   def customers_for(entry)

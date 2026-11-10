@@ -1,0 +1,99 @@
+<%# app/views/malicious_returns/index.html.erb %>
+<% content_for :page_title, "惡意退貨黑名單" %>
+<% matched = @entries.count { |e| e["customer_ids"].any? } %>
+
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
+  <div class="mb-2">
+    <h4 class="fw-bold mb-0">惡意退貨黑名單</h4>
+    <p class="text-muted small mb-0">
+      <a href="<%= MaliciousReturnSync::SHEET_URL %>" target="_blank" rel="noopener">財務退貨表</a>上標「惡意退貨」的客人自動加入黑名單（之後不會出現在訊息名單）。
+      每次匯入已付款訂單後會自動同步；用訂單號碼或 email 對客人，對不到的（訂單還沒匯入）下次同步會再試。
+      手動取消黑名單的客人不會被勾回去。
+    </p>
+  </div>
+  <%= button_to "立即同步", sync_malicious_returns_path, method: :post, class: "btn btn-sm btn-primary",
+        form: { data: { turbo: false } } %>
+</div>
+
+<% if @last_attempt && @last_attempt.status == "failed" %>
+  <div class="alert alert-danger small">
+    最後一次同步（<%= @last_attempt.created_at.in_time_zone.strftime("%-m/%-d %H:%M") %>）失敗：<%= @last_attempt.error_messages.join("；") %>
+    <% if @run %>。下表是 <%= @run.created_at.in_time_zone.strftime("%-m/%-d %H:%M") %> 的結果。<% end %>
+  </div>
+<% end %>
+
+<% if @run.nil? %>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5 text-muted">還沒有同步過，按右上「立即同步」。</div>
+  </div>
+<% else %>
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2">
+      <div class="text-muted small">惡意退貨筆數</div><div class="fs-4 fw-bold"><%= @entries.size %></div>
+    </div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2">
+      <div class="text-muted small">已對到客人</div><div class="fs-4 fw-bold"><%= matched %></div>
+    </div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2">
+      <div class="text-muted small">對不到客人</div><div class="fs-4 fw-bold <%= 'text-danger' if @entries.size > matched %>"><%= @entries.size - matched %></div>
+    </div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2">
+      <div class="text-muted small">最後同步</div><div class="fs-6 fw-bold mt-1"><%= @run.created_at.in_time_zone.strftime("%Y/%-m/%-d %H:%M") %></div>
+    </div></div></div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="bg-light">
+            <tr>
+              <th>發票日期</th>
+              <th>表上訂購人</th>
+              <th>訂單號碼</th>
+              <th>對到的 CRM 客人</th>
+              <th>黑名單</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @entries.sort_by { |e| e["date"].to_s }.reverse_each do |e| %>
+              <% customers = e["customer_ids"].filter_map { |id| @customers[id] } %>
+              <tr class="<%= 'table-warning' if customers.empty? %>">
+                <td class="text-nowrap"><%= e["date"] ? Date.parse(e["date"]).strftime("%Y/%-m/%-d") : "—" %></td>
+                <td><%= e["name"] || "—" %></td>
+                <td class="small">
+                  <% e["orders"].each do |o| %><div class="text-nowrap"><%= o %></div><% end %>
+                  <% if e["orders"].empty? %><span class="text-muted"><%= e["emails"].join("、") %></span><% end %>
+                </td>
+                <td>
+                  <% if customers.empty? %>
+                    <span class="text-danger small">對不到（訂單還沒匯入？）</span>
+                  <% else %>
+                    <% customers.each do |c| %>
+                      <div>
+                        <%= link_to (c.full_name.presence || c.email), customer_path(c), class: "fw-semibold text-decoration-none" %>
+                        <span class="text-muted small"><%= c.email %></span>
+                      </div>
+                    <% end %>
+                  <% end %>
+                </td>
+                <td class="text-nowrap">
+                  <% customers.each do |c| %>
+                    <div>
+                      <% if c.customer_profile&.blacklisted? %>
+                        <span class="badge bg-danger">黑名單</span>
+                        <% if (at = @auto_logged[c.id]) %><span class="text-muted small"><%= at.in_time_zone.strftime("%-m/%-d") %> 自動加入</span><% end %>
+                      <% else %>
+                        <span class="badge bg-secondary">已手動移出</span>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>

@@ -77,6 +77,7 @@ class SidebarEntry
           group_icon: "fa-comments",
           children: [
             { href: message_lists_path, title: "訊息名單追蹤", icon: "fa-envelope-open" },
+            { href: malicious_returns_path, title: "惡意退貨黑名單", icon: "fa-user-slash" },
             { href: "#", title: "CRM 效益分析", icon: "fa-chart-bar", children: [
               { href: crm_roi_path(product: effective_key),        title: "ROI Dashboard",  icon: "fa-dollar-sign" },
               { href: crm_accuracy_path(product: effective_key),   title: "Journey 預測驗證", icon: "fa-crosshairs" },
