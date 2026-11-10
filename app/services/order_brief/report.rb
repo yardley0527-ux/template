@@ -9,7 +9,9 @@ module OrderBrief
   # - 瓶數＝品名數字 × quantity，「送M」另計；薑黃等「X N」＋「X N送M」成對重複行只留「送」那行
   # - 「以前買過 N 次」只算當天以前
   class Report
-    FOCUS = %w[PDRN 全能].freeze # 有詳細表的主力產品，換檔期改這裡
+    # 有詳細表的主力產品＝當天有人買大組數（一人付費 ≥ BIG_SET 瓶）的產品，每天自動判斷。
+    # 2026-11-10 起：原本寫死 PDRN／全能，PDRN 賣完後改成看當天實際賣出大組數的產品。
+    BIG_SET = 5
     LONG_GAP = 90
     LEVELS = %w[黑卡 金卡 銀卡 白卡 一般會員].freeze
     SHORT_LEVEL = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白" }.freeze
@@ -89,6 +91,34 @@ module OrderBrief
 
     # ---- 客人明細 ----
 
+    # 有人買大組數的產品，依付費瓶數多到少
+    def focus_series
+      @focus_series ||= begin
+        per = Hash.new(0)
+        rows.each { |r| r.items.each { |n, k| s, b, = parse(n); per[[r.email, s]] += b * k } }
+        big = per.select { |_, b| b >= BIG_SET }.keys.map(&:last).uniq
+        paid = product_stats.to_h { |p| [p[:series], p[:paid]] }
+        big.sort_by { |s| -paid.fetch(s, 0) }
+      end
+    end
+
+    # 今天下單、以前買過 PDRN 的舊客：PDRN 帶進來的新客（第一張單就有 PDRN）vs 原本舊客，依「距上次買 PDRN」多到少
+    def pdrn_followups
+      @pdrn_followups ||= rows.reject(&:new_customer?).filter_map do |r|
+        past = r.history.select { |o| pdrn?(series_of(o)) }
+        next if past.empty?
+
+        base_entry(r).merge(brought: r.history.first.equal?(past.first), last_date: past.last.date,
+                            gap: gap(r, past.last.date), times: past.size, big: (row_series(r) & focus_series).to_a.sort)
+      end.sort_by { |e| -e[:gap] }
+    end
+
+    # 新客首單買什麼，依金額多到少
+    def new_first_orders
+      @new_first_orders ||= rows.select(&:new_customer?).map { |r| base_entry(r).merge(series: row_series(r).to_a.sort) }
+                                .sort_by { |e| -e[:amount] }
+    end
+
     # { buyers:, repeat: [...], first: [...], fresh: [...] }，回購／第一次買依「隔幾天」多到少
     def focus(series)
       @focus ||= {}
@@ -103,16 +133,12 @@ module OrderBrief
       end
     end
 
-    # 沒買主力產品的舊客／新客
+    # 沒買主力產品的舊客（新客都在 new_first_orders）
     def other_old
-      rows.reject { |r| r.new_customer? || (row_series(r) & FOCUS).any? }.map do |r|
+      rows.reject { |r| r.new_customer? || (row_series(r) & focus_series).any? }.map do |r|
         same = r.history.select { |o| (series_of(o) & row_series(r)).any? }
         first_entry(r).merge(same_item_date: same.last&.date, low_amount: r.amount < 1000)
       end.sort_by { |e| -e[:gap] }
-    end
-
-    def other_new
-      rows.select { |r| r.new_customer? && (row_series(r) & FOCUS).empty? }.map { |r| base_entry(r) }
     end
 
     # 舊客依「距離任何品項上一單」分成 ≥90 天、90 天內兩張表
@@ -216,6 +242,7 @@ module OrderBrief
 
     def parse(name) = self.class.parse(name)
 
+    def pdrn?(series_set) = series_set.any? { |s| s.upcase.include?("PDRN") }
     def series_of(order) = order.items.map { |n, _| parse(n).first }.to_set
     def row_series(row) = row.orders.map { |o| series_of(o) }.reduce(Set.new, :|)
     def bottles(order, s) = order.items.sum { |n, k| parse(n)[0] == s ? parse(n)[1] * k : 0 }
@@ -234,18 +261,15 @@ module OrderBrief
     def repeat_entry(row, series)
       past = row.history.select { |o| series_of(o).include?(series) }
       last = past.last
-      if series == "PDRN"
-        now_b = row.orders.sum { |o| bottles(o, series) }
-        last_b = bottles(last, series)
-        note = "第 #{past.size + 1} 次買 PDRN"
-        note += "，從 #{last_b} 瓶#{now_b > last_b ? '升' : '降'}到 #{now_b} 瓶" if now_b != last_b
-        others = (row_series(row) - [series]).sort
-        note += "，加購#{others.join('、')}" if others.any?
-      else
-        lo = row.last_order
-        note = lo.equal?(last) ? "上次就是#{series}" : "#{md(lo.date)} #{disp(lo.items)}"
-        note += "（以前買過 #{past.size} 次#{series}）" if past.size > 1
-      end
+      # 原本 PDRN 表的備註（第幾次買、瓶數升降、加購）＋全能表的「最近一次消費」
+      now_b = row.orders.sum { |o| bottles(o, series) }
+      last_b = bottles(last, series)
+      note = "第 #{past.size + 1} 次買 #{series}"
+      note += "，從 #{last_b} 瓶#{now_b > last_b ? '升' : '降'}到 #{now_b} 瓶" if now_b != last_b
+      others = (row_series(row) - [series]).sort
+      note += "，加購#{others.join('、')}" if others.any?
+      lo = row.last_order
+      note += "；最近一次消費 #{md(lo.date)} #{disp(lo.items)}" unless lo.equal?(last)
       base_entry(row).merge(last_date: last.date, gap: gap(row, last.date), note: note,
                             last_items: disp(last.items.select { |n, _| parse(n).first == series }))
     end

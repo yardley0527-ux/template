@@ -2,7 +2,8 @@
 
 module OrderBrief
   # 把前一天的訂單簡報推到有訂閱「order_brief」的 LINE 群組，格式照使用者每天看的那份：
-  # 重點（AI）→ 總覽（文字）→ PDRN／全能表格（圖片）→ 其他舊客（文字）→ 很久沒回來表格（圖片）。
+  # 重點（AI）→ 總覽（文字）→ 大組數產品／PDRN 客人去向表格（圖片）→ 新客首單、其他舊客（文字）
+  # → 很久沒回來表格（圖片）。段落見 Sections#parts。
   # 匯入已付款訂單（/imports 或 rake import:paid_orders）跑完後呼叫；一天可能匯入好幾次，
   # 同一天的簡報只發一次（line_digest_deliveries 唯一索引），FORCE 才重發。
   # 星期一一次匯入五六日時，三天各發一份（簡報是逐人明細，合併會太長）。

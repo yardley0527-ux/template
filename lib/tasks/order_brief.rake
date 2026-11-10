@@ -28,7 +28,8 @@ namespace :order_brief do
     abort "#{order_brief_date} 沒有已付款訂單（還沒匯入？）" if report.empty?
     abort "Cloudinary 沒有設定" unless OrderBrief::ImageHost.configured?
 
-    OrderBrief::Sections.new(report).image_sections.each_with_index do |(title, blocks), i|
+    images = OrderBrief::Sections.new(report).parts.select { |kind, *| kind == :image }
+    images.each_with_index do |(_, _name, title, blocks), i|
       msg = OrderBrief::ImageHost.upload(OrderBrief::TableImage.new(blocks).render, day: order_brief_date, name: "test#{i}")
       puts title, msg[:originalContentUrl], ""
     end

@@ -2,7 +2,8 @@
 
 module OrderBrief
   # 照使用者每天看的訂單簡報格式排版（10/22 那份是範本）：
-  # 總覽、其他舊客是純文字；PDRN／全能、很久沒回來是寬表格，交給 TableImage 畫成圖。
+  # 總覽、新客首單、其他舊客是純文字；大組數產品、PDRN 客人去向、很久沒回來是寬表格，交給 TableImage 畫成圖。
+  # 11/10 起主力產品不再寫死 PDRN／全能，改成當天有人買大組數的產品（Report#focus_series）。
   class Sections
     def initialize(report)
       @r = report
@@ -29,23 +30,23 @@ module OrderBrief
     end
 
     # 依簡報順序排好的段落：[:text, 文字] 或 [:image, 名稱, 標題, blocks]
-    # 總覽 → PDRN 表 → 全能表 → 其他舊客 → 很久沒回來表
+    # 總覽 → 大組數產品表 → PDRN 客人去向表 → 新客首單 → 其他舊客 → 很久沒回來表
     def parts
       images = image_sections
       long = images.pop if @r.long_gap.any?
       list = [[:text, "📦 #{@r.label} 訂單簡報\n\n#{overview_text}"]]
       images.each_with_index { |(title, blocks), i| list << [:image, "focus#{i}", title, blocks] }
+      list << [:image, "pdrn", *pdrn_section] if pdrn_section
+      list << [:text, new_first_text] if new_first_text
       list << [:text, others_text] if others_text
       list << [:image, "long_gap", *long] if long
       list
     end
 
-    # [[標題, blocks], ...]，每段一張圖；沒人買的主力產品不出圖
+    # [[標題, blocks], ...]，每段一張圖：每個大組數產品一張，最後是很久沒回來
     def image_sections
-      list = Report::FOCUS.filter_map do |series|
+      list = @r.focus_series.map do |series|
         f = @r.focus(series)
-        next if f[:buyers].zero?
-
         ["#{series}（#{f[:buyers]} 人：回購 #{f[:repeat].size}、舊客第一次買 #{f[:first].size}、新客 #{f[:fresh].size}）", focus_blocks(series, f)]
       end
       long = @r.long_gap
@@ -59,18 +60,40 @@ module OrderBrief
       list
     end
 
+    def pdrn_section
+      return @pdrn_section if defined?(@pdrn_section)
+
+      list = @r.pdrn_followups
+      @pdrn_section = if list.any?
+        brought = list.count { |e| e[:brought] }
+        title = "PDRN 客人去向（#{list.size} 人：PDRN 帶進來的新客 #{brought}、原本舊客 #{list.size - brought}）"
+        [title, [[:heading, title, "以前買過 PDRN 的人這次買什麼，依「距上次買 PDRN」排序"],
+                 [:table, ["客人", "卡別", "類型", bought_col, "整單", "上次買 PDRN", "隔幾天", "買過 PDRN"],
+                  list.map { |e| [e[:name], e[:level], e[:brought] ? "PDRN 帶進來的新客" : "原本舊客", e[:today], money(e[:amount]), md(e[:last_date]), "#{e[:gap]} 天", "#{e[:times]} 次"] }, [6]]]]
+      end
+    end
+
+    def new_first_text
+      list = @r.new_first_orders
+      return nil if list.empty?
+
+      counts = list.flat_map { |e| e[:series] }.tally.sort_by { |_, n| -n }
+      lines = ["新客首單（#{list.size} 人）", "首單品項（人數）：" + counts.map { |s, n| "#{s} #{n}" }.join("、"), ""]
+      list.each { |e| lines << "- #{e[:name]}：#{e[:today]}，#{money(e[:amount])}" }
+      lines.join("\n")
+    end
+
     def others_text
       old = @r.other_old
-      fresh = @r.other_new
-      return nil if old.empty? && fresh.empty?
+      return nil if old.empty?
 
-      lines = ["其他舊客（#{old.size} 人，沒買 #{Report::FOCUS.join(' 和')}）", ""]
+      focus = @r.focus_series
+      lines = [focus.any? ? "其他舊客（#{old.size} 人，沒買 #{focus.join('、')}）" : "舊客（#{old.size} 人）", ""]
       old.each do |e|
         low = e[:low_amount] ? "（實付很低，大概是購物金折抵）" : ""
         same = e[:same_item_date] ? "上次買同品項 #{md(e[:same_item_date])}" : "第一次買這個品項"
         lines << "- #{e[:name]}（#{e[:level]}）：#{e[:today]}，#{money(e[:amount])}#{low}，#{e[:gap]} 天沒來（上次 #{md(e[:last_date])} #{e[:last_items]}），#{same}"
       end
-      lines += ["", "其他新客（#{fresh.size} 人）：" + fresh.map { |e| "#{e[:name]}（#{e[:today]}，#{money(e[:amount])}）" }.join("、")] if fresh.any?
       lines.join("\n")
     end
 
@@ -79,9 +102,8 @@ module OrderBrief
     def focus_blocks(series, f)
       blocks = [[:heading, "#{series}（#{f[:buyers]} 人：回購 #{f[:repeat].size}、舊客第一次買 #{f[:first].size}、新客 #{f[:fresh].size}）", nil]]
       if f[:repeat].any?
-        last_col = series == "PDRN" ? "備註" : "最近一次消費"
         blocks << [:heading, "回購 #{series}（#{f[:repeat].size} 人）", "依「多久沒回來」排序"]
-        blocks << [:table, ["客人", "卡別", bought_col, "整單", "上次買 #{series}", "隔幾天", last_col],
+        blocks << [:table, ["客人", "卡別", bought_col, "整單", "上次買 #{series}", "隔幾天", "備註"],
                    f[:repeat].map { |e| [e[:name], e[:level], e[:today], money(e[:amount]), "#{md(e[:last_date])}（#{e[:last_items]}）", "#{e[:gap]} 天", e[:note]] }, [5]]
       end
       if f[:first].any?

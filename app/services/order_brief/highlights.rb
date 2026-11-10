@@ -97,7 +97,11 @@ module OrderBrief
         以下是 #{period}（台灣日期）的已付款訂單資料（JSON）：
         #{facts.to_json}
 
-        下面是策略部主管自己寫的一份重點（10/22），請照這個寫法寫今天的：
+        現在的狀況（2026-11-10 起）：PDRN 已經賣完沒貨了。「主力產品分類」是當天有人一次買 #{Report::BIG_SET} 瓶以上（大組數）的產品，
+        分析方向跟之前 PDRN、全能一樣：誰回購、隔多久、瓶數升降、舊客第一次買、新客。另外看「PDRN 客人去向」（PDRN 帶進來的新客有沒有回來、轉買什麼）
+        和「新客首單」（沒有 PDRN 之後新客靠什麼產品進來）。沒有 PDRN 訂單是正常的（沒貨），不要當成異常來寫。
+
+        下面是策略部主管自己寫的一份重點（10/22，當時主力還是 PDRN），請照這個寫法寫今天的：
         <範本>
         #{EXAMPLE}
         </範本>
@@ -113,7 +117,7 @@ module OrderBrief
         規則（很重要）：
         - 寫任何「客人從 A 產品轉到 B 產品」「X 帶動 Y」「吃完回來」這類因果或模式之前，先看那位客人的完整購買歷史，
           確認符合才寫，並寫出依據（例如「第 2 次消費」「上一單就是 PDRN3」）。只看上一單容易誤判，寧可不寫。
-        - 「吃完回來」要用瓶數和間隔判斷：PDRN 每瓶約吃 10–15 天。
+        - 「吃完回來」要用瓶數和間隔判斷，不確定一瓶吃多久就不要寫「吃完回來」。
         - 只根據提供的資料，不要編造資料裡沒有的數字、原因或客人；不要寫庫存、行銷活動等資料沒提供的事。
         - 不要出現資料裡的英文欄位名稱或程式用語（例如 pre、paid、gift、gap），全部用中文講。
         - 用繁體中文，直接講結論，不要客套話，不要用 markdown 符號（** # 等）。
@@ -125,11 +129,13 @@ module OrderBrief
         "今天總覽" => zh(@report.summary),
         "依卡別" => @report.level_stats.map { |l| zh(l) },
         "依產品" => @report.product_stats.map { |p| zh(p) },
-        "主力產品分類" => Report::FOCUS.to_h do |s|
+        "主力產品分類（當天有人買大組數的產品）" => @report.focus_series.to_h do |s|
           f = @report.focus(s)
           [s, { "回購" => f[:repeat].map { |e| compact(e) }, "舊客第一次買" => f[:first].map { |e| compact(e) },
                 "新客" => f[:fresh].map { |e| compact(e) } }]
         end,
+        "PDRN 客人去向（以前買過 PDRN 的人這次買什麼）" => @report.pdrn_followups.map { |e| compact(e) },
+        "新客首單" => @report.new_first_orders.map { |e| compact(e) },
         "很久沒回來（≥#{Report::LONG_GAP} 天）" => @report.long_gap.map { |e| compact(e) },
         (@report.multi_day? ? "前 #{TREND_DAYS} 天＋這段期間每天走勢" : "前 #{TREND_DAYS} 天走勢") => trend,
         "每位買家的完整購買歷史" => @report.customer_histories
@@ -144,7 +150,8 @@ module OrderBrief
       old_revenue: "舊客營收", level: "卡別", amount: "營收", series: "產品", paid: "付費瓶數", gift: "另送瓶數",
       pre: "其中預購瓶數", name: "客人", order_date: "下單日", today: "今天買", last_date: "上次日期", gap: "隔幾天", note: "備註",
       last_items: "上次買什麼", times: "以前買過幾次", same_item_date: "上次買同品項日期", low_amount: "實付很低",
-      repurchased: "回購品項", first_time: "第一次買的品項"
+      repurchased: "回購品項", first_time: "第一次買的品項", brought: "PDRN 帶進來的新客（第一張單就是 PDRN）",
+      big: "這次買的大組數產品"
     }.freeze
 
     # 欄位名稱換成中文，AI 才不會把 pre、gap 這種程式用語寫進重點

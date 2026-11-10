@@ -74,6 +74,7 @@ module OrderBrief
       turmeric = r.product_stats.find { |p| p[:series] == "薑黃" }
       assert_equal [3, 1], turmeric.values_at(:paid, :gift)
 
+      assert_equal ["PDRN"], r.focus_series # Amy 一次買 6 瓶＝大組數；Bob 3 瓶、全能 2 瓶都不算
       f = r.focus("PDRN")
       assert_equal [2, 1, 1, 0], [f[:buyers], f[:repeat].size, f[:first].size, f[:fresh].size]
       amy = f[:repeat].first
@@ -84,7 +85,10 @@ module OrderBrief
 
       assert_equal ["Bob"], r.long_gap.map { |e| e[:name] }
       assert_equal ["Amy"], r.back_within.map { |e| e[:name] }
-      assert_equal ["Newbie"], r.other_new.map { |e| e[:name] }
+      assert_equal [["Newbie", ["益生菌"]]], r.new_first_orders.map { |e| e.values_at(:name, :series) }
+      amy_pdrn = r.pdrn_followups.sole # 第一張單就是 PDRN → PDRN 帶進來的新客
+      assert_equal ["Amy", true, 32, 1, ["PDRN"]], amy_pdrn.values_at(:name, :brought, :gap, :times, :big)
+      assert_empty r.other_old
     end
 
     test "總覽文字照使用者的格式" do
@@ -97,16 +101,30 @@ module OrderBrief
       assert_includes text, "薑黃 1 人，付費 3 瓶，另送 1 瓶"
     end
 
-    test "段落順序：總覽 → PDRN 表 → 全能表 → 其他新客 → 很久沒回來表" do
+    test "段落順序：總覽 → 大組數產品表 → PDRN 客人去向表 → 新客首單 → 很久沒回來表" do
       parts = Sections.new(Report.new(DAY)).parts
       assert_equal [:text, :image, :image, :text, :image], parts.map(&:first)
       assert_equal "PDRN（2 人：回購 1、舊客第一次買 1、新客 0）", parts[1][2]
-      assert_includes parts[3][1], "其他新客（1 人）：Newbie（益生菌2，$2,000）"
+      assert_equal "PDRN 客人去向（1 人：PDRN 帶進來的新客 1、原本舊客 0）", parts[2][2]
+      assert_equal "新客首單（1 人）\n首單品項（人數）：益生菌 1\n\n- Newbie：益生菌2，$2,000", parts[3][1]
 
       pdrn = parts[1][3]
       table = pdrn.find { |b| b[0] == :table }
       assert_equal ["客人", "卡別", "今天買", "整單", "上次買 PDRN", "隔幾天", "備註"], table[1]
+      # 原本 PDRN 表的備註格式不變
       assert_equal ["Amy", "黑", "PDRN6、全能1×2", "$20,000", "9/20（PDRN3）", "32 天", "第 2 次買 PDRN，從 3 瓶升到 6 瓶，加購全能"], table[2].first
+    end
+
+    test "大組數產品每天自動判斷：備註有第幾次買、瓶數升降、加購、最近一次消費" do
+      d = Date.new(2026, 11, 11)
+      order("#T1", "bob@example.com", d, [["薑黃5送1", 1], ["益生菌1", 1]], 9000) # Bob 上一單是 10/22 PDRN＋薑黃3
+      order("#T2", "new@example.com", d, [["代謝錠1", 2]], 5000) # 代謝錠 2 瓶不算大組數
+      r = Report.new(d)
+      assert_equal ["薑黃"], r.focus_series
+      bob = r.focus("薑黃")[:repeat].sole
+      assert_equal "第 2 次買 薑黃，從 3 瓶升到 5 瓶，加購益生菌", bob[:note]
+      assert_equal ["Newbie"], r.other_old.map { |e| e[:name] }
+      assert_includes Sections.new(r).others_text, "其他舊客（1 人，沒買 薑黃）"
     end
 
     test "表格畫成 PDF，中文字型沒有的字拿掉" do
