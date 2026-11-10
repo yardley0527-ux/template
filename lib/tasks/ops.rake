@@ -27,8 +27,13 @@ namespace :ops do
            "#{product_sync[:unmapped_names].any? ? "，未對應品名：#{product_sync[:unmapped_names].join('、')}" : ''}"
     end
 
+    returns = MaliciousReturnSync.call
+    puts "[ops:sync] 惡意退貨黑名單: " +
+         (returns[:error] || "新加入 #{returns[:added].size} 人#{"（#{returns[:added].join('、')}）" if returns[:added].any?}" \
+                             "#{"，對不到 #{returns[:unmatched].size} 列" if returns[:unmatched].any?}")
+
     failures = dept.count { |_, r| r[:error] } + (annual[:error] ? 1 : 0) + (inventory[:error] ? 1 : 0) +
-               (product_sync[:error] && inventory[:error].nil? ? 1 : 0)
+               (product_sync[:error] && inventory[:error].nil? ? 1 : 0) + (returns[:error] ? 1 : 0)
     abort("[ops:sync] #{failures} source(s) failed") if failures.positive?
   end
 

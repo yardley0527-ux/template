@@ -29,6 +29,10 @@ class ImportPaidOrdersJob < ApplicationJob
       Rails.logger.warn "[ImportPaidOrdersJob] product tag sync failed: #{e.class} - #{e.message}"
     end
 
+    # 財務退貨表上標「惡意退貨」的客人勾黑名單（新匯入的訂單可能剛好對得上）。失敗只記在 SyncRun。
+    returns = MaliciousReturnSync.call
+    Rails.logger.info "[ImportPaidOrdersJob] malicious returns: #{returns[:error] || "added #{returns[:added].size}"}"
+
     # perform_now（非 perform_later）：匯入已完全成功並落地之後才呼叫，刷新
     # 失敗只記 log、不 raise，不影響已成功寫入的訂單匯入結果（同
     # lib/tasks/import_paid_orders.rake 與 ImportCustomersJob 的作法）。

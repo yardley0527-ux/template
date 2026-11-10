@@ -19,7 +19,8 @@ class SyncRun < ApplicationRecord
     "membership_level_snapshot" => "會員卡別快照",
     "seo_daily"               => "SEO 每日報告",
     "manychat"                => "ManyChat 訂閱者同步",
-    "ig_inbox"                => "IG 私訊同步"
+    "ig_inbox"                => "IG 私訊同步",
+    "malicious_returns"       => "惡意退貨黑名單"
   }.freeze
   STATUSES = %w[running success partial failed].freeze
 

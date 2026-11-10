@@ -7,7 +7,8 @@ class CustomerEditLog < ApplicationRecord
     "tags"        => "標籤",
     "ambassador"  => "品牌大使",
     "feedback"    => "回饋意見",
-    "attention"   => "特殊關注"
+    "attention"   => "特殊關注",
+    "malicious_return" => "惡意退貨（自動）"
   }.freeze
 
   FIELD_LABELS = {
@@ -22,6 +23,7 @@ class CustomerEditLog < ApplicationRecord
     "brand_ambassador_blacklisted"=> "大使黑名單",
     "blacklisted"                 => "黑名單",
     "churned"                     => "已流失",
-    "tracked"                     => "追蹤"
+    "tracked"                     => "追蹤",
+    "malicious_return_orders"     => "惡意退貨訂單"
   }.freeze
 end
