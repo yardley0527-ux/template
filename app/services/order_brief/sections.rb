@@ -60,16 +60,17 @@ module OrderBrief
       list
     end
 
+    # 11/12 使用者：只留「PDRN 帶進來的新客」（第一張單就是 PDRN 的人），原本舊客不列；標題保留全部人數
     def pdrn_section
       return @pdrn_section if defined?(@pdrn_section)
 
       list = @r.pdrn_followups
-      @pdrn_section = if list.any?
-        brought = list.count { |e| e[:brought] }
-        title = "PDRN 客人去向（#{list.size} 人：PDRN 帶進來的新客 #{brought}、原本舊客 #{list.size - brought}）"
-        [title, [[:heading, title, "以前買過 PDRN 的人這次買什麼，依「距上次買 PDRN」排序"],
-                 [:table, ["客人", "卡別", "類型", bought_col, "整單", "上次買 PDRN", "隔幾天", "買過 PDRN"],
-                  list.map { |e| [e[:name], e[:level], e[:brought] ? "PDRN 帶進來的新客" : "原本舊客", e[:today], money(e[:amount]), md(e[:last_date]), "#{e[:gap]} 天", "#{e[:times]} 次"] }, [6]]]]
+      brought = list.select { |e| e[:brought] }
+      @pdrn_section = if brought.any?
+        title = "PDRN 帶進來的新客（#{brought.size} 人；PDRN 客人共 #{list.size} 人回來）"
+        [title, [[:heading, title, "第一張單就是 PDRN 的人這次買什麼，依「距上次買 PDRN」排序"],
+                 [:table, ["客人", "卡別", bought_col, "整單", "上次買 PDRN", "隔幾天", "買過 PDRN"],
+                  brought.map { |e| [e[:name], e[:level], e[:today], money(e[:amount]), md(e[:last_date]), "#{e[:gap]} 天", "#{e[:times]} 次"] }, [5]]]]
       end
     end
 

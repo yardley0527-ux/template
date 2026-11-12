@@ -105,7 +105,8 @@ module OrderBrief
       parts = Sections.new(Report.new(DAY)).parts
       assert_equal [:text, :image, :image, :text, :image], parts.map(&:first)
       assert_equal "PDRN（2 人：回購 1、舊客第一次買 1、新客 0）", parts[1][2]
-      assert_equal "PDRN 客人去向（1 人：PDRN 帶進來的新客 1、原本舊客 0）", parts[2][2]
+      assert_equal "PDRN 帶進來的新客（1 人；PDRN 客人共 1 人回來）", parts[2][2]
+      assert_equal ["客人", "卡別", "今天買", "整單", "上次買 PDRN", "隔幾天", "買過 PDRN"], parts[2][3].find { |b| b[0] == :table }[1]
       assert_equal "新客首單（1 人）\n首單品項（人數）：益生菌 1\n\n- Newbie：益生菌2，$2,000", parts[3][1]
 
       # 11/12 起產品表只列 90 天以上沒回來的：Amy 32 天前才買過 → 回購表整張不出；Bob 174 天沒來 → 留著
