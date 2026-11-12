@@ -270,7 +270,8 @@ module OrderBrief
       note += "，加購#{others.join('、')}" if others.any?
       lo = row.last_order
       note += "；最近一次消費 #{md(lo.date)} #{disp(lo.items)}" unless lo.equal?(last)
-      base_entry(row).merge(last_date: last.date, gap: gap(row, last.date), note: note,
+      # away：距離任何品項的上一單（簡報產品表只列 away ≥ LONG_GAP 的人）
+      base_entry(row).merge(last_date: last.date, gap: gap(row, last.date), away: gap(row, lo.date), note: note,
                             last_items: disp(last.items.select { |n, _| parse(n).first == series }))
     end
 

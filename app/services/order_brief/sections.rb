@@ -99,17 +99,23 @@ module OrderBrief
 
     private
 
+    # 11/12 使用者：產品表只要 90 天以上沒回來的（以任何品項的上一單算）；標題仍寫全部人數
     def focus_blocks(series, f)
       blocks = [[:heading, "#{series}（#{f[:buyers]} 人：回購 #{f[:repeat].size}、舊客第一次買 #{f[:first].size}、新客 #{f[:fresh].size}）", nil]]
-      if f[:repeat].any?
-        blocks << [:heading, "回購 #{series}（#{f[:repeat].size} 人）", "依「多久沒回來」排序"]
-        blocks << [:table, ["客人", "卡別", bought_col, "整單", "上次買 #{series}", "隔幾天", "備註"],
-                   f[:repeat].map { |e| [e[:name], e[:level], e[:today], money(e[:amount]), "#{md(e[:last_date])}（#{e[:last_items]}）", "#{e[:gap]} 天", e[:note]] }, [5]]
+      repeat = f[:repeat].select { |e| e[:away] >= Report::LONG_GAP }
+      first = f[:first].select { |e| e[:gap] >= Report::LONG_GAP }
+      if repeat.any?
+        blocks << [:heading, "回購 #{series}（#{Report::LONG_GAP} 天以上沒回來 #{repeat.size} 人／共 #{f[:repeat].size} 人）", "依「多久沒買 #{series}」排序"]
+        blocks << [:table, ["客人", "卡別", bought_col, "整單", "上次買 #{series}", "隔幾天", "多久沒來", "備註"],
+                   repeat.map { |e| [e[:name], e[:level], e[:today], money(e[:amount]), "#{md(e[:last_date])}（#{e[:last_items]}）", "#{e[:gap]} 天", "#{e[:away]} 天", e[:note]] }, [5, 6]]
       end
-      if f[:first].any?
-        blocks << [:heading, "舊客第一次買 #{series}（#{f[:first].size} 人）", "依「多久沒來」排序"]
+      if first.any?
+        blocks << [:heading, "舊客第一次買 #{series}（#{Report::LONG_GAP} 天以上沒回來 #{first.size} 人／共 #{f[:first].size} 人）", "依「多久沒來」排序"]
         blocks << [:table, ["客人", "卡別", bought_col, "整單", "上次消費", "隔幾天", "上次買什麼"],
-                   f[:first].map { |e| [e[:name], e[:level], e[:today], money(e[:amount]), md(e[:last_date]), "#{e[:gap]} 天", e[:last_items]] }, [5]]
+                   first.map { |e| [e[:name], e[:level], e[:today], money(e[:amount]), md(e[:last_date]), "#{e[:gap]} 天", e[:last_items]] }, [5]]
+      end
+      if repeat.empty? && first.empty? && (f[:repeat].any? || f[:first].any?)
+        blocks << [:text, "舊客都在 #{Report::LONG_GAP} 天內買過東西，沒有很久沒回來的。"]
       end
       if f[:fresh].any?
         blocks << [:text, "新客買 #{series}（#{f[:fresh].size} 人）：" + f[:fresh].map { |e| "#{e[:name]}（#{e[:today]}，#{money(e[:amount])}）" }.join("、")]

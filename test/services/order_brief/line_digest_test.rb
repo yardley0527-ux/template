@@ -108,11 +108,18 @@ module OrderBrief
       assert_equal "PDRN 客人去向（1 人：PDRN 帶進來的新客 1、原本舊客 0）", parts[2][2]
       assert_equal "新客首單（1 人）\n首單品項（人數）：益生菌 1\n\n- Newbie：益生菌2，$2,000", parts[3][1]
 
+      # 11/12 起產品表只列 90 天以上沒回來的：Amy 32 天前才買過 → 回購表整張不出；Bob 174 天沒來 → 留著
       pdrn = parts[1][3]
+      headings = pdrn.select { |b| b[0] == :heading }.map { |b| b[1] }
+      assert_equal ["PDRN（2 人：回購 1、舊客第一次買 1、新客 0）", "舊客第一次買 PDRN（90 天以上沒回來 1 人／共 1 人）"], headings
       table = pdrn.find { |b| b[0] == :table }
-      assert_equal ["客人", "卡別", "今天買", "整單", "上次買 PDRN", "隔幾天", "備註"], table[1]
-      # 原本 PDRN 表的備註格式不變
-      assert_equal ["Amy", "黑", "PDRN6、全能1×2", "$20,000", "9/20（PDRN3）", "32 天", "第 2 次買 PDRN，從 3 瓶升到 6 瓶，加購全能"], table[2].first
+      assert_equal ["客人", "卡別", "今天買", "整單", "上次消費", "隔幾天", "上次買什麼"], table[1]
+      assert_equal ["Bob"], table[2].map(&:first)
+    end
+
+    test "回購表的「多久沒來」看任何品項的上一單，不是這個產品的上一單" do
+      amy = Report.new(DAY).focus("PDRN")[:repeat].sole
+      assert_equal [32, 32], amy.values_at(:gap, :away)
     end
 
     test "大組數產品每天自動判斷：備註有第幾次買、瓶數升降、加購、最近一次消費" do
