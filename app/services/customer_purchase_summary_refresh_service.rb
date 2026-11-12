@@ -2,7 +2,7 @@
 
 class CustomerPurchaseSummaryRefreshService
   SERIES_OPTIONS = %w[
-    代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣 冰晶蕃茄 PDRN
+    代謝錠 全能 薑黃 膠原蛋白 美白 蝦紅素 清纖粉 魚油 私密粉 益生菌 穀胱甘肽 維DK鈣 冰晶蕃茄 PDRN 肉鹼
   ].freeze
 
   # 系列 → 商品名稱比對關鍵字。沒列的系列就用系列名本身。

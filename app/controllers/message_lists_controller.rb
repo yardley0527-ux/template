@@ -10,7 +10,7 @@ class MessageListsController < ApplicationController
   # 跟上面 MEMBERSHIP_RANK（顯示排序用，黑卡最前）方向相反，這裡要的是「下一級是誰」。
   TIER_PROGRESSION = %w[一般會員 白卡 銀卡 金卡 黑卡].freeze
   UPGRADE_TIERS = %w[白卡 銀卡 金卡 黑卡].freeze
-  CORE_PRODUCTS = %w[代謝錠 全能 清纖粉 益生菌 私密粉 穀胱甘肽 薑黃 魚油 膠原蛋白].freeze
+  CORE_PRODUCTS = %w[代謝錠 全能 清纖粉 益生菌 私密粉 穀胱甘肽 薑黃 魚油 膠原蛋白 肉鹼].freeze
 
   # 人工湊的名單（例如回購 cohort × 買過某商品）——跟每天自動記錄的
   # 「今日待處理」快照分開顯示，見 #daily。

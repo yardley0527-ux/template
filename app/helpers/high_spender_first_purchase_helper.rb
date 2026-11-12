@@ -13,6 +13,7 @@ module HighSpenderFirstPurchaseHelper
     "穀胱甘肽"=> "#6366F1",
     "冰晶蕃茄"=> "#e11d48",
     "PDRN"   => "#7c3aed",
+    "肉鹼"   => "#0EA5E9",
   }.freeze
 
   # 每個系列的預估回購週期（天）

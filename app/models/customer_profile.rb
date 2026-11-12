@@ -40,7 +40,8 @@ class CustomerProfile < ApplicationRecord
     "益生菌",
     "穀胱甘肽",
     "冰晶番茄",
-    "PDRN"
+    "PDRN",
+    "肉鹼"
   ].freeze
 
   HEALTH_TAG_OPTIONS = [

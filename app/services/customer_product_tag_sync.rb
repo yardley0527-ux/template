@@ -3,7 +3,7 @@
 # 依已付款訂單，自動幫客人補上「購買過苼莛的產品」標籤（customer_profiles.shengting_product_tags）。
 #
 # 只「補」不「刪」：客人手動勾過的標籤完全不動，只把買過、但還沒勾的產品加進去。
-# 目前只管新品（PDRN／冰晶番茄），其他產品維持人工勾選；要擴充就加進 RULES。
+# 目前只管新品（PDRN／冰晶番茄／肉鹼），其他產品維持人工勾選；要擴充就加進 RULES。
 # 冰晶番茄的訂單有「蕃茄」「番茄」兩種寫法，兩種都算。標籤文字沿用編輯頁選項
 # （CustomerProfile::SHENGTING_PRODUCT_OPTIONS）。
 #
@@ -11,7 +11,8 @@
 class CustomerProductTagSync
   RULES = {
     "PDRN"     => %w[PDRN],
-    "冰晶番茄" => %w[冰晶蕃茄 冰晶番茄]
+    "冰晶番茄" => %w[冰晶蕃茄 冰晶番茄],
+    "肉鹼"     => %w[肉鹼] # 11/11 上市；瘦身組合（肉鹼1代謝錠1薑黃1清纖粉1）也含肉鹼，一起算
   }.freeze
 
   def self.call

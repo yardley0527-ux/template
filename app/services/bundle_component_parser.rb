@@ -53,6 +53,7 @@ class BundleComponentParser
     "DK鈣"     => "vitamin_dk_calcium",
     "B群"       => "omnipotent",
     "PDRN"      => "pdrn",
+    "肉鹼"      => "carnitine",
   }.freeze
 
   # Aliases sorted by key length descending (longest first), computed once.
