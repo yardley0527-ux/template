@@ -137,8 +137,8 @@ module OrderBrief
     def other_old
       rows.reject { |r| r.new_customer? || (row_series(r) & focus_series).any? }.map do |r|
         same = r.history.select { |o| (series_of(o) & row_series(r)).any? }
-        first_entry(r).merge(same_item_date: same.last&.date, low_amount: r.amount < 1000)
-      end.sort_by { |e| -e[:gap] }
+        first_entry(r).merge(same_item_date: same.last&.date, low_amount: r.amount < 1000, level_rank: LEVELS.index(level_full(r.email)) || LEVELS.size)
+      end.sort_by { |e| [e[:level_rank], -e[:gap]] } # 卡別高到低，同卡別久沒來的在前
     end
 
     # 舊客依「距離任何品項上一單」分成 ≥90 天、90 天內兩張表
