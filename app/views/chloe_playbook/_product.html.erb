@@ -48,6 +48,7 @@
             <div class="pb-quote"><%= q["a"] %><small><%= q["date"] %><%= "｜#{q['note']}" if q["note"] %></small></div>
           </div>
         <% end %>
+        <% if faq["tip"] %><div class="pb-note"><%= faq["tip"] %></div><% end %>
       </div></div>
     </div>
   <% end %>
