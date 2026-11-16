@@ -278,6 +278,9 @@ class CustomersController < ApplicationController
   def show
     @customer = ShoplineCustomer.find(params[:id])
     @profile  = @customer.customer_profile || @customer.build_customer_profile
+    if (fs = CustomerPurchaseSummary.find_by(identity_key: customer_identity_key(@customer)))
+      @first_source = { label: first_source_label(fs.first_series, fs.first_product), product: fs.first_product, date: fs.first_date }
+    end
 
     @orders_page  = [params[:orders_page].to_i, 1].max
     @orders_total = ShoplineOrder.where(email: @customer.email).count

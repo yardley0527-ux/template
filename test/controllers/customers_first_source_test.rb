@@ -35,4 +35,12 @@ class CustomersFirstSourceTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "全能客"
     assert_not_includes response.body, "預購客"
   end
+
+  test "客人頁顯示首購產品" do
+    get customer_path(ShoplineCustomer.find_by(email: "pre@example.com"))
+    assert_response :success
+    assert_select ".stat-label", text: "首購產品"
+    assert_select ".stat-value.first-source.preorder", text: "PDRN 預購"
+    assert_includes response.body, "預購-PDRN10・2026/10/27"
+  end
 end
