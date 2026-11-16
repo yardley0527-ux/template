@@ -64,7 +64,8 @@ class ProductStrategyController < ApplicationController
     list = list.where(STATUS_FILTERS[@status]) if @status.present?
 
     # 跨買排行：之後買過（cross）或第二筆訂單（second）買了某產品
-    @rank_mode = params[:rank] == "second" ? "second" : "after"
+    # 預設看「第二筆訂單買什麼」，rank=after 看首購後任何時候買過的其他產品
+    @rank_mode = params[:rank] == "after" ? "after" : "second"
     @product = params[:product].to_s
     @product = "" unless CustomerCohortStatsRefreshService::FAMILY_PATTERNS.map(&:first).include?(@product)
     if @product.present?

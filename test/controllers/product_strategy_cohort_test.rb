@@ -86,9 +86,9 @@ class ProductStrategyCohortTest < ActionDispatch::IntegrationTest
     assert_select "a[href*='product=%E4%BB%A3%E8%AC%9D%E9%8C%A0']" # 跨買排行可點
     assert_includes response.body, "1 人</a>／1 人"
 
-    get product_strategy_source_path(source: "PDRN 預購", product: "代謝錠", rank: "second")
+    get product_strategy_source_path(source: "PDRN 預購", product: "代謝錠")
     assert_includes response.body, "預購甲"
-    get product_strategy_source_path(source: "PDRN 預購", product: "全能")
+    get product_strategy_source_path(source: "PDRN 預購", product: "全能", rank: "after")
     assert_not_includes response.body, "預購甲"
 
     get product_strategy_source_path(source: "全能", status: "only_same")

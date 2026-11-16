@@ -47,8 +47,8 @@
   <div class="col-lg-4 mb-3">
     <div class="panel h-100"><div class="panel-hdr"><h2>跨買產品排行</h2>
         <div class="panel-toolbar ca-toggle">
-          <%= link_to "之後買過", product_strategy_source_path(request.query_parameters.except("source").merge(source: @source, rank: nil, product: nil, page: nil).compact), class: "btn btn-xs #{@rank_mode == 'after' ? 'btn-primary' : 'btn-outline-secondary'}" %>
-          <%= link_to "第二筆訂單買什麼", product_strategy_source_path(request.query_parameters.except("source").merge(source: @source, rank: "second", product: nil, page: nil).compact), class: "btn btn-xs #{@rank_mode == 'second' ? 'btn-primary' : 'btn-outline-secondary'}" %>
+          <%= link_to "第二筆訂單買什麼", product_strategy_source_path(request.query_parameters.except("source").merge(source: @source, rank: nil, product: nil, page: nil).compact), class: "btn btn-xs #{@rank_mode == 'second' ? 'btn-primary' : 'btn-outline-secondary'}" %>
+          <%= link_to "之後買過", product_strategy_source_path(request.query_parameters.except("source").merge(source: @source, rank: "after", product: nil, page: nil).compact), class: "btn btn-xs #{@rank_mode == 'after' ? 'btn-primary' : 'btn-outline-secondary'}" %>
         </div></div>
       <div class="panel-container show"><div class="panel-content">
         <% rows = @rank_mode == "second" ? s[:second] : s[:cross] %>
@@ -56,7 +56,7 @@
           <thead><tr><th>產品</th><th class="text-end">人數／首購人數</th><th class="text-end"><%= @rank_mode == "second" ? "佔比" : "跨買率" %></th><% if @rank_mode == "after" %><th class="text-end">業績</th><% end %></tr></thead>
           <tbody>
           <% rows.first(12).each do |fam, v| %>
-            <% url = list_url.(rank: (@rank_mode == "second" ? "second" : nil), product: fam) %>
+            <% url = list_url.(rank: (@rank_mode == "after" ? "after" : nil), product: fam) %>
             <tr class="<%= 'table-active' if @product == fam %>">
               <td><%= link_to fam, url, class: "ca-link" %><%= " （同產品）" if fam == family %></td>
               <td class="text-end pc-nowrap"><%= link_to "#{number_with_delimiter(v[:people])} 人", url, class: "ca-link" %>／<%= number_with_delimiter(s[:total]) %> 人</td>
@@ -105,7 +105,7 @@
       <div class="col-auto"><label class="form-label">買過的產品</label>
         <div class="d-flex gap-1">
           <%= select_tag :product, options_for_select([["不限", ""]] + (s[:cross].keys | s[:second].keys).map { |f| [f, f] }, @product), class: "form-control" %>
-          <%= select_tag :rank, options_for_select([["之後買過", "after"], ["第二筆就買", "second"]], @rank_mode), class: "form-control" %>
+          <%= select_tag :rank, options_for_select([["第二筆就買", "second"], ["之後買過", "after"]], @rank_mode), class: "form-control" %>
         </div></div>
       <div class="col-auto"><label class="form-label">距上次購買</label>
         <%= select_tag :recency, options_for_select(recency_labels.map { |k, v| [v, k] }, @recency), class: "form-control" %></div>
