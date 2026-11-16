@@ -27,6 +27,7 @@ class SidebarEntry
           group_icon: "fa-users",
           children: [
             { href: customers_path,          title: "客人資料庫",     icon: "fa-address-book" },
+            { href: product_strategy_path,   title: "產品策略報表",   icon: "fa-chart-line" },
             { href: pdrn_preorder_tracking_path, title: "PDRN 客人追蹤", icon: "fa-seedling" },
             { href: upgraded_members_path,   title: "升級名單",       icon: "fa-arrow-up" },
             { href: inactive_members_path,   title: "近期未消費名單", icon: "fa-user-times" },
@@ -90,7 +91,6 @@ class SidebarEntry
           group_title: "產品 & 策略",
           group_icon: "fa-box",
           children: [
-            { href: product_strategy_path,      title: "產品策略報表",   icon: "fa-chart-line" },
             { href: products_path,              title: "年度 Top 產品排行", icon: "fa-trophy" },
             { href: product_inventory_path,     title: "產品庫存",       icon: "fa-boxes" },
             { href: video_topics_path,          title: "產品拍片主題",   icon: "fa-video" },

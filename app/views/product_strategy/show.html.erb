@@ -1,0 +1,158 @@
+<% content_for :page_title, "首購#{@source}｜產品分析" %>
+<% s = @summary %>
+<% pct = ->(a, b) { b.to_i.positive? ? "#{(a * 100.0 / b).round(1)}%" : "—" } %>
+<% short = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白", "一般會員" => "一般" } %>
+<% period_label = ProductCohortAnalysis::PERIODS[@period] %>
+
+<div class="subheader d-flex justify-content-between align-items-start flex-wrap gap-2">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-chart-line"></i>
+    首購「<%= @source %>」的客人
+    <small>第一筆訂單是 <%= @source %> 的客人，之後的回購、跨買與卡別變化（<%= period_label %>）</small>
+  </h1>
+  <%= link_to "← 回產品策略報表", product_strategy_path(period: @period.presence), class: "btn btn-sm btn-outline-secondary" %>
+</div>
+
+<div class="ca-kpis mb-3">
+  <div class="ca-kpi"><div class="ca-k">首購人數</div><div class="ca-v"><%= number_with_delimiter(s[:total]) %> 人</div>
+    <div class="ca-s">平均首單 NT$ <%= number_with_delimiter(s[:avg_first_amount]) %></div></div>
+  <div class="ca-kpi"><div class="ca-k">之後有再買</div><div class="ca-v"><%= number_with_delimiter(s[:repurchased]) %> 人</div>
+    <div class="ca-s"><%= pct.(s[:repurchased], s[:total]) %>・同產品回購 <%= number_with_delimiter(s[:same_again]) %> 人（<%= pct.(s[:same_again], s[:total]) %>）</div></div>
+  <div class="ca-kpi"><div class="ca-k">回購金額</div><div class="ca-v">NT$ <%= number_with_delimiter(s[:after_amount].round) %></div>
+    <div class="ca-s">回購者平均 NT$ <%= number_with_delimiter(s[:repurchased].positive? ? (s[:after_amount] / s[:repurchased]).round : 0) %>・平均 <%= s[:avg_after_days] %> 次</div></div>
+  <div class="ca-kpi"><div class="ca-k">卡別升級</div><div class="ca-v"><%= number_with_delimiter(s[:upgraded]) %> 人</div>
+    <div class="ca-s"><%= pct.(s[:upgraded], s[:total]) %>（首購時 → 現在）</div></div>
+</div>
+
+<div class="row">
+  <div class="col-lg-4 mb-3">
+    <div class="panel h-100"><div class="panel-hdr"><h2>30／60／90 天回購率</h2></div>
+      <div class="panel-container show"><div class="panel-content">
+        <table class="table table-sm mb-2">
+          <thead><tr><th>首購後</th><th class="text-end">已滿天數的人</th><th class="text-end">有再買</th><th class="text-end">回購率</th></tr></thead>
+          <tbody>
+          <% s[:windows].each do |n, w| %>
+            <tr><td><%= n %> 天內</td><td class="text-end"><%= number_with_delimiter(w[:eligible]) %></td><td class="text-end"><%= number_with_delimiter(w[:hit]) %></td><td class="text-end fw-bold"><%= pct.(w[:hit], w[:eligible]) %></td></tr>
+          <% end %>
+          </tbody>
+        </table>
+        <div class="small text-muted">只算首購已滿 N 天的人；任何產品都算回購。</div>
+      </div></div></div>
+  </div>
+  <div class="col-lg-4 mb-3">
+    <div class="panel h-100"><div class="panel-hdr"><h2>跨買產品排行</h2></div>
+      <div class="panel-container show"><div class="panel-content">
+        <table class="table table-sm mb-2">
+          <thead><tr><th>產品</th><th class="text-end">人數</th><th class="text-end">業績</th></tr></thead>
+          <tbody>
+          <% s[:cross].first(10).each do |fam, v| %>
+            <tr><td><%= fam %></td><td class="text-end"><%= number_with_delimiter(v[:people]) %></td><td class="text-end pc-nowrap">NT$ <%= number_with_delimiter(v[:revenue].round) %></td></tr>
+          <% end %>
+          <% if s[:cross].empty? %><tr><td colspan="3" class="text-muted">目前沒有</td></tr><% end %>
+          </tbody>
+        </table>
+        <div class="small text-muted">首購之後買的其他產品；業績是商品結帳價 × 數量。</div>
+      </div></div></div>
+  </div>
+  <div class="col-lg-4 mb-3">
+    <div class="panel h-100"><div class="panel-hdr"><h2>卡別升級</h2></div>
+      <div class="panel-container show"><div class="panel-content">
+        <table class="table table-sm mb-2">
+          <thead><tr><th>首購時 → 現在</th><th class="text-end">人數</th></tr></thead>
+          <tbody>
+          <% s[:upgrade_paths].first(8).each do |path, n| %>
+            <tr><td><%= path %></td><td class="text-end"><%= number_with_delimiter(n) %></td></tr>
+          <% end %>
+          <% if s[:upgrade_paths].empty? %><tr><td colspan="2" class="text-muted">目前沒有</td></tr><% end %>
+          </tbody>
+        </table>
+        <div class="small text-muted">首購時＝第一張訂單上的會員等級（空白算一般會員）；現在＝客人資料庫目前等級。</div>
+      </div></div></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr"><h2>客人名單 <span class="fw-300 ms-2"><%= number_with_delimiter(@total) %> 人</span></h2></div>
+  <div class="panel-container show"><div class="panel-content">
+    <%= form_with url: product_strategy_source_path(source: @source), method: :get, local: true, class: "row gx-2 gy-2 align-items-end mb-2" do %>
+      <div class="col-auto"><label class="form-label">首購期間</label>
+        <%= select_tag :period, options_for_select(ProductCohortAnalysis::PERIODS.map { |k, v| [v, k] }, @period), class: "form-control" %></div>
+      <div class="col-auto"><label class="form-label">狀態</label>
+        <%= select_tag :status, options_for_select([["全部", ""], ["之後有再買", "repurchased"], ["之後還沒再買", "not_yet"], ["同產品回購", "same_again"], ["有跨買其他產品", "cross"], ["卡別有升級", "upgraded"]], @status), class: "form-control" %></div>
+      <div class="col-auto"><label class="form-label">排序</label>
+        <%= select_tag :sort, options_for_select([["之後消費高到低", "after_amount"], ["首單金額高到低", "first_amount"], ["首購日期新到舊", "first_date"], ["最近購買新到舊", "last_order"]], @sort), class: "form-control" %></div>
+      <div class="col-auto"><%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>
+        <%= link_to "清除", product_strategy_source_path(source: @source), class: "btn btn-outline-secondary" %></div>
+    <% end %>
+
+    <% pager = capture do %>
+      <% if @total_pages > 1 %>
+        <% q = request.query_parameters.except("source") %>
+        <nav class="ca-pager"><span class="text-muted me-2">第 <%= @offset + 1 %>–<%= @offset + @people.size %> 筆，共 <%= number_with_delimiter(@total) %> 筆</span>
+          <%= link_to "← 上一頁", product_strategy_source_path(q.merge(source: @source, page: @page - 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page <= 1}" %>
+          <% pages = ([1, @total_pages] + ((@page - 2)..(@page + 2)).to_a).select { |n| n.between?(1, @total_pages) }.uniq.sort %>
+          <% pages.each_with_index do |n, i| %>
+            <% if i.positive? && n - pages[i - 1] > 1 %><span class="text-muted">…</span><% end %>
+            <%= link_to n, product_strategy_source_path(q.merge(source: @source, page: n)), class: "btn btn-sm #{n == @page ? 'btn-primary' : 'btn-outline-secondary'}" %>
+          <% end %>
+          <%= link_to "下一頁 →", product_strategy_source_path(q.merge(source: @source, page: @page + 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page >= @total_pages}" %>
+        </nav>
+      <% end %>
+    <% end %>
+
+    <%= pager %>
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover table-striped w-100 ca-table">
+        <thead class="bg-primary-600">
+          <tr>
+            <th>#</th><th>客人</th><th>卡別</th><th>首購日期</th><th class="text-end">首單金額</th><th>首單買什麼</th>
+            <th class="text-end">之後買幾次</th><th class="text-end">之後消費</th><th>跨買產品</th><th>最近一次購買</th>
+          </tr>
+        </thead>
+        <tbody>
+        <% @people.each_with_index do |p, i| %>
+          <tr>
+            <td class="text-muted"><%= @offset + i + 1 %></td>
+            <td>
+              <div class="fw-500"><%= p[:customer_id] ? link_to(p[:name], customer_path(p[:customer_id])) : p[:name] %></div>
+              <% if p[:ig].present? %><div class="small"><a href="https://instagram.com/<%= p[:ig] %>" target="_blank" rel="noopener noreferrer">@<%= p[:ig] %></a></div><% end %>
+            </td>
+            <td class="pc-nowrap">
+              <% if p[:upgraded] %><%= short[p[:level_at_first]] %> → <b class="ca-up"><%= short[p[:level_now]] || p[:level_now] %></b><% else %><%= short[p[:level_now]] || p[:level_now] %><% end %>
+            </td>
+            <td class="pc-nowrap"><%= p[:first_date].strftime("%Y/%m/%d") %></td>
+            <td class="text-end pc-nowrap">NT$ <%= number_with_delimiter(p[:first_amount]) %></td>
+            <td class="small"><div class="ca-items" title="<%= p[:first_items] %>"><%= p[:first_items] %></div></td>
+            <td class="text-end pc-nowrap"><%= p[:after_days].positive? ? "#{p[:after_days]} 次" : "—" %></td>
+            <td class="text-end pc-nowrap"><%= p[:after_amount].positive? ? "NT$ #{number_with_delimiter(p[:after_amount])}" : "—" %></td>
+            <td><% p[:cross].each do |f| %><span class="pc-tag"><%= f %></span><% end %><%= "—" if p[:cross].empty? %></td>
+            <td class="small pc-nowrap">
+              <%= p[:last_order_date].strftime("%Y/%m/%d") %> <span class="text-muted">（<%= (Date.current - p[:last_order_date]).to_i %> 天前）</span>
+              <div class="text-muted ca-items" title="<%= p[:last_items] %>"><%= p[:last_items] %></div>
+            </td>
+          </tr>
+        <% end %>
+        <% if @people.empty? %><tr><td colspan="10" class="text-center text-muted py-4">沒有符合條件的客人</td></tr><% end %>
+        </tbody>
+      </table>
+    </div>
+    <%= pager %>
+    <div class="small text-muted mt-2">同 IG 的不同 email 算同一人，已排除黑名單。「之後買幾次」＝首購那天之後另外有下單的天數。每次匯入訂單後自動更新。</div>
+  </div></div>
+</div>
+
+<style>
+  .ca-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 900px) { .ca-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .ca-kpi { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
+  .ca-k { color: #6b7280; font-size: 12px; }
+  .ca-v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ca-s { color: #6b7280; font-size: 13px; }
+  .ca-table td { vertical-align: top; padding-top: 6px; padding-bottom: 6px; }
+  .ca-up { color: #2e7d32; }
+  .ca-items { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ca-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 8px 0; }
+  .pc-nowrap { white-space: nowrap; }
+  .pc-tag { display: inline-block; background: #ede7f6; color: #4527a0; border-radius: 999px; padding: 1px 8px; font-size: 12px; margin: 0 4px 2px 0; white-space: nowrap; }
+  .bg-primary-600 { background-color: #886ab5 !important; color: white; }
+</style>

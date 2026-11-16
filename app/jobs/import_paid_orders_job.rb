@@ -21,6 +21,14 @@ class ImportPaidOrdersJob < ApplicationJob
     CustomerSeriesLoyaltyRefreshService.call
     Rails.logger.info "[ImportPaidOrdersJob] series loyalty refreshed"
 
+    # 首購來源追蹤（產品策略報表 → 各產品分析）先算好放快取；失敗只記 log
+    begin
+      ProductCohortAnalysis.warm!
+      Rails.logger.info "[ImportPaidOrdersJob] product cohort analysis warmed"
+    rescue => e
+      Rails.logger.warn "[ImportPaidOrdersJob] product cohort analysis warm failed: #{e.class} - #{e.message}"
+    end
+
     # 依新訂單自動補「購買過苼莛的產品」標籤（PDRN／冰晶番茄）。失敗只記 log，不影響匯入結果。
     begin
       CustomerProductTagSync.call

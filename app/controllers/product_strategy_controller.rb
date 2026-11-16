@@ -1,7 +1,28 @@
 # frozen_string_literal: true
 
 class ProductStrategyController < ApplicationController
+  PER_PAGE = 50
+
+  # 各產品分析名單的排序
+  SORTS = {
+    "after_amount" => ->(p) { [-p[:after_amount], -p[:first_amount]] },
+    "first_amount" => ->(p) { [-p[:first_amount], -p[:after_amount]] },
+    "first_date" => ->(p) { [-p[:first_date].jd, -p[:first_amount]] },
+    "last_order" => ->(p) { [-p[:last_order_date].jd, -p[:after_amount]] }
+  }.freeze
+
   def index
+    # 首購來源追蹤總表（每個首購來源一列，點進去看該產品的客人）
+    @period = ProductCohortAnalysis::PERIODS.key?(params[:period].to_s) ? params[:period].to_s : ""
+    people = ProductCohortAnalysis.in_period(ProductCohortAnalysis.people, @period)
+    by_source = people.group_by { |p| p[:source] }
+    @cohort_rows = ProductCohortAnalysis.sources.filter_map do |source|
+      group = by_source[source]
+      next if group.blank?
+      [source, ProductCohortAnalysis.summarize(group)]
+    end
+    @cohort_total = people.size
+
     @report = Rails.cache.fetch("product_strategy:report:v2", expires_in: 1.hour) do
       build_report
     end
@@ -16,6 +37,31 @@ class ProductStrategyController < ApplicationController
       total_iron:       @report.sum { |r| r[:iron] },
       best_retention:   with_data.max_by { |r| r[:return_rate] }
     }
+  end
+
+  def show
+    @source = params[:source].to_s
+    @period = ProductCohortAnalysis::PERIODS.key?(params[:period].to_s) ? params[:period].to_s : ""
+    unless ProductCohortAnalysis.sources.include?(@source)
+      redirect_to product_strategy_path, alert: "找不到這個首購來源" and return
+    end
+    cohort = ProductCohortAnalysis.in_period(ProductCohortAnalysis.people, @period).select { |p| p[:source] == @source }
+    @summary = ProductCohortAnalysis.summarize(cohort)
+
+    @status = params[:status].to_s
+    @sort = SORTS.key?(params[:sort].to_s) ? params[:sort].to_s : "after_amount"
+    list = cohort
+    list = list.select { |p| p[:after_days].positive? } if @status == "repurchased"
+    list = list.select { |p| p[:after_days].zero? } if @status == "not_yet"
+    list = list.select { |p| p[:same_again] } if @status == "same_again"
+    list = list.select { |p| p[:cross].any? } if @status == "cross"
+    list = list.select { |p| p[:upgraded] } if @status == "upgraded"
+    sorted = list.sort_by(&SORTS[@sort])
+    @total = sorted.size
+    @total_pages = [(@total.to_f / PER_PAGE).ceil, 1].max
+    @page = params[:page].to_i.clamp(1, @total_pages)
+    @offset = (@page - 1) * PER_PAGE
+    @people = sorted.slice(@offset, PER_PAGE) || []
   end
 
   private
