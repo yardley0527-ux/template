@@ -18,10 +18,12 @@
         <tr>
           <th>首購來源</th>
           <th class="text-end">首購人數</th>
+          <th class="text-end">平均首單</th>
           <th class="text-end">有回購</th>
           <th class="text-end">同產品回購</th>
           <th class="text-end">30 天回購率</th>
           <th class="text-end">90 天回購率</th>
+          <th class="text-end">已沉默 / 觀察中</th>
           <th class="text-end">回購者平均消費</th>
           <th class="text-end">平均回購次數</th>
           <th>跨買前 3 名</th>
@@ -31,17 +33,19 @@
       </thead>
       <tbody>
         <% if @cohort_rows.empty? %>
-          <tr><td colspan="11" class="text-center text-muted py-4">還沒有計算結果，按右上角「重新計算」，約 1 分鐘後重新整理頁面。</td></tr>
+          <tr><td colspan="13" class="text-center text-muted py-4">還沒有計算結果，按右上角「重新計算」，約 1 分鐘後重新整理頁面。</td></tr>
         <% end %>
         <% @cohort_rows.each do |source, s| %>
           <% w30 = s[:windows][30]; w90 = s[:windows][90] %>
           <tr>
             <td class="pc-nowrap"><%= link_to source, product_strategy_source_path(source: source, period: @period.presence), class: "fw-bold #{'pc-pre' if source == 'PDRN 預購'}" %></td>
             <td class="text-end"><%= number_with_delimiter(s[:total]) %></td>
+            <td class="text-end pc-nowrap">NT$ <%= number_with_delimiter(s[:avg_first_amount]) %></td>
             <td class="text-end pc-nowrap"><%= number_with_delimiter(s[:repurchased]) %> <span class="text-muted">(<%= pct.(s[:repurchased], s[:total]) %>)</span></td>
             <td class="text-end pc-nowrap"><%= number_with_delimiter(s[:same_again]) %> <span class="text-muted">(<%= pct.(s[:same_again], s[:total]) %>)</span></td>
             <td class="text-end"><%= pct.(w30[:hit], w30[:eligible]) %></td>
             <td class="text-end"><%= pct.(w90[:hit], w90[:eligible]) %></td>
+            <td class="text-end pc-nowrap"><span class="pc-silent"><%= number_with_delimiter(s[:silent]) %></span><% if s[:watching].positive? %> <span class="pc-watch">+<%= number_with_delimiter(s[:watching]) %> 觀察中</span><% end %></td>
             <td class="text-end pc-nowrap">NT$ <%= number_with_delimiter(s[:repurchased].positive? ? (s[:after_amount] / s[:repurchased]).round : 0) %></td>
             <td class="text-end"><%= s[:avg_after_days] %></td>
             <td><% s[:cross].first(3).each do |f, v| %><span class="pc-tag"><%= f %> <%= v[:people] %></span><% end %></td>
@@ -56,6 +60,7 @@
     共 <%= number_with_delimiter(@cohort_total) %> 人；同一人用手機 > email 合併（跟客人資料庫的首購來源一致），已排除黑名單（含同 IG 帳號）。
     最後計算：<%= @cohort_refreshed_at ? @cohort_refreshed_at.in_time_zone("Taipei").strftime("%Y/%m/%d %H:%M") : "—" %>（每次匯入訂單後自動重算）。
     回購＝首購那天之後另一天有下單（任何產品）；同產品回購＝之後又買了首購那個產品。30／90 天回購率只算首購已滿 30／90 天的人。
+    已沉默＝還沒回購且已超過該產品的回購週期（代謝錠 56 天、全能 61 天…），觀察中＝還在週期內。
     卡別升級＝首購那張單的會員等級 → 現在。
   </div>
 </div>
@@ -70,4 +75,6 @@
   .pc-nowrap { white-space: nowrap; }
   .pc-tag { display: inline-block; background: #ede7f6; color: #4527a0; border-radius: 999px; padding: 1px 8px; font-size: 12px; margin: 0 4px 2px 0; white-space: nowrap; }
   .pc-pre { color: #bf360c; }
+  .pc-silent { color: #dc2626; font-weight: 600; }
+  .pc-watch { color: #d97706; font-size: 12px; }
 </style>

@@ -56,13 +56,13 @@ class ProductStrategyCohortTest < ActionDispatch::IntegrationTest
     assert_select ".pc-table a", text: "全能"
   end
 
-  test "系列報表 PDRN 拆成預購／現貨" do
-    CrmProduct.create!(key: "omni_t", label: "全能", status: "confirmed", include_in_analysis: true, sql_pattern: "product_name LIKE '%全能%'")
-    CrmProduct.create!(key: "pdrn_t", label: "PDRN", status: "confirmed", include_in_analysis: true, sql_pattern: "product_name LIKE '%PDRN%'")
+  test "只剩一張總表，含平均首單與已沉默／觀察中，概覽卡片同一份資料" do
     get product_strategy_path
-    assert_select ".ps-series-name", text: "PDRN 預購"
-    assert_select ".ps-series-name", text: "PDRN 現貨"
-    assert_select ".ps-series-name", text: "PDRN", count: 0
+    assert_response :success
+    assert_select ".ps-table", count: 0
+    assert_select ".pc-table th", text: "平均首單"
+    assert_select ".pc-table th", text: "已沉默 / 觀察中"
+    assert_select ".ps-ov-num", text: "3"
   end
 
   test "點進產品看該產品首購客人" do

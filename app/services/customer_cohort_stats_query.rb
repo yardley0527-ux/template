@@ -77,7 +77,10 @@ class CustomerCohortStatsQuery
       "COALESCE(SUM(after_amount) FILTER (WHERE after_days > 0), 0)",
       "COALESCE(AVG(after_days) FILTER (WHERE after_days > 0), 0)",
       "COALESCE(AVG(first_amount), 0)",
-      "COUNT(*) FILTER (WHERE upgraded)"
+      "COUNT(*) FILTER (WHERE upgraded)",
+      # 還沒回購的人：超過該產品回購週期＝已沉默，還在週期內＝觀察中（週期同 CustomerPurchaseSummaryRefreshService）
+      "COUNT(*) FILTER (WHERE after_days = 0 AND first_date <= #{today_sql} - (#{silent_days_sql}))",
+      "COUNT(*) FILTER (WHERE after_days = 0 AND first_date > #{today_sql} - (#{silent_days_sql}))"
     ]
     WINDOWS.each do |n|
       cutoff = ActiveRecord::Base.connection.quote(@today - n)
@@ -87,8 +90,19 @@ class CustomerCohortStatsQuery
     cols.map { |c| Arel.sql(c) }
   end
 
+  def today_sql
+    "#{ActiveRecord::Base.connection.quote(@today)}::date"
+  end
+
+  def silent_days_sql
+    conn = ActiveRecord::Base.connection
+    map = CustomerPurchaseSummaryRefreshService::SERIES_SILENT_DAYS_MAP
+    default = CustomerPurchaseSummaryRefreshService::DEFAULT_SILENT_DAYS_THRESHOLD
+    "CASE source_family " + map.map { |k, v| "WHEN #{conn.quote(k)} THEN #{v.to_i}" }.join(" ") + " ELSE #{default.to_i} END"
+  end
+
   def build_summary(vals)
-    total, back, same, after_amt, avg_days, avg_first, upgraded, *w = vals.map { |v| v || 0 }
+    total, back, same, after_amt, avg_days, avg_first, upgraded, silent, watching, *w = vals.map { |v| v || 0 }
     {
       total: total.to_i,
       repurchased: back.to_i,
@@ -97,6 +111,8 @@ class CustomerCohortStatsQuery
       avg_after_days: avg_days.to_f.round(1),
       avg_first_amount: avg_first.to_f.round,
       upgraded: upgraded.to_i,
+      silent: silent.to_i,
+      watching: watching.to_i,
       windows: WINDOWS.each_with_index.to_h { |n, i| [n, { eligible: w[i * 2].to_i, hit: w[i * 2 + 1].to_i }] },
       cross: {},
       second: {},
