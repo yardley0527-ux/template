@@ -125,6 +125,18 @@ class ProductStrategyCohortTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "名單預設每頁 20 筆，可切換 50／100" do
+    25.times do |i|
+      order("#m#{i}", Date.new(2026, 3, 1), "m#{i}@example.com", "代謝錠2送1", 3_000)
+    end
+    CustomerCohortStatsRefreshService.call
+    get product_strategy_source_path(source: "代謝錠")
+    assert_select ".ca-table tbody tr", 20
+    assert_select "a[href*='per=50']"
+    get product_strategy_source_path(source: "代謝錠", per: 50)
+    assert_select ".ca-table tbody tr", 25
+  end
+
   test "不存在的來源導回總表" do
     get product_strategy_source_path(source: "不存在")
     assert_redirected_to product_strategy_path

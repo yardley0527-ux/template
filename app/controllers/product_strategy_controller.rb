@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class ProductStrategyController < ApplicationController
-  PER_PAGE = 50
+  PER_PAGE_OPTIONS = [20, 50, 100].freeze
 
   # 各產品分析名單的排序（SQL ORDER BY）
   SORTS = {
@@ -92,10 +92,11 @@ class ProductStrategyController < ApplicationController
       list = list.where.not(hit_sql) if @win_status == "miss"
     end
     @total = list.count
-    @total_pages = [(@total.to_f / PER_PAGE).ceil, 1].max
+    @per_page = PER_PAGE_OPTIONS.include?(params[:per].to_i) ? params[:per].to_i : PER_PAGE_OPTIONS.first
+    @total_pages = [(@total.to_f / @per_page).ceil, 1].max
     @page = params[:page].to_i.clamp(1, @total_pages)
-    @offset = (@page - 1) * PER_PAGE
-    @people = list.order(Arel.sql(SORTS[@sort])).offset(@offset).limit(PER_PAGE).to_a
+    @offset = (@page - 1) * @per_page
+    @people = list.order(Arel.sql(SORTS[@sort])).offset(@offset).limit(@per_page).to_a
   end
 
   # 手動重算首購產品分析（平常匯入訂單後會自動重算）

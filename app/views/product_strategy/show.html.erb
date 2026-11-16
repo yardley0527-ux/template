@@ -104,6 +104,7 @@
   <div class="panel-container show"><div class="panel-content">
     <%= form_with url: product_strategy_source_path(source: @source), method: :get, local: true, class: "row gx-2 gy-2 align-items-end mb-2" do %>
       <% if @win %><%= hidden_field_tag :win, @win %><%= hidden_field_tag :win_status, @win_status %><% end %>
+      <% if @per_page != ProductStrategyController::PER_PAGE_OPTIONS.first %><%= hidden_field_tag :per, @per_page %><% end %>
       <div class="col-auto"><label class="form-label">首購期間</label>
         <%= select_tag :period, options_for_select(@period_options.map { |k, v| [v, k] }, @period), class: "form-control" %></div>
       <div class="col-auto"><label class="form-label">狀態</label>
@@ -132,22 +133,28 @@
     <% end %>
 
     <% pager = capture do %>
-      <% if @total_pages > 1 %>
+      <% if @total > ProductStrategyController::PER_PAGE_OPTIONS.first %>
         <% q = request.query_parameters.except("source") %>
         <nav class="ca-pager"><span class="text-muted me-2">第 <%= @offset + 1 %>–<%= @offset + @people.size %> 筆，共 <%= number_with_delimiter(@total) %> 筆</span>
-          <%= link_to "← 上一頁", product_strategy_source_path(q.merge(source: @source, page: @page - 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page <= 1}" %>
-          <% pages = ([1, @total_pages] + ((@page - 2)..(@page + 2)).to_a).select { |n| n.between?(1, @total_pages) }.uniq.sort %>
-          <% pages.each_with_index do |n, i| %>
-            <% if i.positive? && n - pages[i - 1] > 1 %><span class="text-muted">…</span><% end %>
-            <%= link_to n, product_strategy_source_path(q.merge(source: @source, page: n)), class: "btn btn-sm #{n == @page ? 'btn-primary' : 'btn-outline-secondary'}" %>
+          <% if @total_pages > 1 %>
+            <%= link_to "← 上一頁", product_strategy_source_path(q.merge(source: @source, page: @page - 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page <= 1}" %>
+            <% pages = ([1, @total_pages] + ((@page - 2)..(@page + 2)).to_a).select { |n| n.between?(1, @total_pages) }.uniq.sort %>
+            <% pages.each_with_index do |n, i| %>
+              <% if i.positive? && n - pages[i - 1] > 1 %><span class="text-muted">…</span><% end %>
+              <%= link_to n, product_strategy_source_path(q.merge(source: @source, page: n)), class: "btn btn-sm #{n == @page ? 'btn-primary' : 'btn-outline-secondary'}" %>
+            <% end %>
+            <%= link_to "下一頁 →", product_strategy_source_path(q.merge(source: @source, page: @page + 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page >= @total_pages}" %>
           <% end %>
-          <%= link_to "下一頁 →", product_strategy_source_path(q.merge(source: @source, page: @page + 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page >= @total_pages}" %>
+          <span class="text-muted ms-3 me-1">每頁</span>
+          <% ProductStrategyController::PER_PAGE_OPTIONS.each do |n| %>
+            <%= link_to n, product_strategy_source_path(q.merge(source: @source, per: (n == ProductStrategyController::PER_PAGE_OPTIONS.first ? nil : n), page: nil).compact), class: "btn btn-xs #{n == @per_page ? 'btn-primary' : 'btn-outline-secondary'}" %>
+          <% end %>
         </nav>
       <% end %>
     <% end %>
 
     <%= pager %>
-    <div class="table-responsive">
+    <div class="table-responsive ca-scroll">
       <table class="table table-bordered table-hover table-striped w-100 ca-table">
         <thead class="bg-primary-600">
           <tr>
@@ -196,6 +203,10 @@
   .ca-k { color: #6b7280; font-size: 12px; }
   .ca-v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .ca-s { color: #6b7280; font-size: 13px; }
+  /* 名單在框內捲動、表頭固定 */
+  .ca-scroll { max-height: 75vh; overflow: auto; }
+  .ca-table thead tr, .ca-table thead th { background-color: inherit; }
+  .ca-table thead th { position: sticky; top: 0; z-index: 2; }
   .ca-table td { vertical-align: top; padding-top: 6px; padding-bottom: 6px; }
   .ca-up { color: #2e7d32; }
   .ca-items { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
