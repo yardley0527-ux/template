@@ -1,4 +1,4 @@
-<% content_for :page_title, "首購#{@source}｜產品分析" %>
+<% content_for :page_title, "首購#{@source}｜首購產品分析" %>
 <% s = @summary %>
 <% pct = ->(a, b) { b.to_i.positive? ? "#{(a * 100.0 / b).round(1)}%" : "—" } %>
 <% short = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白", "一般會員" => "一般" } %>
@@ -10,7 +10,7 @@
     首購「<%= @source %>」的客人
     <small>第一筆訂單是 <%= @source %> 的客人，之後的回購、跨買與卡別變化（<%= period_label %>）</small>
   </h1>
-  <%= link_to "← 回產品策略報表", product_strategy_path(period: @period.presence), class: "btn btn-sm btn-outline-secondary" %>
+  <%= link_to "← 回首購產品分析", product_strategy_path(period: @period.presence), class: "btn btn-sm btn-outline-secondary" %>
 </div>
 
 <div class="ca-kpis mb-3">

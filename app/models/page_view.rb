@@ -32,7 +32,7 @@ class PageView < ApplicationRecord
     "shopping_credits#index"                => "購物金分析",
     "products#index"                        => "年度 Top 產品排行",
     "products#show"                         => "產品詳細頁",
-    "product_strategy#index"                => "產品策略報表",
+    "product_strategy#index"                => "首購產品分析",
     "subscription_strategy#index"           => "定期購策略分析",
     "member_contacts#index"                 => "會員聯絡名單",
     "member_contacts#export"                => "會員聯絡名單匯出",

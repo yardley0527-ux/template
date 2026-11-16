@@ -27,8 +27,7 @@ class SidebarEntry
           group_icon: "fa-users",
           children: [
             { href: customers_path,          title: "客人資料庫",     icon: "fa-address-book" },
-            { href: product_strategy_path,   title: "產品策略報表",   icon: "fa-chart-line" },
-            { href: pdrn_preorder_tracking_path, title: "PDRN 客人追蹤", icon: "fa-seedling" },
+            { href: product_strategy_path,   title: "首購產品分析",   icon: "fa-chart-line" },
             { href: upgraded_members_path,   title: "升級名單",       icon: "fa-arrow-up" },
             { href: inactive_members_path,   title: "近期未消費名單", icon: "fa-user-times" },
             { href: member_contacts_path,    title: "會員分群",       icon: "fa-address-card" },
