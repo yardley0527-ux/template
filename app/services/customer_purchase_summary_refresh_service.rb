@@ -281,6 +281,26 @@ class CustomerPurchaseSummaryRefreshService
     SQL
 
     ActiveRecord::Base.connection.execute(sql)
+    remove_stale_rows!
+  end
+
+  # 這次重算沒產生的舊列（例如客人後來補了手機，舊的 email identity_key 列還留著）會讓同一人算兩次。
+  # 整個 call 在同一個 transaction 裡，NOW() 固定，所以 updated_at < NOW() 就是這次沒被重算到的列。
+  # 刪除前先把人工標記（LINE 綁定、追蹤週、追蹤產品）搬到同 email 的新列。
+  def remove_stale_rows!
+    conn = ActiveRecord::Base.connection
+    conn.execute(<<~SQL)
+      UPDATE customer_purchase_summaries k
+      SET line_bound        = k.line_bound OR s.line_bound,
+          follow_up_week    = COALESCE(k.follow_up_week, s.follow_up_week),
+          follow_up_product = COALESCE(k.follow_up_product, s.follow_up_product)
+      FROM customer_purchase_summaries s
+      WHERE s.updated_at < NOW()
+        AND k.updated_at >= NOW()
+        AND LOWER(TRIM(k.email)) = LOWER(TRIM(s.email))
+        AND (s.line_bound OR s.follow_up_week IS NOT NULL OR s.follow_up_product IS NOT NULL)
+    SQL
+    conn.execute("DELETE FROM customer_purchase_summaries WHERE updated_at < NOW()")
   end
 
   # 某系列的 LIKE 條件（可能有多種寫法）。
