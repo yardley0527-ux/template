@@ -1,4 +1,4 @@
-<% content_for :page_title, "PDRN 預購客追蹤" %>
+<% content_for :page_title, "PDRN 客人追蹤" %>
 <% s = @summary %>
 <% pct = ->(a, b) { b.to_i.positive? ? "#{(a * 100.0 / b).round(1)}%" : "—" } %>
 <% short = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白", "一般會員" => "一般" } %>
@@ -6,7 +6,7 @@
 <div class="subheader">
   <h1 class="subheader-title">
     <i class="subheader-icon fal fa-seedling"></i>
-    PDRN 預購客追蹤
+    PDRN 客人追蹤
     <small>所有買過「預購-PDRN」的客人，預購之後的回購、跨買與卡別變化；資料到 <%= @data_until&.strftime("%Y/%m/%d") %>，每次匯入訂單自動更新</small>
   </h1>
 </div>

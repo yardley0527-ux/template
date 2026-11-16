@@ -19,7 +19,6 @@ class SidebarEntry
               subtitle: (unread_notifications.positive? ? unread_notifications.to_s : nil),
               subtitle_class: "badge badge-danger" },
             { href: tracked_customers_path, title: "營運追蹤名單", icon: "fa-badge-check" },
-            { href: pdrn_preorder_tracking_path, title: "PDRN 預購客追蹤", icon: "fa-seedling" },
             { href: daily_message_lists_path, title: "每日名單回購成效", icon: "fa-comments" },
           ]
         },
@@ -28,6 +27,7 @@ class SidebarEntry
           group_icon: "fa-users",
           children: [
             { href: customers_path,          title: "客人資料庫",     icon: "fa-address-book" },
+            { href: pdrn_preorder_tracking_path, title: "PDRN 客人追蹤", icon: "fa-seedling" },
             { href: upgraded_members_path,   title: "升級名單",       icon: "fa-arrow-up" },
             { href: inactive_members_path,   title: "近期未消費名單", icon: "fa-user-times" },
             { href: member_contacts_path,    title: "會員分群",       icon: "fa-address-card" },
