@@ -48,7 +48,7 @@ module SalesDaily
       LineDigestDelivery.deliver_once(TOPIC, @day, force: force) { push(groups) }
     end
 
-    def pushable? = !report(@day).empty?
+    def pushable? = !totals[@day].empty?
 
     # 直接發給這些群組，不看也不記「已發送」（/line_bot_groups 補發單一群組用）；回傳群組數
     def push(groups)
@@ -67,13 +67,14 @@ module SalesDaily
 
     private
 
-    def report(date)
-      @reports ||= {}
-      @reports[date] ||= OrderBrief::Report.new(date)
+    # 卡別、年齡層要每個人的資料，只為要報的這幾天（通常 1 天、星期一 3 天）建 Report
+    def rows
+      @rows ||= @days.flat_map { |date| OrderBrief::Report.new(date).rows }
     end
 
-    def rows
-      @rows ||= @days.flat_map { |date| report(date).rows }
+    # 每天的合計（每天一行、當月累計）；不逐天建 Report，否則月底一次載入 30 份完整購買歷史會 OOM
+    def totals
+      @totals ||= OrderBrief::DailyTotals.new(@day.beginning_of_month.then { |m| [m, @days.first].min }..@day)
     end
 
     # ---- 1. 訂單數量 ----
@@ -87,8 +88,8 @@ module SalesDaily
       if @days.count > 1
         lines << ""
         @days.each do |date|
-          rs = report(date).rows
-          lines << "#{day_label(date)}#{amount(rs) >= DAILY_TARGET ? '✅' : '❌'} #{order_count(rs)}單 #{money(amount(rs))}"
+          t = totals[date]
+          lines << "#{day_label(date)}#{t.amount >= DAILY_TARGET ? '✅' : '❌'} #{t.orders}單 #{money(t.amount)}"
         end
       end
       lines.join("\n")
@@ -98,15 +99,14 @@ module SalesDaily
 
     # 只放累計；每天的明細看 /daily_dashboard（每天發都重複，手機上太長）
     def month_section
-      days = (@day.beginning_of_month..@day).map { |date| report(date).rows }
-      all = days.flatten
-      new_rows, old_rows = all.partition(&:new_customer?)
-      met = days.count { |rs| amount(rs) >= DAILY_TARGET }
+      days = (@day.beginning_of_month..@day).map { |date| totals[date] }
+      total = days.sum(&:amount)
+      met = days.count { |t| t.amount >= DAILY_TARGET }
 
       ["📅 #{@day.month} 月累計（#{md(@day.beginning_of_month)}–#{md(@day)}）",
-       "#{money(amount(all))}｜#{days.size} 天中 #{met} 天達標",
-       "日均 #{money(amount(all) / days.size)}（日目標 #{money(DAILY_TARGET)}）",
-       "舊客 #{money(amount(old_rows))}｜新客 #{money(amount(new_rows))}"].join("\n")
+       "#{money(total)}｜#{days.size} 天中 #{met} 天達標",
+       "日均 #{money(total / days.size)}（日目標 #{money(DAILY_TARGET)}）",
+       "舊客 #{money(days.sum(&:old_amount))}｜新客 #{money(days.sum(&:new_amount))}"].join("\n")
     end
 
     # ---- 3. 卡別、年齡層 ----
