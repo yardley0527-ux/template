@@ -33,7 +33,7 @@ class ProductStrategyController < ApplicationController
     @cohort_total = @cohort_rows.values.sum { |v| v[:total] }
     @cohort_refreshed_at = @cohort_query.refreshed_at
 
-    @report = Rails.cache.fetch("product_strategy:report:v3", expires_in: 1.hour) do
+    @report = Rails.cache.fetch("product_strategy:report:v4", expires_in: 1.hour) do
       build_report
     end
 
@@ -105,22 +105,23 @@ class ProductStrategyController < ApplicationController
     return_rate: 0.0, avg_first: 0, threshold: 0
   }.freeze
 
-  # PDRN 拆成預購／現貨（首購品名「預購」開頭），跟客人資料庫的首購來源一致
-  FIRST_SOURCE_SQL = "CASE WHEN first_series = 'PDRN' THEN (CASE WHEN first_product LIKE '預購%' THEN 'PDRN 預購' ELSE 'PDRN 現貨' END) ELSE first_series END"
-
   def build_report
-    # 各系列基本統計
-    series_stats = CustomerPurchaseSummary
-      .where.not(first_series: nil)
-      .group(Arel.sql(FIRST_SOURCE_SQL))
+    # 各系列基本統計：跟上方「首購來源追蹤總表」同一份資料（customer_cohort_stats），
+    # 人數、回購（首購那天之後另一天有下單）、黑名單排除、同一人合併規則都一致
+    thresholds = CustomerPurchaseSummaryRefreshService::SERIES_SILENT_DAYS_MAP
+    default_days = CustomerPurchaseSummaryRefreshService::DEFAULT_SILENT_DAYS_THRESHOLD
+    conn = ActiveRecord::Base.connection
+    days_sql = "CASE source_family " + thresholds.map { |k, v| "WHEN #{conn.quote(k)} THEN #{v.to_i}" }.join(" ") + " ELSE #{default_days.to_i} END"
+    series_stats = CustomerCohortStat
+      .group(:source)
       .pluck(
-        Arel.sql(FIRST_SOURCE_SQL),
+        :source,
         Arel.sql("COUNT(*)"),
-        Arel.sql("SUM(CASE WHEN purchase_count > 1 THEN 1 ELSE 0 END)"),
-        Arel.sql("SUM(CASE WHEN silent_only = TRUE THEN 1 ELSE 0 END)"),
-        Arel.sql("SUM(CASE WHEN purchase_count = 1 AND silent_only = FALSE THEN 1 ELSE 0 END)"),
+        Arel.sql("COUNT(*) FILTER (WHERE after_days > 0)"),
+        Arel.sql("COUNT(*) FILTER (WHERE after_days = 0 AND first_date <= CURRENT_DATE - (#{days_sql}))"),
+        Arel.sql("COUNT(*) FILTER (WHERE after_days = 0 AND first_date > CURRENT_DATE - (#{days_sql}))"),
         Arel.sql("AVG(first_amount)::numeric(10,0)"),
-        Arel.sql("MAX(silent_days_threshold)")
+        Arel.sql("MAX(#{days_sql})")
       ).map do |series, total, returned, silent, watching, avg_first, threshold|
         return_rate = total.to_i.zero? ? 0.0 : (returned.to_f / total * 100).round(1)
         {
@@ -161,21 +162,24 @@ class ProductStrategyController < ApplicationController
         loyalty_stats[source] = { loyal: loyal.to_i, iron: iron.to_i, avg_count: avg_count.to_f.round(1) }
       end
 
-    # 第二購方向（排除同系列回購，只看跨系列導流）
-    second_purchase = CustomerPurchaseSummary
-      .where.not(first_series: nil, second_series: nil)
-      .where("second_series <> '' AND second_series <> first_series")
-      .group(Arel.sql(FIRST_SOURCE_SQL), :second_series)
-      .count
-      .group_by { |(first, _second), _count| first }
-      .transform_values do |pairs|
-        total = pairs.sum { |_k, count| count }.to_f
-        pairs.map { |((_first, second), count)| [second, (count / total * 100).round(1)] }
-             .sort_by { |(_s, pct)| -pct }
-             .first(3)
-      end
+    # 第二購方向：首購後第二筆訂單買的其他產品（排除同產品），佔「第二筆有買其他產品」的人的比例
+    second_purchase = CustomerCohortStat
+      .joins("CROSS JOIN LATERAL UNNEST(customer_cohort_stats.second_families) AS fam")
+      .where("fam <> customer_cohort_stats.source_family")
+      .group(:source, Arel.sql("fam"))
+      .pluck(:source, Arel.sql("fam"), Arel.sql("COUNT(DISTINCT customer_cohort_stats.id)"))
+      .group_by(&:first)
+    second_base = CustomerCohortStat
+      .where("EXISTS (SELECT 1 FROM UNNEST(second_families) f WHERE f <> source_family)")
+      .group(:source).count
+    second_purchase = second_purchase.to_h do |source, rows|
+      base = second_base[source].to_f
+      [source, rows.map { |_, fam, n| [fam, base.positive? ? (n / base * 100).round(1) : 0.0] }
+                   .sort_by { |(_f, pct)| -pct }.first(3)]
+    end
 
-    CrmProduct.series_labels_for_filter.flat_map { |s| s == "PDRN" ? ["PDRN 預購", "PDRN 現貨"] : [s] }.map do |series|
+    # 列的順序與名稱跟上方總表一致（不含「其他」）
+    (CustomerCohortStatsRefreshService.sources - [CustomerCohortStatsRefreshService::OTHER]).map do |series|
       stat    = series_stats[series] || EMPTY_SERIES_STAT
       loyalty = loyalty_stats[series] || { loyal: 0, iron: 0, avg_count: 0 }
       second  = second_purchase[series] || []
