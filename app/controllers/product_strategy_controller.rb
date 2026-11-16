@@ -58,6 +58,10 @@ class ProductStrategyController < ApplicationController
     @period = query.period
     @summary = query.summary(@source)
 
+    # 首購期間只列這個產品有首購客人的年份（例如 PDRN 預購 2026 才開賣，就不列 2024／2025）
+    years = CustomerCohortStat.where(source: @source).distinct.pluck(Arel.sql("EXTRACT(YEAR FROM first_date)::int")).map(&:to_s)
+    @period_options = CustomerCohortStatsQuery::PERIODS.select { |k, _| k.blank? || k == "180" || years.include?(k) || k == @period }
+
     @status = STATUS_FILTERS.key?(params[:status].to_s) ? params[:status].to_s : ""
     @sort = SORTS.key?(params[:sort].to_s) ? params[:sort].to_s : "after_amount"
     list = query.scope.where(source: @source)

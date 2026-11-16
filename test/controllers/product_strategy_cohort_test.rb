@@ -104,6 +104,13 @@ class ProductStrategyCohortTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "首購期間只列有資料的年份" do
+    get product_strategy_source_path(source: "PDRN 預購")
+    assert_select "select#period option[value='2026']"
+    assert_select "select#period option[value='2025']", count: 0
+    assert_select "select#period option[value='2024']", count: 0
+  end
+
   test "不存在的來源導回總表" do
     get product_strategy_source_path(source: "不存在")
     assert_redirected_to product_strategy_path

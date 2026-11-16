@@ -99,7 +99,7 @@
   <div class="panel-container show"><div class="panel-content">
     <%= form_with url: product_strategy_source_path(source: @source), method: :get, local: true, class: "row gx-2 gy-2 align-items-end mb-2" do %>
       <div class="col-auto"><label class="form-label">首購期間</label>
-        <%= select_tag :period, options_for_select(CustomerCohortStatsQuery::PERIODS.map { |k, v| [v, k] }, @period), class: "form-control" %></div>
+        <%= select_tag :period, options_for_select(@period_options.map { |k, v| [v, k] }, @period), class: "form-control" %></div>
       <div class="col-auto"><label class="form-label">狀態</label>
         <%= select_tag :status, options_for_select(status_labels.map { |k, v| [v, k] }, @status), class: "form-control" %></div>
       <div class="col-auto"><label class="form-label">買過的產品</label>
