@@ -54,13 +54,10 @@ class TrackedCustomersController < CustomersController
     scope = scope.where(customer_profiles: { brand_ambassador_training: true }) if @brand_ambassador == "1"
 
     if @big_first_filter == "1"
-      scope = scope.joins(
-        "INNER JOIN (
-          SELECT DISTINCT ON (email) email, total_amount AS first_amount
-          FROM shopline_orders
-          ORDER BY email, order_date ASC
-        ) fo ON fo.email = shopline_customers.email"
-      ).where("fo.first_amount >= 10000")
+      scope = scope.joins(<<~SQL).where("bfc.first_amount >= ?", CustomersController::BIG_FIRST_AMOUNT)
+        INNER JOIN customer_purchase_summaries bfc
+          ON bfc.identity_key = COALESCE(NULLIF(TRIM(shopline_customers.mobile_phone), ''), LOWER(TRIM(shopline_customers.email)))
+      SQL
     end
 
     scope = scope
@@ -128,16 +125,17 @@ class TrackedCustomersController < CustomersController
       end
     end
 
-    first_orders_by_email = ShoplineOrder
-      .where(email: emails)
-      .select("DISTINCT ON (email) email, order_date, total_amount")
-      .order("email, order_date ASC")
-      .index_by(&:email)
-
-    @big_first_orders = {}
-    first_orders_by_email.each do |email, order|
-      @big_first_orders[email] = order.order_date if order.total_amount.to_f >= 10_000
+    # 破萬新客：用 customer_purchase_summaries（第一筆已付款訂單、該單最大 total_amount、手機 > email 合併）
+    identity_by_email = @customers.to_h do |c|
+      [c.email, c.mobile_phone.to_s.strip.presence || c.email.to_s.strip.downcase.presence]
     end
+    firsts = CustomerPurchaseSummary.where(identity_key: identity_by_email.values.compact.uniq)
+                                    .pluck(:identity_key, :first_amount, :first_date)
+                                    .to_h { |k, amt, d| [k, [amt, d]] }
+    @big_first_orders = identity_by_email.filter_map do |email, key|
+      amt, date = firsts[key]
+      [email, date] if amt.to_f >= CustomersController::BIG_FIRST_AMOUNT
+    end.to_h
   end
 
   private

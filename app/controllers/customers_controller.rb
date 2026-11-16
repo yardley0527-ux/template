@@ -3,6 +3,8 @@
 class CustomersController < ApplicationController
   # 首購大組數門檻（2026-11-16 老闆要看首購是不是大組數，使用者定：該產品 ≥ 10 瓶）
   FIRST_BIG_SET_BOTTLES = 10
+  # 破萬新客門檻：第一筆已付款訂單總額
+  BIG_FIRST_AMOUNT = 10_000
   PER_PAGE = 20
   MAX_PAGE = 200
 
@@ -160,17 +162,8 @@ class CustomersController < ApplicationController
       scope = scope.joins(:customer_profile).where(customer_profiles: { brand_ambassador_training: true })
     end
 
-    if @big_first_filter == "1"
-      scope = scope.joins(
-        "INNER JOIN (
-          SELECT DISTINCT ON (email) email, total_amount AS first_amount
-          FROM shopline_orders
-          ORDER BY email, order_date ASC
-        ) fo ON fo.email = shopline_customers.email"
-      ).where("fo.first_amount >= 10000")
-    end
 
-    if @first_source.present? || @first_big_set == "1"
+    if @first_source.present? || @first_big_set == "1" || @big_first_filter == "1"
       scope = scope.joins(<<~SQL)
         INNER JOIN customer_purchase_summaries cps
           ON cps.identity_key = COALESCE(NULLIF(TRIM(shopline_customers.mobile_phone), ''), LOWER(TRIM(shopline_customers.email)))
@@ -178,6 +171,8 @@ class CustomersController < ApplicationController
       scope = scope.where(first_source_sql(@first_source)) if @first_source.present?
       # 首購大組數：首購那筆訂單裡首購產品付費 ≥ FIRST_BIG_SET_BOTTLES 瓶
       scope = scope.where("cps.first_bottles >= ?", FIRST_BIG_SET_BOTTLES) if @first_big_set == "1"
+      # 破萬新客：第一筆已付款訂單總額 ≥ 1 萬（customer_purchase_summaries.first_amount 取該單最大 total_amount）
+      scope = scope.where("cps.first_amount >= ?", BIG_FIRST_AMOUNT) if @big_first_filter == "1"
     end
 
     scope = scope
@@ -246,23 +241,13 @@ class CustomersController < ApplicationController
       end
     end
 
-    first_orders_by_email = ShoplineOrder
-      .where(email: emails)
-      .select("DISTINCT ON (email) email, order_date, total_amount")
-      .order("email, order_date ASC")
-      .index_by(&:email)
-
-    @big_first_orders = {}
-    first_orders_by_email.each do |email, order|
-      @big_first_orders[email] = order.order_date if order.total_amount.to_f >= 10_000
-    end
 
     # 首購來源：customer_purchase_summaries 每次匯入訂單後自動重算（第一筆已付款訂單），
     # 身份跟該表一致用 手機 > email 合併
     identity_by_email = @customers.to_h { |c| [c.email, customer_identity_key(c)] }
     summaries = CustomerPurchaseSummary
       .where(identity_key: identity_by_email.values.compact.uniq)
-      .select(:identity_key, :first_series, :first_product, :first_date, :first_bottles)
+      .select(:identity_key, :first_series, :first_product, :first_date, :first_bottles, :first_amount)
       .index_by(&:identity_key)
     @first_sources = identity_by_email.transform_values do |key|
       s = summaries[key]
@@ -270,6 +255,12 @@ class CustomersController < ApplicationController
       { label: first_source_label(s.first_series, s.first_product), product: s.first_product, date: s.first_date,
         bottles: s.first_bottles, big_set: s.first_bottles.to_i >= FIRST_BIG_SET_BOTTLES }
     end
+
+    # 破萬新客：跟首購來源同一份資料（舊寫法 DISTINCT ON 會隨機撈到 total_amount 空白的明細行而漏判）
+    @big_first_orders = identity_by_email.filter_map do |email, key|
+      s = summaries[key]
+      [email, s.first_date] if s && s.first_amount.to_f >= BIG_FIRST_AMOUNT
+    end.to_h
 
     @credits_expiring_count = Rails.cache.fetch("credits_expiring_count:#{Date.today}", expires_in: 12.hours) do
       ShoplineOrder

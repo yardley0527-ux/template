@@ -45,4 +45,29 @@ class CustomersFirstBigSetTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "數量丙"
     assert_not_includes response.body, "送的不算乙"
   end
+
+  test "破萬新客：總額只在其中一行也要判斷到" do
+    ShoplineCustomer.create!(email: "split@example.com", full_name: "多行丁")
+    ShoplineOrder.create!(order_number: "#s1", order_date: Date.new(2024, 3, 30), email: "split@example.com", product_name: "薑黃1",
+                          quantity: 1, checkout_amount: 1_200, total_amount: nil, payment_status: "已付款")
+    ShoplineOrder.create!(order_number: "#s1", order_date: Date.new(2024, 3, 30), email: "split@example.com", product_name: "代謝錠6薑黃9",
+                          quantity: 1, checkout_amount: 24_680, total_amount: 25_880, payment_status: "已付款")
+    CustomerPurchaseSummaryRefreshService.call
+
+    get customers_path(big_first: "1")
+    assert_includes response.body, "多行丁"
+    assert_includes response.body, "大組數甲"
+    assert_not_includes response.body, "送的不算乙"
+  end
+
+  test "營運追蹤名單的破萬新客欄與篩選" do
+    c = ShoplineCustomer.find_by!(email: "big@example.com")
+    c.create_customer_profile!(tracked: true)
+    get tracked_customers_path
+    assert_response :success
+    assert_includes response.body, "✅ 10/01"
+    get tracked_customers_path(big_first: "1")
+    assert_response :success
+    assert_includes response.body, "大組數甲"
+  end
 end
