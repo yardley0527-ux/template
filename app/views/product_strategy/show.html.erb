@@ -34,14 +34,19 @@
     <div class="panel h-100"><div class="panel-hdr"><h2>30／60／90 天回購率</h2></div>
       <div class="panel-container show"><div class="panel-content">
         <table class="table table-sm mb-2">
-          <thead><tr><th>首購後</th><th class="text-end">已滿天數的人</th><th class="text-end">有再買</th><th class="text-end">回購率</th></tr></thead>
+          <thead><tr><th>首購後</th><th class="text-end">已滿天數的人</th><th class="text-end">有再買</th><th class="text-end">沒再買</th><th class="text-end">回購率</th></tr></thead>
           <tbody>
           <% s[:windows].each do |n, w| %>
-            <tr><td><%= n %> 天內</td><td class="text-end"><%= number_with_delimiter(w[:eligible]) %></td><td class="text-end"><%= number_with_delimiter(w[:hit]) %></td><td class="text-end fw-bold"><%= pct.(w[:hit], w[:eligible]) %></td></tr>
+            <% wl = ->(st, v) { v.to_i.positive? ? link_to(number_with_delimiter(v), list_url.(win: n, win_status: st), class: "ca-link") : number_with_delimiter(v) } %>
+            <tr class="<%= 'table-active' if @win == n %>"><td><%= n %> 天內</td>
+              <td class="text-end"><%= wl.("eligible", w[:eligible]) %></td>
+              <td class="text-end"><%= wl.("hit", w[:hit]) %></td>
+              <td class="text-end"><%= wl.("miss", w[:eligible] - w[:hit]) %></td>
+              <td class="text-end fw-bold"><%= pct.(w[:hit], w[:eligible]) %></td></tr>
           <% end %>
           </tbody>
         </table>
-        <div class="small text-muted">只算首購已滿 N 天的人；任何產品都算回購。</div>
+        <div class="small text-muted">只算首購已滿 N 天的人；任何產品都算回購。點人數看名單。</div>
       </div></div></div>
   </div>
   <div class="col-lg-4 mb-3">
@@ -98,6 +103,7 @@
   <div class="panel-hdr"><h2>客人名單 <span class="fw-300 ms-2"><%= number_with_delimiter(@total) %> 人</span></h2></div>
   <div class="panel-container show"><div class="panel-content">
     <%= form_with url: product_strategy_source_path(source: @source), method: :get, local: true, class: "row gx-2 gy-2 align-items-end mb-2" do %>
+      <% if @win %><%= hidden_field_tag :win, @win %><%= hidden_field_tag :win_status, @win_status %><% end %>
       <div class="col-auto"><label class="form-label">首購期間</label>
         <%= select_tag :period, options_for_select(@period_options.map { |k, v| [v, k] }, @period), class: "form-control" %></div>
       <div class="col-auto"><label class="form-label">狀態</label>
@@ -119,6 +125,7 @@
     <% chips << status_labels[@status] if @status.present? %>
     <% chips << "#{@rank_mode == 'second' ? '第二筆買' : '之後買過'} #{@product}" if @product.present? %>
     <% chips << "距上次購買 #{recency_labels[@recency]}" if @recency.present? %>
+    <% chips << "首購後 #{@win} 天內#{ { 'eligible' => '（已滿天數）', 'hit' => '有再買', 'miss' => '沒再買' }[@win_status] }" if @win %>
     <% if chips.any? %>
       <div class="mb-2">目前篩選：<% chips.each do |c| %><span class="pc-tag"><%= c %></span><% end %>
         <%= link_to "清除篩選", list_url.(), class: "small ms-1" %></div>

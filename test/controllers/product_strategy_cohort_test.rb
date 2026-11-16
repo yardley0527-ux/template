@@ -111,6 +111,20 @@ class ProductStrategyCohortTest < ActionDispatch::IntegrationTest
     assert_select "select#period option[value='2024']", count: 0
   end
 
+  test "30／60／90 天回購率可點進名單" do
+    travel_to Date.new(2026, 11, 16) do
+      # 全能乙 5/1 首購、7/1 再買（61 天）：60 天內沒再買、90 天內有再買
+      get product_strategy_source_path(source: "全能", win: 90, win_status: "hit")
+      assert_includes response.body, "全能乙"
+      get product_strategy_source_path(source: "全能", win: 60, win_status: "miss")
+      assert_includes response.body, "全能乙"
+      get product_strategy_source_path(source: "全能", win: 60, win_status: "hit")
+      assert_not_includes response.body, "全能乙"
+      get product_strategy_source_path(source: "全能")
+      assert_select "a[href*='win=90'][href*='win_status=hit']"
+    end
+  end
+
   test "不存在的來源導回總表" do
     get product_strategy_source_path(source: "不存在")
     assert_redirected_to product_strategy_path

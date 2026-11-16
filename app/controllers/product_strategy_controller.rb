@@ -81,6 +81,16 @@ class ProductStrategyController < ApplicationController
       list = list.where("last_order_date <= ?", Date.current - lo)
       list = list.where("last_order_date >= ?", Date.current - hi) if hi
     end
+
+    # 30／60／90 天回購率表點進來：win=天數，win_status=eligible（已滿天數）/hit（期間內有再買）/miss（期間內沒再買）
+    @win = CustomerCohortStatsQuery::WINDOWS.include?(params[:win].to_i) ? params[:win].to_i : nil
+    @win_status = %w[eligible hit miss].include?(params[:win_status].to_s) ? params[:win_status].to_s : "eligible"
+    if @win
+      list = list.where("first_date <= ?", Date.current - @win)
+      hit_sql = "first_after_date IS NOT NULL AND first_after_date <= first_date + #{@win.to_i}"
+      list = list.where(hit_sql) if @win_status == "hit"
+      list = list.where.not(hit_sql) if @win_status == "miss"
+    end
     @total = list.count
     @total_pages = [(@total.to_f / PER_PAGE).ceil, 1].max
     @page = params[:page].to_i.clamp(1, @total_pages)
