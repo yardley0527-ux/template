@@ -263,6 +263,7 @@ Rails.application.routes.draw do
   post '/duplicate_customers/merge',   to: 'duplicate_customers#merge', as: :merge_duplicate_customers
   get '/product_strategy',      to: 'product_strategy#index',      as: :product_strategy
   get '/product_strategy/source/:source', to: 'product_strategy#show', as: :product_strategy_source
+  post '/product_strategy/refresh_cohorts', to: 'product_strategy#refresh_cohorts', as: :refresh_product_strategy_cohorts
   get '/product_inventory',     to: 'product_inventory#index',     as: :product_inventory
   get '/product_reports',       to: 'product_reports#index',       as: :product_reports
   get '/subscription_strategy', to: 'subscription_strategy#index', as: :subscription_strategy

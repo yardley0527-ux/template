@@ -3,15 +3,29 @@
 class ProductStrategyController < ApplicationController
   PER_PAGE = 50
 
-  # 各產品分析名單的排序
+  # 各產品分析名單的排序（SQL ORDER BY）
   SORTS = {
-    "after_amount" => ->(p) { [-p[:after_amount], -p[:first_amount]] },
-    "first_amount" => ->(p) { [-p[:first_amount], -p[:after_amount]] },
-    "first_date" => ->(p) { [-p[:first_date].jd, -p[:first_amount]] },
-    "last_order" => ->(p) { [-p[:last_order_date].jd, -p[:after_amount]] }
+    "after_amount" => "after_amount DESC, first_amount DESC",
+    "first_amount" => "first_amount DESC, after_amount DESC",
+    "first_date" => "first_date DESC, first_amount DESC",
+    "last_order" => "last_order_date DESC, after_amount DESC"
+  }.freeze
+
+  STATUS_FILTERS = {
+    "repurchased" => "after_days > 0",
+    "not_yet" => "after_days = 0",
+    "same_again" => "same_again",
+    "cross" => "CARDINALITY(cross_families) > 0",
+    "upgraded" => "upgraded"
   }.freeze
 
   def index
+    # 首購來源追蹤總表：讀 customer_cohort_stats（匯入訂單後在資料庫裡重算），不在 web 程序算
+    @cohort_query = CustomerCohortStatsQuery.new(period: params[:period])
+    @period = @cohort_query.period
+    @cohort_rows = @cohort_query.overview
+    @cohort_total = @cohort_rows.values.sum { |v| v[:total] }
+    @cohort_refreshed_at = @cohort_query.refreshed_at
 
     @report = Rails.cache.fetch("product_strategy:report:v2", expires_in: 1.hour) do
       build_report
@@ -29,9 +43,30 @@ class ProductStrategyController < ApplicationController
     }
   end
 
-  # 2026-11-16 各產品分析在 web 程序裡一次載入全部訂單，正式站記憶體不夠導致重啟，先停用改版中
   def show
-    redirect_to product_strategy_path, alert: "各產品客人分析調整中，暫時關閉"
+    @source = params[:source].to_s
+    unless CustomerCohortStatsRefreshService.sources.include?(@source)
+      redirect_to product_strategy_path, alert: "找不到這個首購來源" and return
+    end
+    query = CustomerCohortStatsQuery.new(period: params[:period])
+    @period = query.period
+    @summary = query.summary(@source)
+
+    @status = STATUS_FILTERS.key?(params[:status].to_s) ? params[:status].to_s : ""
+    @sort = SORTS.key?(params[:sort].to_s) ? params[:sort].to_s : "after_amount"
+    list = query.scope.where(source: @source)
+    list = list.where(STATUS_FILTERS[@status]) if @status.present?
+    @total = list.count
+    @total_pages = [(@total.to_f / PER_PAGE).ceil, 1].max
+    @page = params[:page].to_i.clamp(1, @total_pages)
+    @offset = (@page - 1) * PER_PAGE
+    @people = list.order(Arel.sql(SORTS[@sort])).offset(@offset).limit(PER_PAGE).to_a
+  end
+
+  # 手動重算首購產品分析（平常匯入訂單後會自動重算）
+  def refresh_cohorts
+    RefreshCustomerCohortStatsJob.perform_later
+    redirect_to product_strategy_path, notice: "已開始重新計算首購產品分析，約 1 分鐘後重新整理頁面"
   end
 
   private

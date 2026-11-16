@@ -5,9 +5,12 @@
       <div class="pc-title">🧭 首購來源追蹤總表</div>
       <div class="pc-sub">依每位客人第一筆訂單的產品分群（PDRN 拆預購／現貨），看之後的回購次數、金額、跨買、卡別變化。點產品名稱看該產品的客人分析。</div>
     </div>
-    <%= form_with url: product_strategy_path, method: :get, local: true, class: "d-flex align-items-center gap-2" do %>
-      <%= select_tag :period, options_for_select(ProductCohortAnalysis::PERIODS.map { |k, v| [v, k] }, @period), class: "form-control form-control-sm", onchange: "this.form.submit()" %>
-    <% end %>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <%= form_with url: product_strategy_path, method: :get, local: true do %>
+        <%= select_tag :period, options_for_select(CustomerCohortStatsQuery::PERIODS.map { |k, v| [v, k] }, @period), class: "form-control form-control-sm", onchange: "this.form.submit()" %>
+      <% end %>
+      <%= button_to "重新計算", refresh_product_strategy_cohorts_path, method: :post, class: "btn btn-sm btn-outline-secondary", form: { class: "d-inline" } %>
+    </div>
   </div>
   <div class="table-responsive">
     <table class="table table-sm table-hover pc-table mb-1">
@@ -27,6 +30,9 @@
         </tr>
       </thead>
       <tbody>
+        <% if @cohort_rows.empty? %>
+          <tr><td colspan="11" class="text-center text-muted py-4">還沒有計算結果，按右上角「重新計算」，約 1 分鐘後重新整理頁面。</td></tr>
+        <% end %>
         <% @cohort_rows.each do |source, s| %>
           <% w30 = s[:windows][30]; w90 = s[:windows][90] %>
           <tr>
@@ -47,7 +53,8 @@
     </table>
   </div>
   <div class="small text-muted">
-    共 <%= number_with_delimiter(@cohort_total) %> 人；同 IG 的不同 email 算同一人，已排除黑名單。
+    共 <%= number_with_delimiter(@cohort_total) %> 人；同一人用手機 > email 合併（跟客人資料庫的首購來源一致），已排除黑名單（含同 IG 帳號）。
+    最後計算：<%= @cohort_refreshed_at ? @cohort_refreshed_at.in_time_zone("Taipei").strftime("%Y/%m/%d %H:%M") : "—" %>（每次匯入訂單後自動重算）。
     回購＝首購那天之後另一天有下單（任何產品）；同產品回購＝之後又買了首購那個產品。30／90 天回購率只算首購已滿 30／90 天的人。
     卡別升級＝首購那張單的會員等級 → 現在。
   </div>

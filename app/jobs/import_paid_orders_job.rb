@@ -21,6 +21,14 @@ class ImportPaidOrdersJob < ApplicationJob
     CustomerSeriesLoyaltyRefreshService.call
     Rails.logger.info "[ImportPaidOrdersJob] series loyalty refreshed"
 
+    # 首購產品分析結果表：整批在資料庫裡用 SQL 重算（不載入訂單到 web 程序）；失敗只記 log
+    begin
+      CustomerCohortStatsRefreshService.call
+      Rails.logger.info "[ImportPaidOrdersJob] customer cohort stats refreshed"
+    rescue => e
+      Rails.logger.warn "[ImportPaidOrdersJob] customer cohort stats refresh failed: #{e.class} - #{e.message}"
+    end
+
     # 依新訂單自動補「購買過苼莛的產品」標籤（PDRN／冰晶番茄）。失敗只記 log，不影響匯入結果。
     begin
       CustomerProductTagSync.call

@@ -2,7 +2,7 @@
 <% s = @summary %>
 <% pct = ->(a, b) { b.to_i.positive? ? "#{(a * 100.0 / b).round(1)}%" : "—" } %>
 <% short = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白", "一般會員" => "一般" } %>
-<% period_label = ProductCohortAnalysis::PERIODS[@period] %>
+<% period_label = CustomerCohortStatsQuery::PERIODS[@period] %>
 
 <div class="subheader d-flex justify-content-between align-items-start flex-wrap gap-2">
   <h1 class="subheader-title">
@@ -76,7 +76,7 @@
   <div class="panel-container show"><div class="panel-content">
     <%= form_with url: product_strategy_source_path(source: @source), method: :get, local: true, class: "row gx-2 gy-2 align-items-end mb-2" do %>
       <div class="col-auto"><label class="form-label">首購期間</label>
-        <%= select_tag :period, options_for_select(ProductCohortAnalysis::PERIODS.map { |k, v| [v, k] }, @period), class: "form-control" %></div>
+        <%= select_tag :period, options_for_select(CustomerCohortStatsQuery::PERIODS.map { |k, v| [v, k] }, @period), class: "form-control" %></div>
       <div class="col-auto"><label class="form-label">狀態</label>
         <%= select_tag :status, options_for_select([["全部", ""], ["之後有再買", "repurchased"], ["之後還沒再買", "not_yet"], ["同產品回購", "same_again"], ["有跨買其他產品", "cross"], ["卡別有升級", "upgraded"]], @status), class: "form-control" %></div>
       <div class="col-auto"><label class="form-label">排序</label>
@@ -111,24 +111,25 @@
         </thead>
         <tbody>
         <% @people.each_with_index do |p, i| %>
+          <% cross = p.cross %>
           <tr>
             <td class="text-muted"><%= @offset + i + 1 %></td>
             <td>
-              <div class="fw-500"><%= p[:customer_id] ? link_to(p[:name], customer_path(p[:customer_id])) : p[:name] %></div>
-              <% if p[:ig].present? %><div class="small"><a href="https://instagram.com/<%= p[:ig] %>" target="_blank" rel="noopener noreferrer">@<%= p[:ig] %></a></div><% end %>
+              <div class="fw-500"><%= p.customer_id ? link_to(p.name, customer_path(p.customer_id)) : p.name %></div>
+              <% if p.instagram_account.present? %><div class="small"><a href="https://instagram.com/<%= p.instagram_account %>" target="_blank" rel="noopener noreferrer">@<%= p.instagram_account %></a></div><% end %>
             </td>
             <td class="pc-nowrap">
-              <% if p[:upgraded] %><%= short[p[:level_at_first]] %> → <b class="ca-up"><%= short[p[:level_now]] || p[:level_now] %></b><% else %><%= short[p[:level_now]] || p[:level_now] %><% end %>
+              <% if p.upgraded %><%= short[p.level_at_first] %> → <b class="ca-up"><%= short[p.level_now] || p.level_now %></b><% else %><%= short[p.level_now] || p.level_now %><% end %>
             </td>
-            <td class="pc-nowrap"><%= p[:first_date].strftime("%Y/%m/%d") %></td>
-            <td class="text-end pc-nowrap">NT$ <%= number_with_delimiter(p[:first_amount]) %></td>
-            <td class="small"><div class="ca-items" title="<%= p[:first_items] %>"><%= p[:first_items] %></div></td>
-            <td class="text-end pc-nowrap"><%= p[:after_days].positive? ? "#{p[:after_days]} 次" : "—" %></td>
-            <td class="text-end pc-nowrap"><%= p[:after_amount].positive? ? "NT$ #{number_with_delimiter(p[:after_amount])}" : "—" %></td>
-            <td><% p[:cross].each do |f| %><span class="pc-tag"><%= f %></span><% end %><%= "—" if p[:cross].empty? %></td>
+            <td class="pc-nowrap"><%= p.first_date.strftime("%Y/%m/%d") %></td>
+            <td class="text-end pc-nowrap">NT$ <%= number_with_delimiter(p.first_amount.round) %></td>
+            <td class="small"><div class="ca-items" title="<%= p.first_items %>"><%= p.first_items %></div></td>
+            <td class="text-end pc-nowrap"><%= p.after_days.positive? ? "#{p.after_days} 次" : "—" %></td>
+            <td class="text-end pc-nowrap"><%= p.after_amount.positive? ? "NT$ #{number_with_delimiter(p.after_amount.round)}" : "—" %></td>
+            <td><% cross.each do |f| %><span class="pc-tag"><%= f %></span><% end %><%= "—" if cross.empty? %></td>
             <td class="small pc-nowrap">
-              <%= p[:last_order_date].strftime("%Y/%m/%d") %> <span class="text-muted">（<%= (Date.current - p[:last_order_date]).to_i %> 天前）</span>
-              <div class="text-muted ca-items" title="<%= p[:last_items] %>"><%= p[:last_items] %></div>
+              <%= p.last_order_date.strftime("%Y/%m/%d") %> <span class="text-muted">（<%= (Date.current - p.last_order_date).to_i %> 天前）</span>
+              <div class="text-muted ca-items" title="<%= p.last_items %>"><%= p.last_items %></div>
             </td>
           </tr>
         <% end %>
@@ -137,7 +138,7 @@
       </table>
     </div>
     <%= pager %>
-    <div class="small text-muted mt-2">同 IG 的不同 email 算同一人，已排除黑名單。「之後買幾次」＝首購那天之後另外有下單的天數。每次匯入訂單後自動更新。</div>
+    <div class="small text-muted mt-2">同一人用手機 > email 合併，已排除黑名單（含同 IG 帳號）。「之後買幾次」＝首購那天之後另外有下單的天數。每次匯入訂單後自動更新。</div>
   </div></div>
 </div>
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_09_150000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_16_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -409,6 +409,32 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_09_150000) do
     t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin
     t.index ["product_tags"], name: "index_customer_profiles_on_product_tags", using: :gin
     t.index ["shopline_customer_id"], name: "index_customer_profiles_on_shopline_customer_id"
+  end
+
+  create_table "customer_cohort_stats", force: :cascade do |t|
+    t.string "identity_key", null: false
+    t.string "source", null: false
+    t.string "source_family"
+    t.date "first_date", null: false
+    t.decimal "first_amount", precision: 12, scale: 2, default: "0.0", null: false
+    t.text "first_items"
+    t.string "level_at_first"
+    t.integer "after_days", default: 0, null: false
+    t.decimal "after_amount", precision: 12, scale: 2, default: "0.0", null: false
+    t.date "first_after_date"
+    t.boolean "same_again", default: false, null: false
+    t.string "cross_families", default: [], null: false, array: true
+    t.jsonb "cross_revenue", default: {}, null: false
+    t.date "last_order_date"
+    t.text "last_items"
+    t.string "level_now"
+    t.boolean "upgraded", default: false, null: false
+    t.bigint "customer_id"
+    t.string "name"
+    t.string "instagram_account"
+    t.datetime "refreshed_at", null: false
+    t.index ["identity_key"], name: "index_customer_cohort_stats_on_identity_key", unique: true
+    t.index ["source", "first_date"], name: "index_customer_cohort_stats_on_source_and_first_date"
   end
 
   create_table "customer_purchase_summaries", force: :cascade do |t|
