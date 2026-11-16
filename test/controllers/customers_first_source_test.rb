@@ -9,7 +9,7 @@ class CustomersFirstSourceTest < ActionDispatch::IntegrationTest
     admin_role = Role.find_or_create_by!(key: "admin") { |r| r.name = "Admin" }
     sign_in User.create!(email: "fs_owner@test.com", username: "fs_owner", password: "password123", role: admin_role)
 
-    ShoplineCustomer.create!(email: "pre@example.com", full_name: "預購客", mobile_phone: "0911000111")
+    ShoplineCustomer.create!(email: "pre@example.com", full_name: "預購甲客", mobile_phone: "0911000111")
     ShoplineCustomer.create!(email: "omni@example.com", full_name: "全能客")
     CustomerPurchaseSummary.create!(identity_key: "0911000111", email: "pre@example.com", first_series: "PDRN",
                                     first_product: "預購-PDRN10", first_date: Time.zone.local(2026, 10, 27))
@@ -28,12 +28,12 @@ class CustomersFirstSourceTest < ActionDispatch::IntegrationTest
   test "可以用首購來源篩選" do
     get customers_path(first_source: "PDRN 預購")
     assert_response :success
-    assert_includes response.body, "預購客"
+    assert_includes response.body, "預購甲客"
     assert_not_includes response.body, "全能客"
 
     get customers_path(first_source: "全能")
     assert_includes response.body, "全能客"
-    assert_not_includes response.body, "預購客"
+    assert_not_includes response.body, "預購甲客"
   end
 
   test "客人頁顯示首購產品" do
