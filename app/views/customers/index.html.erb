@@ -79,6 +79,13 @@
             </div>
 
             <div class="col-sm-6 col-md-2 mt-md-2">
+              <label class="form-label">首購大組數</label>
+              <%= select_tag :first_big_set,
+                options_for_select([["全部", ""], ["大組數（#{CustomersController::FIRST_BIG_SET_BOTTLES} 瓶以上）", "1"]], @first_big_set),
+                class: "form-control" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2 mt-md-2">
               <label class="form-label">最近消費</label>
               <%= select_tag :recent_purchase,
                 options_for_select([["全部", ""], ["3個月內有消費", "1"]], @recent_purchase),
@@ -198,7 +205,8 @@
                     <td data-label="首購來源" class="small">
                       <% if (fs = @first_sources[c.email]) %>
                         <span class="badge badge-first-source <%= 'badge-first-preorder' if fs[:label] == 'PDRN 預購' %>"><%= fs[:label] %></span>
-                        <div class="text-muted" style="font-size:10px;" title="<%= fs[:product] %>"><%= fs[:date]&.strftime("%Y/%m/%d") %></div>
+                        <% if fs[:big_set] %><span class="badge badge-big-set" title="首購那筆訂單買了 <%= fs[:bottles] %> 瓶<%= fs[:label] %>">大組數 <%= fs[:bottles] %> 瓶</span><% end %>
+                        <div class="text-muted" style="font-size:10px;" title="<%= fs[:product] %>"><%= fs[:date]&.strftime("%Y/%m/%d") %><%= " · #{fs[:bottles]} 瓶" if fs[:bottles] && !fs[:big_set] %></div>
                       <% else %>
                         —
                       <% end %>
@@ -346,6 +354,17 @@
     background-color: #fff3e0;
     color: #bf360c;
     font-weight: 700;
+  }
+  .badge-big-set {
+    display: inline-block;
+    background-color: #e8f5e9;
+    color: #1b5e20;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    white-space: nowrap;
+    margin-left: 4px;
   }
 
   .badge-top-product {

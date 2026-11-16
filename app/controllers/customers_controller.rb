@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class CustomersController < ApplicationController
+  # 首購大組數門檻（2026-11-16 老闆要看首購是不是大組數，使用者定：該產品 ≥ 10 瓶）
+  FIRST_BIG_SET_BOTTLES = 10
   PER_PAGE = 20
   MAX_PAGE = 200
 
@@ -77,6 +79,7 @@ class CustomersController < ApplicationController
     @recent_purchase  = params[:recent_purchase].to_s.strip
     @first_source     = params[:first_source].to_s.strip
     @first_source_options = FIRST_SOURCE_OPTIONS
+    @first_big_set    = params[:first_big_set].to_s.strip
 
     @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員 非會員]
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level)
@@ -167,11 +170,14 @@ class CustomersController < ApplicationController
       ).where("fo.first_amount >= 10000")
     end
 
-    if @first_source.present?
-      scope = scope.joins(<<~SQL).where(first_source_sql(@first_source))
+    if @first_source.present? || @first_big_set == "1"
+      scope = scope.joins(<<~SQL)
         INNER JOIN customer_purchase_summaries cps
           ON cps.identity_key = COALESCE(NULLIF(TRIM(shopline_customers.mobile_phone), ''), LOWER(TRIM(shopline_customers.email)))
       SQL
+      scope = scope.where(first_source_sql(@first_source)) if @first_source.present?
+      # 首購大組數：首購那筆訂單裡首購產品付費 ≥ FIRST_BIG_SET_BOTTLES 瓶
+      scope = scope.where("cps.first_bottles >= ?", FIRST_BIG_SET_BOTTLES) if @first_big_set == "1"
     end
 
     scope = scope
@@ -256,12 +262,13 @@ class CustomersController < ApplicationController
     identity_by_email = @customers.to_h { |c| [c.email, customer_identity_key(c)] }
     summaries = CustomerPurchaseSummary
       .where(identity_key: identity_by_email.values.compact.uniq)
-      .select(:identity_key, :first_series, :first_product, :first_date)
+      .select(:identity_key, :first_series, :first_product, :first_date, :first_bottles)
       .index_by(&:identity_key)
     @first_sources = identity_by_email.transform_values do |key|
       s = summaries[key]
       next nil unless s
-      { label: first_source_label(s.first_series, s.first_product), product: s.first_product, date: s.first_date }
+      { label: first_source_label(s.first_series, s.first_product), product: s.first_product, date: s.first_date,
+        bottles: s.first_bottles, big_set: s.first_bottles.to_i >= FIRST_BIG_SET_BOTTLES }
     end
 
     @credits_expiring_count = Rails.cache.fetch("credits_expiring_count:#{Date.today}", expires_in: 12.hours) do

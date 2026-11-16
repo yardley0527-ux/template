@@ -282,6 +282,41 @@ class CustomerPurchaseSummaryRefreshService
 
     ActiveRecord::Base.connection.execute(sql)
     remove_stale_rows!
+    update_first_bottles!
+  end
+
+  # 首購那筆訂單裡「首購系列」的付費瓶數：品名裡系列名後面的數字 × 數量（例：代謝錠2送1＝2、全能12送1＝12、
+  # 預購-PDRN10＝10、代謝錠6薑黃6 只算代謝錠 6），送的贈品行（結帳價 0）不算；對不到數字算 1 瓶。
+  def update_first_bottles!
+    conn = ActiveRecord::Base.connection
+    kw_values = SERIES_OPTIONS.flat_map do |series|
+      (SERIES_KEYWORDS[series] || [series]).map { |kw| "(#{conn.quote(series)}, #{conn.quote(kw)})" }
+    end.join(", ")
+    conn.execute(<<~SQL)
+      WITH kw(series, kw) AS (VALUES #{kw_values}),
+      lines AS (
+        SELECT DISTINCT order_number, product_name AS pn, COALESCE(NULLIF(quantity, 0), 1) AS qty, checkout_amount
+        FROM shopline_orders
+        WHERE payment_status = '已付款' AND COALESCE(checkout_amount, 0) > 0
+      ),
+      counted AS (
+        SELECT cps.identity_key,
+               SUM(l.qty * CASE
+                 WHEN kw.series = '代謝錠' AND l.pn LIKE '%家庭號%' THEN 6
+                 ELSE COALESCE(SUBSTRING(l.pn FROM kw.kw || '[^0-9送+]{0,3}(\\d+)')::int,
+                               SUBSTRING(l.pn FROM '[（(](\\d+)[瓶盒]')::int, 1)
+               END) AS bottles
+        FROM customer_purchase_summaries cps
+        JOIN lines l ON l.order_number = cps.first_order_number
+        JOIN kw ON kw.series = cps.first_series AND l.pn LIKE '%' || kw.kw || '%'
+        GROUP BY cps.identity_key
+      )
+      UPDATE customer_purchase_summaries cps
+      SET first_bottles = counted.bottles
+      FROM counted
+      WHERE counted.identity_key = cps.identity_key
+        AND cps.first_bottles IS DISTINCT FROM counted.bottles
+    SQL
   end
 
   # 這次重算沒產生的舊列（例如客人後來補了手機，舊的 email identity_key 列還留著）會讓同一人算兩次。
