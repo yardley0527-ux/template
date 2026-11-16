@@ -77,6 +77,33 @@ class ProductStrategyCohortTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "全能乙"
   end
 
+  test "第二筆訂單、跨買產品、只回購同產品、距上次購買篩選" do
+    a = CustomerCohortStat.find_by(name: "預購甲")
+    assert_equal ["代謝錠"], a.second_families
+    assert_equal ["全能"], CustomerCohortStat.find_by(name: "全能乙").second_families
+
+    get product_strategy_source_path(source: "PDRN 預購")
+    assert_select "a[href*='product=%E4%BB%A3%E8%AC%9D%E9%8C%A0']" # 跨買排行可點
+    assert_includes response.body, "1 人</a>／1 人"
+
+    get product_strategy_source_path(source: "PDRN 預購", product: "代謝錠", rank: "second")
+    assert_includes response.body, "預購甲"
+    get product_strategy_source_path(source: "PDRN 預購", product: "全能")
+    assert_not_includes response.body, "預購甲"
+
+    get product_strategy_source_path(source: "全能", status: "only_same")
+    assert_includes response.body, "全能乙"
+    get product_strategy_source_path(source: "全能", status: "not_yet")
+    assert_not_includes response.body, "全能乙"
+
+    travel_to Date.new(2026, 11, 16) do
+      get product_strategy_source_path(source: "PDRN 預購", recency: "0_30")
+      assert_includes response.body, "預購甲"
+      get product_strategy_source_path(source: "PDRN 預購", recency: "181")
+      assert_not_includes response.body, "預購甲"
+    end
+  end
+
   test "不存在的來源導回總表" do
     get product_strategy_source_path(source: "不存在")
     assert_redirected_to product_strategy_path

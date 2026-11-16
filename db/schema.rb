@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_16_150000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_16_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -433,6 +433,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_16_150000) do
     t.string "name"
     t.string "instagram_account"
     t.datetime "refreshed_at", null: false
+    t.string "second_families", default: [], null: false, array: true
     t.index ["identity_key"], name: "index_customer_cohort_stats_on_identity_key", unique: true
     t.index ["source", "first_date"], name: "index_customer_cohort_stats_on_source_and_first_date"
   end

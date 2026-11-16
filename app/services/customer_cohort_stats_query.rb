@@ -50,6 +50,10 @@ class CustomerCohortStatsQuery
                        .group("fam").order(Arel.sql("COUNT(*) DESC"))
                        .pluck(Arel.sql("fam"), Arel.sql("COUNT(*)"), Arel.sql("SUM((cross_revenue ->> fam)::numeric)"))
                        .to_h { |fam, n, rev| [fam, { people: n, revenue: rev.to_f }] }
+    # 第二筆訂單買什麼（含同產品）
+    summary[:second] = s.joins("CROSS JOIN LATERAL UNNEST(customer_cohort_stats.second_families) AS fam")
+                        .group("fam").order(Arel.sql("COUNT(*) DESC")).pluck(Arel.sql("fam"), Arel.sql("COUNT(*)"))
+                        .to_h { |fam, n| [fam, { people: n }] }
     summary[:upgrade_paths] = s.where(upgraded: true).group(:level_at_first, :level_now).order(Arel.sql("COUNT(*) DESC")).count
                                .transform_keys { |(a, b)| "#{a} → #{b}" }
     summary
@@ -95,6 +99,7 @@ class CustomerCohortStatsQuery
       upgraded: upgraded.to_i,
       windows: WINDOWS.each_with_index.to_h { |n, i| [n, { eligible: w[i * 2].to_i, hit: w[i * 2 + 1].to_i }] },
       cross: {},
+      second: {},
       upgrade_paths: {}
     }
   end

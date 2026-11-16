@@ -11,10 +11,16 @@ class ProductStrategyController < ApplicationController
     "last_order" => "last_order_date DESC, after_amount DESC"
   }.freeze
 
+  # 距上次購買天數
+  RECENCY = {
+    "0_30" => [0, 30], "31_60" => [31, 60], "61_90" => [61, 90], "91_180" => [91, 180], "181" => [181, nil]
+  }.freeze
+
   STATUS_FILTERS = {
     "repurchased" => "after_days > 0",
     "not_yet" => "after_days = 0",
     "same_again" => "same_again",
+    "only_same" => "same_again AND CARDINALITY(cross_families) = 0",
     "cross" => "CARDINALITY(cross_families) > 0",
     "upgraded" => "upgraded"
   }.freeze
@@ -56,6 +62,22 @@ class ProductStrategyController < ApplicationController
     @sort = SORTS.key?(params[:sort].to_s) ? params[:sort].to_s : "after_amount"
     list = query.scope.where(source: @source)
     list = list.where(STATUS_FILTERS[@status]) if @status.present?
+
+    # 跨買排行：之後買過（cross）或第二筆訂單（second）買了某產品
+    @rank_mode = params[:rank] == "second" ? "second" : "after"
+    @product = params[:product].to_s
+    @product = "" unless CustomerCohortStatsRefreshService::FAMILY_PATTERNS.map(&:first).include?(@product)
+    if @product.present?
+      col = @rank_mode == "second" ? "second_families" : "cross_families"
+      list = list.where("? = ANY(#{col})", @product)
+    end
+
+    @recency = RECENCY.key?(params[:recency].to_s) ? params[:recency].to_s : ""
+    if @recency.present?
+      lo, hi = RECENCY[@recency]
+      list = list.where("last_order_date <= ?", Date.current - lo)
+      list = list.where("last_order_date >= ?", Date.current - hi) if hi
+    end
     @total = list.count
     @total_pages = [(@total.to_f / PER_PAGE).ceil, 1].max
     @page = params[:page].to_i.clamp(1, @total_pages)

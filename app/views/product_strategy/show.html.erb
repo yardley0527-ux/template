@@ -3,6 +3,11 @@
 <% pct = ->(a, b) { b.to_i.positive? ? "#{(a * 100.0 / b).round(1)}%" : "—" } %>
 <% short = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白", "一般會員" => "一般" } %>
 <% period_label = CustomerCohortStatsQuery::PERIODS[@period] %>
+<% family = @source.start_with?("PDRN") ? "PDRN" : @source %>
+<%# 點數字 → 下方名單套用對應篩選 %>
+<% list_url = ->(extra = {}) { product_strategy_source_path({ source: @source, period: @period.presence }.merge(extra).compact) + "#list" } %>
+<% status_labels = { "" => "全部", "repurchased" => "之後有再買", "not_yet" => "尚未再購", "only_same" => "只回購 #{family}", "same_again" => "有回購 #{family}", "cross" => "已跨買其他產品", "upgraded" => "卡別有升級" } %>
+<% recency_labels = { "" => "不限", "0_30" => "30 天內", "31_60" => "31–60 天", "61_90" => "61–90 天", "91_180" => "91–180 天", "181" => "超過 180 天" } %>
 
 <div class="subheader d-flex justify-content-between align-items-start flex-wrap gap-2">
   <h1 class="subheader-title">
@@ -14,13 +19,13 @@
 </div>
 
 <div class="ca-kpis mb-3">
-  <div class="ca-kpi"><div class="ca-k">首購人數</div><div class="ca-v"><%= number_with_delimiter(s[:total]) %> 人</div>
+  <div class="ca-kpi"><div class="ca-k">首購人數</div><div class="ca-v"><%= link_to "#{number_with_delimiter(s[:total])} 人", list_url.(), class: "ca-link" %></div>
     <div class="ca-s">平均首單 NT$ <%= number_with_delimiter(s[:avg_first_amount]) %></div></div>
-  <div class="ca-kpi"><div class="ca-k">之後有再買</div><div class="ca-v"><%= number_with_delimiter(s[:repurchased]) %> 人</div>
-    <div class="ca-s"><%= pct.(s[:repurchased], s[:total]) %>・同產品回購 <%= number_with_delimiter(s[:same_again]) %> 人（<%= pct.(s[:same_again], s[:total]) %>）</div></div>
+  <div class="ca-kpi"><div class="ca-k">之後有再買</div><div class="ca-v"><%= link_to "#{number_with_delimiter(s[:repurchased])} 人", list_url.(status: "repurchased"), class: "ca-link" %></div>
+    <div class="ca-s"><%= pct.(s[:repurchased], s[:total]) %>・同產品回購 <%= link_to "#{number_with_delimiter(s[:same_again])} 人", list_url.(status: "same_again"), class: "ca-link" %>（<%= pct.(s[:same_again], s[:total]) %>）・<%= link_to "尚未再購 #{number_with_delimiter(s[:total] - s[:repurchased])} 人", list_url.(status: "not_yet"), class: "ca-link" %></div></div>
   <div class="ca-kpi"><div class="ca-k">回購金額</div><div class="ca-v">NT$ <%= number_with_delimiter(s[:after_amount].round) %></div>
     <div class="ca-s">回購者平均 NT$ <%= number_with_delimiter(s[:repurchased].positive? ? (s[:after_amount] / s[:repurchased]).round : 0) %>・平均 <%= s[:avg_after_days] %> 次</div></div>
-  <div class="ca-kpi"><div class="ca-k">卡別升級</div><div class="ca-v"><%= number_with_delimiter(s[:upgraded]) %> 人</div>
+  <div class="ca-kpi"><div class="ca-k">卡別升級</div><div class="ca-v"><%= link_to "#{number_with_delimiter(s[:upgraded])} 人", list_url.(status: "upgraded"), class: "ca-link" %></div>
     <div class="ca-s"><%= pct.(s[:upgraded], s[:total]) %>（首購時 → 現在）</div></div>
 </div>
 
@@ -40,18 +45,36 @@
       </div></div></div>
   </div>
   <div class="col-lg-4 mb-3">
-    <div class="panel h-100"><div class="panel-hdr"><h2>跨買產品排行</h2></div>
+    <div class="panel h-100"><div class="panel-hdr"><h2>跨買產品排行</h2>
+        <div class="panel-toolbar ca-toggle">
+          <%= link_to "之後買過", product_strategy_source_path(request.query_parameters.except("source").merge(source: @source, rank: nil, product: nil, page: nil).compact), class: "btn btn-xs #{@rank_mode == 'after' ? 'btn-primary' : 'btn-outline-secondary'}" %>
+          <%= link_to "第二筆訂單買什麼", product_strategy_source_path(request.query_parameters.except("source").merge(source: @source, rank: "second", product: nil, page: nil).compact), class: "btn btn-xs #{@rank_mode == 'second' ? 'btn-primary' : 'btn-outline-secondary'}" %>
+        </div></div>
       <div class="panel-container show"><div class="panel-content">
-        <table class="table table-sm mb-2">
-          <thead><tr><th>產品</th><th class="text-end">人數</th><th class="text-end">業績</th></tr></thead>
+        <% rows = @rank_mode == "second" ? s[:second] : s[:cross] %>
+        <table class="table table-sm table-hover mb-2">
+          <thead><tr><th>產品</th><th class="text-end">人數／首購人數</th><th class="text-end"><%= @rank_mode == "second" ? "佔比" : "跨買率" %></th><% if @rank_mode == "after" %><th class="text-end">業績</th><% end %></tr></thead>
           <tbody>
-          <% s[:cross].first(10).each do |fam, v| %>
-            <tr><td><%= fam %></td><td class="text-end"><%= number_with_delimiter(v[:people]) %></td><td class="text-end pc-nowrap">NT$ <%= number_with_delimiter(v[:revenue].round) %></td></tr>
+          <% rows.first(12).each do |fam, v| %>
+            <% url = list_url.(rank: (@rank_mode == "second" ? "second" : nil), product: fam) %>
+            <tr class="<%= 'table-active' if @product == fam %>">
+              <td><%= link_to fam, url, class: "ca-link" %><%= " （同產品）" if fam == family %></td>
+              <td class="text-end pc-nowrap"><%= link_to "#{number_with_delimiter(v[:people])} 人", url, class: "ca-link" %>／<%= number_with_delimiter(s[:total]) %> 人</td>
+              <td class="text-end fw-bold"><%= pct.(v[:people], s[:total]) %></td>
+              <% if @rank_mode == "after" %><td class="text-end pc-nowrap">NT$ <%= number_with_delimiter(v[:revenue].round) %></td><% end %>
+            </tr>
           <% end %>
-          <% if s[:cross].empty? %><tr><td colspan="3" class="text-muted">目前沒有</td></tr><% end %>
+          <% if rows.empty? %><tr><td colspan="4" class="text-muted">目前沒有</td></tr><% end %>
           </tbody>
         </table>
-        <div class="small text-muted">首購之後買的其他產品；業績是商品結帳價 × 數量。</div>
+        <div class="small text-muted">
+          <% if @rank_mode == "second" %>
+            首購之後的第一筆訂單（另一天）買了哪些產品，含同產品回購；有第二筆的共 <%= number_with_delimiter(s[:repurchased]) %> 人。
+          <% else %>
+            首購之後任何時候買過的其他產品（不含同產品）；業績是商品結帳價 × 數量。
+          <% end %>
+          點產品或人數看名單。
+        </div>
       </div></div></div>
   </div>
   <div class="col-lg-4 mb-3">
@@ -61,7 +84,7 @@
           <thead><tr><th>首購時 → 現在</th><th class="text-end">人數</th></tr></thead>
           <tbody>
           <% s[:upgrade_paths].first(8).each do |path, n| %>
-            <tr><td><%= path %></td><td class="text-end"><%= number_with_delimiter(n) %></td></tr>
+            <tr><td><%= path %></td><td class="text-end"><%= link_to number_with_delimiter(n), list_url.(status: "upgraded"), class: "ca-link" %></td></tr>
           <% end %>
           <% if s[:upgrade_paths].empty? %><tr><td colspan="2" class="text-muted">目前沒有</td></tr><% end %>
           </tbody>
@@ -71,18 +94,34 @@
   </div>
 </div>
 
-<div class="panel">
+<div class="panel" id="list">
   <div class="panel-hdr"><h2>客人名單 <span class="fw-300 ms-2"><%= number_with_delimiter(@total) %> 人</span></h2></div>
   <div class="panel-container show"><div class="panel-content">
     <%= form_with url: product_strategy_source_path(source: @source), method: :get, local: true, class: "row gx-2 gy-2 align-items-end mb-2" do %>
       <div class="col-auto"><label class="form-label">首購期間</label>
         <%= select_tag :period, options_for_select(CustomerCohortStatsQuery::PERIODS.map { |k, v| [v, k] }, @period), class: "form-control" %></div>
       <div class="col-auto"><label class="form-label">狀態</label>
-        <%= select_tag :status, options_for_select([["全部", ""], ["之後有再買", "repurchased"], ["之後還沒再買", "not_yet"], ["同產品回購", "same_again"], ["有跨買其他產品", "cross"], ["卡別有升級", "upgraded"]], @status), class: "form-control" %></div>
+        <%= select_tag :status, options_for_select(status_labels.map { |k, v| [v, k] }, @status), class: "form-control" %></div>
+      <div class="col-auto"><label class="form-label">買過的產品</label>
+        <div class="d-flex gap-1">
+          <%= select_tag :product, options_for_select([["不限", ""]] + (s[:cross].keys | s[:second].keys).map { |f| [f, f] }, @product), class: "form-control" %>
+          <%= select_tag :rank, options_for_select([["之後買過", "after"], ["第二筆就買", "second"]], @rank_mode), class: "form-control" %>
+        </div></div>
+      <div class="col-auto"><label class="form-label">距上次購買</label>
+        <%= select_tag :recency, options_for_select(recency_labels.map { |k, v| [v, k] }, @recency), class: "form-control" %></div>
       <div class="col-auto"><label class="form-label">排序</label>
         <%= select_tag :sort, options_for_select([["之後消費高到低", "after_amount"], ["首單金額高到低", "first_amount"], ["首購日期新到舊", "first_date"], ["最近購買新到舊", "last_order"]], @sort), class: "form-control" %></div>
       <div class="col-auto"><%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>
         <%= link_to "清除", product_strategy_source_path(source: @source), class: "btn btn-outline-secondary" %></div>
+    <% end %>
+
+    <% chips = [] %>
+    <% chips << status_labels[@status] if @status.present? %>
+    <% chips << "#{@rank_mode == 'second' ? '第二筆買' : '之後買過'} #{@product}" if @product.present? %>
+    <% chips << "距上次購買 #{recency_labels[@recency]}" if @recency.present? %>
+    <% if chips.any? %>
+      <div class="mb-2">目前篩選：<% chips.each do |c| %><span class="pc-tag"><%= c %></span><% end %>
+        <%= link_to "清除篩選", list_url.(), class: "small ms-1" %></div>
     <% end %>
 
     <% pager = capture do %>
@@ -106,7 +145,7 @@
         <thead class="bg-primary-600">
           <tr>
             <th>#</th><th>客人</th><th>卡別</th><th>首購日期</th><th class="text-end">首單金額</th><th>首單買什麼</th>
-            <th class="text-end">之後買幾次</th><th class="text-end">之後消費</th><th>跨買產品</th><th>最近一次購買</th>
+            <th class="text-end">之後買幾次</th><th class="text-end">之後消費</th><th>第二筆買什麼</th><th>跨買產品</th><th>最近一次購買</th>
           </tr>
         </thead>
         <tbody>
@@ -126,6 +165,7 @@
             <td class="small"><div class="ca-items" title="<%= p.first_items %>"><%= p.first_items %></div></td>
             <td class="text-end pc-nowrap"><%= p.after_days.positive? ? "#{p.after_days} 次" : "—" %></td>
             <td class="text-end pc-nowrap"><%= p.after_amount.positive? ? "NT$ #{number_with_delimiter(p.after_amount.round)}" : "—" %></td>
+            <td><% p.second_families.to_a.each do |f| %><span class="pc-tag pc-tag-2"><%= f %></span><% end %><%= "—" if p.second_families.blank? %></td>
             <td><% cross.each do |f| %><span class="pc-tag"><%= f %></span><% end %><%= "—" if cross.empty? %></td>
             <td class="small pc-nowrap">
               <%= p.last_order_date.strftime("%Y/%m/%d") %> <span class="text-muted">（<%= (Date.current - p.last_order_date).to_i %> 天前）</span>
@@ -133,7 +173,7 @@
             </td>
           </tr>
         <% end %>
-        <% if @people.empty? %><tr><td colspan="10" class="text-center text-muted py-4">沒有符合條件的客人</td></tr><% end %>
+        <% if @people.empty? %><tr><td colspan="11" class="text-center text-muted py-4">沒有符合條件的客人</td></tr><% end %>
         </tbody>
       </table>
     </div>
@@ -154,6 +194,11 @@
   .ca-items { max-width: 16em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ca-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 8px 0; }
   .pc-nowrap { white-space: nowrap; }
+  .ca-link { color: inherit; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+  .ca-link:hover { color: #4527a0; }
+  .ca-toggle { display: flex; gap: 4px; margin-left: auto; }
+  .ca-toggle .btn-xs { padding: 2px 8px; font-size: 12px; }
+  .pc-tag-2 { background: #e0f2f1; color: #00695c; }
   .pc-tag { display: inline-block; background: #ede7f6; color: #4527a0; border-radius: 999px; padding: 1px 8px; font-size: 12px; margin: 0 4px 2px 0; white-space: nowrap; }
   .bg-primary-600 { background-color: #886ab5 !important; color: white; }
 </style>

@@ -61,7 +61,8 @@ class CustomerCohortStatsRefreshService
       INSERT INTO customer_cohort_stats (
         identity_key, source, source_family, first_date, first_amount, first_items, level_at_first,
         after_days, after_amount, first_after_date, same_again, cross_families, cross_revenue,
-        last_order_date, last_items, level_now, upgraded, customer_id, name, instagram_account, refreshed_at
+        last_order_date, last_items, level_now, upgraded, customer_id, name, instagram_account, refreshed_at,
+        second_families
       )
       WITH lines AS (
         SELECT so.order_number, so.order_date::date AS d, LOWER(TRIM(so.email)) AS em,
@@ -139,6 +140,11 @@ class CustomerCohortStatsRefreshService
                COALESCE(JSONB_OBJECT_AGG(af.fam, ROUND(af.rev)) FILTER (WHERE af.fam NOT IN (s.source_family, #{q.(OTHER)})), '{}'::jsonb) AS cross_revenue
         FROM after_fams af JOIN src s ON s.ik = af.ik GROUP BY af.ik
       ),
+      second_fams AS (
+        SELECT fl.ik, ARRAY_AGG(DISTINCT fl.fam) AS fams
+        FROM fam_lines fl JOIN after_orders ao ON ao.ik = fl.ik AND fl.d = ao.first_after
+        WHERE fl.rev > 0 AND fl.fam <> #{q.(OTHER)} GROUP BY fl.ik
+      ),
       custs AS (
         SELECT COALESCE(NULLIF(TRIM(sc.mobile_phone), ''), LOWER(TRIM(sc.email))) AS ik, sc.id, sc.full_name,
                sc.instagram_account, COALESCE(NULLIF(sc.membership_level, ''), '一般會員') AS lvl
@@ -155,7 +161,8 @@ class CustomerCohortStatsRefreshService
              la.d, li.items,
              COALESCE(cp.lvl, COALESCE(f.lvl, '一般會員')),
              #{rank_case.("COALESCE(cp.lvl, f.lvl, '一般會員')")} > #{rank_case.("COALESCE(f.lvl, '一般會員')")},
-             cp.id, NULLIF(cp.full_name, ''), NULLIF(LOWER(TRIM(cp.instagram_account)), ''), NOW()
+             cp.id, NULLIF(cp.full_name, ''), NULLIF(LOWER(TRIM(cp.instagram_account)), ''), NOW(),
+             COALESCE(sf.fams, ARRAY[]::varchar[])
       FROM firsts f
       JOIN src s ON s.ik = f.ik
       LEFT JOIN first_items fi ON fi.ik = f.ik
@@ -164,6 +171,7 @@ class CustomerCohortStatsRefreshService
       LEFT JOIN after_orders ao ON ao.ik = f.ik
       LEFT JOIN after_cross ac ON ac.ik = f.ik
       LEFT JOIN cust_pick cp ON cp.ik = f.ik
+      LEFT JOIN second_fams sf ON sf.ik = f.ik
     SQL
   end
 end
