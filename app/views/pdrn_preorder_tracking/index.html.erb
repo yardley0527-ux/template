@@ -1,0 +1,150 @@
+<% content_for :page_title, "PDRN 預購客追蹤" %>
+<% s = @summary %>
+<% pct = ->(a, b) { b.to_i.positive? ? "#{(a * 100.0 / b).round(1)}%" : "—" } %>
+<% short = { "黑卡" => "黑", "金卡" => "金", "銀卡" => "銀", "白卡" => "白", "一般會員" => "一般" } %>
+
+<div class="subheader">
+  <h1 class="subheader-title">
+    <i class="subheader-icon fal fa-seedling"></i>
+    PDRN 預購客追蹤
+    <small>所有買過「預購-PDRN」的客人，預購之後的回購、跨買與卡別變化；資料到 <%= @data_until&.strftime("%Y/%m/%d") %>，每次匯入訂單自動更新</small>
+  </h1>
+</div>
+
+<div class="pp-kpis mb-3">
+  <div class="pp-kpi"><div class="pp-k">預購客</div><div class="pp-v"><%= number_with_delimiter(s[:total]) %> 人</div>
+    <div class="pp-s">PDRN 帶進新客 <b><%= number_with_delimiter(s[:new_customers]) %></b> 人（<%= pct.(s[:new_customers], s[:total]) %>）</div></div>
+  <div class="pp-kpi"><div class="pp-k">預購後有再買</div><div class="pp-v"><%= number_with_delimiter(s[:repurchased]) %> 人</div>
+    <div class="pp-s"><%= pct.(s[:repurchased], s[:total]) %>・平均買 <%= s[:avg_after_days] %> 次</div></div>
+  <div class="pp-kpi"><div class="pp-k">預購後消費</div><div class="pp-v">NT$ <%= number_with_delimiter(s[:after_amount].round) %></div>
+    <div class="pp-s">有再買的人平均 NT$ <%= number_with_delimiter(s[:repurchased].positive? ? (s[:after_amount] / s[:repurchased]).round : 0) %></div></div>
+  <div class="pp-kpi"><div class="pp-k">卡別升級</div><div class="pp-v"><%= number_with_delimiter(s[:upgraded]) %> 人</div>
+    <div class="pp-s"><%= pct.(s[:upgraded], s[:total]) %>（預購當時 → 現在）</div></div>
+</div>
+
+<div class="row">
+  <div class="col-lg-4 mb-3">
+    <div class="panel h-100"><div class="panel-hdr"><h2>30／60／90 天回購率</h2></div>
+      <div class="panel-container show"><div class="panel-content">
+        <table class="table table-sm mb-2">
+          <thead><tr><th>預購後</th><th class="text-end">已滿天數的人</th><th class="text-end">有再買</th><th class="text-end">回購率</th></tr></thead>
+          <tbody>
+          <% s[:windows].each do |n, w| %>
+            <tr><td><%= n %> 天內</td><td class="text-end"><%= number_with_delimiter(w[:eligible]) %></td><td class="text-end"><%= number_with_delimiter(w[:hit]) %></td><td class="text-end fw-bold"><%= pct.(w[:hit], w[:eligible]) %></td></tr>
+          <% end %>
+          </tbody>
+        </table>
+        <div class="small text-muted">從第一次預購那天起算；只算已經滿 N 天的人，剛預購的人不會拉低比例。</div>
+      </div></div></div>
+  </div>
+  <div class="col-lg-4 mb-3">
+    <div class="panel h-100"><div class="panel-hdr"><h2>跨買產品排行</h2></div>
+      <div class="panel-container show"><div class="panel-content">
+        <table class="table table-sm mb-2">
+          <thead><tr><th>產品</th><th class="text-end">人數</th><th class="text-end">業績</th></tr></thead>
+          <tbody>
+          <% s[:cross].first(10).each do |fam, v| %>
+            <tr><td><%= fam %></td><td class="text-end"><%= v[:people] %></td><td class="text-end">NT$ <%= number_with_delimiter(v[:revenue].round) %></td></tr>
+          <% end %>
+          </tbody>
+        </table>
+        <div class="small text-muted">預購後買的 PDRN 以外產品；業績是商品結帳價 × 數量。</div>
+      </div></div></div>
+  </div>
+  <div class="col-lg-4 mb-3">
+    <div class="panel h-100"><div class="panel-hdr"><h2>卡別升級</h2></div>
+      <div class="panel-container show"><div class="panel-content">
+        <table class="table table-sm mb-2">
+          <thead><tr><th>預購當時 → 現在</th><th class="text-end">人數</th></tr></thead>
+          <tbody>
+          <% s[:upgrade_paths].each do |path, n| %>
+            <tr><td><%= path %></td><td class="text-end"><%= n %></td></tr>
+          <% end %>
+          <% if s[:upgrade_paths].empty? %><tr><td colspan="2" class="text-muted">目前沒有</td></tr><% end %>
+          </tbody>
+        </table>
+        <div class="small text-muted">預購當時＝第一張預購單上的會員等級；現在＝客人資料庫目前的等級。</div>
+      </div></div></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-hdr"><h2>名單 <span class="fw-300 ms-2"><%= number_with_delimiter(@people.size) %> 人</span></h2></div>
+  <div class="panel-container show"><div class="panel-content">
+    <%= form_with url: pdrn_preorder_tracking_path, method: :get, local: true, class: "row gx-2 gy-2 align-items-end mb-3" do %>
+      <div class="col-auto"><label class="form-label">新舊客</label>
+        <%= select_tag :segment, options_for_select([["全部", ""], ["預購是首購（新客）", "new"], ["預購前就是舊客", "old"]], @segment), class: "form-control" %></div>
+      <div class="col-auto"><label class="form-label">狀態</label>
+        <%= select_tag :status, options_for_select([["全部", ""], ["預購後有再買", "repurchased"], ["預購後還沒再買", "not_yet"], ["有跨買其他產品", "cross"], ["卡別有升級", "upgraded"]], @status), class: "form-control" %></div>
+      <div class="col-auto"><label class="form-label">排序</label>
+        <%= select_tag :sort, options_for_select([["預購金額高到低", "pre_amount"], ["預購後消費高到低", "after_amount"], ["最近購買新到舊", "last_order"], ["預購日期新到舊", "first_pre"]], @sort), class: "form-control" %></div>
+      <div class="col-auto"><%= button_tag "查詢", type: "submit", class: "btn btn-primary" %>
+        <%= link_to "清除", pdrn_preorder_tracking_path, class: "btn btn-outline-secondary" %></div>
+    <% end %>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover table-striped w-100 pp-table">
+        <thead class="bg-primary-600">
+          <tr>
+            <th>#</th><th>客人</th><th>卡別</th><th>預購日期</th><th class="text-end">預購瓶數</th><th class="text-end">預購金額</th>
+            <th class="text-end">預購後買幾次</th><th class="text-end">預購後消費</th><th>跨買產品</th><th>最近一次購買</th>
+          </tr>
+        </thead>
+        <tbody>
+        <% @people.each_with_index do |p, i| %>
+          <tr>
+            <td class="text-muted"><%= i + 1 %></td>
+            <td>
+              <div class="fw-500">
+                <%= p[:customer_id] ? link_to(p[:name], customer_path(p[:customer_id])) : p[:name] %>
+                <% if p[:new_customer] %><span class="pp-tag pp-new">預購是首購</span><% end %>
+              </div>
+              <% if p[:ig].present? %><div class="small"><a href="https://instagram.com/<%= p[:ig] %>" target="_blank" rel="noopener noreferrer">@<%= p[:ig] %></a></div><% end %>
+            </td>
+            <td class="pp-nowrap">
+              <% if p[:upgraded] %>
+                <%= short[p[:level_at_pre]] || p[:level_at_pre] %> → <b class="pp-up"><%= short[p[:level_now]] || p[:level_now] %></b>
+              <% else %>
+                <%= short[p[:level_now]] || p[:level_now] %>
+              <% end %>
+            </td>
+            <td class="pp-nowrap"><%= p[:pre_dates].reverse.map { |d| d.strftime("%m/%d") }.join("、") %></td>
+            <td class="text-end"><%= p[:pre_bottles] %> 瓶</td>
+            <td class="text-end">NT$ <%= number_with_delimiter(p[:pre_amount]) %></td>
+            <td class="text-end"><%= p[:after_days].positive? ? "#{p[:after_days]} 次" : "—" %></td>
+            <td class="text-end"><%= p[:after_amount].positive? ? "NT$ #{number_with_delimiter(p[:after_amount])}" : "—" %></td>
+            <td><% p[:cross].each do |f| %><span class="pp-tag"><%= f %></span><% end %><%= "—" if p[:cross].empty? %></td>
+            <td class="small pp-nowrap">
+              <%= p[:last_order_date].strftime("%Y/%m/%d") %>
+              <span class="text-muted">（<%= (Date.current - p[:last_order_date]).to_i %> 天前）</span>
+              <div class="text-muted pp-items" title="<%= p[:last_items] %>"><%= p[:last_items] %></div>
+            </td>
+          </tr>
+        <% end %>
+        <% if @people.empty? %><tr><td colspan="10" class="text-center text-muted py-4">沒有符合條件的客人</td></tr><% end %>
+        </tbody>
+      </table>
+    </div>
+    <div class="small text-muted mt-2">
+      預購客＝買過「預購-PDRN」（已付款、結帳價大於 0）的人；同 IG 的不同 email 算同一人。
+      「預購後買幾次」＝第一次預購那天之後，另外有下單的天數（含再加購預購）。
+      已排除黑名單 <%= @excluded_names.size %> 人<%= "（#{@excluded_names.join('、')}）" if @excluded_names.any? %>。
+    </div>
+  </div></div>
+</div>
+
+<style>
+  .pp-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 900px) { .pp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .pp-kpi { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px 16px; }
+  .pp-k { color: #6b7280; font-size: 12px; }
+  .pp-v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pp-s { color: #6b7280; font-size: 13px; }
+  .pp-table td { vertical-align: top; }
+  .pp-nowrap { white-space: nowrap; }
+  .pp-tag { display: inline-block; background: #ede7f6; color: #4527a0; border-radius: 999px; padding: 1px 8px; font-size: 12px; margin: 0 4px 4px 0; white-space: nowrap; }
+  .pp-tag.pp-new { background: #fff3e0; color: #bf360c; font-weight: 700; }
+  .pp-up { color: #2e7d32; }
+  .pp-items { max-width: 18em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bg-primary-600 { background-color: #886ab5 !important; color: white; }
+</style>

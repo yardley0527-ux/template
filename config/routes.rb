@@ -259,6 +259,7 @@ Rails.application.routes.draw do
   post '/message_list_recipients/update_field', to: 'message_lists#update_recipient_field', as: :update_message_list_recipient_field
   get '/inactive_members',           to: 'inactive_members#index',     as: :inactive_members
   get '/upgraded_members',           to: 'upgraded_members#index',     as: :upgraded_members
+  get '/pdrn_preorder_tracking',    to: 'pdrn_preorder_tracking#index', as: :pdrn_preorder_tracking
   get  '/duplicate_customers',         to: 'duplicate_customers#index', as: :duplicate_customers
   post '/duplicate_customers/merge',   to: 'duplicate_customers#merge', as: :merge_duplicate_customers
   get '/product_strategy',      to: 'product_strategy#index',      as: :product_strategy

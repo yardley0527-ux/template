@@ -19,6 +19,7 @@ class SidebarEntry
               subtitle: (unread_notifications.positive? ? unread_notifications.to_s : nil),
               subtitle_class: "badge badge-danger" },
             { href: tracked_customers_path, title: "營運追蹤名單", icon: "fa-badge-check" },
+            { href: pdrn_preorder_tracking_path, title: "PDRN 預購客追蹤", icon: "fa-seedling" },
             { href: daily_message_lists_path, title: "每日名單回購成效", icon: "fa-comments" },
           ]
         },
