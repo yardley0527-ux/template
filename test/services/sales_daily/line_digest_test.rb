@@ -47,15 +47,29 @@ module SalesDaily
       assert_includes text, "1. PDRN1\n  3 個／2 單｜$7,750（88.6%）\n2. 全能2\n  1 個／1 單｜$1,000（11.4%）"
     end
 
-    test "好幾天合併成一份：每天一行、人數去重、卡別和熱銷是合計" do
+    test "好幾天不加總：每一段都每天各一塊，網頁另有每天的直條圖資料" do
       order("#G3", "gold@example.com", Date.new(2026, 10, 4), "PDRN1", 1, total: 2750, checkout: 2750)
-      text = LineDigest.new(DAY..Date.new(2026, 10, 4), line: FakeLine.new).message
+      digest = LineDigest.new(DAY..Date.new(2026, 10, 4), line: FakeLine.new)
+      text = digest.message
 
-      assert_includes text, "📊 10/3（六）–10/4（日） SL 訂單\n訂單 3 單｜營收 $11,500（均 $3,833）\n舊客 1人/2單 $8,750（均 $4,375）"
-      assert_includes text, "\n\n10/3（六）❌ 2單 $8,750\n10/4（日）❌ 1單 $2,750"
-      assert_includes text, "📅 10 月累計（10/1–10/4）"
-      assert_includes text, "👑 10/3–10/4 購買卡別\n黑卡 0 人\n金卡 1人/2單 $8,750"
-      assert_includes text, "1. PDRN1\n  4 個／3 單｜$10,500"
+      assert_includes text, "📊 10/3（六）–10/4（日） SL 訂單\n\n10/3（六） ❌\n訂單 2 單｜營收 $8,750（均 $4,375）\n舊客 1人/1單 $6,000（均 $6,000）\n新客 1人/1單 $2,750（均 $2,750）\n\n10/4（日） ❌\n訂單 1 單｜營收 $2,750（均 $2,750）\n舊客 1人/1單 $2,750"
+      assert_not_includes text, "訂單 3 單" # 不加總
+      assert_includes text, "📅 10 月累計（10/1–10/4）\n$171,500｜4 天中 1 天達標"
+      assert_includes text, "👑 10/3–10/4 購買卡別\n\n10/3（六）\n黑卡 0 人\n金卡 1人/1單 $6,000"
+      assert_includes text, "10/4（日）\n黑卡 0 人\n金卡 1人/1單 $2,750"
+      assert_includes text, "🎂 10/3–10/4 年齡層\n\n10/3（六）\n30-39 1人/1單 $6,000（均 $6,000）\n40-49 1人/1單 $2,750（均 $2,750）\n\n10/4（日）\n30-39 1人/1單 $2,750"
+      assert_includes text, "🔥 10/3–10/4 熱銷商品\n\n10/3（六）\n1. PDRN1\n  3 個／2 單｜$7,750（88.6%）\n2. 全能2"
+      assert_includes text, "10/4（日）\n1. PDRN1\n  1 個／1 單｜$2,750（100.0%）"
+
+      charts = digest.charts
+      assert_equal [0, 2, 3, 4], charts.keys
+      assert_equal ["10/3（六）", "10/4（日）"], charts[0][:labels]
+      assert_equal [{ name: "舊客", data: [6000, 2750] }, { name: "新客", data: [2750, 0] }], charts[0][:series]
+      assert_equal [6000, 2750], charts[2][:series].find { |x| x[:name] == "金卡" }[:data]
+      assert_equal [["30-39", 2], ["40-49", 3]], charts[3][:series].map { |x| x.values_at(:name, :slot) } # 顏色跟著年齡層走
+      assert_equal 6, charts[2][:series].last[:slot] # 新客固定第 7 色
+      assert_equal [{ name: "PDRN1", data: [3, 1] }, { name: "全能2", data: [1, 0] }], charts[4][:series]
+      assert_empty LineDigest.new(DAY, line: FakeLine.new).charts # 一天不畫圖
     end
 
     test "上次發到 10/1、10/2 漏發也不補，只報昨天（after_import 的算法）" do

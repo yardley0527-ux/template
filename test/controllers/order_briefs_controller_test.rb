@@ -44,6 +44,16 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "SL 訂單"
     assert_includes response.body, "月累計"
     assert_not_includes response.body, "回購 PDRN" # 不是訂單簡報
+    assert_not_includes response.body, %(class="js-sales-chart") # 一天不畫圖
+
+    get order_briefs_path, params: { date_from: (DAY - 2).iso8601, date: DAY.iso8601, report: "sales" }
+    assert_response :ok
+    assert_includes response.body, "10/20–10/22 銷售日報"
+    assert_equal 4, response.body.scan('class="js-sales-chart"').size # 訂單、卡別、年齡層、熱銷
+    assert_includes response.body, "每天營收（舊客／新客）"
+
+    get order_briefs_path, params: { date_from: "2026-09-01", date: "2026-09-02", report: "sales" }
+    assert_includes response.body, "沒有已付款訂單"
   end
 
   test "每日報告選區間：多天合併成一份，新舊客和隔幾天看區間內第一張單" do

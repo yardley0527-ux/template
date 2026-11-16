@@ -65,34 +65,77 @@ module SalesDaily
       [day_section, month_section, level_section, age_section, product_section]
     end
 
+    # 這幾天都沒有訂單（還沒匯入）
+    def empty? = @days.all? { |date| totals[date].empty? }
+
+    def multi_day? = @days.count > 1
+
+    # 多天時網頁上 sections 旁邊畫的直條圖（x 軸＝每一天）；一天時不畫。
+    # key 對應 sections 的位置（0 訂單、2 卡別、3 年齡層、4 熱銷），stacked：疊起來是當天營收
+    def charts
+      return {} unless multi_day?
+
+      labels = @days.map { |date| day_label(date) }
+      by_day = ->(&block) { @days.map { |date| block.call(rows_on(date)).round } }
+      # 舊客依卡別、新客一類（同文字）；未分級只有有人時才畫
+      # slot＝固定顏色位置：同一個卡別／年齡層換日期也是同一個顏色
+      level_series = (LEVELS + ["未分級"]).each_with_index.map do |level, i|
+        { name: level, slot: i, data: by_day.call { |rs| amount(old_rows(rs).select { |r| level_of(r) == level }) } }
+      end
+      level_series.reject! { |s| s[:name] == "未分級" && s[:data].none?(&:positive?) }
+      level_series << { name: "新客", slot: LEVELS.size + 1, data: by_day.call { |rs| amount(rs.select(&:new_customer?)) } }
+      age_series = AGE_BANDS.each_with_index.filter_map do |band, i|
+        data = by_day.call { |rs| amount(rs.select { |r| age_band(customer(r.email)[:birthdate]) == band }) }
+        { name: band, slot: i, data: data } if data.any?(&:positive?)
+      end
+
+      { 0 => { title: "每天營收（舊客／新客）", unit: "$", stacked: true, labels: labels,
+               series: [{ name: "舊客", data: by_day.call { |rs| amount(old_rows(rs)) } },
+                        { name: "新客", data: by_day.call { |rs| amount(rs.select(&:new_customer?)) } }] },
+        2 => { title: "每天各卡別營收", unit: "$", stacked: true, labels: labels, series: level_series },
+        3 => { title: "每天各年齡層營收", unit: "$", stacked: true, labels: labels, series: age_series },
+        4 => { title: "熱銷商品每天賣出個數", unit: "個", stacked: false, labels: labels, series: product_chart_series } }
+    end
+
     private
 
     # 卡別、年齡層要每個人的資料，只為要報的這幾天（通常 1 天、星期一 3 天）建 Report
-    def rows
-      @rows ||= @days.flat_map { |date| OrderBrief::Report.new(date).rows }
+    def reports
+      @reports ||= @days.to_h { |date| [date, OrderBrief::Report.new(date)] }
     end
 
-    # 每天的合計（每天一行、當月累計）；不逐天建 Report，否則月底一次載入 30 份完整購買歷史會 OOM
+    def rows_on(date) = reports[date].rows
+
+    def rows
+      @rows ||= @days.flat_map { |date| rows_on(date) }
+    end
+
+    # 每天的合計（當月累計）；不逐天建 Report，否則月底一次載入 30 份完整購買歷史會 OOM
     def totals
       @totals ||= OrderBrief::DailyTotals.new(@day.beginning_of_month.then { |m| [m, @days.first].min }..@day)
     end
 
+    # 多天時不加總：每一天各一段（標題列一次，底下每天一塊）
+    # mark：日期後面加的標記（例如當天達標 ✅）
+    def per_day(title, mark: nil)
+      return [title, *yield(rows_on(@day), @day)].join("\n") unless multi_day?
+
+      blocks = @days.map { |date| ["#{day_label(date)}#{mark&.call(rows_on(date))}", *yield(rows_on(date), date)].join("\n") }
+      ([title] + blocks).join("\n\n")
+    end
+
+    def old_rows(rs) = rs.reject(&:new_customer?)
+    def level_of(row) = LEVELS.include?(customer(row.email)[:level]) ? customer(row.email)[:level] : "未分級"
+
     # ---- 1. 訂單數量 ----
 
     def day_section
-      new_rows, old_rows = rows.partition(&:new_customer?)
-      lines = ["📊 #{range_label} SL 訂單",
-               "訂單 #{order_count(rows)} 單｜營收 #{money(amount(rows))}#{avg(rows)}",
-               "舊客 #{stat(old_rows)}#{avg(old_rows)}",
-               "新客 #{stat(new_rows)}#{avg(new_rows)}"]
-      if @days.count > 1
-        lines << ""
-        @days.each do |date|
-          t = totals[date]
-          lines << "#{day_label(date)}#{t.amount >= DAILY_TARGET ? '✅' : '❌'} #{t.orders}單 #{money(t.amount)}"
-        end
+      per_day("📊 #{range_label} SL 訂單", mark: ->(rs) { amount(rs) >= DAILY_TARGET ? " ✅" : " ❌" }) do |rs|
+        new_rows, old = rs.partition(&:new_customer?)
+        ["訂單 #{order_count(rs)} 單｜營收 #{money(amount(rs))}#{avg(rs)}",
+         "舊客 #{stat(old)}#{avg(old)}",
+         "新客 #{stat(new_rows)}#{avg(new_rows)}"]
       end
-      lines.join("\n")
     end
 
     # ---- 2. 當月累計 ----
@@ -113,47 +156,60 @@ module SalesDaily
 
     # 舊客依目前卡別，新客另外一行（同 /daily_dashboard）
     def level_section
-      new_rows, old_rows = rows.partition(&:new_customer?)
-      lines = ["👑 #{short_range} 購買卡別"]
-      LEVELS.each do |level|
-        rs = old_rows.select { |r| customer(r.email)[:level] == level }
-        lines << "#{level} #{rs.any? ? "#{stat(rs)}#{avg(rs)}" : '0 人'}"
+      per_day("👑 #{short_range} 購買卡別") do |rs|
+        new_rows, old = rs.partition(&:new_customer?)
+        lines = LEVELS.map do |level|
+          ls = old.select { |r| customer(r.email)[:level] == level }
+          "#{level} #{ls.any? ? "#{stat(ls)}#{avg(ls)}" : '0 人'}"
+        end
+        others = old.reject { |r| LEVELS.include?(customer(r.email)[:level]) }
+        lines << "未分級 #{stat(others)}#{avg(others)}" if others.any?
+        lines << "新客 #{stat(new_rows)}#{avg(new_rows)}"
       end
-      others = old_rows.reject { |r| LEVELS.include?(customer(r.email)[:level]) }
-      lines << "未分級 #{stat(others)}#{avg(others)}" if others.any?
-      lines << "新客 #{stat(new_rows)}#{avg(new_rows)}"
-      lines.join("\n")
     end
 
     def age_section
-      groups = rows.group_by { |r| age_band(customer(r.email)[:birthdate]) }
-      lines = ["🎂 #{short_range} 年齡層"]
-      AGE_BANDS.each do |band|
-        rs = groups[band]
-        lines << "#{band} #{stat(rs)}#{avg(rs)}" if rs
+      per_day("🎂 #{short_range} 年齡層") do |rs|
+        groups = rs.group_by { |r| age_band(customer(r.email)[:birthdate]) }
+        AGE_BANDS.filter_map { |band| (gs = groups[band]) && "#{band} #{stat(gs)}#{avg(gs)}" }
       end
-      lines.join("\n")
     end
 
     # ---- 4. 熱銷商品 ----
 
-    # 依數量排序；營業額用各行 checkout_amount，占比是占這幾天營收（同 /daily_dashboard「昨日主力商品」）
+    # 依數量排序；營業額用各行 checkout_amount，占比是占當天營收（同 /daily_dashboard「昨日主力商品」）
     def product_section
-      products = ShoplineOrder.where(payment_status: "已付款").where("order_date::date BETWEEN ? AND ?", @days.first, @days.last)
-                              .where.not(product_name: [nil, ""])
-                              .group(Arel.sql("trim(product_name)"))
-                              .order(Arel.sql("SUM(COALESCE(quantity, 1)) DESC, SUM(COALESCE(checkout_amount, 0)) DESC"))
-                              .limit(TOP_PRODUCTS)
-                              .pluck(Arel.sql("trim(product_name)"), Arel.sql("SUM(COALESCE(quantity, 1))"),
-                                     Arel.sql("COUNT(DISTINCT order_number)"), Arel.sql("SUM(COALESCE(checkout_amount, 0))"))
-      total = amount(rows)
-      lines = ["🔥 #{short_range} 熱銷商品"]
-      products.each_with_index do |(name, qty, orders, revenue), i|
-        share = total.positive? ? (revenue.to_f / total * 100).round(1) : 0
-        lines << "#{i + 1}. #{name}"
-        lines << "  #{qty.to_i} 個／#{orders} 單｜#{money(revenue)}（#{share}%）"
+      per_day("🔥 #{short_range} 熱銷商品") do |rs, date|
+        total = amount(rs)
+        top_products(date).each_with_index.flat_map do |(name, qty, orders, revenue), i|
+          share = total.positive? ? (revenue.to_f / total * 100).round(1) : 0
+          ["#{i + 1}. #{name}", "  #{qty.to_i} 個／#{orders} 單｜#{money(revenue)}（#{share}%）"]
+        end
       end
-      lines.join("\n")
+    end
+
+    def top_products(date)
+      (product_stats[date] || []).first(TOP_PRODUCTS)
+    end
+
+    # { date => [[品名, 數量, 單數, 營業額], ...] }，每天依數量、營業額多到少
+    def product_stats
+      @product_stats ||= ShoplineOrder.where(payment_status: "已付款")
+                                      .where("order_date::date BETWEEN ? AND ?", @days.first, @days.last)
+                                      .where.not(product_name: [nil, ""])
+                                      .group(Arel.sql("order_date::date"), Arel.sql("trim(product_name)"))
+                                      .pluck(Arel.sql("order_date::date"), Arel.sql("trim(product_name)"), Arel.sql("SUM(COALESCE(quantity, 1))"),
+                                             Arel.sql("COUNT(DISTINCT order_number)"), Arel.sql("SUM(COALESCE(checkout_amount, 0))"))
+                                      .group_by { |date, *| date.to_date }
+                                      .transform_values { |list| list.map { |_, *r| r }.sort_by { |_, qty, _, rev| [-qty.to_i, -rev.to_f] } }
+    end
+
+    # 每天前 5 名的聯集，依這幾天賣出個數排序，最多 8 個（顏色只有 8 個）
+    def product_chart_series
+      qty = Hash.new { |h, k| h[k] = Hash.new(0) }
+      product_stats.each { |date, list| list.each { |name, q, *| qty[name][date] = q.to_i } }
+      names = @days.flat_map { |date| top_products(date).map(&:first) }.uniq
+      names.sort_by { |n| -qty[n].values.sum }.first(8).map { |n| { name: n, data: @days.map { |d| qty[n][d] } } }
     end
 
     # ---- 共用 ----

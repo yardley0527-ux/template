@@ -49,12 +49,19 @@ class OrderBriefsController < ApplicationController
     days = @day_from..@day
     @report = OrderBrief::Report.new(days)
     @result_title = [params[:report] == "sales" ? "銷售日報" : "訂單簡報", @report.label]
-    return if @report.empty?
 
+    # 銷售日報自己逐天建 Report，不用這份整段的（省得多載一次全部買家的歷史）
     if params[:report] == "sales"
-      @sales = SalesDaily::LineDigest.new(days).sections
+      digest = SalesDaily::LineDigest.new(days)
+      @sales_empty = digest.empty?
+      return if @sales_empty
+
+      @sales = digest.sections
+      @sales_charts = digest.charts
       @sales_title = "#{@report.label} 銷售日報"
     else
+      return if @report.empty?
+
       @highlights = OrderBrief::Highlights.call(@report) if params[:ai] == "1"
       @parts = OrderBrief::Sections.new(@report).parts
     end

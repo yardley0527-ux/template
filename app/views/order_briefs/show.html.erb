@@ -33,6 +33,7 @@
 %>
 
 <style>
+  .sales-chart-title { font-size: 13px; font-weight: 600; color: #52514e; margin-bottom: 6px; }
   .report-table-wrap { overflow-x: auto; }
   @media (min-width: 992px) {
     /* 桌機讓表格跟著整頁捲、欄位標題固定在上方（有 overflow 的容器 sticky 會失效）；手機維持左右滑 */
@@ -158,7 +159,7 @@
   <% else %>
     <div class="alert alert-warning"><%= (@day + 1).strftime("%-m/%-d") %> 以前沒有成功的 SEO 報告</div>
   <% end %>
-<% elsif @report&.empty? %>
+<% elsif @sales_empty || (!@sales && @report&.empty?) %>
   <div class="alert alert-warning"><%= @report.label %> 沒有已付款訂單（可能還沒匯入）</div>
 <% elsif @sales %>
   <div class="panel">
@@ -174,7 +175,24 @@
         <% @sales.each_with_index do |section, i| %>
           <div class="<%= 'border-top pt-3 mt-3' if i.positive? %>">
             <button type="button" class="btn btn-xs btn-outline-success float-right js-copy" data-target="sales-<%= i %>">複製</button>
-            <div id="sales-<%= i %>" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"><%= section %></div>
+            <% chart = @sales_charts&.dig(i) %>
+            <% if chart %>
+              <div class="row">
+                <div class="col-xl-4 col-lg-5">
+                  <div id="sales-<%= i %>" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"><%= section %></div>
+                </div>
+                <div class="col-xl-8 col-lg-7">
+                  <div class="sales-chart">
+                    <div class="sales-chart-title"><%= chart[:title] %></div>
+                    <div style="position: relative; height: 300px;">
+                      <canvas class="js-sales-chart" data-chart="<%= chart.to_json %>" role="img" aria-label="<%= chart[:title] %>"></canvas>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            <% else %>
+              <div id="sales-<%= i %>" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"><%= section %></div>
+            <% end %>
           </div>
         <% end %>
       </div>
@@ -251,3 +269,54 @@
     });
   }
 </script>
+
+<% content_for :scripts_block do %>
+<script>
+  // 銷售日報多天時的直條圖（x 軸＝每一天）；顏色固定順序，不跟排名走
+  (function () {
+    var canvases = document.querySelectorAll(".js-sales-chart");
+    if (!canvases.length || !window.Chart) return;
+    var palette = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"];
+    var fmt = function (unit, v) {
+      var n = Math.round(v).toLocaleString("en-US");
+      return unit === "$" ? "$" + n : n + " " + unit;
+    };
+    canvases.forEach(function (el) {
+      if (el.dataset.drawn) return;
+      el.dataset.drawn = "1";
+      var c = JSON.parse(el.dataset.chart);
+      new window.Chart(el, {
+        type: "bar",
+        data: {
+          labels: c.labels,
+          datasets: c.series.map(function (s, i) {
+            return { label: s.name, data: s.data, backgroundColor: palette[(s.slot != null ? s.slot : i) % palette.length],
+                     borderColor: "#ffffff", borderWidth: c.stacked ? { top: 2 } : 0, borderRadius: c.stacked ? 0 : 4,
+                     maxBarThickness: 48 };
+          })
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { position: "top", align: "start", labels: { boxWidth: 12, boxHeight: 12, color: "#52514e" } },
+            tooltip: {
+              callbacks: {
+                label: function (ctx) { return ctx.dataset.label + "：" + fmt(c.unit, ctx.parsed.y); },
+                footer: c.stacked ? function (items) {
+                  return "合計：" + fmt(c.unit, items.reduce(function (sum, it) { return sum + it.parsed.y; }, 0));
+                } : undefined
+              }
+            }
+          },
+          scales: {
+            x: { stacked: c.stacked, grid: { display: false }, ticks: { color: "#52514e" } },
+            y: { stacked: c.stacked, beginAtZero: true, grid: { color: "#ecebe8" }, border: { display: false },
+                 ticks: { color: "#52514e", callback: function (v) { return c.unit === "$" ? "$" + (v >= 10000 ? (v / 10000) + "萬" : v) : v; } } }
+          }
+        }
+      });
+    });
+  })();
+</script>
+<% end %>
