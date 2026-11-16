@@ -52,7 +52,22 @@
     </tbody>
   </table>
 </div>
-<p class="mb-4"><b><%= pb.dig("scenarios", "takeaway") %></b></p>
+<p class="mb-3"><b><%= pb.dig("scenarios", "takeaway") %></b></p>
+
+<% if pb.dig("scenarios", "other_rows") %>
+  <div class="pb-label">上面沒分到的 57.8% 對話，再細分（每段只算一類）</div>
+  <div class="table-responsive mb-2">
+    <table class="table table-sm table-bordered pb-table bg-white mb-0">
+      <thead><tr><th>客人在聊</th><th class="n">佔全部對話</th><th class="n">14 天內下單</th><th class="n">大組數</th><th class="n">下單平均金額</th><th class="n">新客下單</th><th class="n">新客大組數</th></tr></thead>
+      <tbody>
+        <% pb.dig("scenarios", "other_rows").each do |r| %>
+          <tr><td><%= r[0] %></td><% r[1..].each do |v| %><td class="n"><%= v %></td><% end %></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+  <p class="mb-4"><b><%= pb.dig("scenarios", "other_takeaway") %></b></p>
+<% end %>
 
 <h4 class="fw-500">情境卡</h4>
 <p class="text-muted small">

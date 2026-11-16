@@ -16,7 +16,9 @@ class ChloePlaybookControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes @response.body, "新客、一般會員的四步"
     assert_includes @response.body, "前提是寶貝有真的會持續吃喔，才可以讓你囤貨"
-    assert_equal 13, ChloePlaybookController.playbook["cards"].size
+    assert_equal 19, ChloePlaybookController.playbook["cards"].size
+    assert_includes @response.body, "留言 +1、IG 按鈕進來的新客"
+    assert_includes @response.body, "上面沒分到的 57.8% 對話"
     assert_includes @response.body, "下單後關懷"
     assert_includes @response.body, "禁區清單"
     assert_includes @response.body, "疾病療效"
