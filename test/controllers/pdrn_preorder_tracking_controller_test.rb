@@ -60,4 +60,15 @@ class PdrnPreorderTrackingControllerTest < ActionDispatch::IntegrationTest
     assert_equal 10, new_person[:pre_bottles]
     assert_equal 7_365, new_person[:after_amount]
   end
+
+  test "名單分頁，每頁 50 人" do
+    55.times do |i|
+      order("#p#{i}", Date.new(2026, 10, 10), "p#{i}@example.com", "預購-PDRN1", 2_750, total: 2_750 + i)
+    end
+    get pdrn_preorder_tracking_path
+    assert_select ".pp-table tbody tr", 50
+    assert_select ".pp-pager", 2
+    get pdrn_preorder_tracking_path(page: 2)
+    assert_select ".pp-table tbody tr", 7
+  end
 end

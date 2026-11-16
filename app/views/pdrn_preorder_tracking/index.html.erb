@@ -69,7 +69,7 @@
 </div>
 
 <div class="panel">
-  <div class="panel-hdr"><h2>名單 <span class="fw-300 ms-2"><%= number_with_delimiter(@people.size) %> 人</span></h2></div>
+  <div class="panel-hdr"><h2>名單 <span class="fw-300 ms-2"><%= number_with_delimiter(@total) %> 人</span></h2></div>
   <div class="panel-container show"><div class="panel-content">
     <%= form_with url: pdrn_preorder_tracking_path, method: :get, local: true, class: "row gx-2 gy-2 align-items-end mb-3" do %>
       <div class="col-auto"><label class="form-label">新舊客</label>
@@ -82,6 +82,18 @@
         <%= link_to "清除", pdrn_preorder_tracking_path, class: "btn btn-outline-secondary" %></div>
     <% end %>
 
+    <% if @total_pages > 1 %>
+      <% q = request.query_parameters %>
+      <nav class="pp-pager"><span class="text-muted me-2">第 <%= @offset + 1 %>–<%= @offset + @people.size %> 筆，共 <%= number_with_delimiter(@total) %> 筆</span>
+        <%= link_to "← 上一頁", pdrn_preorder_tracking_path(q.merge(page: @page - 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page <= 1}" %>
+        <% pages = ([1, @total_pages] + ((@page - 2)..(@page + 2)).to_a).select { |n| n.between?(1, @total_pages) }.uniq.sort %>
+        <% pages.each_with_index do |n, i| %>
+          <% if i.positive? && n - pages[i - 1] > 1 %><span class="text-muted">…</span><% end %>
+          <%= link_to n, pdrn_preorder_tracking_path(q.merge(page: n)), class: "btn btn-sm #{n == @page ? 'btn-primary' : 'btn-outline-secondary'}" %>
+        <% end %>
+        <%= link_to "下一頁 →", pdrn_preorder_tracking_path(q.merge(page: @page + 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page >= @total_pages}" %>
+      </nav>
+    <% end %>
     <div class="table-responsive">
       <table class="table table-bordered table-hover table-striped w-100 pp-table">
         <thead class="bg-primary-600">
@@ -93,7 +105,7 @@
         <tbody>
         <% @people.each_with_index do |p, i| %>
           <tr>
-            <td class="text-muted"><%= i + 1 %></td>
+            <td class="text-muted"><%= @offset + i + 1 %></td>
             <td>
               <div class="fw-500">
                 <%= p[:customer_id] ? link_to(p[:name], customer_path(p[:customer_id])) : p[:name] %>
@@ -109,10 +121,10 @@
               <% end %>
             </td>
             <td class="pp-nowrap"><%= p[:pre_dates].reverse.map { |d| d.strftime("%m/%d") }.join("、") %></td>
-            <td class="text-end"><%= p[:pre_bottles] %> 瓶</td>
-            <td class="text-end">NT$ <%= number_with_delimiter(p[:pre_amount]) %></td>
-            <td class="text-end"><%= p[:after_days].positive? ? "#{p[:after_days]} 次" : "—" %></td>
-            <td class="text-end"><%= p[:after_amount].positive? ? "NT$ #{number_with_delimiter(p[:after_amount])}" : "—" %></td>
+            <td class="text-end pp-nowrap"><%= p[:pre_bottles] %> 瓶</td>
+            <td class="text-end pp-nowrap">NT$ <%= number_with_delimiter(p[:pre_amount]) %></td>
+            <td class="text-end pp-nowrap"><%= p[:after_days].positive? ? "#{p[:after_days]} 次" : "—" %></td>
+            <td class="text-end pp-nowrap"><%= p[:after_amount].positive? ? "NT$ #{number_with_delimiter(p[:after_amount])}" : "—" %></td>
             <td><% p[:cross].each do |f| %><span class="pp-tag"><%= f %></span><% end %><%= "—" if p[:cross].empty? %></td>
             <td class="small pp-nowrap">
               <%= p[:last_order_date].strftime("%Y/%m/%d") %>
@@ -125,6 +137,18 @@
         </tbody>
       </table>
     </div>
+    <% if @total_pages > 1 %>
+      <% q = request.query_parameters %>
+      <nav class="pp-pager"><span class="text-muted me-2">第 <%= @offset + 1 %>–<%= @offset + @people.size %> 筆，共 <%= number_with_delimiter(@total) %> 筆</span>
+        <%= link_to "← 上一頁", pdrn_preorder_tracking_path(q.merge(page: @page - 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page <= 1}" %>
+        <% pages = ([1, @total_pages] + ((@page - 2)..(@page + 2)).to_a).select { |n| n.between?(1, @total_pages) }.uniq.sort %>
+        <% pages.each_with_index do |n, i| %>
+          <% if i.positive? && n - pages[i - 1] > 1 %><span class="text-muted">…</span><% end %>
+          <%= link_to n, pdrn_preorder_tracking_path(q.merge(page: n)), class: "btn btn-sm #{n == @page ? 'btn-primary' : 'btn-outline-secondary'}" %>
+        <% end %>
+        <%= link_to "下一頁 →", pdrn_preorder_tracking_path(q.merge(page: @page + 1)), class: "btn btn-sm btn-outline-secondary #{'disabled' if @page >= @total_pages}" %>
+      </nav>
+    <% end %>
     <div class="small text-muted mt-2">
       預購客＝買過「預購-PDRN」（已付款、結帳價大於 0）的人；同 IG 的不同 email 算同一人。
       「預購後買幾次」＝第一次預購那天之後，另外有下單的天數（含再加購預購）。
@@ -142,6 +166,8 @@
   .pp-s { color: #6b7280; font-size: 13px; }
   .pp-table td { vertical-align: top; }
   .pp-nowrap { white-space: nowrap; }
+  .pp-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 8px 0; }
+  .pp-table td { padding-top: 6px; padding-bottom: 6px; }
   .pp-tag { display: inline-block; background: #ede7f6; color: #4527a0; border-radius: 999px; padding: 1px 8px; font-size: 12px; margin: 0 4px 4px 0; white-space: nowrap; }
   .pp-tag.pp-new { background: #fff3e0; color: #bf360c; font-weight: 700; }
   .pp-up { color: #2e7d32; }
