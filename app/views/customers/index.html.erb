@@ -72,6 +72,13 @@
             </div>
 
             <div class="col-sm-6 col-md-2 mt-md-2">
+              <label class="form-label">首購來源</label>
+              <%= select_tag :first_source,
+                options_for_select([["全部", ""]] + @first_source_options.map { |s| [s, s] }, @first_source),
+                class: "form-control" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2 mt-md-2">
               <label class="form-label">最近消費</label>
               <%= select_tag :recent_purchase,
                 options_for_select([["全部", ""], ["3個月內有消費", "1"]], @recent_purchase),
@@ -143,6 +150,7 @@
                   <th class="text-end"><%= sort_link_tag("累積消費", "amount_asc", "amount_desc", @sort) %></th>
                   <th class="text-end"><%= sort_link_tag("購物金", "credits_asc", "credits_desc", @sort) %></th>
                   <th>會員</th>
+                  <th>首購來源</th>
                   <th>常買</th>
                   <th>產品標籤</th>
                   <th>破萬新客</th>
@@ -187,6 +195,14 @@
                     <td data-label="累積消費" class="text-end">NT$ <%= number_with_delimiter(c.total_amount.to_f.round(0).to_i) %></td>
                     <td data-label="購物金" class="text-end"><%= number_with_delimiter(c.current_shopping_credits.to_f.round(0).to_i) %></td>
                     <td data-label="會員"><%= c.membership_level.presence || "一般" %></td>
+                    <td data-label="首購來源" class="small">
+                      <% if (fs = @first_sources[c.email]) %>
+                        <span class="badge badge-first-source <%= 'badge-first-preorder' if fs[:label] == 'PDRN 預購' %>"><%= fs[:label] %></span>
+                        <div class="text-muted" style="font-size:10px;" title="<%= fs[:product] %>"><%= fs[:date]&.strftime("%Y/%m/%d") %></div>
+                      <% else %>
+                        —
+                      <% end %>
+                    </td>
                     <td data-label="常買">
                       <% if @top_products[c.email].present? %>
                         <% @top_products[c.email].split(",").each do |product| %>
@@ -234,7 +250,7 @@
                 <% end %>
 
                 <% if @customers.blank? %>
-                  <tr><td colspan="13" class="text-center text-muted py-5">查無符合條件的客人</td></tr>
+                  <tr><td colspan="15"class="text-center text-muted py-5">查無符合條件的客人</td></tr>
                 <% end %>
               </tbody>
             </table>
@@ -315,6 +331,21 @@
   }
   
   .fw-500 { font-weight: 600; font-size: 1.1em; }
+  }
+
+  .badge-first-source {
+    display: inline-block;
+    background-color: #ede7f6;
+    color: #4527a0;
+    padding: 4px 9px;
+    font-size: 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .badge-first-source.badge-first-preorder {
+    background-color: #fff3e0;
+    color: #bf360c;
+    font-weight: 700;
   }
 
   .badge-top-product {

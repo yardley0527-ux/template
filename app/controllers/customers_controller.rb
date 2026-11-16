@@ -54,7 +54,10 @@ class CustomersController < ApplicationController
     ]
   }.freeze
 
-  AGE_GROUP_ORDER = ["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
+  FIRST_SOURCE_OPTIONS = CustomerPurchaseSummaryRefreshService::SERIES_OPTIONS
+    .flat_map { |s| s == "PDRN" ? ["PDRN 預購", "PDRN 現貨"] : [s] } + ["其他"]
+
+  AGE_GROUP_ORDER =["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
   ZODIAC_ORDER    = %w[牡羊 金牛 雙子 巨蟹 獅子 處女 天秤 天蠍 射手 摩羯 水瓶 雙魚].freeze
 
   def index
@@ -72,6 +75,8 @@ class CustomersController < ApplicationController
     @product_tag      = params[:product_tag].to_s.strip
     @health_tag      = params[:health_tag].to_s.strip
     @recent_purchase  = params[:recent_purchase].to_s.strip
+    @first_source     = params[:first_source].to_s.strip
+    @first_source_options = FIRST_SOURCE_OPTIONS
 
     @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員 非會員]
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level)
@@ -162,6 +167,13 @@ class CustomersController < ApplicationController
       ).where("fo.first_amount >= 10000")
     end
 
+    if @first_source.present?
+      scope = scope.joins(<<~SQL).where(first_source_sql(@first_source))
+        INNER JOIN customer_purchase_summaries cps
+          ON cps.identity_key = COALESCE(NULLIF(TRIM(shopline_customers.mobile_phone), ''), LOWER(TRIM(shopline_customers.email)))
+      SQL
+    end
+
     scope = scope
       .joins("LEFT JOIN (
         SELECT email, MAX(order_date) AS last_order_date
@@ -237,6 +249,19 @@ class CustomersController < ApplicationController
     @big_first_orders = {}
     first_orders_by_email.each do |email, order|
       @big_first_orders[email] = order.order_date if order.total_amount.to_f >= 10_000
+    end
+
+    # 首購來源：customer_purchase_summaries 每次匯入訂單後自動重算（第一筆已付款訂單），
+    # 身份跟該表一致用 手機 > email 合併
+    identity_by_email = @customers.to_h { |c| [c.email, customer_identity_key(c)] }
+    summaries = CustomerPurchaseSummary
+      .where(identity_key: identity_by_email.values.compact.uniq)
+      .select(:identity_key, :first_series, :first_product, :first_date)
+      .index_by(&:identity_key)
+    @first_sources = identity_by_email.transform_values do |key|
+      s = summaries[key]
+      next nil unless s
+      { label: first_source_label(s.first_series, s.first_product), product: s.first_product, date: s.first_date }
     end
 
     @credits_expiring_count = Rails.cache.fetch("credits_expiring_count:#{Date.today}", expires_in: 12.hours) do
@@ -750,6 +775,26 @@ class CustomersController < ApplicationController
       return [s, m ? m[1].to_i : 1]
     end
     name =~ /^(.+?)(\d+)$/ ? [$1.strip, $2.to_i] : [name, 1]
+  end
+
+  def customer_identity_key(customer)
+    customer.mobile_phone.to_s.strip.presence || customer.email.to_s.strip.downcase.presence
+  end
+
+  # PDRN 拆成預購／現貨（看首購品名是不是「預購-」開頭），其他系列照 first_series
+  def first_source_label(series, product)
+    return "其他" if series.blank?
+    return(product.to_s.start_with?("預購") ? "PDRN 預購" : "PDRN 現貨") if series == "PDRN"
+    series
+  end
+
+  def first_source_sql(source)
+    case source
+    when "PDRN 預購" then "cps.first_series = 'PDRN' AND cps.first_product LIKE '預購%'"
+    when "PDRN 現貨" then "cps.first_series = 'PDRN' AND cps.first_product NOT LIKE '預購%'"
+    when "其他"      then "COALESCE(cps.first_series, '') = ''"
+    else ["cps.first_series = ?", source]
+    end
   end
 
   def to_number(v)
