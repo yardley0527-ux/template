@@ -27,7 +27,7 @@ class ProductStrategyController < ApplicationController
     @cohort_total = @cohort_rows.values.sum { |v| v[:total] }
     @cohort_refreshed_at = @cohort_query.refreshed_at
 
-    @report = Rails.cache.fetch("product_strategy:report:v2", expires_in: 1.hour) do
+    @report = Rails.cache.fetch("product_strategy:report:v3", expires_in: 1.hour) do
       build_report
     end
 
@@ -78,13 +78,16 @@ class ProductStrategyController < ApplicationController
     return_rate: 0.0, avg_first: 0, threshold: 0
   }.freeze
 
+  # PDRN 拆成預購／現貨（首購品名「預購」開頭），跟客人資料庫的首購來源一致
+  FIRST_SOURCE_SQL = "CASE WHEN first_series = 'PDRN' THEN (CASE WHEN first_product LIKE '預購%' THEN 'PDRN 預購' ELSE 'PDRN 現貨' END) ELSE first_series END"
+
   def build_report
     # 各系列基本統計
     series_stats = CustomerPurchaseSummary
       .where.not(first_series: nil)
-      .group(:first_series)
+      .group(Arel.sql(FIRST_SOURCE_SQL))
       .pluck(
-        :first_series,
+        Arel.sql(FIRST_SOURCE_SQL),
         Arel.sql("COUNT(*)"),
         Arel.sql("SUM(CASE WHEN purchase_count > 1 THEN 1 ELSE 0 END)"),
         Arel.sql("SUM(CASE WHEN silent_only = TRUE THEN 1 ELSE 0 END)"),
@@ -117,11 +120,25 @@ class ProductStrategyController < ApplicationController
         [series, { loyal: loyal.to_i, iron: iron.to_i, avg_count: avg_count.to_f.round(1) }]
       end.to_h
 
+    # PDRN 的忠實客／鐵粉依該客人首購是預購還是現貨拆開（首購不是 PDRN 的 PDRN 回購客不列入這兩列）
+    CustomerSeriesLoyalty
+      .joins("JOIN customer_purchase_summaries cps ON cps.email = customer_series_loyalties.email AND cps.first_series = 'PDRN'")
+      .where(series: "PDRN")
+      .group(Arel.sql("CASE WHEN cps.first_product LIKE '預購%' THEN 'PDRN 預購' ELSE 'PDRN 現貨' END"))
+      .pluck(
+        Arel.sql("CASE WHEN cps.first_product LIKE '預購%' THEN 'PDRN 預購' ELSE 'PDRN 現貨' END"),
+        Arel.sql("SUM(CASE WHEN customer_series_loyalties.tier = '忠實客' THEN 1 ELSE 0 END)"),
+        Arel.sql("SUM(CASE WHEN customer_series_loyalties.tier = '鐵粉'  THEN 1 ELSE 0 END)"),
+        Arel.sql("AVG(customer_series_loyalties.order_count)::numeric(10,1)")
+      ).each do |source, loyal, iron, avg_count|
+        loyalty_stats[source] = { loyal: loyal.to_i, iron: iron.to_i, avg_count: avg_count.to_f.round(1) }
+      end
+
     # 第二購方向（排除同系列回購，只看跨系列導流）
     second_purchase = CustomerPurchaseSummary
       .where.not(first_series: nil, second_series: nil)
       .where("second_series <> '' AND second_series <> first_series")
-      .group(:first_series, :second_series)
+      .group(Arel.sql(FIRST_SOURCE_SQL), :second_series)
       .count
       .group_by { |(first, _second), _count| first }
       .transform_values do |pairs|
@@ -131,7 +148,7 @@ class ProductStrategyController < ApplicationController
              .first(3)
       end
 
-    CrmProduct.series_labels_for_filter.map do |series|
+    CrmProduct.series_labels_for_filter.flat_map { |s| s == "PDRN" ? ["PDRN 預購", "PDRN 現貨"] : [s] }.map do |series|
       stat    = series_stats[series] || EMPTY_SERIES_STAT
       loyalty = loyalty_stats[series] || { loyal: 0, iron: 0, avg_count: 0 }
       second  = second_purchase[series] || []
