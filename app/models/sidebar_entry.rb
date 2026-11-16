@@ -140,6 +140,13 @@ class SidebarEntry
           ]
         },
         {
+          group_title: "客服話術",
+          group_icon: "fa-comments-alt",
+          children: [
+            { href: chloe_playbook_path, title: "Chloe 話術卡", icon: "fa-comments-alt" },
+          ]
+        },
+        {
           group_title: "Chloe 回覆助手",
           group_icon: "fa-comment-dots",
           children: [

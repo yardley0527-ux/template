@@ -80,6 +80,7 @@ Rails.application.routes.draw do
   get '/livestream_overview', to: 'livestream_overview#index', as: :livestream_overview
   get '/livestream_reports', to: 'livestream_reports#index', as: :livestream_reports
   get '/video_topics', to: 'video_topics#index', as: :video_topics
+  get '/chloe_playbook', to: 'chloe_playbook#index', as: :chloe_playbook
   get  '/malicious_returns',      to: 'malicious_returns#index', as: :malicious_returns
   post '/malicious_returns/sync', to: 'malicious_returns#sync',  as: :sync_malicious_returns
 
