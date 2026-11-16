@@ -4,6 +4,7 @@ class ChloePlaybookController < ApplicationController
 
   def index
     @playbook = self.class.playbook
+    @product = @playbook.fetch("products", []).find { |p| p["key"] == params[:tab] }
   end
 
   def self.playbook

@@ -1,0 +1,121 @@
+<div class="d-flex flex-wrap mb-4" style="gap:.75rem">
+  <% pb["stats"].each do |s| %>
+    <div class="pb-stat"><b><%= s["value"] %></b><div class="small text-muted"><%= s["label"] %></div></div>
+  <% end %>
+</div>
+
+<h4 class="fw-500">新客、一般會員的四步</h4>
+<p class="text-muted small">差別主要出現在這兩群。這四件事在成交對話裡出現得明顯比較多（已排除聊得久、客人本來就想買的影響）。</p>
+<div class="row">
+  <% pb["steps"].each_with_index do |step, i| %>
+    <div class="col-md-6 col-xl-3 mb-3">
+      <div class="card pb-card"><div class="card-body">
+        <h5 class="mb-1"><span class="pb-step-no"><%= i + 1 %></span><%= step["title"] %></h5>
+        <p class="small text-muted mb-2"><%= step["data"] %></p>
+        <div class="pb-quote"><%= step["quote"] %></div>
+      </div></div>
+    </div>
+  <% end %>
+</div>
+
+<div class="row mb-4">
+  <div class="col-lg-6 mb-3">
+    <div class="pb-label">做越多步，成交越好（<%= pb.dig("step_counts", "note") %>）</div>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered pb-table bg-white mb-0">
+        <thead><tr><th>Chloe 做了幾步</th><th class="n">對話數</th><th class="n">14 天內下單</th><th class="n">大組數</th></tr></thead>
+        <tbody>
+          <% pb.dig("step_counts", "rows").each do |r| %>
+            <tr><td><%= r[0] %></td><td class="n"><%= r[1] %></td><td class="n"><%= r[2] %></td><td class="n"><%= r[3] %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-lg-6 mb-3">
+    <div class="card"><div class="card-body">
+      <p class="mb-2"><%= pb.dig("step_counts", "summary") %></p>
+      <div class="pb-note"><%= pb.dig("step_counts", "caveat") %></div>
+    </div></div>
+  </div>
+</div>
+
+<h4 class="fw-500">各情境的成交表現</h4>
+<p class="text-muted small">依客人問的內容分類。<%= pb.dig("scenarios", "baseline") %></p>
+<div class="table-responsive mb-2">
+  <table class="table table-sm table-bordered pb-table bg-white mb-0">
+    <thead><tr><th>客人在問</th><th class="n">佔全部對話</th><th class="n">14 天內下單</th><th class="n">大組數</th><th class="n">下單平均金額</th><th class="n">新客下單</th><th class="n">新客大組數</th></tr></thead>
+    <tbody>
+      <% pb.dig("scenarios", "rows").each do |r| %>
+        <tr><td><%= r[0] %></td><% r[1..].each do |v| %><td class="n"><%= v %></td><% end %></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+<p class="mb-4"><b><%= pb.dig("scenarios", "takeaway") %></b></p>
+
+<h4 class="fw-500">情境卡</h4>
+<p class="text-muted small">
+  <span class="badge badge-success">綠色</span> 有數據支持的做法
+  <span class="badge badge-danger">紅色</span> 一律轉 Chloe 或主管
+  <span class="badge badge-warning">黃色</span> 內容有時效
+</p>
+<% pill_class = { "data" => "badge-success", "human" => "badge-danger", "time" => "badge-warning" } %>
+<div class="row">
+  <% pb["cards"].each do |card| %>
+    <div class="col-lg-6 mb-3">
+      <div class="card pb-card"><div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2" style="gap:.5rem">
+          <h5 class="mb-0"><%= card["title"] %></h5>
+          <% if card["pill"] %><span class="badge <%= pill_class[card.dig("pill", "kind")] %>"><%= card.dig("pill", "text") %></span><% end %>
+        </div>
+        <div class="pb-label"><%= card["do_label"] %></div>
+        <ul class="pl-3 mb-2">
+          <% card["do"].each do |d| %><li><%= d %></li><% end %>
+        </ul>
+        <div class="pb-label"><%= card["quotes_label"] || "Chloe 原文" %></div>
+        <div>
+          <% card["quotes"].each do |q| %>
+            <div class="pb-quote"><%= q["text"] %><% if q["context"] %><small><%= q["context"] %></small><% end %></div><br>
+          <% end %>
+        </div>
+        <% Array(card["notes"]).each do |n| %><div class="pb-note"><%= n %></div><% end %>
+      </div></div>
+    </div>
+  <% end %>
+</div>
+
+<div class="row mb-4">
+  <div class="col-lg-6 mb-3">
+    <h4 class="fw-500">要主管同意才能做</h4>
+    <p class="text-muted small">Chloe 常這樣照顧客人，但客服不能自己答應。</p>
+    <div class="card"><div class="card-body">
+      <ul class="pl-3 mb-2"><% pb["needs_manager"].each do |m| %><li><%= m %></li><% end %></ul>
+      <div class="pb-note">先回客人「我幫你問主管」，不要先說「可以」。</div>
+    </div></div>
+  </div>
+  <div class="col-lg-6 mb-3">
+    <h4 class="fw-500">語氣</h4>
+    <p class="text-muted small">客服和回覆機器人都照這個寫。</p>
+    <div class="card"><div class="card-body">
+      <ul class="pl-3 mb-0"><% pb["tone"].each do |t| %><li><%= t %></li><% end %></ul>
+    </div></div>
+  </div>
+</div>
+
+<h4 class="fw-500">禁區清單</h4>
+<p class="text-muted small"><%= pb.dig("forbidden", "intro") %></p>
+<div class="table-responsive mb-4">
+  <table class="table table-sm table-bordered pb-table bg-white mb-0">
+    <thead><tr><th>類型</th><th class="n">筆數</th><th>當時的說法（摘要）</th><th>改成</th></tr></thead>
+    <tbody>
+      <% pb.dig("forbidden", "rows").each do |r| %>
+        <tr><td><%= r[0] %></td><td class="n"><%= r[1] %></td><td><%= r[2] %></td><td><%= r[3] %></td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<div class="small text-muted">
+  <% pb["sources"].each do |s| %><p class="mb-1"><%= s %></p><% end %>
+</div>

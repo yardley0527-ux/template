@@ -1,0 +1,83 @@
+<% st = product["stats"] %>
+<p class="mb-3"><%= product["positioning"] %></p>
+
+<div class="d-flex flex-wrap mb-4" style="gap:.75rem">
+  <div class="pb-stat"><b><%= st["talks"] %> 段</b><div class="small text-muted">客人在私訊提到<%= product["name"] %></div></div>
+  <div class="pb-stat"><b><%= st["buy_rate"] %></b><div class="small text-muted">私訊後 14 天內買了<%= product["name"] %></div></div>
+  <div class="pb-stat"><b><%= st["big_rate"] %> vs <%= st["big_rate_all"] %></b><div class="small text-muted">買的人一次買 5 件以上：私訊後 vs 全部訂單</div></div>
+  <div class="pb-stat"><b><%= st["new_buy_rate"] %>／<%= st["new_big_rate"] %></b><div class="small text-muted">新客私訊後買了／其中 5 件以上</div></div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6 mb-3">
+    <div class="card pb-card"><div class="card-body">
+      <h5 class="mb-2">規格與吃法</h5>
+      <ul class="pl-3 mb-2 pb-spec"><% product["spec"].each do |s| %><li><%= s %></li><% end %></ul>
+      <div class="pb-note">這是 Chloe 在私訊裡的說法，回覆前請以官方標示為準。</div>
+    </div></div>
+  </div>
+  <div class="col-lg-6 mb-3">
+    <div class="card pb-card"><div class="card-body">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-2" style="gap:.5rem">
+        <h5 class="mb-0">怎麼帶到組數</h5><span class="badge badge-success">用吃法算瓶數</span>
+      </div>
+      <p class="mb-2"><%= product.dig("sets", "say") %></p>
+      <div class="pb-label">Chloe 原文（<%= product.dig("sets", "date") %>）</div>
+      <div class="pb-quote"><%= product.dig("sets", "quote") %></div>
+      <div class="pb-note">記得加上「前提是會持續吃」。</div>
+    </div></div>
+  </div>
+</div>
+
+<h4 class="fw-500 mt-2">客人常問的問題</h4>
+<p class="text-muted small">比例是客人提到<%= product["name"] %>的對話裡，有問到這類問題的比例（一段對話可能問好幾類）。原文來自已核准的 Chloe 歷史回答。</p>
+<div class="row">
+  <% product["faqs"].each do |faq| %>
+    <div class="col-lg-6 mb-3">
+      <div class="card pb-card"><div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-2" style="gap:.5rem">
+          <h5 class="mb-0"><%= faq["type"] %></h5>
+          <span>
+            <span class="badge badge-light"><%= faq["share"] %> 的對話會問</span>
+            <% if faq["human"] %><span class="badge badge-danger">症狀持續轉 Chloe</span><% end %>
+          </span>
+        </div>
+        <% faq["quotes"].each do |q| %>
+          <div class="mb-2">
+            <div class="pb-q">客人問：<%= q["q"] %></div>
+            <div class="pb-quote"><%= q["a"] %><small><%= q["date"] %><%= "｜#{q['note']}" if q["note"] %></small></div>
+          </div>
+        <% end %>
+      </div></div>
+    </div>
+  <% end %>
+</div>
+
+<div class="row">
+  <div class="col-lg-6 mb-3">
+    <h4 class="fw-500">說法不一致，回覆前先確認</h4>
+    <p class="text-muted small">同一題 Chloe 不同時候講法不同。客服遇到請先問 Chloe 或主管目前的標準說法。</p>
+    <div class="card"><div class="card-body">
+      <ul class="pl-3 mb-0"><% product["inconsistent"].each do |i| %><li><%= i %></li><% end %></ul>
+    </div></div>
+  </div>
+  <div class="col-lg-6 mb-3">
+    <h4 class="fw-500">這個產品的禁區</h4>
+    <p class="text-muted small">2023 年起<%= product["name"] %>相關、被標為最高或高風險的回答共 <%= product.dig("forbidden", "count") %> 筆。遇到這些情況一律轉人工，不說「可以吃」「放心吃」。</p>
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered pb-table bg-white mb-2">
+        <thead><tr><th>類型</th><th class="n">筆數</th><th>當時的說法（摘要）</th></tr></thead>
+        <tbody>
+          <% product.dig("forbidden", "rows").each do |r| %>
+            <tr><td><%= r[0] %></td><td class="n"><%= r[1] %></td><td><%= r[2] %></td></tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+    <p class="small text-muted mb-0">客人回報過的不適（<%= product.dig("forbidden", "adverse") %> 筆）：<%= product.dig("forbidden", "adverse_examples") %>。遇到請客人先暫停，轉 Chloe。</p>
+  </div>
+</div>
+
+<div class="small text-muted mt-2">
+  <p class="mb-1">數字：2024-01 起可對到訂單的私訊對話，看 14 天內有沒有買這個產品；「件」是訂單上的件數（例如「全能6」算 6 件）。只是關聯，不能證明是私訊造成的。</p>
+</div>

@@ -22,6 +22,23 @@ class ChloePlaybookControllerTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "疾病療效"
   end
 
+  test "each product has its own tab and the general content stays on the first tab" do
+    sign_in @admin
+    get chloe_playbook_path(tab: "pdrn")
+    assert_response :success
+    assert_includes @response.body, "怎麼帶到組數"
+    assert_includes @response.body, "是完整的皮膚新陳代謝45天到60天"
+    assert_not_includes @response.body, "新客、一般會員的四步"
+    %w[omni turmeric metabolic].each do |tab|
+      get chloe_playbook_path(tab: tab)
+      assert_response :success
+      assert_includes @response.body, "這個產品的禁區"
+    end
+    get chloe_playbook_path(tab: "nope")
+    assert_includes @response.body, "新客、一般會員的四步"
+    assert_equal %w[全能 PDRN 薑黃 代謝錠], ChloePlaybookController.playbook["products"].map { |p| p["name"] }
+  end
+
   test "sidebar has its own 客服話術 group" do
     group = SidebarEntry.all.find { |g| g[:group_title] == "客服話術" }
     assert group
