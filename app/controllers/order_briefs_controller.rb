@@ -36,6 +36,14 @@ class OrderBriefsController < ApplicationController
     end
   end
 
+  # SEO 日報手動發到 LINE（AI 報告暫停時，只能發已寫好 manual_ai 的報告）
+  def send_seo_line
+    report = SeoReport.find(params[:report_id])
+    sent = Seo::LineDigest.call(report, force: params[:force] == "1")
+    notice = sent.positive? ? "已發送 #{md(report.report_date)} SEO 日報到 #{sent} 個群組" : "沒有發送（已發過、AI 暫停且沒有手寫重點，或沒有訂閱群組）"
+    redirect_to order_briefs_path(report: "seo", date: params[:date], ai: "1"), notice: notice
+  end
+
   private
 
   # 跑完留在同一個分頁

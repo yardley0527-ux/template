@@ -39,8 +39,9 @@ module Seo
     end
 
     # 回傳發送的群組數；沒設定 LINE、沒有群組、已發過都回 0
+    # AI 報告暫停期間，只有事先寫好 manual_ai（本機 Claude Code 寫的重點）的報告可以發
     def call(force: false)
-      return 0 if AiReports.paused?
+      return 0 if AiReports.paused? && manual_ai.nil?
       return 0 unless LineBot::Client.configured?
       return 0 if @report.data["line_sent_at"].present? && !force
 
@@ -54,8 +55,9 @@ module Seo
     end
 
     # ai: false 給網頁預覽用（不勾 AI 重點時不打 API，只出數字）
+    # 有手寫的 manual_ai 一律用它，不打 API
     def message(ai: true)
-      ai = ai ? ai_commentary : nil
+      ai = manual_ai || (ai ? ai_commentary : nil)
       lines = ["📊 SEO 日報 #{@report.report_date.strftime('%-m/%-d')}（資料到 #{data_through_label}）", ""]
       Sites::ALL.each_key do |site|
         lines << site_line(site)
@@ -72,6 +74,12 @@ module Seo
       lines += ["", "【💭 觀察與建議】", ai["suggestion"]] if ai && ai["suggestion"].present?
       lines += ["", "完整報告 → #{REPORT_URL}"]
       lines.join("\n")
+    end
+
+    # 本機 Claude Code 寫好存進 report.data["manual_ai"]（格式同 AI_SCHEMA），API 額度不足時用
+    def manual_ai
+      raw = @report.data["manual_ai"]
+      raw.is_a?(Hash) ? parse(raw.to_json) : nil
     end
 
     private

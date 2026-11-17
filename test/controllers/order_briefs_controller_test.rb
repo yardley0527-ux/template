@@ -105,6 +105,32 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "9/2 以前沒有成功的 SEO 報告"
   end
 
+  test "AI 暫停時，有手寫重點的 SEO 日報才有「發到 LINE」按鈕，按了發給訂閱群組" do
+    ENV.delete("AI_REPORTS_ENABLED")
+    report = SeoReport.create!(report_date: Date.new(2026, 10, 2), status: "success", data: {
+      "sites" => { "yardley" => { "data_through" => "2026-09-29", "summary" => { "clicks" => 708 } } }
+    })
+    sign_in @admin
+    get order_briefs_path, params: { date: "2026-10-01", report: "seo" }
+    assert_not_includes response.body, "發到 LINE"
+
+    report.update!(data: report.data.merge("manual_ai" => { "highlights" => ["手寫重點"], "article_comments" => [], "suggestion" => "手寫建議" }))
+    get order_briefs_path, params: { date: "2026-10-01", report: "seo" }
+    assert_includes response.body, "發到 LINE"
+    assert_includes response.body, "1. 手寫重點"
+
+    sent = []
+    original = Seo::LineDigest.method(:call)
+    Seo::LineDigest.define_singleton_method(:call) { |r, force: false| sent << [r.id, force]; 1 }
+    begin
+      post send_seo_line_order_briefs_path, params: { report_id: report.id, date: "2026-10-01" }
+    ensure
+      Seo::LineDigest.define_singleton_method(:call, original)
+    end
+    assert_equal [[report.id, false]], sent
+    assert_redirected_to order_briefs_path(report: "seo", date: "2026-10-01", ai: "1")
+  end
+
   test "黑金卡回來了、生日名單可以直接在網頁產生" do
     sign_in @admin
     get order_briefs_path, params: { date: DAY.iso8601, report: "returns" }

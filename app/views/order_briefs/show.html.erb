@@ -148,6 +148,13 @@
         <h2><%= @seo_report.report_date.strftime("%-m/%-d") %> SEO 日報</h2>
         <div class="panel-toolbar">
           <button type="button" class="btn btn-xs btn-success js-copy" data-target="seo-text">複製</button>
+          <% sent_at = @seo_report.data["line_sent_at"] %>
+          <% if !AiReports.paused? || @seo_report.data["manual_ai"].present? %>
+            <%= button_to (sent_at ? "重發到 LINE" : "發到 LINE"), send_seo_line_order_briefs_path,
+                  params: { report_id: @seo_report.id, date: params[:date], force: (sent_at ? "1" : nil) },
+                  class: "btn btn-xs btn-primary ml-1", form: { class: "d-inline" },
+                  data: { confirm: "#{sent_at ? "#{Time.zone.parse(sent_at).strftime('%-m/%-d %H:%M')} 已發過，確定再發一次" : '確定發'}到有訂閱 SEO 日報的群組？" } %>
+          <% end %>
         </div>
       </div>
       <div class="panel-container show">

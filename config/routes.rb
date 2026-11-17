@@ -174,6 +174,7 @@ Rails.application.routes.draw do
   resources :seo_reports, only: [:index]
   post '/line_bot/webhook', to: 'line_bot#webhook'
   get '/order_briefs', to: 'order_briefs#show', as: :order_briefs
+  post '/order_briefs/send_seo_line', to: 'order_briefs#send_seo_line', as: :send_seo_line_order_briefs
   resources :line_bot_groups, only: [:index, :update] do
     post :preview_order_brief, on: :member
     post :resend_reports, on: :member
