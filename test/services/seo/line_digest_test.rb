@@ -18,18 +18,21 @@ module Seo
       assert_equal 0, Seo::LineDigest.call(SeoReport.create!(report_date: Date.current, status: "success", data: {}), force: true)
     end
 
-    test "AI 暫停時，有手寫 manual_ai 的報告照發，用手寫重點不打 API" do
-      ENV.delete("AI_REPORTS_ENABLED")
+    test "有手寫 manual_ai 時訊息用它、不打 API；AI 暫停時仍不推播" do
       @report.update!(data: @report.data.merge("manual_ai" => {
         "highlights" => ["手寫重點一"], "article_comments" => [{ "id" => 1, "comment" => "標題改問句" }], "suggestion" => "手寫建議"
       }))
-      line = FakeLine.new
-      assert_equal 1, LineDigest.new(@report, line: line).call
-
-      text = line.sent.first.last
-      assert_includes text, "【重點】\n1. 手寫重點一"
+      text = LineDigest.new(@report).message(ai: false)
+      assert_includes text, "【重點】
+1. 手寫重點一"
       assert_includes text, "💡 標題改問句"
-      assert_includes text, "【💭 觀察與建議】\n手寫建議"
+      assert_includes text, "【💭 觀察與建議】
+手寫建議"
+
+      ENV.delete("AI_REPORTS_ENABLED")
+      line = FakeLine.new
+      assert_equal 0, LineDigest.new(@report, line: line).call(force: true)
+      assert_empty line.sent
     end
 
     setup do
