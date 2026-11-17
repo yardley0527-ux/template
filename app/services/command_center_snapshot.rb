@@ -16,7 +16,7 @@ class CommandCenterSnapshot
       department_lights: department_lights,
       radar:             radar,
       risks:             OpsRiskScan.call(radar: radar),
-      briefing:          DailyBriefing.latest,
+      briefing:          (DailyBriefing.latest unless DailyBriefingService.paused?),
       weekly_briefing:   WeeklyBriefing.latest,
       bulletin_notes:    BulletinNote.board,
       sync_alerts:       SyncRun.current_alerts,

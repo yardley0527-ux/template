@@ -67,6 +67,8 @@ module NotificationRules
     end
 
     def briefing_failure
+      return [] if DailyBriefingService.paused?
+
       latest = DailyBriefing.latest
       return [] unless latest && latest.status == "failed"
 

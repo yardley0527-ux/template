@@ -13,6 +13,12 @@ class DailyBriefingService
   MODEL          = "claude-opus-4-8"
   LOOKBACK_DAYS  = 3 # 掉球/待決要看前幾天的上下文，不只昨天
 
+  # 2026-11-17 暫停：Anthropic API 額度用完（400 credit balance too low），付費前先關掉。
+  # 要恢復時在 Render 設環境變數 DAILY_BRIEFING_ENABLED=1 即可（不用改程式）。
+  def self.paused?
+    ENV["DAILY_BRIEFING_ENABLED"] != "1"
+  end
+
   def self.call(date = Date.current)
     new(date).call
   end

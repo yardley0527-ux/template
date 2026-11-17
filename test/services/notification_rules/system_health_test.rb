@@ -4,6 +4,13 @@ require "test_helper"
 
 module NotificationRules
   class SystemHealthTest < ActiveSupport::TestCase
+    teardown { ENV.delete("DAILY_BRIEFING_ENABLED") }
+
+    test "晨報暫停時，失敗也不跳通知" do
+      DailyBriefing.create!(briefing_date: Date.current, status: "failed", error_message: "credit balance too low")
+      assert_empty SystemHealth.call.select { |r| r[:subject_type] == "daily_briefing" }
+    end
+
     def fresh_import_run(kind)
       ImportRun.create!(kind: kind, file_name: "f.xlsx", file_checksum: SecureRandom.hex(8),
                          started_at: 2.hours.ago, finished_at: 1.hour.ago)
@@ -77,6 +84,7 @@ module NotificationRules
     end
 
     test "a failed DailyBriefing is flagged" do
+      ENV["DAILY_BRIEFING_ENABLED"] = "1"
       quiet_baseline
       DailyBriefing.create!(briefing_date: Date.current, status: "failed", error_message: "boom")
 
@@ -93,6 +101,7 @@ module NotificationRules
     end
 
     test "briefing_failure metadata only stores the date, not the free-text error message" do
+      ENV["DAILY_BRIEFING_ENABLED"] = "1"
       quiet_baseline
       DailyBriefing.create!(briefing_date: Date.current, status: "failed", error_message: "OpenAI timeout")
 

@@ -41,6 +41,11 @@ namespace :ops do
   # command: bundle exec rake ops:sync ops:briefing —— 先抓最新日誌再生成晨報
   desc "生成今日 AI 晨報（讀部門日誌＋行事曆，落地 daily_briefings）"
   task briefing: :environment do
+    if DailyBriefingService.paused?
+      puts "[ops:briefing] 晨報暫停中（設 DAILY_BRIEFING_ENABLED=1 恢復），略過"
+      next
+    end
+
     briefing = DailyBriefingService.call
     if briefing.status == "success"
       puts "[ops:briefing] #{briefing.briefing_date}: summary=#{briefing.summary.size} " \
