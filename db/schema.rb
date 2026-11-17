@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_16_180000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_17_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1460,6 +1460,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_16_180000) do
     t.string "product_key", default: "omnipotent", null: false
     t.index ["email", "reference_date", "product_key"], name: "idx_omni_notif_status_unique", unique: true
     t.index ["status"], name: "index_omnipotent_notification_statuses_on_status"
+  end
+
+  create_table "order_brief_notes", force: :cascade do |t|
+    t.date "report_date", null: false
+    t.jsonb "highlights", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["report_date"], name: "index_order_brief_notes_on_report_date", unique: true
   end
 
   create_table "order_gift_records", force: :cascade do |t|

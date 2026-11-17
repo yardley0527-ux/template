@@ -35,6 +35,13 @@ module OrderBrief
       @report = report
     end
 
+    # 存在 order_brief_notes 的手寫重點（單日報告才有）；沒有回 nil
+    def self.stored(report)
+      return nil if report.multi_day?
+
+      OrderBriefNote.find_by(report_date: report.day)&.highlights.presence
+    end
+
     # [{ "title" => ..., "details" => [...] }, ...] 或 nil
     def call
       return nil if AiReports.paused? # 暫停時簡報照發，只是沒有 AI 重點

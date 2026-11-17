@@ -62,7 +62,8 @@ class OrderBriefsController < ApplicationController
     else
       return if @report.empty?
 
-      @highlights = OrderBrief::Highlights.call(@report) if params[:ai] == "1"
+      # 有手寫重點（AI 暫停時本機寫好存的）就直接用，不打 API
+      @highlights = OrderBrief::Highlights.stored(@report) || (OrderBrief::Highlights.call(@report) if params[:ai] == "1")
       @parts = OrderBrief::Sections.new(@report).parts
     end
   end

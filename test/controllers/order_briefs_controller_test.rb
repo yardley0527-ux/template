@@ -117,6 +117,17 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "發到 LINE"
   end
 
+  test "有存手寫重點的日子，訂單簡報直接顯示重點（不用勾 AI、不打 API）" do
+    OrderBriefNote.create!(report_date: DAY, highlights: [{ "title" => "手寫結論", "details" => ["手寫補充"] }])
+    sign_in @admin
+    get order_briefs_path, params: { date: DAY.iso8601 }
+    assert_includes response.body, "1. 手寫結論"
+    assert_includes response.body, "- 手寫補充"
+
+    get order_briefs_path, params: { date_from: (DAY - 1).iso8601, date: DAY.iso8601 }
+    assert_not_includes response.body, "手寫結論" # 區間報告不套單日重點
+  end
+
   test "黑金卡回來了、生日名單可以直接在網頁產生" do
     sign_in @admin
     get order_briefs_path, params: { date: DAY.iso8601, report: "returns" }
