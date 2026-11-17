@@ -11,7 +11,15 @@ module Seo
       def push_text(to, text) = @sent << [to, text]
     end
 
+    teardown { ENV.delete("AI_REPORTS_ENABLED") }
+
+    test "AI 報告暫停時不推播" do
+      ENV.delete("AI_REPORTS_ENABLED")
+      assert_equal 0, Seo::LineDigest.call(SeoReport.create!(report_date: Date.current, status: "success", data: {}), force: true)
+    end
+
     setup do
+      ENV["AI_REPORTS_ENABLED"] = "1"
       @env = ENV.to_h.slice("LINE_REPORT_CHANNEL_ACCESS_TOKEN", "ANTHROPIC_API_KEY")
       ENV["LINE_REPORT_CHANNEL_ACCESS_TOKEN"] = "token"
       ENV.delete("ANTHROPIC_API_KEY") # 不打真的 AI：驗證沒有 AI 時照樣發數字

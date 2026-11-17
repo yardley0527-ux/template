@@ -40,6 +40,7 @@ module Seo
 
     # 回傳發送的群組數；沒設定 LINE、沒有群組、已發過都回 0
     def call(force: false)
+      return 0 if AiReports.paused?
       return 0 unless LineBot::Client.configured?
       return 0 if @report.data["line_sent_at"].present? && !force
 

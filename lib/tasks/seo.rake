@@ -16,7 +16,10 @@ namespace :seo do
     end
 
     # 平日才推 LINE 給部門主管（週末數據變化小）；推播失敗不影響報告本身
-    if report.status != "failed" && Date.current.on_weekday?
+    # LINE 摘要會打 Claude API 寫重點，AI 報告暫停期間不推（報告本身照常產生）
+    if AiReports.paused?
+      puts "[seo:daily] LINE 推播：#{AiReports::PAUSED_NOTE}，略過"
+    elsif report.status != "failed" && Date.current.on_weekday?
       begin
         puts "[seo:daily] LINE 推播 #{Seo::LineDigest.call(report)} 個群組"
       rescue StandardError => e
@@ -36,6 +39,7 @@ namespace :seo do
 
   desc "Push the latest SEO report to the LINE groups. FORCE=1 re-sends even if already sent."
   task line_digest: :environment do
+    abort("[seo:line_digest] #{AiReports::PAUSED_NOTE}") if AiReports.paused?
     report = SeoReport.latest or abort("[seo:line_digest] 還沒有 SEO 報告")
     puts "[seo:line_digest] 推播 #{Seo::LineDigest.call(report, force: ENV['FORCE'].present?)} 個群組"
   end

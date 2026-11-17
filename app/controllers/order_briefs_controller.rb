@@ -70,7 +70,7 @@ class OrderBriefsController < ApplicationController
   # SEO 日報是平日早上跑、日期記當天，選「昨天」時要能拿到今天早上那份，所以抓選定日隔天以前最新一份
   def seo_report
     @seo_report = SeoReport.where(status: %w[success partial], report_date: ..(@day + 1)).order(report_date: :desc).first
-    @seo_text = Seo::LineDigest.new(@seo_report).message(ai: params[:ai] == "1") if @seo_report
+    @seo_text = Seo::LineDigest.new(@seo_report).message(ai: params[:ai] == "1" && !AiReports.paused?) if @seo_report
     @result_title = ["SEO 日報", md(@seo_report&.report_date || @day)]
   end
 

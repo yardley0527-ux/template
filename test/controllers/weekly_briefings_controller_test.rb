@@ -6,7 +6,10 @@ class WeeklyBriefingsControllerTest < ActionDispatch::IntegrationTest
   include Devise::Test::IntegrationHelpers
   include ActiveJob::TestHelper
 
+  teardown { ENV.delete("AI_REPORTS_ENABLED") }
+
   setup do
+    ENV["AI_REPORTS_ENABLED"] = "1"
     admin_role = Role.create!(key: "admin", name: "Admin")
     @admin = User.create!(email: "wb_admin@test.com", username: "wb_admin", password: "password123", role: admin_role)
     non_admin_role = Role.create!(key: "staff", name: "Staff")
@@ -330,5 +333,14 @@ class WeeklyBriefingsControllerTest < ActionDispatch::IntegrationTest
     end
   ensure
     travel_back
+  end
+
+  test "週報暫停時不重新產生" do
+    ENV.delete("AI_REPORTS_ENABLED")
+    sign_in @admin
+    assert_no_enqueued_jobs only: WeeklyBriefingRegenerationJob do
+      post regenerate_weekly_briefing_path(week_start: "2026-06-15")
+    end
+    assert_match "暫停", flash[:alert]
   end
 end

@@ -25,6 +25,11 @@
 namespace :ops do
   desc "刷新每週報告依賴的分析快取，再產生最新一個完整週的經營決策報告"
   task weekly_briefing: :environment do
+    if AiReports.paused?
+      puts "[ops:weekly_briefing] #{AiReports::PAUSED_NOTE}，略過"
+      next
+    end
+
     week_start = ENV["WEEK"].presence ? Date.parse(ENV["WEEK"]) : WeeklyPeriod.latest_complete_week_start
 
     briefing, refresh_log = WeeklyBriefingRunner.call(week_start: week_start, force_refresh: true)

@@ -42,7 +42,7 @@ namespace :ops do
   desc "生成今日 AI 晨報（讀部門日誌＋行事曆，落地 daily_briefings）"
   task briefing: :environment do
     if DailyBriefingService.paused?
-      puts "[ops:briefing] 晨報暫停中（設 DAILY_BRIEFING_ENABLED=1 恢復），略過"
+      puts "[ops:briefing] #{AiReports::PAUSED_NOTE}，略過"
       next
     end
 

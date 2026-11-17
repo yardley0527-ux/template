@@ -39,6 +39,11 @@ class WeeklyBriefingsController < ApplicationController
   end
 
   def regenerate
+    if AiReports.paused?
+      redirect_to weekly_briefing_path(week_start: @week_start.to_s), alert: "週報暫停中（AI 額度不足），付費後再開啟"
+      return
+    end
+
     unless current_user.admin?
       redirect_to weekly_briefing_path(week_start: @week_start.to_s), alert: "只有管理員可以重新產生報告"
       return
