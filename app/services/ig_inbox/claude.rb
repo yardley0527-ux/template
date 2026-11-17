@@ -11,6 +11,8 @@ module IgInbox
     module_function
 
     def call(text, schema)
+      raise AiReports::PAUSED_NOTE if AiReports.paused?
+
       api_key = ENV["ANTHROPIC_API_KEY"].to_s.strip
       raise "ANTHROPIC_API_KEY 未設定" if api_key.empty?
 

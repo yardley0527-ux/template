@@ -37,6 +37,7 @@ module OrderBrief
 
     # [{ "title" => ..., "details" => [...] }, ...] 或 nil
     def call
+      return nil if AiReports.paused? # 暫停時簡報照發，只是沒有 AI 重點
       api_key = ENV["ANTHROPIC_API_KEY"].to_s.strip
       return nil if api_key.empty?
 

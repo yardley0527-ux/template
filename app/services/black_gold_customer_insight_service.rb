@@ -31,6 +31,7 @@ class BlackGoldCustomerInsightService
     history = order_history
     return failure("這位客人沒有已付款訂單紀錄") if history.empty?
 
+    return failure(AiReports::PAUSED_NOTE) if AiReports.paused?
     api_key = ENV["ANTHROPIC_API_KEY"].to_s.strip
     return failure("ANTHROPIC_API_KEY 未設定") if api_key.blank?
 

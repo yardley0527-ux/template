@@ -3,7 +3,10 @@
 require "test_helper"
 
 class Marketing::AiSuggestionServiceTest < ActiveSupport::TestCase
+  teardown { ENV.delete("AI_REPORTS_ENABLED") }
+
   setup do
+    ENV["AI_REPORTS_ENABLED"] = "1"
     @old_key = ENV["ANTHROPIC_API_KEY"]
     ENV["ANTHROPIC_API_KEY"] = "test"
     @suggestion = MarketingAiSuggestion.create!(status: "pending", input_snapshot: Marketing::SnapshotBuilder.new.call)
