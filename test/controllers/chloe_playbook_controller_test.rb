@@ -20,6 +20,9 @@ class ChloePlaybookControllerTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "留言 +1、IG 按鈕進來的新客"
     assert_includes @response.body, "上面沒分到的 57.8% 對話"
     assert_includes @response.body, "下單後關懷"
+    assert_includes @response.body, "Chloe 怎麼看狀況調整建議"
+    assert_includes @response.body, "我們用一個月來做一次體重的判定,不要利用一個禮拜,"
+    assert_includes @response.body, "一律轉 Chloe"
     assert_includes @response.body, "禁區清單"
     assert_includes @response.body, "疾病療效"
   end

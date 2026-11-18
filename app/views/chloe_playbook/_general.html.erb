@@ -100,6 +100,50 @@
   <% end %>
 </div>
 
+<% if (adj = pb["adjust"]) %>
+  <h4 class="fw-500 mt-2">Chloe 怎麼看狀況調整建議</h4>
+  <p class="text-muted small"><%= adj["intro"] %></p>
+  <% quote_block = lambda do |items| %>
+    <div class="row">
+      <% items.each do |it| %>
+        <div class="col-lg-6 mb-3">
+          <div class="card pb-card"><div class="card-body">
+            <h5 class="mb-1"><%= it["title"] %></h5>
+            <p class="small text-muted mb-2"><%= it["desc"] %></p>
+            <% it["quotes"].each do |q| %>
+              <div class="pb-quote"><%= q["text"] %><small><%= q["date"] %>｜語音<%= "｜#{q['context']}" if q["context"] %></small></div><br>
+            <% end %>
+          </div></div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+  <div class="pb-label">她會先問</div>
+  <% quote_block.call(adj["asks"]) %>
+  <div class="pb-label">她怎麼依狀況調整</div>
+  <% quote_block.call(adj["patterns"]) %>
+  <div class="row mb-4">
+    <div class="col-lg-4 mb-3">
+      <div class="card h-100"><div class="card-body">
+        <h5 class="mb-2"><span class="badge badge-success">客服可以做</span></h5>
+        <ul class="pl-3 mb-0"><% adj["cs_can"].each do |x| %><li><%= x %></li><% end %></ul>
+      </div></div>
+    </div>
+    <div class="col-lg-4 mb-3">
+      <div class="card h-100"><div class="card-body">
+        <h5 class="mb-2"><span class="badge badge-danger">一律轉 Chloe</span></h5>
+        <ul class="pl-3 mb-0"><% adj["to_chloe"].each do |x| %><li><%= x %></li><% end %></ul>
+      </div></div>
+    </div>
+    <div class="col-lg-4 mb-3">
+      <div class="card h-100"><div class="card-body">
+        <h5 class="mb-2"><span class="badge badge-dark">語音裡有、但不要學</span></h5>
+        <ul class="pl-3 mb-0"><% adj["dont"].each do |x| %><li><%= x %></li><% end %></ul>
+      </div></div>
+    </div>
+  </div>
+<% end %>
+
 <div class="row mb-4">
   <div class="col-lg-6 mb-3">
     <h4 class="fw-500">要主管同意才能做</h4>
