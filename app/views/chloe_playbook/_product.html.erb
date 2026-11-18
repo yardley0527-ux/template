@@ -1,4 +1,14 @@
 <% st = product["stats"] %>
+<div class="card mb-3 pb-index"><div class="card-body py-3">
+  <div class="pb-label">目錄</div>
+  <div class="d-flex flex-wrap" style="gap:.25rem 1rem">
+    <a href="#sec-spec">規格與吃法</a>
+    <a href="#sec-sets">怎麼帶到組數</a>
+    <% product["faqs"].each_with_index do |faq, i| %><a href="#faq-<%= i + 1 %>"><%= faq["type"] %></a><% end %>
+    <a href="#sec-inconsistent">說法不一致</a>
+    <a href="#sec-forbidden">禁區</a>
+  </div>
+</div></div>
 <p class="mb-3"><%= product["positioning"] %></p>
 
 <div class="d-flex flex-wrap mb-4" style="gap:.75rem">
@@ -9,14 +19,14 @@
 </div>
 
 <div class="row">
-  <div class="col-lg-6 mb-3">
+  <div class="col-lg-6 mb-3" id="sec-spec">
     <div class="card pb-card"><div class="card-body">
       <h5 class="mb-2">規格與吃法</h5>
       <ul class="pl-3 mb-2 pb-spec"><% product["spec"].each do |s| %><li><%= s %></li><% end %></ul>
       <div class="pb-note">這是 Chloe 在私訊裡的說法，回覆前請以官方標示為準。</div>
     </div></div>
   </div>
-  <div class="col-lg-6 mb-3">
+  <div class="col-lg-6 mb-3" id="sec-sets">
     <div class="card pb-card"><div class="card-body">
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-2" style="gap:.5rem">
         <h5 class="mb-0">怎麼帶到組數</h5><span class="badge badge-success">用吃法算瓶數</span>
@@ -32,8 +42,8 @@
 <h4 class="fw-500 mt-2">客人常問的問題</h4>
 <p class="text-muted small">比例是客人提到<%= product["name"] %>的對話裡，有問到這類問題的比例（一段對話可能問好幾類）。原文來自已核准的 Chloe 歷史回答。</p>
 <div class="row">
-  <% product["faqs"].each do |faq| %>
-    <div class="col-lg-6 mb-3">
+  <% product["faqs"].each_with_index do |faq, i| %>
+    <div class="col-lg-6 mb-3" id="faq-<%= i + 1 %>">
       <div class="card pb-card"><div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-2" style="gap:.5rem">
           <h5 class="mb-0"><%= faq["type"] %></h5>
@@ -56,14 +66,14 @@
 
 <div class="row">
   <div class="col-lg-6 mb-3">
-    <h4 class="fw-500">說法不一致，回覆前先確認</h4>
+    <h4 class="fw-500" id="sec-inconsistent">說法不一致，回覆前先確認</h4>
     <p class="text-muted small">同一題 Chloe 不同時候講法不同。客服遇到請先問 Chloe 或主管目前的標準說法。</p>
     <div class="card"><div class="card-body">
       <ul class="pl-3 mb-0"><% product["inconsistent"].each do |i| %><li><%= i %></li><% end %></ul>
     </div></div>
   </div>
   <div class="col-lg-6 mb-3">
-    <h4 class="fw-500">這個產品的禁區</h4>
+    <h4 class="fw-500" id="sec-forbidden">這個產品的禁區</h4>
     <p class="text-muted small">2023 年起<%= product["name"] %>相關、被標為最高或高風險的回答共 <%= product.dig("forbidden", "count") %> 筆。遇到這些情況一律轉人工，不說「可以吃」「放心吃」。</p>
     <div class="table-responsive">
       <table class="table table-sm table-bordered pb-table bg-white mb-2">

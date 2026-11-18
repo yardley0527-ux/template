@@ -1,10 +1,29 @@
+<% pill_class = { "data" => "badge-success", "human" => "badge-danger", "time" => "badge-warning" } %>
+<div class="card mb-4 pb-index"><div class="card-body py-3">
+  <div class="pb-label">目錄</div>
+  <div class="d-flex flex-wrap mb-2" style="gap:.25rem 1rem">
+    <a href="#sec-steps">新客、一般會員的四步</a>
+    <a href="#sec-scenarios">各情境的成交表現</a>
+    <a href="#sec-cards">情境卡</a>
+    <% if pb["adjust"] %><a href="#sec-adjust">Chloe 怎麼看狀況調整建議</a><% end %>
+    <a href="#sec-manager">要主管同意／語氣</a>
+    <a href="#sec-forbidden">禁區清單</a>
+  </div>
+  <div class="pb-label mt-2">情境卡（點了直接跳到那張卡）</div>
+  <div class="d-flex flex-wrap" style="gap:.35rem">
+    <% pb["cards"].each_with_index do |card, i| %>
+      <a href="#card-<%= i + 1 %>" class="pb-index-card"><span class="pb-dot <%= pill_class[card.dig("pill", "kind")] %>"></span><%= card["title"] %></a>
+    <% end %>
+  </div>
+</div></div>
+
 <div class="d-flex flex-wrap mb-4" style="gap:.75rem">
   <% pb["stats"].each do |s| %>
     <div class="pb-stat"><b><%= s["value"] %></b><div class="small text-muted"><%= s["label"] %></div></div>
   <% end %>
 </div>
 
-<h4 class="fw-500">新客、一般會員的四步</h4>
+<h4 class="fw-500" id="sec-steps">新客、一般會員的四步</h4>
 <p class="text-muted small">差別主要出現在這兩群。這四件事在成交對話裡出現得明顯比較多（已排除聊得久、客人本來就想買的影響）。</p>
 <div class="row">
   <% pb["steps"].each_with_index do |step, i| %>
@@ -40,7 +59,7 @@
   </div>
 </div>
 
-<h4 class="fw-500">各情境的成交表現</h4>
+<h4 class="fw-500" id="sec-scenarios">各情境的成交表現</h4>
 <p class="text-muted small">依客人問的內容分類。<%= pb.dig("scenarios", "baseline") %></p>
 <div class="table-responsive mb-2">
   <table class="table table-sm table-bordered pb-table bg-white mb-0">
@@ -69,7 +88,7 @@
   <p class="mb-4"><b><%= pb.dig("scenarios", "other_takeaway") %></b></p>
 <% end %>
 
-<h4 class="fw-500">情境卡</h4>
+<h4 class="fw-500" id="sec-cards">情境卡</h4>
 <p class="text-muted small">
   <span class="badge badge-success">綠色</span> 有數據支持的做法
   <span class="badge badge-danger">紅色</span> 一律轉 Chloe 或主管
@@ -77,8 +96,8 @@
 </p>
 <% pill_class = { "data" => "badge-success", "human" => "badge-danger", "time" => "badge-warning" } %>
 <div class="row">
-  <% pb["cards"].each do |card| %>
-    <div class="col-lg-6 mb-3">
+  <% pb["cards"].each_with_index do |card, i| %>
+    <div class="col-lg-6 mb-3" id="card-<%= i + 1 %>">
       <div class="card pb-card"><div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-2" style="gap:.5rem">
           <h5 class="mb-0"><%= card["title"] %></h5>
@@ -101,7 +120,7 @@
 </div>
 
 <% if (adj = pb["adjust"]) %>
-  <h4 class="fw-500 mt-2">Chloe 怎麼看狀況調整建議</h4>
+  <h4 class="fw-500 mt-2" id="sec-adjust">Chloe 怎麼看狀況調整建議</h4>
   <p class="text-muted small"><%= adj["intro"] %></p>
   <% quote_block = lambda do |items| %>
     <div class="row">
@@ -146,7 +165,7 @@
 
 <div class="row mb-4">
   <div class="col-lg-6 mb-3">
-    <h4 class="fw-500">要主管同意才能做</h4>
+    <h4 class="fw-500" id="sec-manager">要主管同意才能做</h4>
     <p class="text-muted small">Chloe 常這樣照顧客人，但客服不能自己答應。</p>
     <div class="card"><div class="card-body">
       <ul class="pl-3 mb-2"><% pb["needs_manager"].each do |m| %><li><%= m %></li><% end %></ul>
@@ -162,7 +181,7 @@
   </div>
 </div>
 
-<h4 class="fw-500">禁區清單</h4>
+<h4 class="fw-500" id="sec-forbidden">禁區清單</h4>
 <p class="text-muted small"><%= pb.dig("forbidden", "intro") %></p>
 <div class="table-responsive mb-4">
   <table class="table table-sm table-bordered pb-table bg-white mb-0">

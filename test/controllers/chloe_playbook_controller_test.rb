@@ -24,6 +24,8 @@ class ChloePlaybookControllerTest < ActionDispatch::IntegrationTest
     assert_includes @response.body, "我們用一個月來做一次體重的判定,不要利用一個禮拜,"
     assert_includes @response.body, "一律轉 Chloe"
     assert_includes @response.body, "禁區清單"
+    assert_includes @response.body, 'href="#card-21"'
+    assert_includes @response.body, 'id="card-21"'
     assert_includes @response.body, "疾病療效"
   end
 
@@ -45,6 +47,8 @@ class ChloePlaybookControllerTest < ActionDispatch::IntegrationTest
     get chloe_playbook_path(tab: "probiotic")
     assert_includes @response.body, "壞菌調整、非常棒"
     get chloe_playbook_path(tab: "cleanse")
+    assert_includes @response.body, 'href="#faq-1"'
+    assert_includes @response.body, 'id="sec-inconsistent"'
     assert_includes @response.body, "如果你忘記了 已經吃東西了 就不要補吃"
   end
 
