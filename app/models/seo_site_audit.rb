@@ -4,8 +4,9 @@
 class SeoSiteAudit < ApplicationRecord
   validates :site, :audited_on, presence: true
 
+  # 「上週」：至少早 6 天的那份（手動補跑的不會被當成上週）
   def self.previous_for(audit)
-    where(site: audit.site).where("audited_on < ?", audit.audited_on).order(audited_on: :desc).first
+    where(site: audit.site).where("audited_on <= ?", audit.audited_on - 6).order(audited_on: :desc).first
   end
 
   def counts
