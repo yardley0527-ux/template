@@ -15,6 +15,7 @@ module Seo
       "noindex" => { label: "被設成不讓 Google 收錄（noindex）", level: "critical" },
       "broken_link" => { label: "站內連結點了是壞的", level: "critical" },
       "hidden_in_sitemap" => { label: "隱藏／預覽頁出現在 sitemap", level: "warning" },
+      "redirect_in_sitemap" => { label: "sitemap 裡的網址會轉址", level: "warning" },
       "no_seo_description" => { label: "沒填 SEO 描述（系統自動塞頁面內文）", level: "warning" },
       "missing_description" => { label: "沒有描述", level: "warning" },
       "duplicate_title" => { label: "標題跟其他頁重複", level: "warning" },
@@ -76,7 +77,7 @@ module Seo
         end
         page = inspect_page(url, response)
         pages << page if page
-        issues.concat(page ? page_issues(page) : [issue("page_error", url, nil, response.code.zero? ? response.body : "HTTP #{response.code}")])
+        issues.concat(page ? page_issues(page) : [error_issue(url, response)])
       end
 
       issues.concat(duplicate_title_issues(pages))
@@ -107,7 +108,7 @@ module Seo
         canonical: doc.at_css("link[rel='canonical']")&.[]("href").to_s.strip,
         noindex: robots.any? { |c| c.include?("noindex") } || response.headers["x-robots-tag"].to_s.downcase.include?("noindex"),
         schema_types: doc.css("script[type='application/ld+json']").flat_map { |s| s.text.scan(/"@type"\s*:\s*"([A-Za-z]+)"/).flatten }.uniq,
-        links: internal_paths(doc)
+        links: internal_paths(doc, url)
       }
     end
 
@@ -148,16 +149,21 @@ module Seo
       known = sitemap.map { |u| normalize(path_of(u)) }.to_set
       first_source = {}
       pages.each do |p|
-        p[:links].each { |link| first_source[link] ||= p unless known.include?(normalize(link)) }
+        p[:links].each { |link| first_source[link] ||= p unless !link.start_with?(MALFORMED) && known.include?(normalize(link)) }
       end
 
       base = Sites::ALL.fetch(SITE)[:base_url]
       first_source.first(MAX_LINK_CHECKS).filter_map do |link, source|
+        where = "出現在 #{path_of(source[:url])}"
+        if link.start_with?(MALFORMED)
+          next issue("broken_link", source[:url], source[:title], "連結網址格式錯誤：#{link.delete_prefix(MALFORMED)}；#{where}")
+        end
+
         response = fetch(escape("#{base}#{link}"))
         next if response.nil? || response.code == 200 || (300..399).cover?(response.code)
 
         detail = response.code.zero? ? response.body : "HTTP #{response.code}"
-        issue("broken_link", "#{base}#{link}", source[:title], "#{detail}；出現在 #{path_of(source[:url])}")
+        issue("broken_link", "#{base}#{link}", source[:title], "#{detail}；#{where}")
       end
     end
 
@@ -189,12 +195,20 @@ module Seo
       { "type" => type, "url" => url, "title" => title.to_s.truncate(40), "detail" => detail }
     end
 
-    def internal_paths(doc)
+    MALFORMED = "!"
+
+    # 相對路徑（../about/policy）照瀏覽器的方式接到所在頁面；網址本身寫壞的（多了引號等）標 MALFORMED
+    def internal_paths(doc, page_url)
+      page_uri = URI.parse(escape(page_url))
       doc.css("a[href]").filter_map do |a|
         href = a["href"].to_s.strip
-        next if href.empty? || href.start_with?("#", "mailto:", "tel:", "javascript:")
+        next if href.empty? || href.start_with?("#", "mailto:", "tel:", "javascript:") || href.include?("{{")
 
-        uri = URI.parse(escape(href))
+        begin
+          uri = page_uri.merge(escape(href))
+        rescue URI::Error
+          next "#{MALFORMED}#{href}"
+        end
         next unless uri.host.nil? || uri.host == "www.yardley.tw" || uri.host == "yardley.tw"
         next if uri.path.blank? || uri.path == "/"
 
@@ -202,9 +216,15 @@ module Seo
         next if path.sub(%r{\A/(?:zh-hant|en)}, "").match?(SKIP_LINK)
 
         path
-      rescue URI::InvalidURIError
-        nil
       end.uniq
+    end
+
+    def error_issue(url, response)
+      if (300..399).cover?(response.code)
+        issue("redirect_in_sitemap", url, nil, "HTTP #{response.code} → #{response.location}")
+      else
+        issue("page_error", url, nil, response.code.zero? ? response.body : "HTTP #{response.code}")
+      end
     end
 
     def path_of(url)
