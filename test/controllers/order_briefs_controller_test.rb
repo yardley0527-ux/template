@@ -205,4 +205,18 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
       assert_includes response.body, "10/30–11/1 久未消費黑金卡回來了"
     end
   end
+
+  test "Claude SEO 外掛每週報告：顯示最新一份可複製，沒有就說還沒有" do
+    sign_in @admin
+    get order_briefs_path, params: { report: "seo_weekly", date: "2026-11-19" }
+    assert_includes response.body, "還沒有每週報告"
+
+    SeoSiteAudit.create!(site: "yardley", audited_on: Date.new(2026, 11, 20), pages_checked: 519,
+                         issues: [{ "type" => "noindex", "url" => "https://www.yardley.tw/pages/a", "title" => "優惠頁", "detail" => nil }])
+    get order_briefs_path, params: { report: "seo_weekly", date: "2026-11-19" }
+    assert_response :ok
+    assert_includes response.body, "Claude SEO 外掛每週報告"
+    assert_includes response.body, "seo-weekly-text"
+    assert_includes response.body, "優惠頁"
+  end
 end

@@ -28,6 +28,7 @@ class OrderBriefsController < ApplicationController
 
     case params[:report]
     when "seo" then seo_report
+    when "seo_weekly" then seo_weekly_report
     when "returns" then returns_report if valid_range?(@day_from, @day, max: MAX_DAILY_RANGE_DAYS)
     when "birthdays" then birthdays_report
     when "unrepurchased" then unrepurchased_report
@@ -73,6 +74,13 @@ class OrderBriefsController < ApplicationController
     @seo_report = SeoReport.where(status: %w[success partial], report_date: ..(@day + 1)).order(report_date: :desc).first
     @seo_text = Seo::LineDigest.new(@seo_report).message(ai: params[:ai] == "1" && !AiReports.paused?) if @seo_report
     @result_title = ["SEO 日報", md(@seo_report&.report_date || @day)]
+  end
+
+  # Claude SEO 外掛每週報告：週五 seo:daily 自動跑完存 seo_site_audits，這裡只顯示文字給人複製（不用 LINE 額度）
+  def seo_weekly_report
+    @weekly_audit = SeoSiteAudit.where(site: Seo::SiteAudit::SITE, audited_on: ..(@day + 1)).order(audited_on: :desc).first
+    @weekly_text = Seo::SiteAuditDigest.new(@weekly_audit).message if @weekly_audit
+    @result_title = ["Claude SEO 外掛每週報告", md(@weekly_audit&.audited_on || @day)]
   end
 
   def returns_report
