@@ -1,0 +1,66 @@
+<%# 每週五「Claude SEO 外掛每週報告」（Seo::SiteAudit＋WeeklyInsights），LINE 只列前幾個例子，完整清單在這裡 %>
+<div class="card mb-3" id="site-audit">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <strong>Claude SEO 外掛每週報告（yardley.tw）</strong>
+    <% if audit %>
+      <span class="text-muted small"><%= audit.audited_on.strftime("%Y/%-m/%-d") %>・檢查 <%= audit.pages_checked %> 頁<%= "・#{audit.pages_skipped} 頁讀不到" if audit.pages_skipped.positive? %></span>
+    <% end %>
+  </div>
+  <div class="card-body">
+    <% ins = audit&.insights || {} %>
+    <% title_for = ->(url) { ins.dig("titles", Seo::SiteAudit.page_key(url)).presence || Seo::SiteAudit.page_key(url) } %>
+    <% if ins["low_ctr"].present? %>
+      <h6 class="font-weight-bold">先改這幾頁的標題和描述 <small class="text-muted">曝光高、點擊率不到 1%（近 28 天）</small></h6>
+      <div class="table-responsive mb-3"><table class="table table-sm mb-0">
+        <thead><tr><th>頁面</th><th class="text-right">曝光</th><th class="text-right">點擊率</th><th class="text-right">排名</th></tr></thead>
+        <tbody><% ins["low_ctr"].each do |r| %><tr><td><%= link_to title_for.(r["page"]), r["page"], target: "_blank", rel: "noopener" %></td><td class="text-right"><%= number_with_delimiter(r["impressions"]) %></td><td class="text-right"><%= (r["ctr"] * 100).round(2) %>%</td><td class="text-right"><%= r["position"] %></td></tr><% end %></tbody>
+      </table></div>
+    <% end %>
+    <% if ins["striking"].present? %>
+      <h6 class="font-weight-bold">差一點進前幾名的關鍵字 <small class="text-muted">排名 5–15（近 28 天）</small></h6>
+      <div class="table-responsive mb-3"><table class="table table-sm mb-0">
+        <thead><tr><th>關鍵字</th><th>對應頁面</th><th class="text-right">曝光</th><th class="text-right">排名</th></tr></thead>
+        <tbody><% ins["striking"].each do |r| %><tr><td><%= r["query"] %></td><td><%= link_to title_for.(r["page"]), r["page"], target: "_blank", rel: "noopener" %></td><td class="text-right"><%= number_with_delimiter(r["impressions"]) %></td><td class="text-right"><%= r["position"] %></td></tr><% end %></tbody>
+      </table></div>
+    <% end %>
+    <% if ins["drops"].present? %>
+      <h6 class="font-weight-bold">點擊掉最多的頁面 <small class="text-muted">近 7 天 vs 前 7 天</small></h6>
+      <div class="table-responsive mb-3"><table class="table table-sm mb-0">
+        <thead><tr><th>頁面</th><th class="text-right">點擊</th><th class="text-right">排名</th></tr></thead>
+        <tbody><% ins["drops"].each do |r| %><tr><td><%= link_to title_for.(r["key"]), r["key"], target: "_blank", rel: "noopener" %></td><td class="text-right"><%= r["previous_clicks"] %> → <%= r["clicks"] %></td><td class="text-right"><%= r["previous_position"] %> → <%= r["position"] %></td></tr><% end %></tbody>
+      </table></div>
+    <% end %>
+    <% if audit %><h6 class="font-weight-bold">全站健檢</h6><% end %>
+    <% if audit.nil? %>
+      <p class="text-muted mb-0">還沒有健檢紀錄。每週五 10:00 SEO 日報跑完後自動執行。</p>
+    <% elsif audit.issues.empty? %>
+      <p class="mb-0">沒有發現問題。</p>
+    <% else %>
+      <% badge = { "critical" => "badge-danger", "warning" => "badge-warning", "info" => "badge-info" } %>
+      <% grouped = audit.issues.group_by { |i| i["type"] } %>
+      <% Seo::SiteAudit::TYPES.each do |type, meta| %>
+        <% rows = grouped[type] or next %>
+        <details class="mb-2">
+          <summary>
+            <span class="badge <%= badge[meta[:level]] %>"><%= { "critical" => "要馬上處理", "warning" => "該修", "info" => "參考" }[meta[:level]] %></span>
+            <%= meta[:label] %>：<strong><%= rows.size %></strong> 頁
+          </summary>
+          <div class="table-responsive mt-2">
+            <table class="table table-sm mb-0">
+              <thead><tr><th>頁面</th><th>網址</th><th>說明</th></tr></thead>
+              <tbody>
+                <% rows.each do |row| %>
+                  <tr>
+                    <td><%= row["title"] %></td>
+                    <td class="text-break"><%= link_to CGI.unescape(row["url"].to_s), row["url"], target: "_blank", rel: "noopener" %></td>
+                    <td><%= row["detail"] %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      <% end %>
+    <% end %>
+  </div>
+</div>

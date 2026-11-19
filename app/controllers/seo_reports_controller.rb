@@ -14,6 +14,7 @@ class SeoReportsController < ApplicationController
     @history = SeoReport.order(report_date: :desc).limit(14).pluck(:report_date, :status)
     @chart = chart_series
     @benchmarks = benchmarks
+    @site_audit = SeoSiteAudit.where(site: Seo::SiteAudit::SITE).order(audited_on: :desc).first
   end
 
   private

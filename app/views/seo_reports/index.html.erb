@@ -252,6 +252,8 @@
 <% end %>
 
 <% content_for :scripts_block do %>
+<%= render "site_audit", audit: @site_audit %>
+
 <script>
 (function () {
   var el = document.getElementById('seoClicksChart');

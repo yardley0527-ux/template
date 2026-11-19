@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_17_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_19_170000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1730,6 +1730,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_17_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["report_date"], name: "index_seo_reports_on_report_date", unique: true
+  end
+
+  create_table "seo_site_audits", force: :cascade do |t|
+    t.string "site", null: false
+    t.date "audited_on", null: false
+    t.integer "pages_checked", default: 0, null: false
+    t.integer "pages_skipped", default: 0, null: false
+    t.jsonb "issues", default: [], null: false
+    t.jsonb "insights", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["site", "audited_on"], name: "index_seo_site_audits_on_site_and_audited_on", unique: true
   end
 
   create_table "shopline_customer_health_assessments", force: :cascade do |t|

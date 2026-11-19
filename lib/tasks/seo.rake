@@ -5,6 +5,8 @@
 #   bundle exec rake seo:daily                 # 產生今天的 SeoReport（Render Cron，排在 ops:notifications 之前）
 #   DAYS=480 bundle exec rake seo:backfill     # 回補 Search Console 每日總數（GSC 最多保留 16 個月）
 #   FORCE=1 bundle exec rake seo:line_digest   # 手動重發 LINE 摘要（seo:daily 平日會自動發）
+#   bundle exec rake seo:site_audit            # 官網全站健檢（約 30 分鐘）；seo:daily 週五會自動跑並推 LINE
+#     MAX_PAGES=30 只檢查前 30 頁（測試用）、NO_LINE=1 不推 LINE、FORCE=1 已推過也重推
 
 namespace :seo do
   desc "Generate today's SEO report (Search Console sync + health checks)"
@@ -27,6 +29,16 @@ namespace :seo do
       end
     end
 
+    # 週五做官網全站健檢並推總編輯群組（不用 AI，AI 暫停期間照發）；約 30 分鐘，放在 SEO 日報之後
+    if Date.current.friday?
+      begin
+        audit = Seo::SiteAudit.new.run!
+        puts "[seo:daily] 全站健檢 #{audit.pages_checked} 頁、#{audit.issues.size} 項問題；推播 #{Seo::SiteAuditDigest.call(audit)} 個群組"
+      rescue StandardError => e
+        puts "[seo:daily] 全站健檢失敗：#{e.class}: #{e.message}"
+      end
+    end
+
     # 這支 Cron 剛好是台灣 10:00 跑，週一順便發 CRM 群組的生日名單（跟 SEO 報告無關，失敗互不影響）
     if Date.current.monday?
       begin
@@ -42,6 +54,17 @@ namespace :seo do
     abort("[seo:line_digest] #{AiReports::PAUSED_NOTE}") if AiReports.paused?
     report = SeoReport.latest or abort("[seo:line_digest] 還沒有 SEO 報告")
     puts "[seo:line_digest] 推播 #{Seo::LineDigest.call(report, force: ENV['FORCE'].present?)} 個群組"
+  end
+
+  desc "Weekly full-site audit of yardley.tw. MAX_PAGES= NO_LINE=1 FORCE=1"
+  task site_audit: :environment do
+    max = ENV["MAX_PAGES"].presence&.to_i
+    audit = Seo::SiteAudit.new(max_pages: max).run!
+    digest = Seo::SiteAuditDigest.new(audit)
+    puts digest.message
+    next if ENV["NO_LINE"].present?
+
+    puts "[seo:site_audit] 推播 #{Seo::SiteAuditDigest.call(audit, force: ENV['FORCE'].present?)} 個群組"
   end
 
   desc "Backfill Search Console daily totals. DAYS=480 by default."

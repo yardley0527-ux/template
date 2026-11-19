@@ -69,6 +69,11 @@ module Seo
         "rising" => rising.sort_by { |r| -(r["impressions"] - r["previous_impressions"]) }.first(TOPIC_LIMIT).map { |r| topic_row(r) } }
     end
 
+    # 每週報告用：任意維度的原始列（近 28 天、query+page 等）
+    def rows(site, range, dimensions, row_limit: 5000)
+      query(site, startDate: range.first.to_s, endDate: range.last.to_s, dimensions: dimensions, rowLimit: row_limit)
+    end
+
     private
 
     def topic_row(row)
