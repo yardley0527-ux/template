@@ -30,6 +30,23 @@ class IgFollowerSnapshot < ApplicationRecord
     imported
   end
 
+  # 本機 script 寫的 JSON 跟這張表合併，同一帳號取最後一筆日期比較新的那邊（理由見 IgFollowersController）。
+  # 回傳 { "帳號" => [{ "date" => "2026-10-29", "followers" => 140262 }, ...] }
+  def self.merged_data(path = Rails.root.join("data", "ig_followers_data.json"))
+    json_data = File.exist?(path) ? JSON.parse(File.read(path)) : {}
+    return json_data unless connection.data_source_exists?(table_name)
+
+    backfill_if_empty!
+    db_data = order(:snapshot_date).group_by(&:account).transform_values do |rows|
+      rows.map { |r| { "date" => r.snapshot_date.to_s, "followers" => r.followers } }
+    end
+    json_data.merge(db_data) do |_account, json_entries, db_entries|
+      json_last = json_entries.last&.dig("date")
+      db_last = db_entries.last&.dig("date")
+      db_last && (json_last.nil? || db_last > json_last) ? db_entries : json_entries
+    end
+  end
+
   def self.backfill_if_empty!
     return unless count.zero?
 

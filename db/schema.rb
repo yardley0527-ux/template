@@ -10,10 +10,20 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_19_170000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_20_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
+
+  create_table "ad_weekly_metrics", force: :cascade do |t|
+    t.date "week_end", null: false
+    t.integer "spend", default: 0, null: false
+    t.integer "ad_follows", default: 0, null: false
+    t.jsonb "notes", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["week_end"], name: "index_ad_weekly_metrics_on_week_end", unique: true
+  end
 
   create_table "admins", force: :cascade do |t|
     t.string "email"

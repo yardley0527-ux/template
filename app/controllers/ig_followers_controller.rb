@@ -62,20 +62,7 @@ class IgFollowersController < ApplicationController
   # 用 ig_follower_snapshots_table_ready? 保護：如果正式站的 migration 還沒跑（新
   # 資料表還不存在），就先只用 JSON 檔案顯示舊資料，不要整頁 500。
   def merged_data
-    json_data = File.exist?(DATA_PATH) ? JSON.parse(File.read(DATA_PATH)) : {}
-    return json_data unless ig_follower_snapshots_table_ready?
-
-    IgFollowerSnapshot.backfill_if_empty!
-
-    db_data = IgFollowerSnapshot.order(:snapshot_date).group_by(&:account).transform_values do |rows|
-      rows.map { |r| { "date" => r.snapshot_date.to_s, "followers" => r.followers } }
-    end
-
-    json_data.merge(db_data) do |_account, json_entries, db_entries|
-      json_last = json_entries.last&.dig("date")
-      db_last = db_entries.last&.dig("date")
-      (db_last && (json_last.nil? || db_last > json_last)) ? db_entries : json_entries
-    end
+    IgFollowerSnapshot.merged_data(DATA_PATH)
   end
 
   def ig_follower_snapshots_table_ready?

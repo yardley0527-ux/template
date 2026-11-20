@@ -219,4 +219,19 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "seo-weekly-text"
     assert_includes response.body, "優惠頁"
   end
+
+  test "廣告週報：沒填 Meta 數字時說還沒填，填了就帶出花費、每位追蹤成本和單一廣告重點" do
+    sign_in @admin
+    get order_briefs_path, params: { report: "ads_weekly", date: "2026-11-17" }
+    assert_response :ok
+    assert_includes response.body, "ads-weekly-text"
+    assert_includes response.body, "11/11–11/17"
+    assert_includes response.body, "Meta 數字還沒填"
+
+    AdWeeklyMetric.create!(week_end: Date.new(2026, 11, 17), spend: 72_520, ad_follows: 387, notes: ["FB 版位花 33%，排除 FB"])
+    get order_briefs_path, params: { report: "ads_weekly", date: "2026-11-17" }
+    assert_includes response.body, "$72,520"
+    assert_includes response.body, "每位 $187"
+    assert_includes response.body, "FB 版位花 33%"
+  end
 end

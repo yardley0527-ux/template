@@ -29,6 +29,7 @@ class OrderBriefsController < ApplicationController
     case params[:report]
     when "seo" then seo_report
     when "seo_weekly" then seo_weekly_report
+    when "ads_weekly" then ads_weekly_report
     when "returns" then returns_report if valid_range?(@day_from, @day, max: MAX_DAILY_RANGE_DAYS)
     when "birthdays" then birthdays_report
     when "unrepurchased" then unrepurchased_report
@@ -81,6 +82,14 @@ class OrderBriefsController < ApplicationController
     @weekly_audit = SeoSiteAudit.where(site: Seo::SiteAudit::SITE, audited_on: ..(@day + 1)).order(audited_on: :desc).first
     @weekly_text = Seo::SiteAuditDigest.new(@weekly_audit).message if @weekly_audit
     @result_title = ["Claude SEO 外掛每週報告", md(@weekly_audit&.audited_on || @day)]
+  end
+
+  # 廣告週報：結束日往前 7 天跟上一週比；Meta 數字每週由 Claude 填進 ad_weekly_metrics
+  def ads_weekly_report
+    digest = AdsWeekly::Digest.new(@day)
+    @ads_weekly_text = digest.message
+    @ads_weekly_label = digest.label
+    @result_title = ["廣告週報", digest.label]
   end
 
   def returns_report

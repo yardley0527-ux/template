@@ -21,6 +21,7 @@
     ["brief", "產生簡報", "新舊客、卡別、產品、回購明細，多天合併成一份；勾 AI 重點要多等約 1 分鐘"],
     ["sales", "產生銷售日報", "區間訂單（多天有每天明細）、月累計、卡別、年齡、熱銷商品"],
     ["seo", "產生 SEO 日報", "點擊、排名與文章健檢；抓結束日隔天以前最新一份"],
+    ["ads_weekly", "廣告週報", "結束日往前 7 天：營收新客、Chloe IG 追蹤、Meta 花費與單一廣告重點，跟上一週比"],
     ["seo_weekly", "Claude SEO 外掛每週報告", "官網全站健檢＋搜尋數據；每週五上午自動跑，這裡抓結束日隔天以前最新一份"],
     ["birthdays", "生日名單（本週）", "黑金卡本週生日、3 週內生日的高消費客人；看結束日隔天那一週"],
     ["returns", "黑金卡回來了", "區間內下單、上次購買隔 180 天以上的黑金卡"]
@@ -142,7 +143,21 @@
   </div>
 <% end %>
 
-<% if params[:report] == "seo_weekly" && params[:date].present? %>
+<% if params[:report] == "ads_weekly" && params[:date].present? %>
+  <div class="panel">
+    <div class="panel-hdr">
+      <h2><%= @ads_weekly_label %> 廣告週報</h2>
+      <div class="panel-toolbar">
+        <button type="button" class="btn btn-xs btn-success js-copy" data-target="ads-weekly-text">複製</button>
+      </div>
+    </div>
+    <div class="panel-container show">
+      <div class="panel-content">
+        <div id="ads-weekly-text" style="white-space: pre-wrap; font-size: 14px; line-height: 1.6;"><%= @ads_weekly_text %></div>
+      </div>
+    </div>
+  </div>
+<% elsif params[:report] == "seo_weekly" && params[:date].present? %>
   <% if @weekly_text %>
     <div class="panel">
       <div class="panel-hdr">
