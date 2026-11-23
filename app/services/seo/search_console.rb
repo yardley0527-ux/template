@@ -70,6 +70,14 @@ module Seo
     end
 
     # 每週報告用：任意維度的原始列（近 28 天、query+page 等）
+    # 某一頁近期實際被搜的關鍵字：[[關鍵字, 曝光, 點擊, 排名], ...]（曝光多的在前）
+    def page_queries(site, page, range, limit: 10)
+      rows = query(site, startDate: range.first.to_s, endDate: range.last.to_s, dimensions: ["query"], rowLimit: 50,
+                         dimensionFilterGroups: [{ filters: [{ dimension: "page", operator: "equals", expression: page }] }])
+      rows.sort_by { |r| -r["impressions"] }.first(limit)
+          .map { |r| [r["keys"][0], r["impressions"].to_i, r["clicks"].to_i, r["position"].round(1)] }
+    end
+
     def rows(site, range, dimensions, row_limit: 5000)
       query(site, startDate: range.first.to_s, endDate: range.last.to_s, dimensions: dimensions, rowLimit: row_limit)
     end

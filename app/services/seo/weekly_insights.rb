@@ -7,6 +7,7 @@ module Seo
   #   low_ctr     — 近 28 天曝光高、點擊率低的頁面：先改標題和描述
   #   striking    — 近 28 天排名 5–15 的關鍵字：差一點進前幾名，補強對應文章
   #   drops       — 近 7 天 vs 前 7 天點擊掉最多的頁面
+  #   page_queries — 上面出現的每一頁，近 28 天實際被搜的關鍵字（寫「具體怎麼改」的依據）
   class WeeklyInsights
     SITE = "yardley"
     LIMIT = 5
@@ -26,7 +27,7 @@ module Seo
       pages = @gsc.rows(SITE, month, ["page"])
       queries = @gsc.rows(SITE, month, %w[query page])
 
-      {
+      out = {
         "data_range" => [(end_date - 6).to_s, end_date.to_s],
         "clicks" => clicks(end_date),
         "revenue" => revenue,
@@ -34,9 +35,24 @@ module Seo
         "striking" => striking(queries),
         "drops" => @gsc.movers(SITE, end_date: end_date).dig("pages", "drops").to_a.first(LIMIT)
       }
+      out.merge("page_queries" => page_queries(out, month))
+    end
+
+    def self.referenced_pages(insights)
+      (%w[low_ctr striking].flat_map { |k| insights[k].to_a.map { |r| r["page"] } } +
+        insights["drops"].to_a.map { |r| r["key"] }).compact.uniq
     end
 
     private
+
+    def page_queries(insights, range)
+      self.class.referenced_pages(insights).index_with do |page|
+        @gsc.page_queries(SITE, page, range)
+      rescue StandardError => e
+        Rails.logger.warn("[seo] page_queries #{page}: #{e.message}")
+        []
+      end
+    end
 
     def clicks(end_date)
       scope = SeoDailyMetric.for_site(SITE)

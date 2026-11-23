@@ -218,6 +218,12 @@ class OrderBriefsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Claude SEO 外掛每週報告"
     assert_includes response.body, "seo-weekly-text"
     assert_includes response.body, "優惠頁"
+    assert_not_includes response.body, "seo-weekly-advice"
+
+    SeoSiteAudit.last.update!(insights: { "manual_advice" => "標題改成：全身無力懶懶的怎麼辦？" })
+    get order_briefs_path, params: { report: "seo_weekly", date: "2026-11-19" }
+    assert_includes response.body, "加強版：每一頁具體怎麼改"
+    assert_includes response.body, "全身無力懶懶的怎麼辦"
   end
 
   test "廣告週報：沒填 Meta 數字時說還沒填，填了就帶出花費、每位追蹤成本和單一廣告重點" do

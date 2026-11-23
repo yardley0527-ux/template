@@ -81,6 +81,7 @@ class OrderBriefsController < ApplicationController
   def seo_weekly_report
     @weekly_audit = SeoSiteAudit.where(site: Seo::SiteAudit::SITE, audited_on: ..(@day + 1)).order(audited_on: :desc).first
     @weekly_text = Seo::SiteAuditDigest.new(@weekly_audit).message if @weekly_audit
+    @weekly_advice = @weekly_audit&.insights&.dig("manual_advice").presence
     @result_title = ["Claude SEO 外掛每週報告", md(@weekly_audit&.audited_on || @day)]
   end
 

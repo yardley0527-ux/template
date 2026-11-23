@@ -45,6 +45,7 @@ module Seo
       result = audit
       insights = (insights || WeeklyInsights.new.call).dup
       insights["titles"] = referenced_titles(insights, result[:titles])
+      insights["page_meta"] = referenced_meta(insights, result[:meta])
       SeoSiteAudit.find_or_initialize_by(site: SITE, audited_on: @date).tap do |record|
         record.update!(pages_checked: result[:checked], pages_skipped: result[:skipped], issues: result[:issues],
                        insights: insights)
@@ -53,11 +54,17 @@ module Seo
 
     # 搜尋數據裡出現的頁面 → 爬到的頁面標題（LINE 用標題比網址好認）
     def referenced_titles(insights, titles)
-      urls = %w[low_ctr striking].flat_map { |k| insights[k].to_a.map { |r| r["page"] } } +
-             insights["drops"].to_a.map { |r| r["key"] }
-      urls.compact.uniq.filter_map do |url|
+      WeeklyInsights.referenced_pages(insights).filter_map do |url|
         key = normalize(path_of(url))
         [key, titles[key]] if titles[key].present?
+      end.to_h
+    end
+
+    # 同上那幾頁目前的標題、描述、段落標題（H2）：寫建議時對照「搜的字」跟「頁面寫的字」
+    def referenced_meta(insights, meta)
+      WeeklyInsights.referenced_pages(insights).filter_map do |url|
+        key = normalize(path_of(url))
+        [key, meta[key]] if meta&.key?(key)
       end.to_h
     end
 
@@ -84,7 +91,11 @@ module Seo
       issues.concat(broken_link_issues(pages, urls))
       issues.concat(multilang_issues(base))
       titles = pages.to_h { |p| [normalize(path_of(p[:url])), p[:title]] }
-      { checked: urls.size - skipped, skipped: skipped, issues: issues, titles: titles }
+      meta = pages.to_h do |p|
+        [normalize(path_of(p[:url])),
+         { "title" => p[:title], "description" => p[:descriptions].max_by(&:length).to_s.squish.truncate(160), "h2" => p[:h2] }]
+      end
+      { checked: urls.size - skipped, skipped: skipped, issues: issues, titles: titles, meta: meta }
     end
 
     def sitemap_urls(base)
@@ -105,6 +116,7 @@ module Seo
         title: doc.at_css("title")&.text.to_s.strip,
         descriptions: doc.css("meta[name='description']").map { |m| m["content"].to_s.strip },
         h1: doc.css("h1").size,
+        h2: doc.css("h2").map { |h| h.text.squish }.reject { |t| t.empty? || t.start_with?("追蹤苼莛") }.first(25),
         canonical: doc.at_css("link[rel='canonical']")&.[]("href").to_s.strip,
         noindex: robots.any? { |c| c.include?("noindex") } || response.headers["x-robots-tag"].to_s.downcase.include?("noindex"),
         schema_types: doc.css("script[type='application/ld+json']").flat_map { |s| s.text.scan(/"@type"\s*:\s*"([A-Za-z]+)"/).flatten }.uniq,

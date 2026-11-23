@@ -67,6 +67,31 @@ namespace :seo do
     puts "[seo:site_audit] 推播 #{Seo::SiteAuditDigest.call(audit, force: ENV['FORCE'].present?)} 個群組"
   end
 
+  # 加強版每週報告（AI 暫停中由 Claude 本機寫）：
+  #   rake seo:weekly_facts                 # 印出每頁實際被搜的字＋目前標題／描述／H2
+  #   rake seo:weekly_advice FILE=advice.txt # 寫好的「具體怎麼改」存進最新一份，報告中心顯示可複製
+  desc "Print per-page search queries and current title/description/H2 of the latest weekly audit"
+  task weekly_facts: :environment do
+    audit = SeoSiteAudit.where(site: Seo::SiteAudit::SITE).order(:audited_on).last or abort("還沒有每週報告")
+    ins = audit.insights
+    puts "#{audit.audited_on}（搜尋數據 #{ins['data_range']&.join('–')}）"
+    Seo::WeeklyInsights.referenced_pages(ins).each do |url|
+      key = Seo::SiteAudit.page_key(url)
+      meta = ins.dig("page_meta", key) || {}
+      puts "\n== #{key}", "標題：#{meta['title'] || ins.dig('titles', key)}", "描述：#{meta['description']}"
+      puts "H2：#{meta['h2'].to_a.join('／')}"
+      ins.dig("page_queries", url).to_a.each { |q, imp, clk, pos| puts "  #{q}｜曝光 #{imp}・點擊 #{clk}・排名 #{pos}" }
+    end
+  end
+
+  desc "Save hand-written weekly advice (FILE=) into the latest weekly audit"
+  task weekly_advice: :environment do
+    text = File.read(ENV.fetch("FILE")).strip
+    audit = SeoSiteAudit.where(site: Seo::SiteAudit::SITE).order(:audited_on).last or abort("還沒有每週報告")
+    audit.update!(insights: audit.insights.merge("manual_advice" => text))
+    puts "[seo:weekly_advice] 已存進 #{audit.audited_on}（#{text.length} 字）"
+  end
+
   desc "Backfill Search Console daily totals. DAYS=480 by default."
   task backfill: :environment do
     days = (ENV["DAYS"] || 480).to_i
