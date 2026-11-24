@@ -61,6 +61,8 @@ class CustomersController < ApplicationController
   FIRST_SOURCE_OPTIONS = CustomerPurchaseSummaryRefreshService::SERIES_OPTIONS
     .flat_map { |s| s == "PDRN" ? ["PDRN 預購", "PDRN 現貨"] : [s] } + ["其他"]
 
+  PR_GIFT_ANY = "__any__"
+
   AGE_GROUP_ORDER =["未滿 25", "25–29", "30–34", "35–39", "40–44", "45 以上"].freeze
   ZODIAC_ORDER    = %w[牡羊 金牛 雙子 巨蟹 獅子 處女 天秤 天蠍 射手 摩羯 水瓶 雙魚].freeze
 
@@ -82,6 +84,8 @@ class CustomersController < ApplicationController
     @first_source     = params[:first_source].to_s.strip
     @first_source_options = FIRST_SOURCE_OPTIONS
     @first_big_set    = params[:first_big_set].to_s.strip
+    @pr_gift          = params[:pr_gift].to_s.strip
+    @pr_gift_options  = PrGift.group(:product_name).order(Arel.sql("COUNT(*) DESC")).count
 
     @membership_order = %w[黑卡 金卡 銀卡 白卡 一般會員 非會員]
     @membership_levels = ShoplineCustomer.distinct.pluck(:membership_level)
@@ -156,6 +160,12 @@ class CustomersController < ApplicationController
         .select { |_, bd| personal_year_number(bd) == py_num }
         .map(&:first)
       scope = scope.where(id: matching_ids)
+    end
+
+    # 公關品：客人個人頁「🎁 公關品紀錄」登記過的產品（PR_GIFT_ANY＝收過任何公關品）
+    if @pr_gift.present?
+      gifts = @pr_gift == PR_GIFT_ANY ? PrGift.all : PrGift.where(product_name: @pr_gift)
+      scope = scope.where(id: gifts.select(:shopline_customer_id))
     end
 
     if @brand_ambassador == "1"
@@ -241,6 +251,11 @@ class CustomersController < ApplicationController
       end
     end
 
+
+    # 列表上顯示收過的公關品（有選公關品篩選時只顯示該產品）
+    gift_scope = PrGift.where(shopline_customer_id: @customers.map(&:id)).recent_first
+    gift_scope = gift_scope.where(product_name: @pr_gift) if @pr_gift.present? && @pr_gift != PR_GIFT_ANY
+    @pr_gifts_by_customer = gift_scope.group_by(&:shopline_customer_id)
 
     # 首購來源：customer_purchase_summaries 每次匯入訂單後自動重算（第一筆已付款訂單），
     # 身份跟該表一致用 手機 > email 合併

@@ -86,6 +86,14 @@
             </div>
 
             <div class="col-sm-6 col-md-2 mt-md-2">
+              <label class="form-label">公關品</label>
+              <%= select_tag :pr_gift,
+                options_for_select([["全部", ""], ["收過任何公關品", CustomersController::PR_GIFT_ANY]] +
+                  @pr_gift_options.map { |name, cnt| ["#{name}（#{cnt} 筆）", name] }, @pr_gift),
+                class: "form-control" %>
+            </div>
+
+            <div class="col-sm-6 col-md-2 mt-md-2">
               <label class="form-label">最近消費</label>
               <%= select_tag :recent_purchase,
                 options_for_select([["全部", ""], ["3個月內有消費", "1"]], @recent_purchase),
@@ -186,6 +194,9 @@
                           <span style="color:<%= warn_color %>; font-size:0.75em;" title="未購警示">⚠</span>
                         <% end %>
                       </div>
+                      <% Array(@pr_gifts_by_customer[c.id]).each do |g| %>
+                        <div class="small" style="color:#8f6340;" title="<%= g.note %>">🎁 <%= g.summary %>（<%= g.given_on.strftime("%-m/%-d") %>）</div>
+                      <% end %>
                       <div class="small text-muted">
                         <% if c.instagram_account.present? %>
                           <a href="https://instagram.com/<%= c.instagram_account %>" target="_blank" rel="noopener noreferrer">
