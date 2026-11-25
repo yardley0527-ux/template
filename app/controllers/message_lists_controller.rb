@@ -96,7 +96,7 @@ class MessageListsController < ApplicationController
     require "csv"
 
     csv = CSV.generate(encoding: "UTF-8") do |rows|
-      rows << ["姓名", "IG", "LINE ID", "Email", "會員等級", "分類", "回購狀態", "回購日期", "回購商品", "回購金額"]
+      rows << ["姓名", "IG", "LINE ID", "Email", "會員等級", "分類", "已買", "回購狀態", "回購日期", "回購商品", "回購金額"]
       sorted_recipients(list).each do |r|
         rep = repurchases[r.email]
         rows << [
@@ -106,6 +106,7 @@ class MessageListsController < ApplicationController
           r.email,
           r.membership_level,
           r.segment,
+          r.purchased_on,
           rep ? "已回購" : "未回購",
           rep && rep["order_date"].to_date,
           rep && rep["product_names"],

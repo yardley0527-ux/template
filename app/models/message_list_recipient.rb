@@ -4,6 +4,9 @@
 # 名單成員：email 為正規化（LOWER/TRIM）後的識別鍵，
 # 其餘欄位是建立名單當下從 shopline_customers / shopline_orders 抄來的快照。
 #
+# purchased_on：名單還沒傳出去前，客人就已經買了目標商品的日期（跑訂單簡報時由
+# MessageLists::MarkPurchased 寫入），提醒傳訊息的人不用再推銷。
+#
 # maintenance_date 起到 next_follow_up_date 這幾欄是人工維護紀錄——聯繫完
 # 客人之後直接在名單上填寫，跟系統自動判斷的回購成效分開記錄。
 class MessageListRecipient < ApplicationRecord

@@ -236,6 +236,9 @@ end %>
                 <i class="fal fa-at"></i> <%= r.instagram_account&.sub(/^@/, '') %>
               <% end %>
             <% end %>
+            <% if r.purchased_on %>
+              <span class="ml-repurchase-badge ml-purchased-before">已買 <%= r.purchased_on.strftime('%-m/%-d') %></span>
+            <% end %>
             <% if rep %>
               <span class="ml-repurchase-badge ml-repurchase-yes">✓ 已回購</span>
             <% else %>
@@ -340,6 +343,7 @@ end %>
                 <th class="ps-3" style="width:130px;">姓名</th>
                 <th style="width:160px;"><%= @show_line_id ? "LINE ID" : "IG" %></th>
                 <th style="width:110px;">分類</th>
+                <th style="width:90px;">已買</th>
                 <th>回購狀態</th>
               </tr>
             </thead>
@@ -377,6 +381,13 @@ end %>
                     <% if r.segment.present? %>
                       <% seg_bg, seg_fg = r.segment == "回購鐵粉" ? ["#6e4a2e", "#fff"] : ["#f0e2cf", "#6e4a2e"] %>
                       <span class="badge" style="background:<%= seg_bg %>; color:<%= seg_fg %>; font-size:0.75rem;"><%= r.segment %></span>
+                    <% else %>
+                      <span class="text-muted small">—</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <% if r.purchased_on %>
+                      <span class="ml-repurchase-badge ml-purchased-before"><%= r.purchased_on.strftime('%-m/%-d') %></span>
                     <% else %>
                       <span class="text-muted small">—</span>
                     <% end %>
@@ -489,6 +500,7 @@ end %>
 .ml-repurchase-badge { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 99px; white-space: nowrap; }
 .ml-repurchase-yes { background: #e8f4ea; color: #188038; }
 .ml-repurchase-no { background: #f1f1ef; color: #8a8577; }
+.ml-purchased-before { background: #fdf0e1; color: #a4611f; }
 .ml-repurchase-detail { font-size: 0.78rem; color: #6c757d; margin: -2px 0 10px; }
 
 .ml-info-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 16px; background: #faf7f2; border: 1px solid #f0e9dc; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; }
