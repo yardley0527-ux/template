@@ -80,12 +80,12 @@
           <div class="edit-field">
             <label class="edit-label">已流失</label>
             <label class="toggle-wrap">
-              <%= f.check_box :churned, class: "toggle-input" %>
+              <%= f.check_box :churned, class: "toggle-input", id: "churned-toggle" %>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
               <span class="toggle-text">標記為已流失客人</span>
             </label>
 
-            <div class="product-tag-selector mt-2" id="churned-product-selector">
+            <div class="product-tag-selector mt-2" id="churned-product-selector" style="<%= 'display:none;' unless @profile.churned? %>">
               <p class="text-muted small mb-1">流失哪些產品？（可多選；不選＝整個客人流失，所有名單都不傳）</p>
               <%= hidden_field_tag "customer_profile[churned_products][]", "" %>
 
@@ -275,6 +275,22 @@
     bindTagSelector("health-tag-selector", "health-tag-checkbox", "health-tag-summary");
     bindTagSelector("shengting-product-selector", "shengting-product-checkbox", "shengting-product-summary");
     bindTagSelector("churned-product-selector", "churned-product-checkbox", "churned-product-summary");
+
+    // 流失產品跟「已流失」連動：沒打開就不顯示產品，關掉時清空已選產品
+    (function () {
+      var toggle = document.getElementById("churned-toggle");
+      var selector = document.getElementById("churned-product-selector");
+      if (!toggle || !selector) return;
+      toggle.addEventListener("change", function () {
+        selector.style.display = toggle.checked ? "" : "none";
+        if (!toggle.checked) {
+          selector.querySelectorAll(".churned-product-checkbox").forEach(function (cb) { cb.checked = false; });
+          selector.querySelectorAll(".product-tag-chip").forEach(function (chip) { chip.classList.remove("is-selected"); });
+          var summary = document.getElementById("churned-product-summary");
+          if (summary) summary.textContent = "（尚未選擇）";
+        }
+      });
+    })();
   });
 </script>
 

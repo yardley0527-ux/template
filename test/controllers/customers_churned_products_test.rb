@@ -14,7 +14,7 @@ class CustomersChurnedProductsTest < ActionDispatch::IntegrationTest
   test "編輯頁可以勾選流失產品並在客人頁顯示" do
     get edit_customer_path(@customer)
     assert_response :success
-    assert_select "#churned-product-selector .product-tag-chip", text: "代謝錠"
+    assert_select "#churned-product-selector[style*='display:none'] .product-tag-chip", text: "代謝錠"
 
     patch customer_path(@customer), params: { customer_profile: { churned: "1", churned_products: ["", "代謝錠", "薑黃"] } }
     profile = @customer.reload.customer_profile
@@ -23,5 +23,8 @@ class CustomersChurnedProductsTest < ActionDispatch::IntegrationTest
 
     get customer_path(@customer)
     assert_includes response.body, "（代謝錠、薑黃）"
+
+    get edit_customer_path(@customer)
+    assert_select "#churned-product-selector[style*='display:none']", count: 0
   end
 end
