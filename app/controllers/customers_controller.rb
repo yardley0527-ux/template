@@ -620,7 +620,8 @@ class CustomersController < ApplicationController
       product_tags: [],
       health_tags: [],
       shengting_product_tags: [],
-      churned_products: []
+      churned_products: [],
+      tracked_products: []
     )
   end
 

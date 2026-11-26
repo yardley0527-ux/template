@@ -25,6 +25,7 @@ class CustomerEditLog < ApplicationRecord
     "churned"                     => "已流失",
     "churned_products"            => "已流失產品",
     "tracked"                     => "追蹤",
+    "tracked_products"            => "追蹤產品",
     "malicious_return_orders"     => "惡意退貨訂單"
   }.freeze
 end

@@ -27,4 +27,18 @@ class CustomersChurnedProductsTest < ActionDispatch::IntegrationTest
     get edit_customer_path(@customer)
     assert_select "#churned-product-selector[style*='display:none']", count: 0
   end
+
+  test "追蹤打開後可以多選產品，關掉會清空" do
+    get edit_customer_path(@customer)
+    assert_select "#tracked-product-selector[style*='display:none'] .product-tag-chip", text: "全能"
+
+    patch customer_path(@customer), params: { customer_profile: { tracked: "1", tracked_products: ["", "全能", "PDRN"] } }
+    assert_equal %w[全能 PDRN], @customer.reload.customer_profile.tracked_products
+
+    get customer_path(@customer)
+    assert_includes response.body, "（全能、PDRN）"
+
+    patch customer_path(@customer), params: { customer_profile: { tracked: "0", tracked_products: ["", "全能"] } }
+    assert_equal [], @customer.reload.customer_profile.tracked_products
+  end
 end

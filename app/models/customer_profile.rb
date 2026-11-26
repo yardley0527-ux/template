@@ -106,6 +106,7 @@ class CustomerProfile < ApplicationRecord
 
   def normalize_tag_fields
     self.churned_products      = churned? ? normalize_array(churned_products) : []
+    self.tracked_products      = tracked? ? normalize_array(tracked_products) : []
     self.product_tags          = normalize_array(product_tags)
     self.health_tags           = normalize_array(health_tags)
     self.shengting_product_tags = normalize_array(shengting_product_tags)

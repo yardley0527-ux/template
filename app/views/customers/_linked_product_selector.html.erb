@@ -1,0 +1,32 @@
+<%# 跟開關連動的產品多選：開關沒打開就隱藏，關掉時清空（JS 在 edit 頁 bindLinkedProductSelector） %>
+<div class="product-tag-selector mt-2" id="<%= prefix %>-product-selector" style="<%= 'display:none;' unless visible %>">
+  <p class="text-muted small mb-1"><%= hint %></p>
+  <%= hidden_field_tag "customer_profile[#{field}][]", "" %>
+
+  <div class="product-tag-list">
+    <% options.each do |tag| %>
+      <% checked = selected.include?(tag) %>
+
+      <button
+        type="button"
+        class="product-tag-chip <%= 'is-selected' if checked %>"
+        data-tag-value="<%= tag %>">
+        <%= tag %>
+      </button>
+
+      <%= check_box_tag "customer_profile[#{field}][]",
+                        tag,
+                        checked,
+                        id: "customer_profile_#{field}_#{tag.parameterize}",
+                        class: "#{prefix}-product-checkbox d-none",
+                        data: { tag_value: tag } %>
+    <% end %>
+  </div>
+
+  <div class="product-tag-selected">
+    <span class="product-tag-selected-label">已選：</span>
+    <span id="<%= prefix %>-product-summary">
+      <%= selected.present? ? selected.join("、") : "（尚未選擇）" %>
+    </span>
+  </div>
+</div>

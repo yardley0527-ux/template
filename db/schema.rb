@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_26_150000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_26_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -415,6 +415,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_150000) do
     t.boolean "blacklisted", default: false, null: false
     t.boolean "churned", default: false, null: false
     t.string "churned_products", default: [], null: false, array: true
+    t.string "tracked_products", default: [], null: false, array: true
     t.datetime "notes_updated_at"
     t.boolean "tracked", default: false, null: false
     t.index ["health_tags"], name: "index_customer_profiles_on_health_tags", using: :gin

@@ -85,46 +85,22 @@
               <span class="toggle-text">標記為已流失客人</span>
             </label>
 
-            <div class="product-tag-selector mt-2" id="churned-product-selector" style="<%= 'display:none;' unless @profile.churned? %>">
-              <p class="text-muted small mb-1">流失哪些產品？（可多選；不選＝整個客人流失，所有名單都不傳）</p>
-              <%= hidden_field_tag "customer_profile[churned_products][]", "" %>
-
-              <div class="product-tag-list">
-                <% @shengting_product_options.each do |tag| %>
-                  <% checked = @profile.churned_products.include?(tag) %>
-
-                  <button
-                    type="button"
-                    class="product-tag-chip <%= 'is-selected' if checked %>"
-                    data-tag-value="<%= tag %>">
-                    <%= tag %>
-                  </button>
-
-                  <%= check_box_tag "customer_profile[churned_products][]",
-                                    tag,
-                                    checked,
-                                    id: "customer_profile_churned_products_#{tag.parameterize}",
-                                    class: "churned-product-checkbox d-none",
-                                    data: { tag_value: tag } %>
-                <% end %>
-              </div>
-
-              <div class="product-tag-selected">
-                <span class="product-tag-selected-label">已選：</span>
-                <span id="churned-product-summary">
-                  <%= @profile.churned_products.present? ? @profile.churned_products.join("、") : "（尚未選擇）" %>
-                </span>
-              </div>
-            </div>
+            <%= render "linked_product_selector", field: "churned_products", prefix: "churned",
+                       options: @shengting_product_options, selected: @profile.churned_products, visible: @profile.churned?,
+                       hint: "流失哪些產品？（可多選；不選＝整個客人流失，所有名單都不傳）" %>
           </div>
 
           <div class="edit-field">
             <label class="edit-label">追蹤</label>
             <label class="toggle-wrap">
-              <%= f.check_box :tracked, class: "toggle-input" %>
+              <%= f.check_box :tracked, class: "toggle-input", id: "tracked-toggle" %>
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
               <span class="toggle-text">列為待追蹤客人</span>
             </label>
+
+            <%= render "linked_product_selector", field: "tracked_products", prefix: "tracked",
+                       options: @shengting_product_options, selected: @profile.tracked_products, visible: @profile.tracked?,
+                       hint: "追蹤哪些產品？（可多選）" %>
           </div>
 
           <div class="edit-field">
@@ -276,21 +252,24 @@
     bindTagSelector("shengting-product-selector", "shengting-product-checkbox", "shengting-product-summary");
     bindTagSelector("churned-product-selector", "churned-product-checkbox", "churned-product-summary");
 
-    // 流失產品跟「已流失」連動：沒打開就不顯示產品，關掉時清空已選產品
-    (function () {
-      var toggle = document.getElementById("churned-toggle");
-      var selector = document.getElementById("churned-product-selector");
+    // 產品多選跟開關連動：沒打開就不顯示產品，關掉時清空已選產品
+    function bindLinkedProductSelector(toggleId, prefix) {
+      var toggle = document.getElementById(toggleId);
+      var selector = document.getElementById(prefix + "-product-selector");
       if (!toggle || !selector) return;
       toggle.addEventListener("change", function () {
         selector.style.display = toggle.checked ? "" : "none";
         if (!toggle.checked) {
-          selector.querySelectorAll(".churned-product-checkbox").forEach(function (cb) { cb.checked = false; });
+          selector.querySelectorAll("." + prefix + "-product-checkbox").forEach(function (cb) { cb.checked = false; });
           selector.querySelectorAll(".product-tag-chip").forEach(function (chip) { chip.classList.remove("is-selected"); });
-          var summary = document.getElementById("churned-product-summary");
+          var summary = document.getElementById(prefix + "-product-summary");
           if (summary) summary.textContent = "（尚未選擇）";
         }
       });
-    })();
+    }
+    bindLinkedProductSelector("churned-toggle", "churned");
+    bindTagSelector("tracked-product-selector", "tracked-product-checkbox", "tracked-product-summary");
+    bindLinkedProductSelector("tracked-toggle", "tracked");
   });
 </script>
 

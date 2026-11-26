@@ -100,7 +100,7 @@
         <div class="profile-status-item">
           <span class="profile-status-label">追蹤</span>
           <% if @profile.tracked? %>
-            <span class="status-check">✅</span>
+            <span class="status-check">✅<%= "（#{@profile.tracked_products.join('、')}）" if @profile.tracked_products.present? %></span>
           <% else %>
             <span class="status-empty">—</span>
           <% end %>
