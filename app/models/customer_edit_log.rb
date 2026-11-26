@@ -23,6 +23,7 @@ class CustomerEditLog < ApplicationRecord
     "brand_ambassador_blacklisted"=> "大使黑名單",
     "blacklisted"                 => "黑名單",
     "churned"                     => "已流失",
+    "churned_products"            => "已流失產品",
     "tracked"                     => "追蹤",
     "malicious_return_orders"     => "惡意退貨訂單"
   }.freeze

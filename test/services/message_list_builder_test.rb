@@ -55,4 +55,49 @@ class MessageListBuilderTest < ActiveSupport::TestCase
       assert_nil build(%w[black@example.com])
     end
   end
+  def make_churned(email:, products: [], ig: nil, name: "流失客")
+    c = ShoplineCustomer.create!(shopline_id: SecureRandom.hex(12), email: email, instagram_account: ig, full_name: name)
+    CustomerProfile.create!(shopline_customer_id: c.id, churned: true, churned_products: products)
+    c
+  end
+
+  def build_for(product, emails)
+    MessageListBuilder.create!(name: "測試名單", sent_on: Date.current, target_product: product, emails: emails)
+  end
+
+  test "excludes customers churned for the list's product only" do
+    make_customer(email: "ok@example.com")
+    make_churned(email: "met@example.com", products: ["代謝錠"], name: "代謝錠流失")
+
+    met_list = build_for("代謝錠", %w[ok@example.com met@example.com])
+    assert_equal ["ok@example.com"], met_list.recipients.pluck(:email)
+    assert_includes met_list.source_note, "已排除已流失客人 1 人（代謝錠流失：代謝錠）"
+
+    omni_list = build_for("全能", %w[ok@example.com met@example.com])
+    assert_equal %w[met@example.com ok@example.com], omni_list.recipients.pluck(:email).sort
+  end
+
+  test "matches any product in a multi-product list and spreads via IG" do
+    make_churned(email: "main@example.com", products: %w[全能 薑黃], ig: "Same_IG")
+    make_customer(email: "alt@example.com", ig: "same_ig")
+    make_customer(email: "ok@example.com")
+
+    list = build_for("代謝錠、薑黃", %w[alt@example.com ok@example.com])
+    assert_equal ["ok@example.com"], list.recipients.pluck(:email)
+  end
+
+  test "churned without products excludes from every list" do
+    make_churned(email: "all@example.com")
+    make_customer(email: "ok@example.com")
+
+    list = build_for("益生菌", %w[all@example.com ok@example.com])
+    assert_equal ["ok@example.com"], list.recipients.pluck(:email)
+  end
+
+  test "unchecking churned clears churned products" do
+    c = make_churned(email: "x@example.com", products: ["代謝錠"])
+    profile = c.customer_profile
+    profile.update!(churned: false)
+    assert_equal [], profile.reload.churned_products
+  end
 end

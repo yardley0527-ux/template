@@ -17,6 +17,8 @@
 # 排除，不管是手動灌的還是每日自動快照。同一人常用好幾個 email 下單，所以也用
 # IG 帳號把黑名單展開到同一人的其他 email。被排除的人數／姓名會補記在
 # source_note，日後查得到；排除後一個人都不剩就不建名單，回傳 nil。
+# CRM 標記「已流失」的客人也排除：有指定流失產品的，只在名單 target_product 對到時排除；
+# 沒指定產品＝整個客人流失，所有名單都排除。
 class MessageListBuilder
   def self.create!(name:, sent_on:, target_product:, emails:, source_note: nil, segments: {}, source: "manual", with_line_id: false)
     normalized = emails.filter_map { |e| e.to_s.strip.downcase.presence }.uniq
@@ -30,6 +32,16 @@ class MessageListBuilder
     if excluded.any?
       names = excluded.map { |e| blacklisted[e].presence || e }.uniq
       source_note = [source_note.presence, "已排除黑名單 #{excluded.size} 人（#{names.join('、')}）"].compact.join("\n")
+    end
+
+    churned = churned_emails(target_product)
+    churned_hit = normalized & churned.keys
+    normalized -= churned_hit
+    return nil if normalized.empty?
+
+    if churned_hit.any?
+      names = churned_hit.map { |e| churned[e] }.uniq
+      source_note = [source_note.presence, "已排除已流失客人 #{churned_hit.size} 人（#{names.join('、')}）"].compact.join("\n")
     end
 
     customers = customer_snapshots(normalized)
@@ -71,6 +83,30 @@ class MessageListBuilder
     rows = flagged.map { |email, _, name| [email, name] }
     if igs.any?
       rows += ShoplineCustomer.where("LOWER(TRIM(instagram_account)) IN (?)", igs).pluck(:email, :full_name)
+    end
+    rows.each_with_object({}) do |(email, name), h|
+      key = email.to_s.strip.downcase
+      h[key] ||= name if key.present?
+    end
+  end
+
+  # email → 「姓名（流失產品）」。CRM 標記已流失、且流失產品對得上這份名單 target_product 的客人
+  # （沒指定產品＝整個客人流失，任何名單都排除），一樣用 IG 展開到同一人的其他帳號。
+  def self.churned_emails(target_product)
+    flagged = ShoplineCustomer.joins(:customer_profile)
+                              .where(customer_profiles: { churned: true })
+                              .includes(:customer_profile)
+                              .select { |c| c.customer_profile.churned_for?(target_product) }
+    return {} if flagged.empty?
+
+    label = ->(c) { products = c.customer_profile.churned_products
+                    products.present? ? "#{c.full_name}：#{products.join('/')}" : "#{c.full_name}：全部" }
+    rows = flagged.map { |c| [c.email, label.call(c)] }
+    by_ig = flagged.each_with_object({}) { |c, h| ig = normalize_ig(c.instagram_account); h[ig] ||= label.call(c) if ig && ig.length >= 3 }
+    if by_ig.any?
+      ShoplineCustomer.where("LOWER(TRIM(instagram_account)) IN (?)", by_ig.keys).pluck(:email, :instagram_account).each do |email, ig|
+        rows << [email, by_ig[normalize_ig(ig)]]
+      end
     end
     rows.each_with_object({}) do |(email, name), h|
       key = email.to_s.strip.downcase

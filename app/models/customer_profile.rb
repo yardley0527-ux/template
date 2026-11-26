@@ -72,6 +72,18 @@ class CustomerProfile < ApplicationRecord
   ].freeze
 
   before_validation :normalize_tag_fields
+
+  # 已流失但沒指定產品＝整個客人流失；有指定產品＝只有這些產品流失。
+  # 名單 target_product（例如「代謝錠」「全能、PDRN」）碰到任何一個流失產品就算。
+  def churned_for?(target_product)
+    return false unless churned?
+    return true if churned_products.blank?
+
+    targets = target_product.to_s.split(/[、,，\/]/).map(&:strip).reject(&:blank?)
+    return true if targets.empty?
+
+    churned_products.any? { |p| targets.any? { |t| t.include?(p) || p.include?(t) } }
+  end
   before_save :stamp_stickiness_followed_up_at
   before_save :stamp_notes_updated_at
 
@@ -93,6 +105,7 @@ class CustomerProfile < ApplicationRecord
   end
 
   def normalize_tag_fields
+    self.churned_products      = churned? ? normalize_array(churned_products) : []
     self.product_tags          = normalize_array(product_tags)
     self.health_tags           = normalize_array(health_tags)
     self.shengting_product_tags = normalize_array(shengting_product_tags)

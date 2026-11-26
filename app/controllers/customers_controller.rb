@@ -619,7 +619,8 @@ class CustomersController < ApplicationController
       :special_attention,
       product_tags: [],
       health_tags: [],
-      shengting_product_tags: []
+      shengting_product_tags: [],
+      churned_products: []
     )
   end
 

@@ -91,7 +91,7 @@
         <div class="profile-status-item">
           <span class="profile-status-label">已流失</span>
           <% if @profile.churned? %>
-            <span class="status-check">✅</span>
+            <span class="status-check">✅<%= "（#{@profile.churned_products.join('、')}）" if @profile.churned_products.present? %></span>
           <% else %>
             <span class="status-empty">—</span>
           <% end %>
