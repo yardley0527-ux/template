@@ -18,30 +18,51 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     IgInbox::Claude.define_singleton_method(:call, original)
   end
 
-  test "有相同答案時原文帶入" do
+  def ai_result(reply: "寶貝 每天 6 顆喔", sources: [], conflicts: [], needs_human: false)
+    { "reply" => reply, "sources" => sources, "conflicts" => conflicts, "needs_human" => needs_human, "human_reason" => "" }
+  end
+
+  test "組成回覆並附上原文依據，等確認" do
     post reply_assistant_index_path, params: { question: "PDRN 一天要吃幾顆" }
-    run_job("match_ref" => "faq:#{@faq.id}", "draft" => "AI 改寫", "needs_human" => false, "human_reason" => "")
+    run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "每天 6 顆" }]))
     d = ReplyDraft.last
-    assert_equal "每天 6 顆喔", d.answer
-    assert d.direct_match?
+    assert_equal "pending", d.status
+    assert_equal "寶貝 每天 6 顆喔", d.answer
+    assert_equal [{ "ref" => "faq:#{@faq.id}", "question" => "PDRN 一天吃幾顆", "quote" => "每天 6 顆" }], d.sources
     get reply_assistant_index_path
-    assert_includes response.body, "已核准答案"
+    assert_includes response.body, "依據（Chloe 已核准的回答，原文）"
+    assert_includes response.body, "複製回覆"
+  end
+
+  test "不是答案原文或不在候選裡的引用都不採用" do
+    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
+    run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "每天 8 顆" },
+                                { "ref" => "faq:999999", "quote" => "每天 6 顆" }]))
+    assert_empty ReplyDraft.last.sources
+  end
+
+  test "說法不同的回答附上說明" do
+    other = ReplyKnowledgeItem.create!(question: "PDRN 怎麼吃", answer: "寶貝 一天 3 顆就好", source: "instagram", status: "approved")
+    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
+    run_job(ai_result(conflicts: [{ "ref" => "item:#{other.id}", "quote" => "一天 3 顆就好", "note" => "顆數不同" }]))
+    assert_equal "顆數不同", ReplyDraft.last.conflicts.first["note"]
+    get reply_assistant_index_path
+    assert_includes response.body, "說法不同的回答"
   end
 
   test "敏感問題一定標人工確認，即使 AI 判斷不用" do
     post reply_assistant_index_path, params: { question: "我懷孕了 PDRN 一天可以吃幾顆" }
-    run_job("match_ref" => "faq:#{@faq.id}", "draft" => "", "needs_human" => false, "human_reason" => "")
+    run_job(ai_result)
     d = ReplyDraft.last
     assert d.needs_human
     assert_equal "懷孕哺乳", d.human_reason
-    assert_not d.direct_match?
   end
 
-  test "AI 回傳候選以外的編號不採用" do
-    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
-    run_job("match_ref" => "faq:999999", "draft" => "草稿", "needs_human" => false, "human_reason" => "")
-    assert_nil ReplyDraft.last.match_ref
-    assert_equal "草稿", ReplyDraft.last.answer
+  test "產品別名也找得到：問瘦身粉會找到寫清纖粉的回答" do
+    item = ReplyKnowledgeItem.create!(question: "清纖粉怎麼吃", answer: "飯前 15–30 分鐘吃一包", source: "ig_history", status: "approved")
+    ReplyKnowledgeItem.create!(question: "全能怎麼吃", answer: "飯後吃", source: "ig_history", status: "approved")
+    refs = ReplyAssistant::Knowledge.candidates("瘦身粉是飯前空腹吃沒錯吧").map(&:ref)
+    assert_equal "item:#{item.id}", refs.first
   end
 
   test "核准草稿後存入知識庫，下一次會成為候選" do
@@ -70,18 +91,6 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     assert_equal "failed", ReplyDraft.last.status
     get reply_assistant_index_path
     assert_includes response.body, "API 錯誤"
-  end
-
-  test "原文帶入已核准答案不用再核准，AI 草稿仍待核准" do
-    post reply_assistant_index_path, params: { question: "PDRN 一天要吃幾顆" }
-    run_job("match_ref" => "faq:#{@faq.id}", "draft" => "", "needs_human" => false, "human_reason" => "")
-    direct = ReplyDraft.last
-    assert_equal "approved", direct.status
-    assert_equal "每天 6 顆喔", direct.final_answer
-
-    post reply_assistant_index_path, params: { question: "可以配咖啡嗎" }
-    run_job("match_ref" => "", "draft" => "草稿", "needs_human" => false, "human_reason" => "")
-    assert_equal "pending", ReplyDraft.last.status
   end
 
   test "知識庫可以用產品和主題交叉篩選，移除後留在原條件" do

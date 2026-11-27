@@ -1,0 +1,27 @@
+<%# 回覆的依據：逐字引用 Chloe 已核准的回答；說法不同的另外列出，給團隊判斷 %>
+<% if draft.sources.any? %>
+  <div class="mt-3">
+    <p class="small font-weight-bold mb-1">依據（Chloe 已核准的回答，原文）</p>
+    <ul class="small mb-0 pl-3">
+      <% draft.sources.each do |s| %>
+        <li class="mb-1">
+          <span class="text-muted">#<%= s["ref"].to_s.split(":").last %> <%= s["question"].to_s.truncate(30) %>：</span>
+          <span style="color:#14706a;">「<%= s["quote"] %>」</span>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+<% if draft.conflicts.any? %>
+  <div class="mt-2">
+    <p class="small font-weight-bold mb-1 text-warning">說法不同的回答</p>
+    <ul class="small mb-0 pl-3">
+      <% draft.conflicts.each do |c| %>
+        <li class="mb-1">
+          <span class="text-muted">#<%= c["ref"].to_s.split(":").last %> <%= c["question"].to_s.truncate(30) %>：</span>
+          「<%= c["quote"] %>」<% if c["note"].present? %><span class="text-muted">（<%= c["note"] %>）</span><% end %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>

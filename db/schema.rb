@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_26_160000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_27_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_trgm"
   enable_extension "plpgsql"
@@ -1694,6 +1694,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_160000) do
     t.datetime "reviewed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "citations", default: {}, null: false
     t.index ["status", "created_at"], name: "index_reply_drafts_on_status_and_created_at"
   end
 

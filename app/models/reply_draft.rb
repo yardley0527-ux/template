@@ -7,6 +7,16 @@ class ReplyDraft < ApplicationRecord
 
   scope :recent, -> { order(created_at: :desc) }
 
+  # 回覆裡每個重點的依據（Chloe 回答原文）
+  def sources
+    Array(citations["sources"])
+  end
+
+  # 知識庫裡說法跟回覆不同的回答
+  def conflicts
+    Array(citations["conflicts"])
+  end
+
   def direct_match?
     match_ref.present? && !needs_human
   end
