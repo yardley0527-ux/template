@@ -1,0 +1,23 @@
+<% content_for :page_title, "回覆助手詢問紀錄" %>
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-history mr-2 text-primary"></i> 回覆助手詢問紀錄
+    <small>所有人問過的問題與回覆，可以依員工篩選</small></h1>
+</div>
+
+<%= render "reply_assistant/nav", active: :logs %>
+
+<div class="mb-3">
+  <%= link_to "全部 #{@asker_counts.values.sum}", chloe_reply_logs_path, class: "btn btn-xs mb-1 #{@user_id ? 'btn-outline-secondary' : 'btn-primary'}" %>
+  <% @askers.each do |u| %>
+    <%= link_to "#{u.username} #{@asker_counts[u.id]}", chloe_reply_logs_path(user_id: u.id), class: "btn btn-xs mb-1 #{@user_id == u.id ? 'btn-primary' : 'btn-outline-secondary'}" %>
+  <% end %>
+</div>
+
+<p class="text-muted small">共 <%= @total %> 則</p>
+<% if @drafts.empty? %>
+  <p class="text-muted">還沒有詢問紀錄。</p>
+<% end %>
+<% @drafts.each do |d| %>
+  <%= render "chloe_replies/draft", d: d, editable: false, show_asker: true %>
+<% end %>
+<%= render "shared/simple_pager", page: @page, total_pages: @total_pages, path_for: ->(n) { chloe_reply_logs_path(user_id: @user_id, page: n) } %>

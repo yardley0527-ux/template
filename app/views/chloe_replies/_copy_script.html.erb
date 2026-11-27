@@ -1,0 +1,14 @@
+<% content_for :scripts_block do %>
+  <script>
+    document.querySelectorAll(".js-copy-reply").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var text = document.getElementById(btn.dataset.target).value;
+        navigator.clipboard.writeText(text).then(function () {
+          var label = btn.textContent;
+          btn.textContent = "已複製 ✓";
+          setTimeout(function () { btn.textContent = label; }, 1500);
+        });
+      });
+    });
+  </script>
+<% end %>

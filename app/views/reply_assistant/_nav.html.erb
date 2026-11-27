@@ -1,4 +1,6 @@
 <ul class="nav nav-pills mb-3">
-  <li class="nav-item"><%= link_to "回覆助手與知識庫", reply_assistant_index_path, class: "nav-link #{'active' if active == :assistant}" %></li>
+  <li class="nav-item"><%= link_to "回覆助手", chloe_replies_path, class: "nav-link #{'active' if active == :ask}" %></li>
+  <li class="nav-item"><%= link_to "詢問紀錄", chloe_reply_logs_path, class: "nav-link #{'active' if active == :logs}" %></li>
+  <li class="nav-item"><%= link_to "知識庫", reply_assistant_index_path, class: "nav-link #{'active' if active == :knowledge}" %></li>
   <li class="nav-item"><%= link_to "IG 私訊整理", ig_reviews_path, class: "nav-link #{'active' if active == :reviews}" %></li>
 </ul>

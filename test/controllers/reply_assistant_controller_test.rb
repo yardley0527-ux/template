@@ -23,19 +23,19 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "組成回覆並附上原文依據，等確認" do
-    post reply_assistant_index_path, params: { question: "PDRN 一天要吃幾顆" }
+    post chloe_replies_path, params: { question: "PDRN 一天要吃幾顆" }
     run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "每天 6 顆" }]))
     d = ReplyDraft.last
     assert_equal "pending", d.status
     assert_equal "寶貝 每天 6 顆喔", d.answer
     assert_equal [{ "ref" => "faq:#{@faq.id}", "question" => "PDRN 一天吃幾顆", "quote" => "每天 6 顆" }], d.sources
-    get reply_assistant_index_path
+    get chloe_replies_path
     assert_includes response.body, "依據（Chloe 已核准的回答，原文）"
     assert_includes response.body, "複製回覆"
   end
 
   test "不是答案原文或不在候選裡的引用都不採用" do
-    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
+    post chloe_replies_path, params: { question: "PDRN 一天吃幾顆" }
     run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "每天 8 顆" },
                                 { "ref" => "faq:999999", "quote" => "每天 6 顆" }]))
     assert_empty ReplyDraft.last.sources
@@ -43,16 +43,16 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
 
   test "說法不同的回答附上說明" do
     other = ReplyKnowledgeItem.create!(question: "PDRN 怎麼吃", answer: "寶貝 一天 3 顆就好", source: "instagram", status: "approved")
-    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
+    post chloe_replies_path, params: { question: "PDRN 一天吃幾顆" }
     run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "每天 6 顆" }],
                       conflicts: [{ "ref" => "item:#{other.id}", "quote" => "一天 3 顆就好", "note" => "顆數不同" }]))
     assert_equal "顆數不同", ReplyDraft.last.conflicts.first["note"]
-    get reply_assistant_index_path
+    get chloe_replies_path
     assert_includes response.body, "說法不同的回答"
   end
 
   test "敏感問題一定標人工確認，即使 AI 判斷不用" do
-    post reply_assistant_index_path, params: { question: "我懷孕了 PDRN 一天可以吃幾顆" }
+    post chloe_replies_path, params: { question: "我懷孕了 PDRN 一天可以吃幾顆" }
     run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "每天 6 顆" }]))
     d = ReplyDraft.last
     assert d.needs_human
@@ -60,23 +60,54 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "資料庫沒有相關回答時，回覆留空請 Chloe 親自回覆" do
-    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
+    post chloe_replies_path, params: { question: "PDRN 一天吃幾顆" }
     run_job(ai_result(found: false, reply: "AI 自己編的"))
     d = ReplyDraft.last
     assert d.no_answer?
     assert_equal "", d.answer
     assert d.needs_human
-    get reply_assistant_index_path
+    get chloe_replies_path
     assert_includes response.body, "請 Chloe 親自回覆"
     assert_not_includes response.body, "AI 自己編的"
 
-    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
+    post chloe_replies_path, params: { question: "PDRN 一天吃幾顆" }
     run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "編造的原文" }]))
     assert ReplyDraft.last.no_answer?, "沒有任何原文依據也算沒找到"
 
-    post reply_assistant_index_path, params: { question: "完全無關的問題 qqq" }
+    post chloe_replies_path, params: { question: "完全無關的問題 qqq" }
     run_job(-> { raise "不應該打 API" })
     assert ReplyDraft.last.no_answer?, "沒有候選時不打 API"
+  end
+
+  test "每個人只看到自己問的，詢問紀錄可以看所有人並依員工篩選" do
+    other = User.create!(email: "staff@test.com", username: "staff_a", password: "password123", role: Role.find_or_create_by!(key: "social") { |r| r.name = "社群部" })
+    ReplyDraft.create!(question: "員工問的題目", status: "pending", answer: "回覆", created_by_user_id: other.id)
+    post chloe_replies_path, params: { question: "我自己問的題目" }
+
+    get chloe_replies_path
+    assert_includes response.body, "我自己問的題目"
+    assert_not_includes response.body, "員工問的題目"
+
+    get chloe_reply_logs_path
+    assert_includes response.body, "員工問的題目"
+    assert_includes response.body, "我自己問的題目"
+    assert_includes response.body, "staff_a"
+
+    get chloe_reply_logs_path(user_id: other.id)
+    assert_includes response.body, "員工問的題目"
+    assert_not_includes response.body, "我自己問的題目"
+    assert_not_includes response.body, "核准並存入", "紀錄頁只能看不能改"
+  end
+
+  test "員工不能核准別人問的題目" do
+    role = Role.find_or_create_by!(key: "social") { |r| r.name = "社群部" }
+    role.page_permissions.create!(controller_name: "chloe_replies")
+    staff = User.create!(email: "staff2@test.com", username: "staff_b", password: "password123", role: role)
+    d = ReplyDraft.create!(question: "老闆問的", status: "pending", answer: "回覆")
+    sign_in staff
+    patch chloe_reply_path(d), params: { decision: "approve", final_answer: "改掉" }
+    assert_equal "只能處理自己問的題目", flash[:alert]
+    assert_equal "pending", d.reload.status
   end
 
   test "產品別名也找得到：問瘦身粉會找到寫清纖粉的回答" do
@@ -88,7 +119,7 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
 
   test "核准草稿後存入知識庫，下一次會成為候選" do
     d = ReplyDraft.create!(question: "可以跟咖啡一起吃嗎", answer: "草稿", status: "pending")
-    patch reply_assistant_path(d), params: { decision: "approve", final_answer: "建議間隔一小時喔" }
+    patch chloe_reply_path(d), params: { decision: "approve", final_answer: "建議間隔一小時喔" }
     assert_equal "approved", d.reload.status
     item = ReplyKnowledgeItem.last
     assert_equal "建議間隔一小時喔", item.answer
@@ -98,19 +129,19 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
   test "引用舊答案且沒有修改時不重複存" do
     d = ReplyDraft.create!(question: "PDRN 幾顆", answer: "每天 6 顆喔", match_ref: "faq:#{@faq.id}", status: "pending")
     assert_no_difference("ReplyKnowledgeItem.count") do
-      patch reply_assistant_path(d), params: { decision: "approve", final_answer: "每天 6 顆喔" }
+      patch chloe_reply_path(d), params: { decision: "approve", final_answer: "每天 6 顆喔" }
     end
   end
 
   test "不採用不會存入知識庫，產生失敗會顯示原因" do
     d = ReplyDraft.create!(question: "問題", answer: "草稿", status: "pending")
-    assert_no_difference("ReplyKnowledgeItem.count") { patch reply_assistant_path(d), params: { decision: "reject" } }
+    assert_no_difference("ReplyKnowledgeItem.count") { patch chloe_reply_path(d), params: { decision: "reject" } }
     assert_equal "rejected", d.reload.status
 
-    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆（會失敗）" }
+    post chloe_replies_path, params: { question: "PDRN 一天吃幾顆（會失敗）" }
     run_job(-> { raise "API 錯誤" })
     assert_equal "failed", ReplyDraft.last.status
-    get reply_assistant_index_path
+    get chloe_replies_path
     assert_includes response.body, "API 錯誤"
   end
 

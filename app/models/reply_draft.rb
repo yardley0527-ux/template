@@ -2,6 +2,9 @@
 class ReplyDraft < ApplicationRecord
   STATUSES = %w[generating pending approved rejected failed].freeze
 
+  belongs_to :created_by, class_name: "User", optional: true
+  belongs_to :reviewed_by, class_name: "User", optional: true
+
   validates :question, presence: true
   validates :status, inclusion: { in: STATUSES }
 

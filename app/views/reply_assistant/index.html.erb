@@ -1,63 +1,13 @@
-<% content_for :page_title, "Chloe 回覆助手" %>
-<% if @refreshing %><% content_for(:head_block) { tag.meta("http-equiv": "refresh", content: "5") } %><% end %>
+<% content_for :page_title, "Chloe 知識庫" %>
 <div class="subheader">
-  <h1 class="subheader-title"><i class="fal fa-comment-dots mr-2 text-primary"></i> Chloe 回覆助手
-    <small>貼上客人問題，用 Chloe 回答過的內容組成回覆，附上原文依據。不會發訊息給客人</small></h1>
+  <h1 class="subheader-title"><i class="fal fa-books mr-2 text-primary"></i> Chloe 知識庫
+    <small>回覆助手會從這裡找 Chloe 回答過的內容。過期或不適用的可以移除</small></h1>
 </div>
 
-<%= render "reply_assistant/nav", active: :assistant %>
+<%= render "reply_assistant/nav", active: :knowledge %>
 
 <% [:notice, :alert].each do |k| %>
   <% if flash[k] %><div class="alert alert-<%= k == :notice ? 'success' : 'danger' %>"><%= flash[k] %></div><% end %>
-<% end %>
-
-<div class="card mb-3"><div class="card-body">
-  <%= form_with url: reply_assistant_index_path, local: true do %>
-    <label for="question" class="font-weight-bold">客人的問題</label>
-    <textarea id="question" name="question" class="form-control mb-2" rows="3" required></textarea>
-    <button class="btn btn-primary" type="submit">產生回覆</button>
-    <span class="text-muted small ml-2">知識庫：FAQ <%= @faq_count %> 筆、核准問答 <%= @approved_count %> 筆</span>
-  <% end %>
-</div></div>
-
-<% if @drafts.empty? %>
-  <p class="text-muted">還沒有測試紀錄。</p>
-<% end %>
-
-<% @drafts.each do |d| %>
-  <div class="card mb-3"><div class="card-body">
-    <p class="mb-1 text-muted small"><%= l(d.created_at, format: "%m/%d %H:%M") %></p>
-    <p class="font-weight-bold" style="white-space:pre-line;"><%= d.question %></p>
-    <% if d.no_answer? && d.status == "pending" %>
-      <div class="alert alert-warning py-2">資料庫沒有相關回答，請 Chloe 親自回覆。寫在下面按「核准並存入」，之後同樣的問題就找得到。</div>
-    <% elsif d.needs_human && !d.no_answer? %>
-      <div class="alert alert-warning py-2">需要人工確認<%= "：#{d.human_reason}" if d.human_reason.present? %></div>
-    <% end %>
-
-    <% case d.status %>
-    <% when "generating" %>
-      <p class="text-muted mb-0">準備中…</p>
-    <% when "failed" %>
-      <div class="alert alert-danger mb-0">產生失敗：<%= d.error_message %></div>
-    <% when "pending" %>
-      <% unless d.no_answer? %>
-        <p class="small text-muted mb-1"><%= d.match_ref.present? ? "找到舊答案，因敏感問題待確認（來源 #{d.match_ref}）" : "依 Chloe 回答整理的回覆，可修改後核准" %></p>
-      <% end %>
-      <%= form_with url: reply_assistant_path(d), method: :patch, local: true do %>
-        <textarea id="reply-<%= d.id %>" name="final_answer" class="form-control mb-2" rows="<%= [d.answer.to_s.lines.size + 1, 5].max %>" aria-label="回覆內容" placeholder="<%= 'Chloe 的回覆…' if d.no_answer? %>"><%= d.answer %></textarea>
-        <button class="btn btn-outline-primary btn-sm js-copy-reply" type="button" data-target="reply-<%= d.id %>">複製回覆</button>
-        <button class="btn btn-success btn-sm" name="decision" value="approve" type="submit">核准並存入</button>
-        <button class="btn btn-outline-secondary btn-sm" name="decision" value="reject" type="submit">不採用</button>
-      <% end %>
-      <%= render "reply_assistant/citations", draft: d %>
-    <% when "approved" %>
-      <p class="small text-success mb-1"><%= d.direct_match? ? "已核准答案（原文帶入，來源 #{d.match_ref}）" : "已核准" %></p>
-      <p class="mb-0" style="white-space:pre-line;"><%= d.final_answer %></p>
-      <%= render "reply_assistant/citations", draft: d %>
-    <% else %>
-      <p class="text-muted mb-0">不採用</p>
-    <% end %>
-  </div></div>
 <% end %>
 
 <% if @knowledge_total.positive? %>
@@ -110,17 +60,3 @@
   <% end %>
 <% end %>
 
-<% content_for :scripts_block do %>
-  <script>
-    document.querySelectorAll(".js-copy-reply").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var text = document.getElementById(btn.dataset.target).value;
-        navigator.clipboard.writeText(text).then(function () {
-          var label = btn.textContent;
-          btn.textContent = "已複製 ✓";
-          setTimeout(function () { btn.textContent = label; }, 1500);
-        });
-      });
-    });
-  </script>
-<% end %>

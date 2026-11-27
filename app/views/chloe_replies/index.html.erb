@@ -1,0 +1,32 @@
+<% content_for :page_title, "Chloe 回覆助手" %>
+<% if @refreshing %><% content_for(:head_block) { tag.meta("http-equiv": "refresh", content: "5") } %><% end %>
+<div class="subheader">
+  <h1 class="subheader-title"><i class="fal fa-comment-dots mr-2 text-primary"></i> Chloe 回覆助手
+    <small>貼上客人問題，用 Chloe 回答過的內容組成回覆，附上原文依據。不會發訊息給客人</small></h1>
+</div>
+
+<%= render "reply_assistant/nav", active: :ask %>
+
+<% [:notice, :alert].each do |k| %>
+  <% if flash[k] %><div class="alert alert-<%= k == :notice ? 'success' : 'danger' %>"><%= flash[k] %></div><% end %>
+<% end %>
+
+<div class="card mb-3"><div class="card-body">
+  <%= form_with url: chloe_replies_path, local: true do %>
+    <label for="question" class="font-weight-bold">客人的問題</label>
+    <textarea id="question" name="question" class="form-control mb-2" rows="3" required></textarea>
+    <button class="btn btn-primary" type="submit">產生回覆</button>
+    <span class="text-muted small ml-2">知識庫：FAQ <%= @faq_count %> 筆、核准問答 <%= @approved_count %> 筆</span>
+  <% end %>
+</div></div>
+
+<h2 class="h5 mt-4">我問過的問題（<%= @total %>）</h2>
+<% if @drafts.empty? %>
+  <p class="text-muted">還沒有詢問紀錄。</p>
+<% end %>
+<% @drafts.each do |d| %>
+  <%= render "chloe_replies/draft", d: d, editable: true %>
+<% end %>
+<%= render "shared/simple_pager", page: @page, total_pages: @total_pages, path_for: ->(n) { chloe_replies_path(page: n) } %>
+
+<%= render "chloe_replies/copy_script" %>

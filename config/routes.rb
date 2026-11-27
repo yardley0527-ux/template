@@ -58,7 +58,9 @@ Rails.application.routes.draw do
       post :regenerate_digest
     end
   end
-  resources :reply_assistant, only: [:index, :create, :update], controller: "reply_assistant" do
+  resources :chloe_replies, only: [:index, :create, :update]
+  resources :chloe_reply_logs, only: [:index]
+  resources :reply_assistant, only: [:index], controller: "reply_assistant" do
     patch :remove_item, on: :member
   end
   resources :ig_reviews, only: [:index]

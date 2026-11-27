@@ -1,0 +1,8 @@
+<%# 簡單頁碼：page、total_pages、path_for（lambda 接頁碼回網址） %>
+<% if total_pages > 1 %>
+  <nav aria-label="分頁"><ul class="pagination pagination-sm">
+    <% (1..total_pages).each do |n| %>
+      <li class="page-item <%= 'active' if n == page %>"><%= link_to n, path_for.call(n), class: "page-link" %></li>
+    <% end %>
+  </ul></nav>
+<% end %>

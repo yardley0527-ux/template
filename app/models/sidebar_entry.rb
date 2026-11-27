@@ -150,7 +150,9 @@ class SidebarEntry
           group_title: "Chloe 回覆助手",
           group_icon: "fa-comment-dots",
           children: [
-            { href: reply_assistant_index_path, title: "回覆助手與知識庫", icon: "fa-comment-dots" },
+            { href: chloe_replies_path, title: "回覆助手", icon: "fa-comment-dots" },
+            { href: chloe_reply_logs_path, title: "詢問紀錄", icon: "fa-history" },
+            { href: reply_assistant_index_path, title: "知識庫", icon: "fa-books" },
             { href: ig_reviews_path, title: "IG 私訊整理", icon: "fa-clipboard-list-check" },
           ]
         },

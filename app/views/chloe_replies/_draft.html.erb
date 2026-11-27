@@ -1,0 +1,40 @@
+<%# 一則詢問：editable 時可修改、核准、不採用；show_asker 時顯示是誰問的 %>
+<div class="card mb-3"><div class="card-body">
+    <p class="mb-1 text-muted small"><%= l(d.created_at, format: "%m/%d %H:%M") %><% if local_assigns[:show_asker] %>・<%= d.created_by&.username || "—" %><% end %></p>
+    <p class="font-weight-bold" style="white-space:pre-line;"><%= d.question %></p>
+    <% if d.no_answer? && d.status == "pending" %>
+      <div class="alert alert-warning py-2">資料庫沒有相關回答，請 Chloe 親自回覆。寫在下面按「核准並存入」，之後同樣的問題就找得到。</div>
+    <% elsif d.needs_human && !d.no_answer? %>
+      <div class="alert alert-warning py-2">需要人工確認<%= "：#{d.human_reason}" if d.human_reason.present? %></div>
+    <% end %>
+
+    <% case d.status %>
+    <% when "generating" %>
+      <p class="text-muted mb-0">準備中…</p>
+    <% when "failed" %>
+      <div class="alert alert-danger mb-0">產生失敗：<%= d.error_message %></div>
+    <% when "pending" %>
+      <% if editable %>
+      <% unless d.no_answer? %>
+        <p class="small text-muted mb-1"><%= d.match_ref.present? ? "找到舊答案，因敏感問題待確認（來源 #{d.match_ref}）" : "依 Chloe 回答整理的回覆，可修改後核准" %></p>
+      <% end %>
+      <%= form_with url: chloe_reply_path(d), method: :patch, local: true do %>
+        <textarea id="reply-<%= d.id %>" name="final_answer" class="form-control mb-2" rows="<%= [d.answer.to_s.lines.size + 1, 5].max %>" aria-label="回覆內容" placeholder="<%= 'Chloe 的回覆…' if d.no_answer? %>"><%= d.answer %></textarea>
+        <button class="btn btn-outline-primary btn-sm js-copy-reply" type="button" data-target="reply-<%= d.id %>">複製回覆</button>
+        <button class="btn btn-success btn-sm" name="decision" value="approve" type="submit">核准並存入</button>
+        <button class="btn btn-outline-secondary btn-sm" name="decision" value="reject" type="submit">不採用</button>
+      <% end %>
+      <% else %>
+        <p class="small text-muted mb-1"><%= d.no_answer? ? "等 Chloe 親自回覆" : "已整理回覆，待核准" %></p>
+        <p class="mb-0" style="white-space:pre-line;"><%= d.answer %></p>
+      <% end %>
+      <%= render "reply_assistant/citations", draft: d %>
+    <% when "approved" %>
+      <p class="small text-success mb-1"><%= d.direct_match? ? "已核准答案（原文帶入，來源 #{d.match_ref}）" : "已核准" %></p>
+      <p class="mb-0" style="white-space:pre-line;"><%= d.final_answer %></p>
+      <%= render "reply_assistant/citations", draft: d %>
+    <% else %>
+      <p class="text-muted mb-0">不採用</p>
+      <% if d.answer.present? %><p class="small text-muted mb-0 mt-1" style="white-space:pre-line;"><%= d.answer %></p><% end %>
+    <% end %>
+  </div></div>
