@@ -7,7 +7,12 @@
 module AiReports
   PAUSED_NOTE = "AI 報告暫停中（Render 設 AI_REPORTS_ENABLED=1 恢復）"
 
-  def self.paused?
+  # 個別功能可以單獨開：回覆助手設 REPLY_ASSISTANT_ENABLED=1 就能用，其他 AI 功能維持暫停。
+  FEATURE_FLAGS = { reply_assistant: "REPLY_ASSISTANT_ENABLED" }.freeze
+
+  def self.paused?(feature = nil)
+    return false if feature && ENV[FEATURE_FLAGS.fetch(feature)] == "1"
+
     ENV["AI_REPORTS_ENABLED"] != "1"
   end
 end

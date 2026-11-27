@@ -155,4 +155,14 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, ig_reviews_path
   end
+
+  test "回覆助手可以單獨開，其他 AI 功能維持暫停" do
+    original = ENV.to_h.slice("AI_REPORTS_ENABLED", "REPLY_ASSISTANT_ENABLED")
+    ENV.delete("AI_REPORTS_ENABLED")
+    ENV["REPLY_ASSISTANT_ENABLED"] = "1"
+    assert_not AiReports.paused?(:reply_assistant)
+    assert AiReports.paused?
+  ensure
+    %w[AI_REPORTS_ENABLED REPLY_ASSISTANT_ENABLED].each { |k| original.key?(k) ? ENV[k] = original[k] : ENV.delete(k) }
+  end
 end

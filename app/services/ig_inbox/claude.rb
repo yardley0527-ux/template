@@ -10,8 +10,9 @@ module IgInbox
 
     module_function
 
-    def call(text, schema)
-      raise AiReports::PAUSED_NOTE if AiReports.paused?
+    # feature：有單獨開關的功能（例如 :reply_assistant），開了就不受全域暫停影響
+    def call(text, schema, feature: nil)
+      raise AiReports::PAUSED_NOTE if AiReports.paused?(feature)
 
       api_key = ENV["ANTHROPIC_API_KEY"].to_s.strip
       raise "ANTHROPIC_API_KEY 未設定" if api_key.empty?

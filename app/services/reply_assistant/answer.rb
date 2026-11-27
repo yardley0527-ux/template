@@ -75,7 +75,7 @@ module ReplyAssistant
     def call
       reason = sensitive_reason
       candidates = Knowledge.candidates(@question)
-      result = IgInbox::Claude.call(prompt(candidates), SCHEMA)
+      result = IgInbox::Claude.call(prompt(candidates), SCHEMA, feature: :reply_assistant)
       by_ref = candidates.index_by(&:ref)
 
       {
