@@ -20,26 +20,26 @@ module ReplyAssistant
 
     # 每個雙字用 IDF 加權：「怎麼吃」「寶貝」這種到處都有的字幾乎不算分，
     # 「空腹」「懷孕」這種少見的字才是重點。問題比對算兩倍，答案比對有上限。
+    # 只拿問題的雙字去每則文字裡找（include?），不替上萬則知識各建雙字陣列——
+    # 那樣會多吃約 80MB，web 記憶體不夠會 502（11/27 發生過）。
     def candidates(question, entries: all, limit: LIMIT)
       target = bigrams(question)
       return [] if target.empty?
 
-      docs = entries.map { |e| [e, bigrams(e.question), bigrams(e.answer)] }
-      df = Hash.new(0)
-      docs.each { |_, q, a| (q | a).each { |g| df[g] += 1 if target.include?(g) } }
-      idf = target.to_h { |g| [g, Math.log((docs.size + 1.0) / (df[g] + 1))] }
+      docs = entries.map { |e| [e, compact(e.question), compact(e.answer)] }
+      df = target.to_h { |g| [g, docs.count { |_, q, a| q.include?(g) || a.include?(g) }] }
+      idf = df.transform_values { |n| Math.log((docs.size + 1.0) / (n + 1)) }
       products = Category.products(question)
 
       docs.map { |e, q, a| [e, score(e, q, a, idf, products)] }
           .select { |_, s| s.positive? }
-          .sort_by { |_, s| -s }
-          .first(limit)
+          .max_by(limit) { |_, s| s }
           .map(&:first)
     end
 
-    def score(entry, question_grams, answer_grams, idf, products)
-      by_question = (question_grams & idf.keys).sum { |g| idf[g] } * 2
-      by_answer = [(answer_grams & idf.keys).sum { |g| idf[g] }, ANSWER_SCORE_CAP].min
+    def score(entry, question_text, answer_text, idf, products)
+      by_question = idf.sum { |g, w| question_text.include?(g) ? w : 0 } * 2
+      by_answer = [idf.sum { |g, w| answer_text.include?(g) ? w : 0 }, ANSWER_SCORE_CAP].min
       shared = products.any? && (Category.products(entry.question, entry.answer) & products).any?
       return 0 if by_question.zero? && !shared
 
@@ -54,11 +54,15 @@ module ReplyAssistant
       end
     end
 
-    # 產品別名先換成同一個名稱（瘦身粉、輕纖粉 → 清纖粉），雙字比對才對得上
     def bigrams(text)
-      normalized = Category::PRODUCTS.reduce(text.to_s) { |t, (name, pattern)| t.gsub(pattern, name) }
-      chars = normalized.downcase.gsub(/[[:space:][:punct:]]/, "").chars
+      chars = compact(text).chars
       chars.each_cons(2).map(&:join).uniq
+    end
+
+    # 產品別名先換成同一個名稱（瘦身粉、輕纖粉 → 清纖粉），去掉空白標點、轉小寫
+    def compact(text)
+      normalized = Category::PRODUCTS.reduce(text.to_s) { |t, (name, pattern)| t.gsub(pattern, name) }
+      normalized.downcase.gsub(/[[:space:][:punct:]]/, "")
     end
   end
 end
