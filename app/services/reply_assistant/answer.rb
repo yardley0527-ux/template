@@ -28,8 +28,9 @@ module ReplyAssistant
     SCHEMA = {
       type: "object",
       additionalProperties: false,
-      required: %w[reply sources conflicts needs_human human_reason],
+      required: %w[found reply sources conflicts needs_human human_reason],
       properties: {
+        found: { type: "boolean", description: "知識裡有沒有能回答這個問題的內容" },
         reply: { type: "string", description: "給客人的回覆" },
         sources: { type: "array", items: CITATION, description: "回覆裡每個重點的依據" },
         conflicts: {
@@ -57,7 +58,7 @@ module ReplyAssistant
       3. sources：reply 裡每個重點各附一則依據，quote 必須從該則答案逐字複製（可以只取其中一段，但不可改字、不可補字）。
       4. conflicts：知識裡跟 reply 說法不一樣的回答（例如時間、吃法不同），一樣逐字引用，note 說明哪裡不同；
          回答對象不明或像是在講別的產品，也在 note 寫出來。沒有就給空陣列。
-      5. 知識不足以回答時，reply 寫「需要 Chloe 補充：…」說明缺什麼，needs_human 設 true。
+      5. 知識裡沒有能回答這個問題的內容（只是主題相近也不算），found 設 false、reply 留空，不要自己編回覆。
       6. 涉及懷孕哺乳、用藥、疾病、身體不適、未成年、退款訂單、或保證瘦身與任何效果的問題，needs_human 設 true 並寫 human_reason。
 
       語氣：像 Chloe 親自傳 IG 訊息，用「寶貝」或「親愛的」開頭，溫暖口語、繁體中文。
@@ -72,24 +73,33 @@ module ReplyAssistant
       @question = question.to_s.strip
     end
 
+    NO_ANSWER_REASON = "資料庫沒有相關回答，請 Chloe 親自回覆"
+
     def call
       reason = sensitive_reason
       candidates = Knowledge.candidates(@question)
+      return no_answer if candidates.empty?
+
       result = IgInbox::Claude.call(prompt(candidates), SCHEMA, feature: :reply_assistant)
       by_ref = candidates.index_by(&:ref)
+      sources = verified(result["sources"], by_ref)
+      # 沒找到、或回覆沒有任何一則原文依據，都當成資料庫沒有答案，不給 AI 自己編的回覆
+      return no_answer if result["found"] == false || result["reply"].to_s.strip.empty? || sources.empty?
 
       {
         answer: result["reply"].to_s.strip,
-        citations: {
-          "sources" => verified(result["sources"], by_ref),
-          "conflicts" => verified(result["conflicts"], by_ref)
-        },
+        citations: { "sources" => sources, "conflicts" => verified(result["conflicts"], by_ref) },
         needs_human: reason.present? || result["needs_human"] == true,
         human_reason: reason || result["human_reason"].presence
       }
     end
 
     private
+
+    # 回覆留空讓 Chloe 自己寫，核准後存進知識庫，下次就找得到
+    def no_answer
+      { answer: "", citations: { "no_answer" => true }, needs_human: true, human_reason: NO_ANSWER_REASON }
+    end
 
     # 只留編號在候選裡、而且 quote 真的是答案原文的引用（忽略空白差異）。
     def verified(rows, by_ref)

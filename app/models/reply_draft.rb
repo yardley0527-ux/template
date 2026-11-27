@@ -7,6 +7,11 @@ class ReplyDraft < ApplicationRecord
 
   scope :recent, -> { order(created_at: :desc) }
 
+  # 資料庫沒有相關回答，要 Chloe 親自回覆
+  def no_answer?
+    citations["no_answer"] == true
+  end
+
   # 回覆裡每個重點的依據（Chloe 回答原文）
   def sources
     Array(citations["sources"])

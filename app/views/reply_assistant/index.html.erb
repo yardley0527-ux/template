@@ -28,7 +28,9 @@
   <div class="card mb-3"><div class="card-body">
     <p class="mb-1 text-muted small"><%= l(d.created_at, format: "%m/%d %H:%M") %></p>
     <p class="font-weight-bold" style="white-space:pre-line;"><%= d.question %></p>
-    <% if d.needs_human %>
+    <% if d.no_answer? && d.status == "pending" %>
+      <div class="alert alert-warning py-2">資料庫沒有相關回答，請 Chloe 親自回覆。寫在下面按「核准並存入」，之後同樣的問題就找得到。</div>
+    <% elsif d.needs_human && !d.no_answer? %>
       <div class="alert alert-warning py-2">需要人工確認<%= "：#{d.human_reason}" if d.human_reason.present? %></div>
     <% end %>
 
@@ -38,9 +40,11 @@
     <% when "failed" %>
       <div class="alert alert-danger mb-0">產生失敗：<%= d.error_message %></div>
     <% when "pending" %>
-      <p class="small text-muted mb-1"><%= d.match_ref.present? ? "找到舊答案，因敏感問題待確認（來源 #{d.match_ref}）" : "依 Chloe 回答整理的回覆，可修改後核准" %></p>
+      <% unless d.no_answer? %>
+        <p class="small text-muted mb-1"><%= d.match_ref.present? ? "找到舊答案，因敏感問題待確認（來源 #{d.match_ref}）" : "依 Chloe 回答整理的回覆，可修改後核准" %></p>
+      <% end %>
       <%= form_with url: reply_assistant_path(d), method: :patch, local: true do %>
-        <textarea id="reply-<%= d.id %>" name="final_answer" class="form-control mb-2" rows="<%= [d.answer.to_s.lines.size + 1, 5].max %>" aria-label="回覆內容"><%= d.answer %></textarea>
+        <textarea id="reply-<%= d.id %>" name="final_answer" class="form-control mb-2" rows="<%= [d.answer.to_s.lines.size + 1, 5].max %>" aria-label="回覆內容" placeholder="<%= 'Chloe 的回覆…' if d.no_answer? %>"><%= d.answer %></textarea>
         <button class="btn btn-outline-primary btn-sm js-copy-reply" type="button" data-target="reply-<%= d.id %>">複製回覆</button>
         <button class="btn btn-success btn-sm" name="decision" value="approve" type="submit">核准並存入</button>
         <button class="btn btn-outline-secondary btn-sm" name="decision" value="reject" type="submit">不採用</button>
@@ -91,8 +95,8 @@
       <% if @topic_counts[name] %><%= filter_link.call("#{name} #{@topic_counts[name]}", @product, name, name == @topic) %><% end %>
     <% end %>
   </div>
-  <p class="text-muted small"><%= @knowledge_rows.size > 100 ? "符合 #{@knowledge_rows.size} 筆，顯示前 100 筆，請再選條件" : "符合 #{@knowledge_rows.size} 筆" %></p>
-  <% @knowledge_rows.first(100).each do |item, products, topics| %>
+  <p class="text-muted small"><%= @knowledge_count > ReplyAssistantController::KNOWLEDGE_PAGE ? "符合 #{@knowledge_count} 筆，顯示前 #{ReplyAssistantController::KNOWLEDGE_PAGE} 筆，請再選條件" : "符合 #{@knowledge_count} 筆" %></p>
+  <% @knowledge_rows.each do |item, products, topics| %>
     <div class="card mb-2"><div class="card-body py-3">
       <p class="mb-1">
         <% products.each do |name| %><span class="badge badge-primary"><%= name %></span><% end %>

@@ -18,8 +18,8 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     IgInbox::Claude.define_singleton_method(:call, original)
   end
 
-  def ai_result(reply: "寶貝 每天 6 顆喔", sources: [], conflicts: [], needs_human: false)
-    { "reply" => reply, "sources" => sources, "conflicts" => conflicts, "needs_human" => needs_human, "human_reason" => "" }
+  def ai_result(reply: "寶貝 每天 6 顆喔", sources: [], conflicts: [], needs_human: false, found: true)
+    { "found" => found, "reply" => reply, "sources" => sources, "conflicts" => conflicts, "needs_human" => needs_human, "human_reason" => "" }
   end
 
   test "組成回覆並附上原文依據，等確認" do
@@ -44,7 +44,8 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
   test "說法不同的回答附上說明" do
     other = ReplyKnowledgeItem.create!(question: "PDRN 怎麼吃", answer: "寶貝 一天 3 顆就好", source: "instagram", status: "approved")
     post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
-    run_job(ai_result(conflicts: [{ "ref" => "item:#{other.id}", "quote" => "一天 3 顆就好", "note" => "顆數不同" }]))
+    run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "每天 6 顆" }],
+                      conflicts: [{ "ref" => "item:#{other.id}", "quote" => "一天 3 顆就好", "note" => "顆數不同" }]))
     assert_equal "顆數不同", ReplyDraft.last.conflicts.first["note"]
     get reply_assistant_index_path
     assert_includes response.body, "說法不同的回答"
@@ -52,10 +53,30 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
 
   test "敏感問題一定標人工確認，即使 AI 判斷不用" do
     post reply_assistant_index_path, params: { question: "我懷孕了 PDRN 一天可以吃幾顆" }
-    run_job(ai_result)
+    run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "每天 6 顆" }]))
     d = ReplyDraft.last
     assert d.needs_human
     assert_equal "懷孕哺乳", d.human_reason
+  end
+
+  test "資料庫沒有相關回答時，回覆留空請 Chloe 親自回覆" do
+    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
+    run_job(ai_result(found: false, reply: "AI 自己編的"))
+    d = ReplyDraft.last
+    assert d.no_answer?
+    assert_equal "", d.answer
+    assert d.needs_human
+    get reply_assistant_index_path
+    assert_includes response.body, "請 Chloe 親自回覆"
+    assert_not_includes response.body, "AI 自己編的"
+
+    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆" }
+    run_job(ai_result(sources: [{ "ref" => "faq:#{@faq.id}", "quote" => "編造的原文" }]))
+    assert ReplyDraft.last.no_answer?, "沒有任何原文依據也算沒找到"
+
+    post reply_assistant_index_path, params: { question: "完全無關的問題 qqq" }
+    run_job(-> { raise "不應該打 API" })
+    assert ReplyDraft.last.no_answer?, "沒有候選時不打 API"
   end
 
   test "產品別名也找得到：問瘦身粉會找到寫清纖粉的回答" do
@@ -86,7 +107,7 @@ class ReplyAssistantControllerTest < ActionDispatch::IntegrationTest
     assert_no_difference("ReplyKnowledgeItem.count") { patch reply_assistant_path(d), params: { decision: "reject" } }
     assert_equal "rejected", d.reload.status
 
-    post reply_assistant_index_path, params: { question: "會失敗" }
+    post reply_assistant_index_path, params: { question: "PDRN 一天吃幾顆（會失敗）" }
     run_job(-> { raise "API 錯誤" })
     assert_equal "failed", ReplyDraft.last.status
     get reply_assistant_index_path
